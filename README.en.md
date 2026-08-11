@@ -24,9 +24,7 @@ two 200-paper ICLR 2026 conditions.
 
 The repository contains the runnable implementation, frozen prompt and protocol
 fingerprints, 400 complete review bundles, frozen predictions, evaluation files,
-independent audit reports, and publication-ready comparison tables. It does not
-redistribute manuscript PDFs, extracted manuscript text, private label mappings,
-or API credentials.
+independent audit reports, and publication-ready comparison tables.
 
 ## What was reproduced
 
@@ -79,9 +77,8 @@ for definitions, uncertainty, the Nature baselines, and interpretation limits.
 
 ## API usage and cost
 
-The DeepSeek dashboard screenshot below is filtered to the API-key alias
-`Reviewer` over the previous 30 days. It reports **CNY 65.48**, **2,484 API
-requests**, and **60,964,615 tokens**. No API-key value is visible in the image.
+The DeepSeek dashboard screenshot below shows the `Reviewer` group over the
+previous 30 days: **CNY 65.48**, **2,484 API requests**, and **60,964,615 tokens**.
 
 ![DeepSeek dashboard usage: CNY 65.48, 2,484 requests, 60,964,615 tokens](assets/deepseek-api-usage.png)
 
@@ -108,7 +105,7 @@ python -m pip install -e .
 cp .env.example .env
 ```
 
-Put your own key only in the local `.env` file:
+Set `DEEPSEEK_API_KEY` in the local `.env` file:
 
 ```dotenv
 DEEPSEEK_API_KEY=replace_with_your_key
@@ -154,30 +151,8 @@ results/strict-initial/      200 bundles, frozen predictions, evaluation, and au
 results/nature-mixed/        200 bundles, frozen predictions, evaluation, and audit
 results/comparison/          paired statistics and table specifications
 assets/                      rendered tables and API-usage screenshot
-docs/                        bilingual protocol, security guidance, and summary report
+docs/                        bilingual protocol and summary report
 ```
-
-## Data and security boundaries
-
-- `.env` and all common credential variants are ignored.
-- API keys are read from the process environment and are never serialized into
-  review bundles.
-- Manuscript PDFs, extracted text, parquet snapshots, and private identity/label
-  mappings are not included.
-- The accepted-paper fetcher uses official ICLR 2026 proceedings URLs and records
-  hashes and provenance locally.
-- Each result bundle records hashes rather than the full manuscript text.
-
-Read [SECURITY.en.md](SECURITY.en.md) before running the API client or publishing a fork.
-
-## Validation
-
-```bash
-python -m pytest -q
-```
-
-The public release was validated against all 68 tests, both rendered comparison
-tables, the frozen prediction hashes, and a repository-wide secret/path scan.
 
 ## Scope and limitations
 

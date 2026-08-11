@@ -6,7 +6,7 @@
 
 - 将 <code>README.md</code> 改为默认简体中文主页。
 - 增加完整 <code>README.en.md</code>，并在两页顶部加入语言切换。
-- 为 AutoReviewer 报告、复现协议和安全说明增加中英文对应版本。
+- 为 AutoReviewer 报告和复现协议增加中英文对应版本。
 - 将 GitHub Release notes 改为中文在前、英文在后的双语格式。
 - 实验数据、冻结预测、统计结果和审计链均未改变。
 
@@ -14,8 +14,7 @@
 
 - Made <code>README.md</code> the default Simplified Chinese landing page.
 - Added a complete <code>README.en.md</code> with reciprocal language links.
-- Added Chinese and English versions of the AutoReviewer report, protocol, and
-  security guidance.
+- Added Chinese and English versions of the AutoReviewer report and protocol.
 - Changed GitHub Release notes to a Chinese-first bilingual format.
 - Experimental data, frozen predictions, statistics, and audit chains are unchanged.
 
@@ -31,7 +30,7 @@
 - 400 份完整机器可读 review bundle。
 - 冻结预测、bootstrap 评估、配对比较统计和独立审计报告。
 - 包含 ICLR 2026 人类评分代理和 Nature 已发表基线的论文风格对照表。
-- 不含 API Key 实际值的供应商控制台用量截图。
+- 供应商控制台用量截图。
 - Fail-closed 的 camera-ready 获取器和混合版本输入构建器。
 
 ### English
@@ -46,5 +45,5 @@ Initial public reproduction release:
   independent audit reports.
 - Nature-style comparison tables with an ICLR 2026 human-rating proxy and
   published Nature reference baselines.
-- Provider dashboard usage screenshot without an API-key value.
+- Provider dashboard usage screenshot.
 - Camera-ready acquisition and mixed-version input builders that fail closed.

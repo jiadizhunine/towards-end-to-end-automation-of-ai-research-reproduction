@@ -121,8 +121,7 @@ did not persist usage records. The mixed run had no application-level retries.
 The dashboard screenshot covers the previous 30 days for the key alias
 `Reviewer`: CNY 65.48, 2,484 API requests, and 60,964,615 tokens. It is a useful
 billing cross-check but is not identical to the formal-run sum because it may
-include smoke tests, retries, or other calls under the same alias. The screenshot
-does not contain the API-key value.
+include smoke tests, retries, or other calls under the same alias.
 
 ## Input leakage and interpretation
 

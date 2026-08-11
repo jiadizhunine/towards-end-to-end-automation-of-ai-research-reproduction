@@ -23,8 +23,7 @@
 论文上评估两种输入条件。
 
 仓库包含可运行实现、冻结的提示词与协议指纹、400 份完整审稿结果包、
-冻结预测、评估文件、独立审计报告和论文风格对照表。仓库不重新分发论文
-PDF、论文提取文本、私有标签映射或 API 凭据。
+冻结预测、评估文件、独立审计报告和论文风格对照表。
 
 ## 复现内容
 
@@ -75,9 +74,8 @@ ICLR 2026 的 Human 行是**人类评分代理指标**，不是两个独立评�
 
 ## API 用量与成本
 
-下图为 DeepSeek 控制台中 API Key 别名 <code>Reviewer</code> 在近 30 天内的
-用量汇总：**¥65.48、2,484 次 API 请求、60,964,615 tokens**。截图没有显示
-API Key 的实际值。
+下图为 DeepSeek 控制台中 <code>Reviewer</code> 分组在近 30 天内的用量汇总：
+**¥65.48、2,484 次 API 请求、60,964,615 tokens**。
 
 ![DeepSeek API 用量：¥65.48、2,484 次请求、60,964,615 tokens](assets/deepseek-api-usage.png)
 
@@ -102,7 +100,7 @@ python -m pip install -e .
 cp .env.example .env
 ~~~
 
-只把你自己的 Key 写入本地 <code>.env</code>：
+在本地 <code>.env</code> 中设置 <code>DEEPSEEK_API_KEY</code>：
 
 ~~~dotenv
 DEEPSEEK_API_KEY=replace_with_your_key
@@ -150,25 +148,6 @@ results/comparison/          配对统计和表格规格
 assets/                      渲染表格与 API 用量截图
 docs/                        中英文协议与总结报告
 ~~~
-
-## 数据与安全边界
-
-- <code>.env</code> 和常见凭据文件均被忽略。
-- API Key 从进程环境读取，不会写入 review bundle。
-- 仓库不包含论文 PDF、提取文本、parquet 快照或私有身份/标签映射。
-- Accept 论文获取器只使用 ICLR 2026 官方 proceedings URL，并在本地记录哈希与来源。
-- 每份公开结果 bundle 只记录输入文本哈希，不包含完整论文文本。
-
-运行 API 客户端或公开 fork 前，请阅读[中文安全说明](SECURITY.md)。
-
-## 验证
-
-~~~bash
-python -m pytest -q
-~~~
-
-公开版本已经通过全部 68 项测试、两张对照表渲染检查、冻结预测哈希核对和
-仓库级密钥/本地路径扫描。
 
 ## 范围与局限
 

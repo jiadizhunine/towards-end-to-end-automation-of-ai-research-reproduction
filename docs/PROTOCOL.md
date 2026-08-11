@@ -1,130 +1,125 @@
-# Reproduction protocol
+<div align="center">
 
-## Scope
+[English](./PROTOCOL.en.md) | **简体中文**
 
-This protocol covers the AutoReviewer component only. It does not reproduce the
-idea generation, experiment execution, manuscript generation, or workshop
-submission components of the full AI Scientist system.
+</div>
 
-## Fixed cohort
+# 复现协议
 
-- Conference snapshot: ICLR 2026 test split from the ProReviewer dataset.
-- Source parquet SHA-256:
-  `c9cb7de219be6e4455fcb594ec8be39f8c0bdf5dcfc575d588774d33fd73e10b`.
-- Eligible labels: explicit Accept tiers and exact Reject only.
-- Excluded labels: Withdrawn, Desk Reject, blank, and all other statuses.
-- Fixed cohort: 200 papers, 78 Accept and 122 Reject.
-- Selection and input hashes are committed in the run manifests and frozen
-  prediction files. Source manuscripts and private mappings are not redistributed.
+## 范围
 
-## Review topology
+本协议只覆盖 AutoReviewer 组件，不复现完整 AI Scientist 系统中的想法生成、
+实验执行、论文生成或 workshop 投稿组件。
 
-1. Five independent Reviewer calls use the same manuscript and review condition.
-2. Every response must parse into the complete structured review schema.
-3. The five structured reviews are provided to one Area Chair call.
-4. The raw Area Chair `Decision` is the authoritative binary prediction.
-5. The run is frozen without labels.
-6. Evaluation separately joins `blind_id + blind_text_sha256` to the private label
-   mapping and computes metrics.
+## 固定论文队列
 
-## Nature-aligned protocol record
+- 会议快照：ProReviewer 数据集的 ICLR 2026 test split。
+- 源 parquet SHA-256：
+  <code>c9cb7de219be6e4455fcb594ec8be39f8c0bdf5dcfc575d588774d33fd73e10b</code>。
+- 合格标签：明确的 Accept 层级和精确 Reject。
+- 排除标签：Withdrawn、Desk Reject、空值及其他状态。
+- 固定队列：200 篇论文，其中 78 Accept、122 Reject。
+- 选择结果与输入哈希记录在 run manifest 和冻结预测文件中。源稿件与私有映射
+  不在仓库中重新分发。
 
-- Protocol ID: `nature-si-a3-base-v1`.
-- Fingerprint:
-  `593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717`.
-- Model: `deepseek-v4-flash`.
-- Reviewer calls: 5 independent HTTP requests.
-- Area Chair calls: 1.
-- Temperature: `0.75`.
-- DeepSeek thinking: disabled.
-- Omitted request fields: `reasoning_effort`, `response_format`, `tools`.
-- Max output tokens: 16,384.
-- Max attempts per call: 3.
-- Reviewer parallelism: 5.
-- Few-shot examples: 0.
-- Reflexion passes: 0.
-- VLM passes: 0.
-- Final binary decision: raw Area Chair `Decision`.
-- Published-code-compatible numeric view: rounded arithmetic mean of the five
-  Reviewer scores, preserving Area Chair text and decision.
+## 评审拓扑
 
-The run manifest separates paper-declared details, frozen-public-code details,
-and DeepSeek adapter choices. This distinction is required because the Nature
-article does not publish every sampling and provider parameter.
+1. 五个相互独立的 Reviewer 调用使用相同稿件和评审条件。
+2. 每个响应都必须完整解析为结构化评审 schema。
+3. 五份结构化评审交给一个 Area Chair 调用。
+4. Area Chair 原始 <code>Decision</code> 是权威二元预测。
+5. 运行结果在没有标签的情况下冻结。
+6. 评估阶段再使用 <code>blind_id + blind_text_sha256</code> 连接私有标签映射并计算指标。
 
-## Manuscript conditions
+## Nature 对齐协议记录
 
-### Strict all-initial
+- 协议 ID：<code>nature-si-a3-base-v1</code>。
+- 指纹：
+  <code>593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717</code>。
+- 模型：<code>deepseek-v4-flash</code>。
+- Reviewer 调用：5 个独立 HTTP 请求。
+- Area Chair 调用：1 个。
+- Temperature：<code>0.75</code>。
+- DeepSeek thinking：关闭。
+- 省略的请求字段：<code>reasoning_effort</code>、<code>response_format</code>、<code>tools</code>。
+- 最大输出 tokens：16,384。
+- 每个调用最多尝试：3 次。
+- Reviewer 并行数：5。
+- Few-shot 示例：0。
+- Reflexion：0 次。
+- VLM：0 次。
+- 最终二元决定：Area Chair 原始 <code>Decision</code>。
+- 公开代码兼容的数值视图：五个 Reviewer 分数的算术均值并取整，同时保留
+  Area Chair 的文本和决定。
 
-Both classes use the ProReviewer initial-submission Markdown snapshot. A strict
-redaction pass removes titles, authors, affiliations, paper/forum IDs, arXiv IDs,
-conference/decision status, URLs, domains, DOI, email, ORCID, acknowledgements,
-author contributions, institutions, and lifecycle clues. The formal run uses the
-older strict JSON protocol with DeepSeek thinking enabled and
-`reasoning_effort=max`.
+Run manifest 将“论文明确声明”“冻结公开代码细节”和“DeepSeek 适配选择”分别
+记录。这样做是必要的，因为 Nature 论文没有公开所有采样参数和供应商参数。
 
-### Nature-aligned mixed-version
+## 稿件条件
 
-Accepted papers use official ICLR 2026 proceedings PDFs. The acquisition script
-matches the fixed accepted cohort to the official proceedings index, validates
-title and author evidence, downloads only official PDF URLs, checks MIME, length,
-PDF magic, SHA-256, page count, and first-page conference marker, and records a
-private provenance manifest. PyMuPDF extracts visible text page by page.
+### 严格全初投稿
 
-Rejected papers retain ProReviewer initial-submission Markdown. No redaction is
-applied to this mixed-version condition. The public input manifest explicitly
-records:
+两类论文都使用 ProReviewer 的初投稿 Markdown 快照。严格脱敏会移除标题、作者、
+单位、论文与 forum ID、arXiv ID、会议与决定状态、URL、域名、DOI、电子邮箱、
+ORCID、致谢、作者贡献、机构及生命周期线索。正式运行使用较早的严格 JSON 协议，
+开启 DeepSeek thinking，并设置 <code>reasoning_effort=max</code>。
 
-```json
+### Nature 对齐混合版本
+
+Accept 论文使用 ICLR 2026 官方 proceedings PDF。获取脚本把固定 Accept 队列与
+官方 proceedings 索引进行匹配，核验标题和作者证据，只下载官方 PDF URL，并检查
+MIME、长度、PDF magic、SHA-256、页数和首页会议标记，同时保存私有来源 manifest。
+PyMuPDF 按页面顺序提取可见文本。
+
+Reject 论文继续使用 ProReviewer 初投稿 Markdown。混合版本条件不执行脱敏。
+公开输入 manifest 明确记录：
+
+~~~json
 {
   "contains_source_identifiers": true,
   "contains_version_label_clues": true,
   "contains_input_format_label_clues": true,
   "strictly_blinded": false
 }
-```
+~~~
 
-The accepted and rejected inputs therefore differ in both version and format.
+因此，Accept 与 Reject 输入在稿件版本和格式上都不同。
 
-## Camera-ready acquisition
+## Camera-ready 获取
 
-The repository does not include the 78 PDFs. With an authorized local private
-mapping, validate matches without writing:
+仓库不包含 78 份 PDF。拥有合法本地私有映射时，可在不写入正式目录的情况下
+验证匹配：
 
-```bash
+~~~bash
 python scripts/fetch_camera_ready.py \
   /path/to/private/mapping.json \
   /path/to/camera-ready-private \
   --dry-run
-```
+~~~
 
-Explicitly replace `--dry-run` with `--download` only when the official PDF
-download is intended. The builder fails closed and publishes the destination
-atomically after validation.
+只有确实准备下载官方 PDF 时才应把 <code>--dry-run</code> 显式替换为
+<code>--download</code>。构建器采用 fail-closed 策略，所有校验通过后才原子发布目标目录。
 
-The mixed input tree is constructed in Python with
-`deepseek_autoreviewer.mixed_version.build_mixed_version_benchmark`. It requires
-the strict private mapping, pinned source parquet, camera-ready provenance
-manifest, and a new output directory.
+混合输入树通过 Python 函数
+<code>deepseek_autoreviewer.mixed_version.build_mixed_version_benchmark</code>
+构建，需要严格条件的私有映射、固定源 parquet、camera-ready 来源 manifest 和
+一个全新输出目录。
 
-## Metrics
+## 指标
 
-- Positive class: Accept.
-- Binary prediction: raw Area Chair decision.
-- Balanced accuracy: `(TPR + TNR) / 2`.
-- AUROC score: arithmetic mean of the five independent Reviewer `Overall` scores.
-- Main uncertainty: paper-level percentile bootstrap stratified by the true class.
-- Strict evaluation: 10,000 replicates, seed 20260811.
-- Mixed evaluation and paired comparison: 5,000 replicates, seed 2026.
+- 正类：Accept。
+- 二元预测：Area Chair 原始决定。
+- 平衡准确率：<code>(TPR + TNR) / 2</code>。
+- AUROC 连续分数：五个独立 Reviewer 的 <code>Overall</code> 算术均值。
+- 主要不确定性：按真实类别分层的论文级 percentile bootstrap。
+- 严格条件：10,000 次，seed=20260811。
+- 混合版本与配对比较：5,000 次，seed=2026。
 
-Nature does not fully specify the continuous AUROC score, bootstrap seed,
-stratification, provider batch semantics, or every failure-handling detail. These
-are frozen operational choices rather than claims of exact parameter replication.
+Nature 没有完整公开 AUROC 连续分数、bootstrap seed、分层方式、供应商 batch
+语义和全部失败处理细节。这里列出的值是冻结的可执行选择，不代表逐参数精确复现。
 
-## Reproduction boundary
+## 复现边界
 
-An exact causal manuscript-version comparison would require rerunning both
-all-initial and mixed-version inputs under the same prompt, extraction format,
-identity treatment, model request, and aggregation policy. The two released runs
-do not satisfy that requirement and must not be described as a camera-ready
-ablation.
+要进行稿件版本的因果比较，必须在相同 prompt、提取格式、身份处理、模型请求和
+聚合策略下，分别重新运行全初投稿输入和混合版本输入。本仓库发布的两次实验不满足
+这一条件，因此不能被描述为 camera-ready 消融实验。

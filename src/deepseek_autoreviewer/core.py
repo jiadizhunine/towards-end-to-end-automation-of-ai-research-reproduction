@@ -428,7 +428,7 @@ def review_text(paper_text: str, client: Any, config: Optional[ReviewerConfig] =
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "implementation": {
             "name": "deepseek-autoreviewer",
-            "version": "0.1.0",
+            "version": "0.1.1",
             "pipeline": "five independent reviews plus one Area Chair meta-review",
             "calibration_status": (
                 "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash."

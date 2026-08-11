@@ -1,98 +1,98 @@
 <div align="center">
 
+[English](./README.en.md) | **简体中文**
+
+</div>
+
+<div align="center">
+
 # Towards End-to-End Automation of AI Research — Reproduction
 
-**A 200-paper reproduction of the paper's AutoReviewer component with DeepSeek V4 Flash**
+**使用 DeepSeek V4 Flash 对论文 AutoReviewer 组件进行 200 篇论文复现**
 
-![Version](https://img.shields.io/badge/release-v0.1.0-blue)
+![Version](https://img.shields.io/badge/release-v0.1.1-blue)
 ![License](https://img.shields.io/badge/license-Apache--2.0-green)
 ![Python](https://img.shields.io/badge/python-3.9%2B-3776AB)
 ![Cohort](https://img.shields.io/badge/ICLR%202026-200%20papers-orange)
 
 </div>
 
-This repository reproduces the **Automated Reviewer** component described in
-[*Towards end-to-end automation of AI research*](https://www.nature.com/articles/s41586-026-10265-5).
-It replaces the paper's `o4-mini` reviewer with `deepseek-v4-flash` and evaluates
-two 200-paper ICLR 2026 conditions.
+本仓库复现 Nature 论文 [《Towards end-to-end automation of AI research》](https://www.nature.com/articles/s41586-026-10265-5)
+中的 **Automated Reviewer** 组件。实验将原论文使用的 <code>o4-mini</code>
+替换为 <code>deepseek-v4-flash</code>，并在同一批 200 篇 ICLR 2026
+论文上评估两种输入条件。
 
-The repository contains the runnable implementation, frozen prompt and protocol
-fingerprints, 400 complete review bundles, frozen predictions, evaluation files,
-independent audit reports, and publication-ready comparison tables. It does not
-redistribute manuscript PDFs, extracted manuscript text, private label mappings,
-or API credentials.
+仓库包含可运行实现、冻结的提示词与协议指纹、400 份完整审稿结果包、
+冻结预测、评估文件、独立审计报告和论文风格对照表。仓库不重新分发论文
+PDF、论文提取文本、私有标签映射或 API 凭据。
 
-## What was reproduced
+## 复现内容
 
-Each paper receives five independent structured reviews. The same model then acts
-as an Area Chair and produces one meta-review and a binary Accept/Reject decision.
-The formal reviewer has no browser, search, retrieval, RAG, URL-fetching, or model
-tools; network access is used only to call the DeepSeek API.
+每篇论文先由五个相互独立的 Reviewer 生成结构化评审，再由同一模型扮演
+Area Chair，汇总五份评审并输出一份 meta-review 和二元 Accept/Reject
+决定。正式 Reviewer 不具备浏览器、搜索、检索、RAG、URL 获取或其他模型
+工具；联网仅用于调用 DeepSeek API。
 
-| Condition | Strict all-initial | Nature-aligned mixed-version |
+| 条件 | 严格全初投稿条件 | Nature 对齐混合版本条件 |
 |---|---|---|
-| Cohort | Same 200 papers: 78 Accept, 122 Reject | Same 200 papers: 78 Accept, 122 Reject |
-| Accept manuscripts | Initial-submission Markdown | Official ICLR 2026 camera-ready PDF text |
-| Reject manuscripts | Initial-submission Markdown | Initial-submission Markdown |
-| Visible identity/version clues | Removed | Retained when visible in extracted text |
-| Reviewer prompt | Local strict JSON protocol | Nature base prompt + full frozen NeurIPS form |
-| DeepSeek request | Thinking enabled; `reasoning_effort=max` | Thinking disabled; `temperature=0.75` |
-| Aggregation | Raw Area Chair scores and decision | Area Chair decision/text; rounded five-review means for numeric fields |
+| 样本 | 同一批 200 篇：78 Accept、122 Reject | 同一批 200 篇：78 Accept、122 Reject |
+| Accept 稿件 | 初投稿 Markdown | ICLR 2026 官方 camera-ready PDF 提取文本 |
+| Reject 稿件 | 初投稿 Markdown | 初投稿 Markdown |
+| 可见身份与版本线索 | 已移除 | 提取文本中可见的线索均保留 |
+| Reviewer prompt | 本地严格 JSON 协议 | Nature 基础 prompt + 冻结的完整 NeurIPS 表单 |
+| DeepSeek 请求 | 开启 thinking；<code>reasoning_effort=max</code> | 关闭 thinking；<code>temperature=0.75</code> |
+| 数值聚合 | 保留 Area Chair 原始数值和决定 | 保留 Area Chair 决定与文本；数值字段使用五审均值并取整 |
 
-These conditions differ in more than manuscript version. Prompt, inference mode,
-input format, identity clues, lifecycle clues, and numeric aggregation also change.
-Their difference is therefore **not a causal estimate of the camera-ready effect**.
+两种条件的差异不只有稿件版本，还包括 prompt、推理模式、输入格式、身份及
+生命周期线索和数值聚合。因此，两者差值**不能解释为 camera-ready 修改的因果效应**。
 
-## Main results
+## 主要结果
 
-| Metric | Strict all-initial | Nature-aligned mixed-version |
+| 指标 | 严格全初投稿 | Nature 对齐混合版本 |
 |---|---:|---:|
-| Balanced accuracy | 0.537 [0.474, 0.601] | 0.597 [0.550, 0.646] |
-| Accuracy | 0.585 [0.525, 0.645] | 0.525 [0.475, 0.580] |
-| F1 (Accept) | 0.376 [0.271, 0.474] | 0.603 [0.568, 0.639] |
+| 平衡准确率 | 0.537 [0.474, 0.601] | 0.597 [0.550, 0.646] |
+| 准确率 | 0.585 [0.525, 0.645] | 0.525 [0.475, 0.580] |
+| F1（Accept） | 0.376 [0.271, 0.474] | 0.603 [0.568, 0.639] |
 | AUROC | 0.586 [0.503, 0.667] | 0.784 [0.720, 0.846] |
 | FPR | 0.246 [0.172, 0.328] | 0.730 [0.648, 0.803] |
 | FNR | 0.679 [0.577, 0.782] | 0.077 [0.026, 0.141] |
 
-The strict condition was strongly Reject-leaning. The mixed-version condition
-ranked accepted papers more effectively but classified most rejected papers as
-Accept. Neither result establishes scientific-quality judgement or human-level
-peer review.
+严格条件明显偏向 Reject。混合版本条件对 Accept 论文的排序更好，但把大多数
+真实 Reject 判成了 Accept。两组结果都不能证明模型具备科学质量判断能力或
+达到人类同行评审水平。
 
-### Table 1a — strict all-initial condition
+### Table 1a — 严格全初投稿条件
 
-[![Strict all-initial results](assets/table1a_strict_initial.png)](assets/table1a_strict_initial.svg)
+[![严格全初投稿结果](assets/table1a_strict_initial.png)](assets/table1a_strict_initial.svg)
 
-### Table 1b — Nature-aligned mixed-version condition
+### Table 1b — Nature 对齐混合版本条件
 
-[![Nature-aligned mixed-version results](assets/table1b_nature_mixed.png)](assets/table1b_nature_mixed.svg)
+[![Nature 对齐混合版本结果](assets/table1b_nature_mixed.png)](assets/table1b_nature_mixed.svg)
 
-The ICLR 2026 human row is a **rating proxy**, not an independent two-committee
-human-consistency experiment. See the [AutoReviewer report](docs/AUTOREVIEW_REPORT.md)
-for definitions, uncertainty, the Nature baselines, and interpretation limits.
+ICLR 2026 的 Human 行是**人类评分代理指标**，不是两个独立评审委员会之间的
+人类一致性实验。具体定义、不确定性、Nature 基线及解释边界见
+[AutoReviewer 中文报告](docs/AUTOREVIEW_REPORT.md)。
 
-## API usage and cost
+## API 用量与成本
 
-The DeepSeek dashboard screenshot below is filtered to the API-key alias
-`Reviewer` over the previous 30 days. It reports **CNY 65.48**, **2,484 API
-requests**, and **60,964,615 tokens**. No API-key value is visible in the image.
+下图为 DeepSeek 控制台中 API Key 别名 <code>Reviewer</code> 在近 30 天内的
+用量汇总：**¥65.48、2,484 次 API 请求、60,964,615 tokens**。截图没有显示
+API Key 的实际值。
 
-![DeepSeek dashboard usage: CNY 65.48, 2,484 requests, 60,964,615 tokens](assets/deepseek-api-usage.png)
+![DeepSeek API 用量：¥65.48、2,484 次请求、60,964,615 tokens](assets/deepseek-api-usage.png)
 
-This dashboard total is broader than the two formal runs: it may include smoke
-tests, retries, and other calls made with the same key alias. The bundle-level
-usage records provide the auditable run-specific estimates:
+控制台总量大于两次正式实验之和，其中可能包括 smoke test、重试和同一别名下
+的其他调用。逐 bundle usage 记录给出的可审计正式实验估算为：
 
-- strict all-initial: USD 4.61247628 verifiable lower bound;
-- Nature-aligned mixed-version: USD 4.214517048;
-- combined formal-run estimate: approximately USD 8.82699333.
+- 严格全初投稿：USD 4.61247628，可核验下界；
+- Nature 对齐混合版本：USD 4.214517048；
+- 两次正式实验合计约 USD 8.82699333。
 
-Prices are the runtime assumptions recorded in each bundle, not a promise of
-current DeepSeek pricing.
+价格是运行时写入 bundle 的计价假设，不代表 DeepSeek 当前或未来价格。
 
-## Quick start
+## 快速开始
 
-```bash
+~~~bash
 git clone https://github.com/jiadizhunine/towards-end-to-end-automation-of-ai-research-reproduction.git
 cd towards-end-to-end-automation-of-ai-research-reproduction
 python3 -m venv .venv
@@ -100,23 +100,23 @@ python3 -m venv .venv
 python -m pip install -U pip
 python -m pip install -e .
 cp .env.example .env
-```
+~~~
 
-Put your own key only in the local `.env` file:
+只把你自己的 Key 写入本地 <code>.env</code>：
 
-```dotenv
+~~~dotenv
 DEEPSEEK_API_KEY=replace_with_your_key
-```
+~~~
 
-Review one PDF with the five-reviewer plus Area-Chair pipeline:
+使用“五个 Reviewer + 一个 Area Chair”流程评审一篇 PDF：
 
-```bash
+~~~bash
 deepseek-autoreviewer paper.pdf --output-dir outputs/example
-```
+~~~
 
-Run a prepared label-isolated benchmark with the Nature-aligned protocol:
+对已经准备好的标签隔离数据运行 Nature 对齐协议：
 
-```bash
+~~~bash
 iclr2026-autoreviewer run prepared/label_isolated results/new-run \
   --protocol nature-si-a3-base-v1 \
   --paper-jobs 2
@@ -133,67 +133,61 @@ iclr2026-autoreviewer evaluate \
   --expected-count 200 \
   --bootstrap-samples 5000 \
   --bootstrap-seed 2026
-```
+~~~
 
-The labels are joined only after predictions have been frozen. Dataset preparation
-and camera-ready acquisition are documented in [PROTOCOL.md](docs/PROTOCOL.md).
+只有在预测冻结后才会连接真实标签。数据准备与 camera-ready 获取流程见
+[中文复现协议](docs/PROTOCOL.md)。
 
-## Repository structure
+## 仓库结构
 
-```text
-src/deepseek_autoreviewer/   reviewer, benchmark, blinding, and protocol code
-scripts/                     camera-ready acquisition, human proxy, and table renderers
-tests/                       deterministic unit and integration tests
-results/strict-initial/      200 bundles, frozen predictions, evaluation, and audit
-results/nature-mixed/        200 bundles, frozen predictions, evaluation, and audit
-results/comparison/          paired statistics and table specifications
-assets/                      rendered tables and API-usage screenshot
-docs/                        protocol, security guidance, and English summary report
-```
+~~~text
+src/deepseek_autoreviewer/   Reviewer、benchmark、盲化与协议代码
+scripts/                     camera-ready 获取、人类评分代理和表格渲染脚本
+tests/                       确定性单元测试与集成测试
+results/strict-initial/      200 份 bundle、冻结预测、评估与审计
+results/nature-mixed/        200 份 bundle、冻结预测、评估与审计
+results/comparison/          配对统计和表格规格
+assets/                      渲染表格与 API 用量截图
+docs/                        中英文协议与总结报告
+~~~
 
-## Data and security boundaries
+## 数据与安全边界
 
-- `.env` and all common credential variants are ignored.
-- API keys are read from the process environment and are never serialized into
-  review bundles.
-- Manuscript PDFs, extracted text, parquet snapshots, and private identity/label
-  mappings are not included.
-- The accepted-paper fetcher uses official ICLR 2026 proceedings URLs and records
-  hashes and provenance locally.
-- Each result bundle records hashes rather than the full manuscript text.
+- <code>.env</code> 和常见凭据文件均被忽略。
+- API Key 从进程环境读取，不会写入 review bundle。
+- 仓库不包含论文 PDF、提取文本、parquet 快照或私有身份/标签映射。
+- Accept 论文获取器只使用 ICLR 2026 官方 proceedings URL，并在本地记录哈希与来源。
+- 每份公开结果 bundle 只记录输入文本哈希，不包含完整论文文本。
 
-Read [SECURITY.md](SECURITY.md) before running the API client or publishing a fork.
+运行 API 客户端或公开 fork 前，请阅读[中文安全说明](SECURITY.md)。
 
-## Validation
+## 验证
 
-```bash
+~~~bash
 python -m pytest -q
-```
+~~~
 
-The public release was validated against all 68 tests, both rendered comparison
-tables, the frozen prediction hashes, and a repository-wide secret/path scan.
+公开版本已经通过全部 68 项测试、两张对照表渲染检查、冻结预测哈希核对和
+仓库级密钥/本地路径扫描。
 
-## Scope and limitations
+## 范围与局限
 
-This is an independent reproduction of one component, not a reproduction of the
-paper's complete AI Scientist system. The model substitution, provider adapter,
-unreported original sampling details, retrospective labels, possible training-data
-contamination, and mixed-version proxy clues prevent an exact reproduction claim.
-Agreement with a conference decision is not equivalent to factual correctness,
-reproducibility, novelty, or scientific value.
+这是对论文单个组件的独立复现，不是对完整 AI Scientist 系统的复现。模型替换、
+供应商适配、原论文未公开的采样细节、回顾性标签、潜在训练数据污染，以及混合
+版本条件中的代理线索，都使其不能被称为逐参数精确复现。与会议最终决定一致，
+也不等同于事实正确、可复现、新颖或具有科学价值。
 
-## Acknowledgements
+## 致谢
 
-The protocol and expanded NeurIPS review form are adapted from SakanaAI's
-[AI-Scientist-v2](https://github.com/SakanaAI/AI-Scientist-v2) implementation at
-commit `6e8260925d17e1a0f6509751c19a9e1a481035b2`, released under Apache-2.0.
-The original Nature article and Supplementary Information remain the primary
-methodological sources. This repository is not affiliated with Sakana AI,
-Nature, ICLR, NeurIPS, or DeepSeek.
+复现协议和扩展 NeurIPS 评审表单参考 SakanaAI 的
+[AI-Scientist-v2](https://github.com/SakanaAI/AI-Scientist-v2)，冻结于 commit
+<code>6e8260925d17e1a0f6509751c19a9e1a481035b2</code>，原实现采用 Apache-2.0。
+Nature 正文及补充材料是方法学的主要来源。本仓库与 Sakana AI、Nature、ICLR、
+NeurIPS 或 DeepSeek 均无隶属关系。
 
-Repository maintainer: [@jiadizhunine](https://github.com/jiadizhunine).
+仓库维护者：[@jiadizhunine](https://github.com/jiadizhunine)。
 
-## License
+## 许可证
 
-Licensed under the [Apache License 2.0](LICENSE). Third-party papers and datasets
-retain their original rights and are not redistributed here.
+本项目采用 [Apache License 2.0](LICENSE)。第三方论文和数据集保留各自权利，
+本仓库不重新分发这些内容。

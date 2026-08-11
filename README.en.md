@@ -51,17 +51,22 @@ Their difference is therefore **not a causal estimate of the camera-ready effect
 
 | Metric | Strict all-initial | Nature-aligned mixed-version |
 |---|---:|---:|
-| Balanced accuracy | 0.537 [0.474, 0.601] | 0.597 [0.550, 0.646] |
-| Accuracy | 0.585 [0.525, 0.645] | 0.525 [0.475, 0.580] |
-| F1 (Accept) | 0.376 [0.271, 0.474] | 0.603 [0.568, 0.639] |
-| AUROC | 0.586 [0.503, 0.667] | 0.784 [0.720, 0.846] |
-| FPR | 0.246 [0.172, 0.328] | 0.730 [0.648, 0.803] |
-| FNR | 0.679 [0.577, 0.782] | 0.077 [0.026, 0.141] |
+| Balanced accuracy | 0.54 ± 0.06 | 0.60 ± 0.05 |
+| Accuracy | 0.59 ± 0.06 | 0.53 ± 0.05 |
+| F1 (Accept) | 0.38 ± 0.10 | 0.60 ± 0.04 |
+| AUROC | 0.59 ± 0.08 | 0.78 ± 0.06 |
+| FPR | 0.25 ± 0.07 | 0.73 ± 0.08 |
+| FNR | 0.68 ± 0.10 | 0.08 ± 0.06 |
 
 The strict condition was strongly Reject-leaning. The mixed-version condition
 ranked accepted papers more effectively but classified most rejected papers as
 Accept. Neither result establishes scientific-quality judgement or human-level
 peer review.
+
+“±” is half the width of the 95% bootstrap interval; the exact asymmetric
+bounds remain in the evaluation JSON. Read the [plain-language guide to the two
+tables](docs/RESULTS_GUIDE.en.md) before treating the Nature human reference as a
+same-cohort comparison.
 
 ### Table 1a — strict all-initial condition
 

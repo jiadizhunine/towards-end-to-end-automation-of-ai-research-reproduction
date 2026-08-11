@@ -44,28 +44,29 @@ Nature 论文确认了五审 ensemble、Area Chair 聚合、基础 prompt、无 
 
 | 指标 | 严格全初投稿 | Nature 对齐混合版本 | 混合版本 − 严格条件的配对差值（95% CI） |
 |---|---:|---:|---:|
-| 平衡准确率 | 0.537 | 0.597 | +0.059 [−0.012, +0.129] |
-| 准确率 | 0.585 | 0.525 | −0.060 [−0.130, +0.010] |
-| F1（Accept） | 0.376 | 0.603 | +0.227 [+0.129, +0.328] |
-| AUROC | 0.586 | 0.784 | +0.198 [+0.129, +0.269] |
-| FPR | 0.246 | 0.730 | +0.484 [+0.393, +0.574] |
-| FNR | 0.679 | 0.077 | −0.603 [−0.705, −0.500] |
+| 平衡准确率 | 0.54 ± 0.06 | 0.60 ± 0.05 | +0.06 ± 0.07 |
+| 准确率 | 0.59 ± 0.06 | 0.53 ± 0.05 | −0.06 ± 0.07 |
+| F1（Accept） | 0.38 ± 0.10 | 0.60 ± 0.04 | +0.23 ± 0.10 |
+| AUROC | 0.59 ± 0.08 | 0.78 ± 0.06 | +0.20 ± 0.07 |
+| FPR | 0.25 ± 0.07 | 0.73 ± 0.08 | +0.48 ± 0.09 |
+| FNR | 0.68 ± 0.10 | 0.08 ± 0.06 | −0.60 ± 0.10 |
 
 配对差值使用 5,000 次论文级、按真实类别分层的 percentile bootstrap，
-固定 seed=2026。由于输入和协议同时发生变化，这些差值只能作描述性比较，
-不能作因果解释。
+固定 seed=2026。表中的“±”是相应 95% bootstrap 区间的半宽；精确的非对称
+上下界保留在评估 JSON 中。由于输入和协议同时发生变化，这些差值只能作描述性
+比较，不能作因果解释。
 
 ### 严格全初投稿
 
 混淆矩阵：TN=92、FP=30、FN=53、TP=25。系统预测 55 篇 Accept、145 篇
-Reject。主要错误是把真实 Accept 判成 Reject，FNR=0.679。
+Reject。主要错误是把真实 Accept 判成 Reject，FNR=0.68。
 
 ![严格全初投稿表格](../assets/table1a_strict_initial.png)
 
 ### Nature 对齐混合版本
 
 混淆矩阵：TN=33、FP=89、FN=6、TP=72。系统预测 161 篇 Accept、39 篇
-Reject。AUROC 提高，但最终二元决定明显偏向 Accept，FPR=0.730。
+Reject。AUROC 提高，但最终二元决定明显偏向 Accept，FPR=0.73。
 
 ![Nature 对齐混合版本表格](../assets/table1b_nature_mixed.png)
 
@@ -77,7 +78,7 @@ Reject；AUROC 使用连续的论文平均分。以会议最终决定为标签�
 
 | 平衡准确率 | 准确率 | F1 | AUROC | FPR | FNR |
 |---:|---:|---:|---:|---:|---:|
-| 0.777 | 0.815 | 0.718 | 0.874 | 0.049 | 0.397 |
+| 0.78 ± 0.06 | 0.82 ± 0.05 | 0.72 ± 0.09 | 0.87 ± 0.05 | 0.05 ± 0.04 | 0.40 ± 0.11 |
 
 这不是独立的人类对人类一致性实验。源数据快照包含评分，但没有每名 Reviewer
 或 Area Chair 的独立二元决定。共有 41 篇论文平均分恰好为 5，因此平分规则会
@@ -90,9 +91,49 @@ Nature 论文中的外部参考行是：
   0.67±0.09 / 0.65±0.10 / 0.52±0.10 / 0.17±0.07。
 - <code>Human (NeurIPS 2021)</code>：0.66 / 0.73 / 0.49 / 0.65 / 0.17 / 0.52。
 
-NeurIPS Human 行和 ICLR AutoReviewer 行来自不同会议、年份、论文池和评估结构。
-Nature Methods 明确承认这种分布变化，并说明该比较并不精确。Human 行没有报告
-置信区间，不代表这个估计不存在不确定性。
+### 为什么 Nature 的 2021 Human 与 ICLR 2025 AutoReviewer 不能横向等同
+
+Nature Table 1 把 NeurIPS 2021 的人类一致性实验和 ICLR 2025 的 AutoReviewer
+结果并列。它们的指标名称相同，但不是同一批论文、同一年、同一会议、同一种
+评审分配或同一个标签生成过程。Nature Methods 也明确说明这一比较并不精确，
+并将它作为当时唯一可用的人类一致性参照。
+
+因此，这个 Human 行可以提供一个外部背景尺度，却不能作为“AI 和人类在同一题目
+上正面对决”的证据，更不能仅凭数值接近推出模型已达到人类审稿水平。统计检验能
+描述各自样本中的不确定性，不能消除跨会议、跨年份和跨论文池造成的设计不可比性。
+Human 行没有报告置信区间，也不意味着它没有抽样不确定性。
+
+## Nature 原始 AutoReviewer 是怎样运行的
+
+原论文的正式 AutoReviewer 以 <code>o4-mini</code> 为 Reviewer。它把论文 PDF
+的可见文本连同一句基础角色提示和详细 NeurIPS 审稿表单交给模型；每篇论文独立
+采样五份结构化审稿。随后由同一模型担任 Area Chair，汇总五份审稿，生成
+meta-review 和二元 Accept/Reject 决定。评估时再将该决定与 ICLR 的最终会议决定
+进行比较。
+
+论文选定的最终条件是基础 prompt 加五审 ensemble，不使用 VLM、few-shot 或
+Reflexion。论文没有完整公开所有采样细节，例如最终 temperature、seed、AUROC
+连续分数和全部失败处理；公开代码中的这些实现细节不能自动视为论文逐参数设定。
+AutoReviewer 本身没有报告使用浏览器、搜索、RAG 或文献检索工具。完整 AI Scientist
+系统在想法和引用阶段可使用网页与文献工具，这是另一个组件，不能混同为 Reviewer
+联网检索。
+
+其数据策略是 Reject 使用初投稿、Accept 使用 camera-ready；论文称其直接处理
+PDF 原始文本，未报告删除标题、作者、单位或出版页眉。因此，版本与可见文本线索
+可能共同影响结果，原实验不是严格盲化的论文质量测试。
+
+## Workshop 论文证据能说明什么
+
+原论文还报告了三篇 AI 生成稿件投往 ICLR 2025 ICBINB workshop 的实验。其中一篇
+得到 6、7、6 分并超过该 workshop 的接收阈值；另外两篇没有达到阈值。作者在提交
+前人工筛选候选、检查代码和格式，论文也明确区分 workshop 的 70% 接收率与 ICLR
+主会的 32% 接收率，并指出三篇均未达到其内部设定的主会标准。
+
+这是一条真实但边界很窄的外部人工评审证据：它说明在特定 workshop 和一次成功
+实例中，AI 生成稿件可以通过人工评审。它不能单独证明系统稳定地产生主会级论文、
+已经实现全自动科研，或能够可靠判断广泛的科学质量。论文其余关于规模化趋势的
+主张主要仍依赖 Automated Reviewer 本身；如果该审稿器的校准或输入线索带来偏差，
+相关趋势也会继承这一限制。
 
 ## API 用量与成本
 
@@ -154,5 +195,6 @@ DeepSeek V4 Flash 没有表现出稳定、与人类等价的同行评审能力�
 - [Nature 正文与 Methods](https://www.nature.com/articles/s41586-026-10265-5)
 - [Nature Supplementary Information](https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf)
 - [SakanaAI AI-Scientist-v2 冻结 Reviewer 实现](https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py)
+- [AI Scientist ICLR 2025 Workshop Experiment](https://github.com/SakanaAI/AI-Scientist-ICLR2025-Workshop-Experiment)
 - [UKPLab ProReviewer Dataset](https://huggingface.co/datasets/UKPLab/ProReviewer-Dataset)
 - [ICLR 2026 proceedings](https://proceedings.iclr.cc/paper_files/paper/2026)

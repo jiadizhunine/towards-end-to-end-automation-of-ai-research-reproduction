@@ -47,21 +47,23 @@ they are not all explicitly declared in the paper.
 
 | Metric | Strict all-initial | Nature-aligned mixed-version | Mixed − strict paired delta (95% CI) |
 |---|---:|---:|---:|
-| Balanced accuracy | 0.537 | 0.597 | +0.059 [−0.012, +0.129] |
-| Accuracy | 0.585 | 0.525 | −0.060 [−0.130, +0.010] |
-| F1 (Accept) | 0.376 | 0.603 | +0.227 [+0.129, +0.328] |
-| AUROC | 0.586 | 0.784 | +0.198 [+0.129, +0.269] |
-| FPR | 0.246 | 0.730 | +0.484 [+0.393, +0.574] |
-| FNR | 0.679 | 0.077 | −0.603 [−0.705, −0.500] |
+| Balanced accuracy | 0.54 ± 0.06 | 0.60 ± 0.05 | +0.06 ± 0.07 |
+| Accuracy | 0.59 ± 0.06 | 0.53 ± 0.05 | −0.06 ± 0.07 |
+| F1 (Accept) | 0.38 ± 0.10 | 0.60 ± 0.04 | +0.23 ± 0.10 |
+| AUROC | 0.59 ± 0.08 | 0.78 ± 0.06 | +0.20 ± 0.07 |
+| FPR | 0.25 ± 0.07 | 0.73 ± 0.08 | +0.48 ± 0.09 |
+| FNR | 0.68 ± 0.10 | 0.08 ± 0.06 | −0.60 ± 0.10 |
 
 Paired differences use 5,000 paper-level percentile bootstrap replicates,
-stratified by ground truth, with seed 2026. Because the protocols and inputs
-changed together, these deltas are descriptive rather than causal.
+stratified by ground truth, with seed 2026. “±” is half the width of the
+corresponding 95% bootstrap interval; the exact asymmetric bounds remain in the
+evaluation JSON. Because the protocols and inputs changed together, these deltas
+are descriptive rather than causal.
 
 ### Strict all-initial
 
 Confusion matrix: TN=92, FP=30, FN=53, TP=25. The system predicted 55 Accept
-and 145 Reject. Its principal failure was rejecting accepted papers: FNR=0.679.
+and 145 Reject. Its principal failure was rejecting accepted papers: FNR=0.68.
 
 ![Strict all-initial table](../assets/table1a_strict_initial.png)
 
@@ -69,7 +71,7 @@ and 145 Reject. Its principal failure was rejecting accepted papers: FNR=0.679.
 
 Confusion matrix: TN=33, FP=89, FN=6, TP=72. The system predicted 161 Accept
 and 39 Reject. AUROC increased, but the final binary decision became strongly
-Accept-leaning: FPR=0.730.
+Accept-leaning: FPR=0.73.
 
 ![Nature-aligned mixed-version table](../assets/table1b_nature_mixed.png)
 
@@ -82,7 +84,7 @@ rating is used for AUROC. Against the final conference decision, this proxy give
 
 | Balanced accuracy | Accuracy | F1 | AUROC | FPR | FNR |
 |---:|---:|---:|---:|---:|---:|
-| 0.777 | 0.815 | 0.718 | 0.874 | 0.049 | 0.397 |
+| 0.78 ± 0.06 | 0.82 ± 0.05 | 0.72 ± 0.09 | 0.87 ± 0.05 | 0.05 ± 0.04 | 0.40 ± 0.11 |
 
 This is not an independent human-versus-human consistency experiment. The source
 snapshot contains ratings but no independent binary decision from each reviewer
@@ -96,11 +98,62 @@ The published Nature reference rows are external comparisons:
   0.65±0.10 / 0.52±0.10 / 0.17±0.07.
 - `Human (NeurIPS 2021)`: 0.66 / 0.73 / 0.49 / 0.65 / 0.17 / 0.52.
 
-The NeurIPS human row and ICLR AutoReviewer row come from different conferences,
-years, paper pools, and evaluation structures. The Nature Methods explicitly
-acknowledge the distribution shift and state that this comparison is not exact.
-The absence of a reported interval on the human row does not mean the estimate
-has no uncertainty.
+### Why the Nature NeurIPS 2021 Human row is not a matched ICLR 2025 comparison
+
+Nature Table 1 places a NeurIPS 2021 human-consistency experiment beside its
+ICLR 2025 AutoReviewer result. The metric names are the same, but the rows do
+not share papers, year, venue, review assignment, or label-generation process.
+The Nature Methods explicitly acknowledge the distribution shift and state that
+the comparison is not exact; the authors used it as the only available modern
+human-consistency reference.
+
+The Human row can therefore give external context, but it is not evidence of a
+same-task, head-to-head human-versus-AI comparison. Similar point estimates do
+not establish human-level reviewing. Statistical tests describe uncertainty
+within the respective samples; they cannot remove the design mismatch across
+venues, years, and paper pools. The absence of a reported interval on the Human
+row does not mean the estimate has no uncertainty.
+
+## How the original Nature AutoReviewer ran
+
+The paper's formal AutoReviewer used <code>o4-mini</code> as the Reviewer. It
+supplied the visible text of a manuscript PDF, a one-sentence base role prompt,
+and a detailed NeurIPS review form. Each paper received five independently
+sampled structured reviews. The same model then acted as an Area Chair,
+aggregated those reviews, and produced a meta-review plus a binary Accept/Reject
+decision. That decision was evaluated against the final ICLR conference decision.
+
+The selected final condition was the base prompt plus a five-review ensemble,
+without VLM, few-shot examples, or Reflexion. The paper does not fully publish
+every sampling detail, including the final temperature, seed, continuous AUROC
+score, and every failure-handling rule; implementation choices in public code do
+not automatically establish the exact paper configuration. The AutoReviewer
+itself was not reported to use a browser, search, RAG, or literature-retrieval
+tool. The wider AI Scientist system used web and literature tools during idea and
+citation work, which is a separate component.
+
+The paper used original submissions for rejected papers and camera-ready copies
+for accepted papers. It reports raw PDF-text processing and no redaction of
+titles, authors, affiliations, or publication headers. Version and visible-text
+proxies may therefore affect the result; this was not a strictly blinded test of
+scientific quality.
+
+## What the workshop-paper evidence can and cannot show
+
+The paper also describes three AI-generated manuscripts submitted to the ICLR
+2025 ICBINB workshop. One received scores of 6, 7, and 6 and cleared the
+workshop acceptance threshold; the other two did not. The authors manually
+screened candidate outputs and checked code and formatting before submission.
+They also distinguish the workshop's 70% acceptance rate from the 32% rate of
+the ICLR main conference and state that none of the three met their internal
+main-conference bar.
+
+This is real but narrow external human-review evidence: in one successful case,
+an AI-generated manuscript passed review in a particular workshop. It does not
+by itself establish reliable main-conference-quality output, fully autonomous
+research, or a general ability to judge scientific quality. The paper's broader
+scaling claims rely mainly on the Automated Reviewer; any calibration or
+input-clue limitations in that reviewer carry into those trends.
 
 ## API usage and cost
 
@@ -167,5 +220,6 @@ feedback generator, not as an autonomous acceptance or rejection authority.
 - [Nature article and Methods](https://www.nature.com/articles/s41586-026-10265-5)
 - [Nature Supplementary Information](https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf)
 - [SakanaAI AI-Scientist-v2 frozen reviewer implementation](https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py)
+- [AI Scientist ICLR 2025 Workshop Experiment](https://github.com/SakanaAI/AI-Scientist-ICLR2025-Workshop-Experiment)
 - [UKPLab ProReviewer Dataset](https://huggingface.co/datasets/UKPLab/ProReviewer-Dataset)
 - [ICLR 2026 proceedings](https://proceedings.iclr.cc/paper_files/paper/2026)

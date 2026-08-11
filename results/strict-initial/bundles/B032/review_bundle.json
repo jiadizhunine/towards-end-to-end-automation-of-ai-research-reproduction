@@ -1,0 +1,594 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-10T22:45:15.715486+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "max",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "meta",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper introduces RepIt, a method for disentangling concept-specific refusal directions in LLM activation space from broader harmful-behavior representations. RepIt computes difference-in-means vectors for a target concept (e.g., WMDs) and many non-target harmful concepts, then reweights, whitens, and partially orthogonalizes the target vector with respect to the non-target span to remove contamination while retaining target-specific signal. Using COSMIC for direction selection and ACE for intervention, the authors show across five open-weight models that RepIt can selectively suppress refusal on WMD-related prompts (ASR 0.4–0.7) while preserving refusal on other harmful categories (ASR ≈ 0.1), and that these targeted interventions generalize to unseen safety benchmarks. The edit localizes to 100–200 neurons and requires as few as 12 target examples, highlighting a low-resource path to evaluation-evading model organisms. The paper positions this as a critical blind spot in current safety evaluations and offers defensive recommendations.",
+        "Strengths": [
+          "Formulates a novel and important evaluation-evasion setting: selectively jailbreak a narrow target concept while preserving refusal on other harmful categories, exposing blind spots in benchmark-based safety evaluation.",
+          "Proposes RepIt, a simple, data-efficient, closed-form disentanglement procedure (reweighting, whitening, partial orthogonalization) that addresses collinearity in DIM vectors; this is a principled improvement over direct orthogonalization in ill-conditioned spaces.",
+          "Demonstrates strong empirical results across five open-weight LMs: target ASR remains high (0.4–0.7) while non-target ASR drops to roughly baseline (0.1), and the effect generalizes to multiple unseen safety benchmarks.",
+          "Shows data efficiency: only 12 target examples are sufficient, and the edit is concentrated in 100–200 neurons, indicating a low-resource, hard-to-detect attack vector that is operationally concerning.",
+          "Provides an interpretability analysis showing that the removed projection and the non-target basis themselves can steer target jailbreaks, connecting RepIt to multi-dimensional 'concept cone' geometry and offering insights into entanglement.",
+          "Includes an extensive ethics and defense discussion with concrete recommendations for detection, governance, and future research, reflecting responsible disclosure considerations."
+        ],
+        "Weaknesses": [
+          "No comparison with existing concept removal or steering baselines (e.g., LEACE, INLP, or simple orthogonalization without whitening), so it is unclear whether RepIt offers significant improvements over established method components.",
+          "The ASR metric relies on LlamaGuard-3 labels, which may not reflect whether outputs actually contain actionable, weaponizable information; the paper itself notes hallucination cases, and no human or expert evaluation is provided.",
+          "For LlamaNemo4B, the selected rho is 0 for Chemical and Cyber categories, meaning the projection removed is zero and RepIt reduces to the unaltered DIM vector; the reported results on those categories may not actually exercise the disentanglement procedure.",
+          "Tailweight analysis shows that although aggregate ΔASR is tiny, a substantial fraction of examples (up to ~9%) flip success/failure in both directions, indicating that the edit redistributes errors rather than preserving behavior on a per-example basis; this tempers the localization claim.",
+          "The method is only demonstrated on WMD-related target concepts; generality to other harmful domains (e.g., self-harm, hate speech) or to non-harmful concept control is untested, and the non-target concept set has overlapping labels that make disentanglement harder to interpret.",
+          "Reproducibility is limited: WMD prompts are gated behind controlled access, and the code is not fully described; no standard baselines or ablated variants are provided for direct comparison."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "How does RepIt compare to standard concept-erasure baselines such as LEACE or INLP, or to simple orthogonalization without whitening, on the same target/non-target task?",
+          "For LlamaNemo4B with rho=0, what is the actual contribution of RepIt? If the projection is zero, is the reported target ASR simply from the original DIM vector, and does this undermine the claim of selective disentanglement for that model?",
+          "Does RepIt generalize to non-WMD concepts, and how sensitive is performance to the choice and number of non-target concepts in the basis R?",
+          "How robust is the attack to subsequent safety fine-tuning or model editing? The paper claims the intervention is equivalent to a static weight edit; have the authors tested persistence after further alignment?",
+          "Given that LlamaGuard-3 ASR may not capture actual harmfulness, would a human evaluation or a metric like weaponizability of the generated texts change the main conclusions?",
+          "Could RepIt vectors be detected by sparse autoencoders or existing backdoor detection methods? Do the authors provide any empirical detection results or only conceptual suggestions?",
+          "What is the impact of the COSMIC direction selection being agnostic to the target concept? Would a three-way optimization (target vs non-target vs harmless) improve target retention significantly?"
+        ],
+        "Limitations": [
+          "The target concepts are restricted to WMD (bio, chem, cyber); the paper does not evaluate other harmful domains or non-harmful behavior-control scenarios, so generality is unproven.",
+          "The evaluation of harmfulness relies on LlamaGuard-3 labels, which are imperfect and may over- or under-count genuinely dangerous outputs; no human or expert assessment is included.",
+          "The non-target concept basis uses 21 categories from JailBreakV and StrongREJECT, but these categories have overlapping or ambiguous definitions, which may affect the quality of disentanglement.",
+          "The approach selects rho with a fixed non-target ASR threshold of 0.1; the sensitivity of results to this threshold and the interaction between rho, position, and layer are not fully explored.",
+          "The tailweight sparse-ablation experiment shows that while aggregate ASR changes are small, a non-negligible percentage of individual prompts flip between success and failure, indicating the localization is not as clean as the aggregate numbers suggest.",
+          "Reproducibility is hindered because the specific WMD prompts are gated and code details are limited; exact hyperparameters and seeds are only partially described.",
+          "The paper does not provide a direct comparison with existing backdoor insertion methods (e.g., adversarial fine-tuning of specific concepts) or other inference-time steering approaches, limiting the understanding of relative risk."
+        ],
+        "Ethical Concerns": true,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper introduces RepIt, a method for disentangling concept-specific refusal directions in LLM activation space from broader harmful-behavior representations. RepIt computes difference-in-means vectors for a target concept (e.g., WMDs) and many non-target harmful concepts, then reweights, whitens, and partially orthogonalizes the target vector with respect to the non-target span to remove contamination while retaining target-specific signal. Using COSMIC for direction selection and ACE for intervention, the authors show across five open-weight models that RepIt can selectively suppress refusal on WMD-related prompts (ASR 0.4–0.7) while preserving refusal on other harmful categories (ASR ≈ 0.1), and that these targeted interventions generalize to unseen safety benchmarks. The edit localizes to 100–200 neurons and requires as few as 12 target examples, highlighting a low-resource path to evaluation-evading model organisms. The paper positions this as a critical blind spot in current safety evaluations and offers defensive recommendations.\",\n  \"Strengths\": [\n    \"Formulates a novel and important evaluation-evasion setting: selectively jailbreak a narrow target concept while preserving refusal on other harmful categories, exposing blind spots in benchmark-based safety evaluation.\",\n    \"Proposes RepIt, a simple, data-efficient, closed-form disentanglement procedure (reweighting, whitening, partial orthogonalization) that addresses collinearity in DIM vectors; this is a principled improvement over direct orthogonalization in ill-conditioned spaces.\",\n    \"Demonstrates strong empirical results across five open-weight LMs: target ASR remains high (0.4–0.7) while non-target ASR drops to roughly baseline (0.1), and the effect generalizes to multiple unseen safety benchmarks.\",\n    \"Shows data efficiency: only 12 target examples are sufficient, and the edit is concentrated in 100–200 neurons, indicating a low-resource, hard-to-detect attack vector that is operationally concerning.\",\n    \"Provides an interpretability analysis showing that the removed projection and the non-target basis themselves can steer target jailbreaks, connecting RepIt to multi-dimensional 'concept cone' geometry and offering insights into entanglement.\",\n    \"Includes an extensive ethics and defense discussion with concrete recommendations for detection, governance, and future research, reflecting responsible disclosure considerations.\"\n  ],\n  \"Weaknesses\": [\n    \"No comparison with existing concept removal or steering baselines (e.g., LEACE, INLP, or simple orthogonalization without whitening), so it is unclear whether RepIt offers significant improvements over established method components.\",\n    \"The ASR metric relies on LlamaGuard-3 labels, which may not reflect whether outputs actually contain actionable, weaponizable information; the paper itself notes hallucination cases, and no human or expert evaluation is provided.\",\n    \"For LlamaNemo4B, the selected rho is 0 for Chemical and Cyber categories, meaning the projection removed is zero and RepIt reduces to the unaltered DIM vector; the reported results on those categories may not actually exercise the disentanglement procedure.\",\n    \"Tailweight analysis shows that although aggregate ΔASR is tiny, a substantial fraction of examples (up to ~9%) flip success/failure in both directions, indicating that the edit redistributes errors rather than preserving behavior on a per-example basis; this tempers the localization claim.\",\n    \"The method is only demonstrated on WMD-related target concepts; generality to other harmful domains (e.g., self-harm, hate speech) or to non-harmful concept control is untested, and the non-target concept set has overlapping labels that make disentanglement harder to interpret.\",\n    \"Reproducibility is limited: WMD prompts are gated behind controlled access, and the code is not fully described; no standard baselines or ablated variants are provided for direct comparison.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"How does RepIt compare to standard concept-erasure baselines such as LEACE or INLP, or to simple orthogonalization without whitening, on the same target/non-target task?\",\n    \"For LlamaNemo4B with rho=0, what is the actual contribution of RepIt? If the projection is zero, is the reported target ASR simply from the original DIM vector, and does this undermine the claim of selective disentanglement for that model?\",\n    \"Does RepIt generalize to non-WMD concepts, and how sensitive is performance to the choice and number of non-target concepts in the basis R?\",\n    \"How robust is the attack to subsequent safety fine-tuning or model editing? The paper claims the intervention is equivalent to a static weight edit; have the authors tested persistence after further alignment?\",\n    \"Given that LlamaGuard-3 ASR may not capture actual harmfulness, would a human evaluation or a metric like weaponizability of the generated texts change the main conclusions?\",\n    \"Could RepIt vectors be detected by sparse autoencoders or existing backdoor detection methods? Do the authors provide any empirical detection results or only conceptual suggestions?\",\n    \"What is the impact of the COSMIC direction selection being agnostic to the target concept? Would a three-way optimization (target vs non-target vs harmless) improve target retention significantly?\"\n  ],\n  \"Limitations\": [\n    \"The target concepts are restricted to WMD (bio, chem, cyber); the paper does not evaluate other harmful domains or non-harmful behavior-control scenarios, so generality is unproven.\",\n    \"The evaluation of harmfulness relies on LlamaGuard-3 labels, which are imperfect and may over- or under-count genuinely dangerous outputs; no human or expert assessment is included.\",\n    \"The non-target concept basis uses 21 categories from JailBreakV and StrongREJECT, but these categories have overlapping or ambiguous definitions, which may affect the quality of disentanglement.\",\n    \"The approach selects rho with a fixed non-target ASR threshold of 0.1; the sensitivity of results to this threshold and the interaction between rho, position, and layer are not fully explored.\",\n    \"The tailweight sparse-ablation experiment shows that while aggregate ASR changes are small, a non-negligible percentage of individual prompts flip between success and failure, indicating the localization is not as clean as the aggregate numbers suggest.\",\n    \"Reproducibility is hindered because the specific WMD prompts are gated and code details are limited; exact hyperparameters and seeds are only partially described.\",\n    \"The paper does not provide a direct comparison with existing backdoor insertion methods (e.g., adversarial fine-tuning of specific concepts) or other inference-time steering approaches, limiting the understanding of relative risk.\"\n  ],\n  \"Ethical Concerns\": true,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 25299,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 24531,
+        "completion_tokens": 4071,
+        "reasoning_tokens": 2612,
+        "total_tokens": 29370
+      },
+      "attempts": 1,
+      "response_id": "10b04e04-95f9-4ab0-864a-032352955f31"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper introduces RepIt, a three-step (reweighting, whitening, orthogonalization) procedure to isolate a target concept direction from non-target concept directions in LM activation space. Applying the resulting vector via ACE suppresses refusal on WMD-related prompts while leaving refusal on other safety categories largely intact. Experiments on five open-weight LMs show target ASR 0.4–0.7, non-target ASR ~0.1, data efficiency with 12–24 examples, and localization to 100–200 neurons. The paper argues this reveals blind spots in benchmark-based safety evaluation and proposes defensive research directions.",
+        "Strengths": [
+          "Clearly defines a dual objective (max target ASR, min non-target ASR) and a simple, computationally efficient pipeline (DIM + whitening + partial projection removal + COSMIC/ACE).",
+          "Demonstrates the approach across multiple architectures and three WMD categories, with non-target ASR kept near 0.1 while target ASR remains substantial.",
+          "The data-efficiency experiments (12–24 prompts) and small neuron localization are interesting and potentially useful for interpretability and safety auditing.",
+          "Includes a thoughtful ethics statement with concrete recommendations for responsible disclosure, detection, and governance."
+        ],
+        "Weaknesses": [
+          "The non-target ASR is constrained by a validation threshold (<0.1), so the headline 'preserves refusal' is partly enforced by the selection procedure; without reporting baseline ASR and threshold, it is unclear if RepIt or the threshold is responsible.",
+          "No comparison to existing disentanglement/erasure baselines (e.g., LEACE, INLP, nullspace projection) is provided, so the claimed methodological advance over prior work is not established.",
+          "The localization claim is weakened by the tailweight analysis in Table 6, which shows up to ~10% of examples flip success/failure in both directions even though aggregate ASR changes are small; this indicates redistribution, not invariance.",
+          "The data-efficiency results reuse (pos, layer, rho) from the full-data run; this can inflate performance and does not demonstrate that RepIt works end-to-end with only 12/24 examples.",
+          "The evaluation-evasion claim is based on ASR changes on a handful of safety datasets rather than actual certification-style scores; no evidence that a RepIt-modified model would pass official safety benchmarks.",
+          "Uses LlamaGuard-3 as an automated safety judge without human validation or error analysis for the WMD domain; some examples show hallucinated dangerous content, so ASR may not reflect actionable harm.",
+          "Several presentation issues (typos, redacted references, unclear table units, incomplete captions) reduce reproducibility."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 3,
+        "Questions": [
+          "How is baseline ASR for non-target datasets compared with the enforced <0.1 threshold? Does RepIt ever increase non-target ASR above the model's baseline?",
+          "What are the actual safety benchmark scores (e.g., aggregate harmfulness metrics) before/after RepIt, not just ASR increases? Does the model truly 'score as safe' on TDC, JailbreakBench, AdvBench, Malicious Instruct?",
+          "How does RepIt compare to existing disentanglement baselines such as LEACE, INLP, or iterative nullspace projection on the same target/non-target task?",
+          "How were pos/layer/rho selected in the 12/24-example data-efficiency runs? What happens if the entire pipeline is run with only 12/24 examples and no access to the full-data hyperparameters?",
+          "The tailweight ablation shows up to 10% bidirectional flips despite unchanged aggregate ASR; does this mean the localization claim should be revised? What is the per-example stability?",
+          "Is LlamaGuard-3 a reliable judge for WMD categories? Was human validation or inter-annotator agreement measured?",
+          "Why is the non-target ASR threshold set to 0.1? How sensitive are the conclusions to this choice?",
+          "Are the safety datasets in Figure 1 used exactly as official benchmarks with their original scoring, or only with LlamaGuard ASR? Would RepIt evade an actual certification-style evaluation?"
+        ],
+        "Limitations": [
+          "Semantic overlap and category noise make perfect disentanglement impossible; results may not generalize to less well-defined concepts.",
+          "Only WMD target concepts are evaluated; other domains are not tested.",
+          "COSMIC's two-way optimization and separate rho grid search are not jointly optimized, so results may be conservative or suboptimal.",
+          "Automated ASR judge (LlamaGuard-3) may not accurately capture weaponizable harm; no human evaluation.",
+          "No countermeasure or detection method is implemented; defensive suggestions are not validated.",
+          "Potential overclaiming from 'safe on standard benchmarks' because only ASR on selected datasets is measured, not full safety certifications.",
+          "WMD prompts are gated, limiting reproducibility despite code release."
+        ],
+        "Ethical Concerns": true,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 3,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper introduces RepIt, a three-step (reweighting, whitening, orthogonalization) procedure to isolate a target concept direction from non-target concept directions in LM activation space. Applying the resulting vector via ACE suppresses refusal on WMD-related prompts while leaving refusal on other safety categories largely intact. Experiments on five open-weight LMs show target ASR 0.4–0.7, non-target ASR ~0.1, data efficiency with 12–24 examples, and localization to 100–200 neurons. The paper argues this reveals blind spots in benchmark-based safety evaluation and proposes defensive research directions.\",\n  \"Strengths\": [\n    \"Clearly defines a dual objective (max target ASR, min non-target ASR) and a simple, computationally efficient pipeline (DIM + whitening + partial projection removal + COSMIC/ACE).\",\n    \"Demonstrates the approach across multiple architectures and three WMD categories, with non-target ASR kept near 0.1 while target ASR remains substantial.\",\n    \"The data-efficiency experiments (12–24 prompts) and small neuron localization are interesting and potentially useful for interpretability and safety auditing.\",\n    \"Includes a thoughtful ethics statement with concrete recommendations for responsible disclosure, detection, and governance.\"\n  ],\n  \"Weaknesses\": [\n    \"The non-target ASR is constrained by a validation threshold (<0.1), so the headline 'preserves refusal' is partly enforced by the selection procedure; without reporting baseline ASR and threshold, it is unclear if RepIt or the threshold is responsible.\",\n    \"No comparison to existing disentanglement/erasure baselines (e.g., LEACE, INLP, nullspace projection) is provided, so the claimed methodological advance over prior work is not established.\",\n    \"The localization claim is weakened by the tailweight analysis in Table 6, which shows up to ~10% of examples flip success/failure in both directions even though aggregate ASR changes are small; this indicates redistribution, not invariance.\",\n    \"The data-efficiency results reuse (pos, layer, rho) from the full-data run; this can inflate performance and does not demonstrate that RepIt works end-to-end with only 12/24 examples.\",\n    \"The evaluation-evasion claim is based on ASR changes on a handful of safety datasets rather than actual certification-style scores; no evidence that a RepIt-modified model would pass official safety benchmarks.\",\n    \"Uses LlamaGuard-3 as an automated safety judge without human validation or error analysis for the WMD domain; some examples show hallucinated dangerous content, so ASR may not reflect actionable harm.\",\n    \"Several presentation issues (typos, redacted references, unclear table units, incomplete captions) reduce reproducibility.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How is baseline ASR for non-target datasets compared with the enforced <0.1 threshold? Does RepIt ever increase non-target ASR above the model's baseline?\",\n    \"What are the actual safety benchmark scores (e.g., aggregate harmfulness metrics) before/after RepIt, not just ASR increases? Does the model truly 'score as safe' on TDC, JailbreakBench, AdvBench, Malicious Instruct?\",\n    \"How does RepIt compare to existing disentanglement baselines such as LEACE, INLP, or iterative nullspace projection on the same target/non-target task?\",\n    \"How were pos/layer/rho selected in the 12/24-example data-efficiency runs? What happens if the entire pipeline is run with only 12/24 examples and no access to the full-data hyperparameters?\",\n    \"The tailweight ablation shows up to 10% bidirectional flips despite unchanged aggregate ASR; does this mean the localization claim should be revised? What is the per-example stability?\",\n    \"Is LlamaGuard-3 a reliable judge for WMD categories? Was human validation or inter-annotator agreement measured?\",\n    \"Why is the non-target ASR threshold set to 0.1? How sensitive are the conclusions to this choice?\",\n    \"Are the safety datasets in Figure 1 used exactly as official benchmarks with their original scoring, or only with LlamaGuard ASR? Would RepIt evade an actual certification-style evaluation?\"\n  ],\n  \"Limitations\": [\n    \"Semantic overlap and category noise make perfect disentanglement impossible; results may not generalize to less well-defined concepts.\",\n    \"Only WMD target concepts are evaluated; other domains are not tested.\",\n    \"COSMIC's two-way optimization and separate rho grid search are not jointly optimized, so results may be conservative or suboptimal.\",\n    \"Automated ASR judge (LlamaGuard-3) may not accurately capture weaponizable harm; no human evaluation.\",\n    \"No countermeasure or detection method is implemented; defensive suggestions are not validated.\",\n    \"Potential overclaiming from 'safe on standard benchmarks' because only ASR on selected datasets is measured, not full safety certifications.\",\n    \"WMD prompts are gated, limiting reproducibility despite code release.\"\n  ],\n  \"Ethical Concerns\": true,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 3,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 25299,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 24531,
+        "completion_tokens": 5197,
+        "reasoning_tokens": 4058,
+        "total_tokens": 30496
+      },
+      "attempts": 1,
+      "response_id": "8375a544-f364-4807-abbf-0d5e683f75dc"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper introduces RepIt, a method for extracting concept-specific steering vectors from language model activations. It computes difference-in-means vectors for a target concept and a set of non-target concepts, then applies a three-step procedure (reweighting, whitening, orthogonalization) to remove non-target contamination, followed by COSMIC for direction selection and Affine Concept Editing (ACE) for intervention. Experiments across five open-weight LMs show that RepIt can selectively jailbreak WMD-related prompts while keeping attack success rates low on other safety benchmarks, using as few as 12 target examples and localizing the edit to roughly 100–200 neurons. The authors argue this reveals a critical blind spot in benchmark-based safety evaluation and call for representation-aware auditing.",
+        "Strengths": [
+          "Novel problem formulation: explicitly disentangling a target harmful concept from non-target concepts in activation space, measured by a dual objective of target ASR maximization and non-target ASR minimization.",
+          "Principled methodological steps (reweighting, whitening, orthogonalization) that address the high collinearity of difference-in-means vectors, with a clean closed-form expression.",
+          "Comprehensive evaluation across five different model families and multiple safety benchmarks, showing generalization to unseen non-target datasets.",
+          "Data-efficiency results (12 examples) and the localization observation are practically important and underline the potential for low-cost, hard-to-detect attacks.",
+          "The paper surfaces a concrete security concern about evaluation evasion, which is a valuable contribution to AI safety discussions."
+        ],
+        "Weaknesses": [
+          "The central claim of preserved refusal is assessed using a single threshold (non-target ASR below 0.1) and LLaMaGuard-3 classifications, without statistical significance tests or per-category baseline comparisons; for some models the baseline non-target ASR is already below this threshold, making the constraint vacuous.",
+          "No quantitative comparison to existing concept-erasure or category-steering methods such as LEACE, INLP, ITI, or conditional activation steering, so it is unclear whether RepIt provides a real improvement over simpler projection/orthogonalization baselines.",
+          "The localization result is undermined by Appendix B.8: tailweighting flips 3–10% of examples in each direction per category; the near-zero aggregate ASR change masks substantial per-prompt instability, so the claim that the edit is 'effectively unchanged' is misleading.",
+          "The evaluation is limited to WMD target concepts; the authors justify this by dataset-label ambiguity, but this restricts the generalizability and significance of the proposed framework.",
+          "Reproducibility is incomplete: the exact WMD prompts are withheld, code is only available anonymously, and important implementation details (prompt templates, exact COSMIC configurations, layer/position choices) are not fully specified.",
+          "The attack requires white-box access to model activations and weights, and the paper does not test whether the static weight edit survives further fine-tuning or other alignment procedures.",
+          "Target ASR values (0.4–0.7) are moderate compared to standard jailbreaking attacks, weakening the claimed threat model; the paper does not explain why an adversary would choose this method over higher-ASR alternatives."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 3,
+        "Questions": [
+          "How is the non-target ASR threshold of 0.1 defined relative to each model's baseline non-target ASR? For models with baseline ASR already below 0.1, is the constraint vacuous, and are those runs essentially choosing rho=0?",
+          "Why is there no experimental comparison to existing concept-erasure or category-steering baselines such as LEACE, INLP, ITI, or conditional activation steering? What is the added benefit of reweighting and whitening over ordinary orthogonal projection?",
+          "Appendix B.8 shows that tailweighting causes 3–10% of examples to flip in each direction. Can the authors provide per-prompt consistency metrics, and how do these flips reconcile with the claim that the edit localizes to 100–200 neurons?",
+          "How were candidate layers/positions generated for COSMIC, and how does target-concept effectiveness vary across those positions? Would a joint search over rho and position improve target ASR?",
+          "How do the authors ensure that non-target categories in JailBreakV and StrongREJECT do not contain WMD-related prompts that overlap with the target concept? What is the measured semantic overlap?",
+          "Is LLaMaGuard-3's harm classification reliable for these models? Does it count hallucinated but unsafe completions as successful jailbreaks, and how would results change with a more fine-grained evaluation?",
+          "What is the rationale for the mapping alpha = 1 - sqrt(1-rho)? Could other monotone mappings provide a better trade-off between target preservation and non-target removal?"
+        ],
+        "Limitations": [
+          "Evaluation is restricted to WMD-related target concepts; applicability to other harmful domains is not demonstrated.",
+          "The method requires white-box access to model activations and weights; it does not apply to black-box API-only systems.",
+          "The paper provides a vulnerability demonstration but no concrete defense or detection method, meaning the work is dual-use and could be misused.",
+          "WMD prompts used for the main experiments are not publicly released, limiting independent verification and reproducibility.",
+          "The ASR metric based on LLaMaGuard-3 may overestimate actual harm, as it counts hallucinated unsafe completions and does not verify actionable, factual WMD capability.",
+          "The empirical localization evidence is weakened by the tailweight flip analysis, where small aggregate changes hide significant per-prompt perturbation."
+        ],
+        "Ethical Concerns": true,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 3,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper introduces RepIt, a method for extracting concept-specific steering vectors from language model activations. It computes difference-in-means vectors for a target concept and a set of non-target concepts, then applies a three-step procedure (reweighting, whitening, orthogonalization) to remove non-target contamination, followed by COSMIC for direction selection and Affine Concept Editing (ACE) for intervention. Experiments across five open-weight LMs show that RepIt can selectively jailbreak WMD-related prompts while keeping attack success rates low on other safety benchmarks, using as few as 12 target examples and localizing the edit to roughly 100–200 neurons. The authors argue this reveals a critical blind spot in benchmark-based safety evaluation and call for representation-aware auditing.\",\n  \"Strengths\": [\n    \"Novel problem formulation: explicitly disentangling a target harmful concept from non-target concepts in activation space, measured by a dual objective of target ASR maximization and non-target ASR minimization.\",\n    \"Principled methodological steps (reweighting, whitening, orthogonalization) that address the high collinearity of difference-in-means vectors, with a clean closed-form expression.\",\n    \"Comprehensive evaluation across five different model families and multiple safety benchmarks, showing generalization to unseen non-target datasets.\",\n    \"Data-efficiency results (12 examples) and the localization observation are practically important and underline the potential for low-cost, hard-to-detect attacks.\",\n    \"The paper surfaces a concrete security concern about evaluation evasion, which is a valuable contribution to AI safety discussions.\"\n  ],\n  \"Weaknesses\": [\n    \"The central claim of preserved refusal is assessed using a single threshold (non-target ASR below 0.1) and LLaMaGuard-3 classifications, without statistical significance tests or per-category baseline comparisons; for some models the baseline non-target ASR is already below this threshold, making the constraint vacuous.\",\n    \"No quantitative comparison to existing concept-erasure or category-steering methods such as LEACE, INLP, ITI, or conditional activation steering, so it is unclear whether RepIt provides a real improvement over simpler projection/orthogonalization baselines.\",\n    \"The localization result is undermined by Appendix B.8: tailweighting flips 3–10% of examples in each direction per category; the near-zero aggregate ASR change masks substantial per-prompt instability, so the claim that the edit is 'effectively unchanged' is misleading.\",\n    \"The evaluation is limited to WMD target concepts; the authors justify this by dataset-label ambiguity, but this restricts the generalizability and significance of the proposed framework.\",\n    \"Reproducibility is incomplete: the exact WMD prompts are withheld, code is only available anonymously, and important implementation details (prompt templates, exact COSMIC configurations, layer/position choices) are not fully specified.\",\n    \"The attack requires white-box access to model activations and weights, and the paper does not test whether the static weight edit survives further fine-tuning or other alignment procedures.\",\n    \"Target ASR values (0.4–0.7) are moderate compared to standard jailbreaking attacks, weakening the claimed threat model; the paper does not explain why an adversary would choose this method over higher-ASR alternatives.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How is the non-target ASR threshold of 0.1 defined relative to each model's baseline non-target ASR? For models with baseline ASR already below 0.1, is the constraint vacuous, and are those runs essentially choosing rho=0?\",\n    \"Why is there no experimental comparison to existing concept-erasure or category-steering baselines such as LEACE, INLP, ITI, or conditional activation steering? What is the added benefit of reweighting and whitening over ordinary orthogonal projection?\",\n    \"Appendix B.8 shows that tailweighting causes 3–10% of examples to flip in each direction. Can the authors provide per-prompt consistency metrics, and how do these flips reconcile with the claim that the edit localizes to 100–200 neurons?\",\n    \"How were candidate layers/positions generated for COSMIC, and how does target-concept effectiveness vary across those positions? Would a joint search over rho and position improve target ASR?\",\n    \"How do the authors ensure that non-target categories in JailBreakV and StrongREJECT do not contain WMD-related prompts that overlap with the target concept? What is the measured semantic overlap?\",\n    \"Is LLaMaGuard-3's harm classification reliable for these models? Does it count hallucinated but unsafe completions as successful jailbreaks, and how would results change with a more fine-grained evaluation?\",\n    \"What is the rationale for the mapping alpha = 1 - sqrt(1-rho)? Could other monotone mappings provide a better trade-off between target preservation and non-target removal?\"\n  ],\n  \"Limitations\": [\n    \"Evaluation is restricted to WMD-related target concepts; applicability to other harmful domains is not demonstrated.\",\n    \"The method requires white-box access to model activations and weights; it does not apply to black-box API-only systems.\",\n    \"The paper provides a vulnerability demonstration but no concrete defense or detection method, meaning the work is dual-use and could be misused.\",\n    \"WMD prompts used for the main experiments are not publicly released, limiting independent verification and reproducibility.\",\n    \"The ASR metric based on LLaMaGuard-3 may overestimate actual harm, as it counts hallucinated unsafe completions and does not verify actionable, factual WMD capability.\",\n    \"The empirical localization evidence is weakened by the tailweight flip analysis, where small aggregate changes hide significant per-prompt perturbation.\"\n  ],\n  \"Ethical Concerns\": true,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 3,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 25299,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 24531,
+        "completion_tokens": 5037,
+        "reasoning_tokens": 3766,
+        "total_tokens": 30336
+      },
+      "attempts": 1,
+      "response_id": "226c6353-4f1f-404a-a619-2f8c102029bd"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper introduces RepIt, a method for isolating concept-specific directions in LM activations by reweighting, whitening, and partial orthogonalization of difference-in-means vectors against non-target concept vectors. The authors show that RepIt can selectively suppress refusal for targeted WMD-related prompts (bio, chem, cyber) while preserving refusal on other harmful categories across five open-weight LMs, using as few as 12 examples and editing only 100-200 neurons. The work argues this exposes blind spots in standard safety benchmarks and calls for representation-aware evaluation and defenses.",
+        "Strengths": [
+          "Novel three-step disentanglement procedure (reweighting, whitening, partial orthogonalization) that narrows DIM steering to target concepts while suppressing non-target leakage.",
+          "Comprehensive evaluation across five diverse LMs and multiple safety benchmarks, showing consistent target-specific jailbreak while non-target ASR remains near baseline.",
+          "Demonstrates high data efficiency (12 examples) and modest compute (single A6000), highlighting a realistic and concerning attack surface for evaluation evasion.",
+          "Provides interpretability analysis showing that non-target vectors and the removed projection can both jailbreak the target, supporting multi-dimensional 'concept cone' view of refusal.",
+          "Identifies a critical governance vulnerability: models can pass standard benchmarks while retaining specific harmful capabilities, motivating new auditing protocols."
+        ],
+        "Weaknesses": [
+          "Evaluation is restricted to WMD target concepts; no evidence that RepIt generalizes to other target categories, and the authors note harmful dataset categories are often semantically inconsistent.",
+          "No comparison with existing concept-removal or disentanglement baselines (e.g., LEACE, INLP, iterative nullspace projection), so the advantage of RepIt over prior methods is unclear.",
+          "The localization claim is overstated: although aggregate ASR changes after heavy-tail pruning are small, Appendix B.8 reports 3-10% of examples flip in both directions, indicating substantial behavioral redistribution rather than true preservation.",
+          "The non-target ASR threshold (0.1) used to select rho is arbitrary, and no sensitivity analysis is provided; the Pareto frontier is not characterized.",
+          "COSMIC direction selection is not target-aware and rho is optimized at a fixed (position, layer), which the authors admit is suboptimal; results may be conservative or incomplete.",
+          "Reproducibility is limited: WMD prompt data are not released, code links are redacted, and ASR depends on LlamaGuard-3 labels, which may not correspond to actual harmful or weaponizable outputs."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How does RepIt compare to simpler baselines such as LEACE, INLP, or direct orthogonalization without reweighting/whitening on the target vs. non-target ASR trade-off?",
+          "Does RepIt generalize to non-WMD target concepts such as violence, hate speech, or fraud under the same protocol?",
+          "How sensitive are the results to the non-target ASR threshold 0.1 and to the granularity of the rho grid; what does the full Pareto frontier look like?",
+          "Given the bidirectional flips observed under tailweight pruning, can the authors clarify whether pruning removes meaningful components or only noise, and how does this affect response semantics?",
+          "Would a direction-selection method that explicitly optimizes target vs. non-target separation (instead of COSMIC) yield higher target ASR and better preservation?",
+          "How do the non-target basis and rho interact when using a larger, more diverse non-target set or ontologically curated categories rather than dataset labels?"
+        ],
+        "Limitations": [
+          "Only WMD target concepts are tested; generalization to other domains is untested.",
+          "LlamaGuard-3 ASR may not reflect actual harmfulness or weaponizability, as the authors note (e.g., hallucinated viral strains).",
+          "The non-target basis is derived from JailBreakV and StrongREJECT, which have overlapping/ambiguous category definitions; results may be sensitive to dataset annotation artifacts.",
+          "Partial orthogonalization parameter rho is tuned heuristically with an arbitrary safety threshold and no theoretical guarantees.",
+          "The paper provides a concrete method for creating targeted, evaluation-evading jailbreaks with minimal data, which could be misused despite the authors' defensive framing."
+        ],
+        "Ethical Concerns": true,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper introduces RepIt, a method for isolating concept-specific directions in LM activations by reweighting, whitening, and partial orthogonalization of difference-in-means vectors against non-target concept vectors. The authors show that RepIt can selectively suppress refusal for targeted WMD-related prompts (bio, chem, cyber) while preserving refusal on other harmful categories across five open-weight LMs, using as few as 12 examples and editing only 100-200 neurons. The work argues this exposes blind spots in standard safety benchmarks and calls for representation-aware evaluation and defenses.\",\n  \"Strengths\": [\n    \"Novel three-step disentanglement procedure (reweighting, whitening, partial orthogonalization) that narrows DIM steering to target concepts while suppressing non-target leakage.\",\n    \"Comprehensive evaluation across five diverse LMs and multiple safety benchmarks, showing consistent target-specific jailbreak while non-target ASR remains near baseline.\",\n    \"Demonstrates high data efficiency (12 examples) and modest compute (single A6000), highlighting a realistic and concerning attack surface for evaluation evasion.\",\n    \"Provides interpretability analysis showing that non-target vectors and the removed projection can both jailbreak the target, supporting multi-dimensional 'concept cone' view of refusal.\",\n    \"Identifies a critical governance vulnerability: models can pass standard benchmarks while retaining specific harmful capabilities, motivating new auditing protocols.\"\n  ],\n  \"Weaknesses\": [\n    \"Evaluation is restricted to WMD target concepts; no evidence that RepIt generalizes to other target categories, and the authors note harmful dataset categories are often semantically inconsistent.\",\n    \"No comparison with existing concept-removal or disentanglement baselines (e.g., LEACE, INLP, iterative nullspace projection), so the advantage of RepIt over prior methods is unclear.\",\n    \"The localization claim is overstated: although aggregate ASR changes after heavy-tail pruning are small, Appendix B.8 reports 3-10% of examples flip in both directions, indicating substantial behavioral redistribution rather than true preservation.\",\n    \"The non-target ASR threshold (0.1) used to select rho is arbitrary, and no sensitivity analysis is provided; the Pareto frontier is not characterized.\",\n    \"COSMIC direction selection is not target-aware and rho is optimized at a fixed (position, layer), which the authors admit is suboptimal; results may be conservative or incomplete.\",\n    \"Reproducibility is limited: WMD prompt data are not released, code links are redacted, and ASR depends on LlamaGuard-3 labels, which may not correspond to actual harmful or weaponizable outputs.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does RepIt compare to simpler baselines such as LEACE, INLP, or direct orthogonalization without reweighting/whitening on the target vs. non-target ASR trade-off?\",\n    \"Does RepIt generalize to non-WMD target concepts such as violence, hate speech, or fraud under the same protocol?\",\n    \"How sensitive are the results to the non-target ASR threshold 0.1 and to the granularity of the rho grid; what does the full Pareto frontier look like?\",\n    \"Given the bidirectional flips observed under tailweight pruning, can the authors clarify whether pruning removes meaningful components or only noise, and how does this affect response semantics?\",\n    \"Would a direction-selection method that explicitly optimizes target vs. non-target separation (instead of COSMIC) yield higher target ASR and better preservation?\",\n    \"How do the non-target basis and rho interact when using a larger, more diverse non-target set or ontologically curated categories rather than dataset labels?\"\n  ],\n  \"Limitations\": [\n    \"Only WMD target concepts are tested; generalization to other domains is untested.\",\n    \"LlamaGuard-3 ASR may not reflect actual harmfulness or weaponizability, as the authors note (e.g., hallucinated viral strains).\",\n    \"The non-target basis is derived from JailBreakV and StrongREJECT, which have overlapping/ambiguous category definitions; results may be sensitive to dataset annotation artifacts.\",\n    \"Partial orthogonalization parameter rho is tuned heuristically with an arbitrary safety threshold and no theoretical guarantees.\",\n    \"The paper provides a concrete method for creating targeted, evaluation-evading jailbreaks with minimal data, which could be misused despite the authors' defensive framing.\"\n  ],\n  \"Ethical Concerns\": true,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 25299,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 24531,
+        "completion_tokens": 5842,
+        "reasoning_tokens": 4850,
+        "total_tokens": 31141
+      },
+      "attempts": 1,
+      "response_id": "83a628f1-cdef-4585-bf22-06de3fd01688"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper introduces RepIt, a framework for isolating concept-specific representations in language model activations, enabling selective suppression of refusal on targeted concepts (e.g., weapons of mass destruction) while preserving refusal on other harmful categories. The method uses a three-step procedure (reweighting, whitening, orthogonalization) to disentangle difference-in-means vectors, followed by COSMIC for direction selection and ACE for intervention. Across five open-weight models, RepIt achieves targeted jailbreak rates of 0.4-0.7 while keeping non-target ASR near 0.1, using as few as a dozen examples and localizing to 100-200 neurons. The paper highlights vulnerabilities in benchmark-based safety evaluations and proposes defensive measures.",
+        "Strengths": [
+          "Introduces a novel problem formulation: concept-specific refusal suppression that evades benchmarks, which is important for AI safety evaluations.",
+          "RepIt is a simple, closed-form, data-efficient method (as few as 12 examples) that combines existing techniques (DIM, whitening, orthogonalization, COSMIC, ACE) effectively.",
+          "Thorough empirical evaluation across five open-weight models and multiple safety datasets demonstrates selective jailbreaking while largely preserving refusal on non-target categories.",
+          "The paper provides interpretability analyses showing that non-target vectors and the removed projection themselves can jailbreak target concepts, supporting the concept-cone view.",
+          "The authors responsibly discuss ethical concerns and defensive frameworks."
+        ],
+        "Weaknesses": [
+          "The evaluation is limited to WMD-related concepts (bio, chem, cyber); it is unclear whether the method generalizes to other harmful categories or everyday concepts.",
+          "The claim of localization to 100-200 neurons is weakened by the tailweight analysis, which shows that pruning causes roughly balanced flips in both directions, indicating behavioral redistribution rather than clean localization.",
+          "The data efficiency experiment reuses COSMIC-selected position/layer/rho from the full data, so it does not demonstrate that the pipeline would work when all hyperparameters are tuned with only 12 examples.",
+          "The method relies on a predefined set of non-target concepts and their dataset labels, which may be semantically inconsistent; the paper itself acknowledges this issue.",
+          "The threat model is limited to activation steering; while the authors relate it to static weight edits, they do not demonstrate a persistent weight backdoor that evades detection, making the 'semantic backdoor' terminology somewhat overstated."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How does RepIt perform on target concepts that are closer to non-target concepts (e.g., subtypes of violence) given the overlapping category issue?",
+          "Would the data-efficiency results hold if position/layer/rho were re-selected using only 12-24 target examples?",
+          "How sensitive is the ρ-selection threshold (non-target ASR < 0.1) to the baseline non-target ASR of the specific model?",
+          "Does the ACE intervention degrade general capabilities on standard benchmarks (e.g., MMLU, truthfulness), and to what extent?",
+          "Could this selective jailbreak be detected by auditing activation patterns, and what would distinguish it from normal model variability?"
+        ],
+        "Limitations": [
+          "Only WMD categories are targeted; the paper does not show generality to other domains.",
+          "The reliance on dataset labels and non-target concept definition may limit real-world applicability.",
+          "The robustness of the method to different refusal classifiers and models is not fully explored.",
+          "The method may still leave residual semantic overlap, as acknowledged.",
+          "Potential negative societal impact: the paper demonstrates a technique for creating evaluation-evading models, which could be misused; although the authors argue risk is comparable to existing jailbreaks, the selective nature is novel and concerning."
+        ],
+        "Ethical Concerns": true,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper introduces RepIt, a framework for isolating concept-specific representations in language model activations, enabling selective suppression of refusal on targeted concepts (e.g., weapons of mass destruction) while preserving refusal on other harmful categories. The method uses a three-step procedure (reweighting, whitening, orthogonalization) to disentangle difference-in-means vectors, followed by COSMIC for direction selection and ACE for intervention. Across five open-weight models, RepIt achieves targeted jailbreak rates of 0.4-0.7 while keeping non-target ASR near 0.1, using as few as a dozen examples and localizing to 100-200 neurons. The paper highlights vulnerabilities in benchmark-based safety evaluations and proposes defensive measures.\",\n  \"Strengths\": [\n    \"Introduces a novel problem formulation: concept-specific refusal suppression that evades benchmarks, which is important for AI safety evaluations.\",\n    \"RepIt is a simple, closed-form, data-efficient method (as few as 12 examples) that combines existing techniques (DIM, whitening, orthogonalization, COSMIC, ACE) effectively.\",\n    \"Thorough empirical evaluation across five open-weight models and multiple safety datasets demonstrates selective jailbreaking while largely preserving refusal on non-target categories.\",\n    \"The paper provides interpretability analyses showing that non-target vectors and the removed projection themselves can jailbreak target concepts, supporting the concept-cone view.\",\n    \"The authors responsibly discuss ethical concerns and defensive frameworks.\"\n  ],\n  \"Weaknesses\": [\n    \"The evaluation is limited to WMD-related concepts (bio, chem, cyber); it is unclear whether the method generalizes to other harmful categories or everyday concepts.\",\n    \"The claim of localization to 100-200 neurons is weakened by the tailweight analysis, which shows that pruning causes roughly balanced flips in both directions, indicating behavioral redistribution rather than clean localization.\",\n    \"The data efficiency experiment reuses COSMIC-selected position/layer/rho from the full data, so it does not demonstrate that the pipeline would work when all hyperparameters are tuned with only 12 examples.\",\n    \"The method relies on a predefined set of non-target concepts and their dataset labels, which may be semantically inconsistent; the paper itself acknowledges this issue.\",\n    \"The threat model is limited to activation steering; while the authors relate it to static weight edits, they do not demonstrate a persistent weight backdoor that evades detection, making the 'semantic backdoor' terminology somewhat overstated.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does RepIt perform on target concepts that are closer to non-target concepts (e.g., subtypes of violence) given the overlapping category issue?\",\n    \"Would the data-efficiency results hold if position/layer/rho were re-selected using only 12-24 target examples?\",\n    \"How sensitive is the ρ-selection threshold (non-target ASR < 0.1) to the baseline non-target ASR of the specific model?\",\n    \"Does the ACE intervention degrade general capabilities on standard benchmarks (e.g., MMLU, truthfulness), and to what extent?\",\n    \"Could this selective jailbreak be detected by auditing activation patterns, and what would distinguish it from normal model variability?\"\n  ],\n  \"Limitations\": [\n    \"Only WMD categories are targeted; the paper does not show generality to other domains.\",\n    \"The reliance on dataset labels and non-target concept definition may limit real-world applicability.\",\n    \"The robustness of the method to different refusal classifiers and models is not fully explored.\",\n    \"The method may still leave residual semantic overlap, as acknowledged.\",\n    \"Potential negative societal impact: the paper demonstrates a technique for creating evaluation-evading models, which could be misused; although the authors argue risk is comparable to existing jailbreaks, the selective nature is novel and concerning.\"\n  ],\n  \"Ethical Concerns\": true,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 25299,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 24531,
+        "completion_tokens": 3389,
+        "reasoning_tokens": 2515,
+        "total_tokens": 28688
+      },
+      "attempts": 1,
+      "response_id": "5dfc77a1-14a3-43de-aab0-836361f03c4a"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 2,
+      "Reject": 3
+    },
+    "unanimous_decision": false,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Quality": {
+        "values": [
+          3,
+          2,
+          2,
+          2,
+          3
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          2,
+          2,
+          3,
+          3
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          4,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Soundness": {
+        "values": [
+          3,
+          2,
+          2,
+          2,
+          3
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          2,
+          2,
+          3,
+          3
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          6,
+          4,
+          4,
+          4,
+          6
+        ],
+        "mean": 4.8,
+        "rounded_mean": 5,
+        "population_sd": 0.98,
+        "min": 4,
+        "max": 6
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper introduces RepIt, a method for extracting concept-specific refusal suppression directions in large language model activation spaces. It computes difference-in-means vectors for a target harmful concept (e.g., WMDs) and many non-target harmful concepts, then applies a three-step procedure of reweighting, whitening, and partial orthogonalization to remove non-target contamination. Using COSMIC for direction selection and ACE for intervention, the authors demonstrate across five open-weight models that RepIt can selectively suppress refusal on WMD-related prompts (ASR 0.4–0.7) while preserving refusal on other harmful categories (ASR ~0.1), with as few as 12 target examples and localization to 100–200 neurons. The paper argues this reveals blind spots in benchmark-based safety evaluation and offers defensive recommendations.",
+      "Strengths": [
+        "Novel problem formulation of concept-specific refusal suppression that can evade safety benchmarks, with a principled closed-form disentanglement procedure.",
+        "Data-efficient (12 examples) and localized (100–200 neurons) attack vector, demonstrating a realistic and concerning low-resource threat.",
+        "Comprehensive evaluation across five different open-weight model families and multiple safety benchmarks, showing consistent target-specific jailbreaking while preserving refusal on non-target categories.",
+        "Interpretability analysis connecting RepIt to multi-dimensional 'concept cone' geometry and showing that non-target vectors can themselves jailbreak the target.",
+        "Responsible ethics discussion and concrete defensive recommendations."
+      ],
+      "Weaknesses": [
+        "No comparison with existing concept-erasure or steering baselines (e.g., LEACE, INLP, direct orthogonalization), so the methodological advantage over prior work is not established.",
+        "ASR is based entirely on LlamaGuard-3 labels without human validation, and may overestimate actual weaponizable harm (e.g., hallucinated viral strains).",
+        "The localization claim is undermined by the tailweight analysis showing 3–10% of examples flip success/failure in both directions, indicating behavioral redistribution rather than clean preservation.",
+        "Data-efficiency experiments reuse position/layer/rho from the full-data run, so they do not demonstrate end-to-end performance with only 12–24 examples.",
+        "Evaluation is limited to WMD target concepts; generality to other harmful domains or non-harmful control is untested.",
+        "Reproducibility is incomplete: WMD prompts are gated, code details and hyperparameters are partially described, and no baselines or ablations are provided."
+      ],
+      "Originality": 3,
+      "Quality": 2,
+      "Clarity": 3,
+      "Significance": 3,
+      "Questions": [
+        "How does RepIt compare to standard concept-erasure baselines such as LEACE, INLP, or simple orthogonalization without reweighting and whitening on the same target/non-target task?",
+        "Would the reported data efficiency hold if position/layer/rho were selected using only 12–24 target examples rather than reused from the full-data experiment?",
+        "Does RepIt generalize to target concepts beyond WMD, such as violence, hate speech, or fraud, under the same protocol?",
+        "How robust is the intervention to further safety fine-tuning, model editing, or detection by activation auditing methods?",
+        "Given that the non-target ASR threshold of 0.1 is arbitrary, how sensitive are the conclusions to this threshold, and do models with baseline non-target ASR below 0.1 make the constraint vacuous?",
+        "Is LlamaGuard-3 a reliable judge for WMD harmfulness, and would human evaluation or a weaponizability metric change the main results?"
+      ],
+      "Limitations": [
+        "The method is only demonstrated on WMD-related target concepts; generalization to other harmful domains is untested.",
+        "ASR metric relies on LlamaGuard-3 and may not reflect actual weaponizable harm; no human evaluation is performed.",
+        "Non-target concept basis derived from JailBreakV and StrongREJECT has overlapping or ambiguous category definitions, which may affect disentanglement quality.",
+        "The approach requires white-box access to model activations and weights, limiting applicability to black-box API-only systems.",
+        "The paper demonstrates a dual-use vulnerability with a concrete method, which could be misused, despite defensive framing.",
+        "Reproducibility is limited because WMD prompts are gated and code/implementation details are incomplete."
+      ],
+      "Ethical Concerns": true,
+      "Soundness": 2,
+      "Presentation": 3,
+      "Contribution": 3,
+      "Overall": 4,
+      "Confidence": 4,
+      "Decision": "Reject"
+    },
+    "raw_response": "{\n  \"Summary\": \"The paper introduces RepIt, a method for extracting concept-specific refusal suppression directions in large language model activation spaces. It computes difference-in-means vectors for a target harmful concept (e.g., WMDs) and many non-target harmful concepts, then applies a three-step procedure of reweighting, whitening, and partial orthogonalization to remove non-target contamination. Using COSMIC for direction selection and ACE for intervention, the authors demonstrate across five open-weight models that RepIt can selectively suppress refusal on WMD-related prompts (ASR 0.4–0.7) while preserving refusal on other harmful categories (ASR ~0.1), with as few as 12 target examples and localization to 100–200 neurons. The paper argues this reveals blind spots in benchmark-based safety evaluation and offers defensive recommendations.\",\n  \"Strengths\": [\n    \"Novel problem formulation of concept-specific refusal suppression that can evade safety benchmarks, with a principled closed-form disentanglement procedure.\",\n    \"Data-efficient (12 examples) and localized (100–200 neurons) attack vector, demonstrating a realistic and concerning low-resource threat.\",\n    \"Comprehensive evaluation across five different open-weight model families and multiple safety benchmarks, showing consistent target-specific jailbreaking while preserving refusal on non-target categories.\",\n    \"Interpretability analysis connecting RepIt to multi-dimensional 'concept cone' geometry and showing that non-target vectors can themselves jailbreak the target.\",\n    \"Responsible ethics discussion and concrete defensive recommendations.\"\n  ],\n  \"Weaknesses\": [\n    \"No comparison with existing concept-erasure or steering baselines (e.g., LEACE, INLP, direct orthogonalization), so the methodological advantage over prior work is not established.\",\n    \"ASR is based entirely on LlamaGuard-3 labels without human validation, and may overestimate actual weaponizable harm (e.g., hallucinated viral strains).\",\n    \"The localization claim is undermined by the tailweight analysis showing 3–10% of examples flip success/failure in both directions, indicating behavioral redistribution rather than clean preservation.\",\n    \"Data-efficiency experiments reuse position/layer/rho from the full-data run, so they do not demonstrate end-to-end performance with only 12–24 examples.\",\n    \"Evaluation is limited to WMD target concepts; generality to other harmful domains or non-harmful control is untested.\",\n    \"Reproducibility is incomplete: WMD prompts are gated, code details and hyperparameters are partially described, and no baselines or ablations are provided.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does RepIt compare to standard concept-erasure baselines such as LEACE, INLP, or simple orthogonalization without reweighting and whitening on the same target/non-target task?\",\n    \"Would the reported data efficiency hold if position/layer/rho were selected using only 12–24 target examples rather than reused from the full-data experiment?\",\n    \"Does RepIt generalize to target concepts beyond WMD, such as violence, hate speech, or fraud, under the same protocol?\",\n    \"How robust is the intervention to further safety fine-tuning, model editing, or detection by activation auditing methods?\",\n    \"Given that the non-target ASR threshold of 0.1 is arbitrary, how sensitive are the conclusions to this threshold, and do models with baseline non-target ASR below 0.1 make the constraint vacuous?\",\n    \"Is LlamaGuard-3 a reliable judge for WMD harmfulness, and would human evaluation or a weaponizability metric change the main results?\"\n  ],\n  \"Limitations\": [\n    \"The method is only demonstrated on WMD-related target concepts; generalization to other harmful domains is untested.\",\n    \"ASR metric relies on LlamaGuard-3 and may not reflect actual weaponizable harm; no human evaluation is performed.\",\n    \"Non-target concept basis derived from JailBreakV and StrongREJECT has overlapping or ambiguous category definitions, which may affect disentanglement quality.\",\n    \"The approach requires white-box access to model activations and weights, limiting applicability to black-box API-only systems.\",\n    \"The paper demonstrates a dual-use vulnerability with a concrete method, which could be misused, despite defensive framing.\",\n    \"Reproducibility is limited because WMD prompts are gated and code/implementation details are incomplete.\"\n  ],\n  \"Ethical Concerns\": true,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+    "usage": {
+      "prompt_tokens": 6550,
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 6294,
+      "completion_tokens": 2179,
+      "reasoning_tokens": 1196,
+      "total_tokens": 8729
+    },
+    "attempts": 1,
+    "response_id": "7ebfd6f3-bb8c-49bd-a6e2-91e187bf1768"
+  },
+  "final_review": {
+    "Summary": "The paper introduces RepIt, a method for extracting concept-specific refusal suppression directions in large language model activation spaces. It computes difference-in-means vectors for a target harmful concept (e.g., WMDs) and many non-target harmful concepts, then applies a three-step procedure of reweighting, whitening, and partial orthogonalization to remove non-target contamination. Using COSMIC for direction selection and ACE for intervention, the authors demonstrate across five open-weight models that RepIt can selectively suppress refusal on WMD-related prompts (ASR 0.4–0.7) while preserving refusal on other harmful categories (ASR ~0.1), with as few as 12 target examples and localization to 100–200 neurons. The paper argues this reveals blind spots in benchmark-based safety evaluation and offers defensive recommendations.",
+    "Strengths": [
+      "Novel problem formulation of concept-specific refusal suppression that can evade safety benchmarks, with a principled closed-form disentanglement procedure.",
+      "Data-efficient (12 examples) and localized (100–200 neurons) attack vector, demonstrating a realistic and concerning low-resource threat.",
+      "Comprehensive evaluation across five different open-weight model families and multiple safety benchmarks, showing consistent target-specific jailbreaking while preserving refusal on non-target categories.",
+      "Interpretability analysis connecting RepIt to multi-dimensional 'concept cone' geometry and showing that non-target vectors can themselves jailbreak the target.",
+      "Responsible ethics discussion and concrete defensive recommendations."
+    ],
+    "Weaknesses": [
+      "No comparison with existing concept-erasure or steering baselines (e.g., LEACE, INLP, direct orthogonalization), so the methodological advantage over prior work is not established.",
+      "ASR is based entirely on LlamaGuard-3 labels without human validation, and may overestimate actual weaponizable harm (e.g., hallucinated viral strains).",
+      "The localization claim is undermined by the tailweight analysis showing 3–10% of examples flip success/failure in both directions, indicating behavioral redistribution rather than clean preservation.",
+      "Data-efficiency experiments reuse position/layer/rho from the full-data run, so they do not demonstrate end-to-end performance with only 12–24 examples.",
+      "Evaluation is limited to WMD target concepts; generality to other harmful domains or non-harmful control is untested.",
+      "Reproducibility is incomplete: WMD prompts are gated, code details and hyperparameters are partially described, and no baselines or ablations are provided."
+    ],
+    "Originality": 3,
+    "Quality": 2,
+    "Clarity": 3,
+    "Significance": 3,
+    "Questions": [
+      "How does RepIt compare to standard concept-erasure baselines such as LEACE, INLP, or simple orthogonalization without reweighting and whitening on the same target/non-target task?",
+      "Would the reported data efficiency hold if position/layer/rho were selected using only 12–24 target examples rather than reused from the full-data experiment?",
+      "Does RepIt generalize to target concepts beyond WMD, such as violence, hate speech, or fraud, under the same protocol?",
+      "How robust is the intervention to further safety fine-tuning, model editing, or detection by activation auditing methods?",
+      "Given that the non-target ASR threshold of 0.1 is arbitrary, how sensitive are the conclusions to this threshold, and do models with baseline non-target ASR below 0.1 make the constraint vacuous?",
+      "Is LlamaGuard-3 a reliable judge for WMD harmfulness, and would human evaluation or a weaponizability metric change the main results?"
+    ],
+    "Limitations": [
+      "The method is only demonstrated on WMD-related target concepts; generalization to other harmful domains is untested.",
+      "ASR metric relies on LlamaGuard-3 and may not reflect actual weaponizable harm; no human evaluation is performed.",
+      "Non-target concept basis derived from JailBreakV and StrongREJECT has overlapping or ambiguous category definitions, which may affect disentanglement quality.",
+      "The approach requires white-box access to model activations and weights, limiting applicability to black-box API-only systems.",
+      "The paper demonstrates a dual-use vulnerability with a concrete method, which could be misused, despite defensive framing.",
+      "Reproducibility is limited because WMD prompts are gated and code/implementation details are incomplete."
+    ],
+    "Ethical Concerns": true,
+    "Soundness": 2,
+    "Presentation": 3,
+    "Contribution": 3,
+    "Overall": 4,
+    "Confidence": 4,
+    "Decision": "Reject"
+  },
+  "final_review_source": "Area Chair model output",
+  "usage": {
+    "prompt_tokens": 133045,
+    "prompt_cache_hit_tokens": 4096,
+    "prompt_cache_miss_tokens": 128949,
+    "completion_tokens": 25715,
+    "reasoning_tokens": 18997,
+    "total_tokens": 158760,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 1.147e-05,
+    "cache_miss_input_usd": 0.01805286,
+    "output_usd": 0.0072002,
+    "total_usd": 0.02526453
+  },
+  "elapsed_seconds": 74.04,
+  "input": {
+    "blind_id": "B032",
+    "filename": "B032.txt",
+    "blind_text_sha256": "02b80e654b721aadf5fe791e828f69862f86645fa2a927cfbcee92c54f15ebc4",
+    "characters": 95748,
+    "full_text_saved": false
+  }
+}

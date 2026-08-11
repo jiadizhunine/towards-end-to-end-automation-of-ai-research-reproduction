@@ -1,0 +1,707 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:48:18.458539+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "This paper proposes FourierAttention, a training-free KV cache compression method for LLMs. The method is based on the observation that transformer head dimensions have heterogeneous roles: lower dimensions capture local context while upper dimensions handle long-range dependencies. FourierAttention compresses the long-context-insensitive (lower) dimensions using a translated Fourier transform (HiPPO-FourierT), projecting their temporal evolution onto fixed-length spectral coefficients, while preserving upper dimensions completely. The paper evaluates the method on LLaMA3.1-8B and LLaMA3.2-3B using LongBench and NIAH benchmarks, comparing against StreamingLLM, SnapKV, Palu, and KIVI. A custom Triton kernel (FlashFourierAttention) is proposed but is still under development. The paper also includes ablation studies on basis function choice (FourierT vs LegT) and compression schema design.",
+        "Strengths": [
+          "The paper identifies an interesting and well-validated empirical phenomenon about head dimension specialization in transformers, supported by noise injection experiments showing that upper dimensions are critical for long-range retrieval.",
+          "The approach is novel in combining dimension-aware compression with Fourier-based projection, differing from prior uniform compression or token eviction methods.",
+          "The experimental evaluation covers multiple baselines and benchmarks, and includes useful ablation studies on basis function choice and compression schema.",
+          "The paper provides good analysis of why FourierT is preferred over LegT, with both reconstruction loss and downstream task evidence."
+        ],
+        "Weaknesses": [
+          "The paper is incomplete: the custom Triton kernel FlashFourierAttention is explicitly stated as 'still in progress', and efficiency experiments (memory consumption, speed) are deferred to a future version. This is a critical omission for a method whose primary goal is memory reduction.",
+          "The performance claims are somewhat overstated. The results show FourierAttention is not consistently the best; SnapKV achieves higher average scores on LLaMA3.1-8B (37.07 vs 36.98), and the differences are often marginal.",
+          "No memory consumption or computational overhead measurements are reported, making it impossible to verify the claimed efficiency benefits.",
+          "The dimension selection mechanism (compressing dimensions with smaller reconstruction error) appears to require a full compress-decompress pass, which could introduce significant overhead not accounted for in the evaluation.",
+          "The NIAH results are referenced via figures but not included in the provided text, making it difficult to fully assess the claims about NIAH performance.",
+          "Some implementation details are unclear, such as how the reconstruction error threshold is set, and the exact memory savings achieved by the 76% compression rate."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 2,
+        "Questions": [
+          "What is the actual memory reduction in terms of total KV cache size, and what is the end-to-end inference speed compared to baselines? These metrics are essential to validate the claimed efficiency benefits.",
+          "How is the dimension selection threshold determined? Does the reconstruction error computation require processing the entire sequence, and what is its computational overhead?",
+          "The paper states 76% of KV caches are compressed to a fixed length. What is the effective compression ratio (memory savings) when accounting for the fixed-length representation and the uncompressed dimensions?",
+          "How does FourierAttention perform at longer context lengths (e.g., 64K, 128K) where memory pressure is more severe?",
+          "The results show SnapKV is competitive or better on some metrics. What are the specific scenarios where FourierAttention provides clear advantages over SnapKV?",
+          "Can you provide the actual NIAH results (figures 4 and 5) in tabular form for quantitative comparison?"
+        ],
+        "Limitations": [
+          "The custom kernel FlashFourierAttention is not yet implemented, so the practical efficiency of the method is unvalidated.",
+          "No efficiency metrics (memory, latency, throughput) are reported, which is a major gap for a compression method.",
+          "The evaluation is limited to two model sizes (3B and 8B); larger models or different architectures are not tested.",
+          "The paper does not discuss potential negative societal impacts, though as an efficiency method, the impact is likely limited.",
+          "The method's overhead for dimension selection and the compress-decompress process is not quantified."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 3,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes FourierAttention, a training-free KV cache compression method that uses Fourier transforms to compress less important dimensions of the KV cache. The key idea is that lower dimensions of the KV cache focus on local context and can be compressed, while upper dimensions capture long-range dependencies and should be preserved. The method uses HiPPO's FourierT framework to project the temporal evolution of KV states onto a fixed set of Fourier bases.\n\nStrengths:\n1. The paper identifies an interesting empirical phenomenon about head dimension specialization in transformers, which is well-supported by experiments (noise injection on dimensions causing performance drops).\n2. The approach is novel in combining dimension-aware compression with Fourier-based projection, differing from prior uniform compression or token eviction methods.\n3. The experimental evaluation is fairly comprehensive, comparing against multiple baselines on LongBench and NIAH benchmarks.\n4. The paper includes ablation studies on basis function choice and compression schema, which is good practice.\n\nWeaknesses:\n1. The paper is incomplete in several aspects: the custom Triton kernel FlashFourierAttention is \"still in progress\" and efficiency experiments are deferred to the next version. This is a major issue for a paper claiming memory efficiency - no actual efficiency/memory measurements are reported.\n2. The performance claims are somewhat overstated. While the paper says \"achieves the best long-context accuracy,\" the results show that SnapKV is often comparable or better on LLaMA3.1-8B (e.g., SnapKV has 37.07 avg vs 36.98 for Ours).\n3. The NIAH results are mentioned but not shown in the provided text (figures referenced but not included).\n4. The dimension selection mechanism relies on computing reconstruction error, which requires compressing and decompressing all KV caches first, potentially adding overhead not accounted for.\n5. The paper doesn't report memory consumption or speed measurements, which is critical for a KV cache compression method.\n6. Some details are unclear, such as how the dimension selection threshold is determined, and the exact memory savings achieved (76% compression is mentioned but not the effective reduction in total KV cache size).\n7. The paper is written more like a work-in-progress report than a complete submission, with explicit statements about future work being needed for key components.\n\nOriginality: The idea of dimension-aware Fourier-based compression is novel and builds on HiPPO in a sensible way. Rating: 3 (high).\n\nQuality: The empirical analysis is reasonable but the lack of efficiency measurements and incomplete kernel implementation weaken the technical soundness. Rating: 2 (fair).\n\nClarity: The paper is generally well-written but has some unclear parts (e.g., dimension selection details, the exact compression ratio). Rating: 3 (good).\n\nSignificance: The problem is important, and the dimension specialization finding is interesting, but the incomplete evaluation limits the significance. Rating: 2 (fair).\n\nOverall assessment: This is a borderline paper. The core idea is interesting and the empirical findings about dimension specialization are valuable. However, the lack of efficiency measurements, incomplete kernel implementation, and somewhat overstated claims about performance superiority are significant issues. The paper reads like a preliminary version that needs more work. I lean towards rejection because the contribution is not fully demonstrated without efficiency evaluation, and the accuracy gains over baselines are marginal.\n\nDecision: Reject (borderline reject territory, but the incompleteness pushes it to reject).\n\nConfidence: 3 (fairly confident - I understand the method but didn't check all math details).\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper proposes FourierAttention, a training-free KV cache compression method for LLMs. The method is based on the observation that transformer head dimensions have heterogeneous roles: lower dimensions capture local context while upper dimensions handle long-range dependencies. FourierAttention compresses the long-context-insensitive (lower) dimensions using a translated Fourier transform (HiPPO-FourierT), projecting their temporal evolution onto fixed-length spectral coefficients, while preserving upper dimensions completely. The paper evaluates the method on LLaMA3.1-8B and LLaMA3.2-3B using LongBench and NIAH benchmarks, comparing against StreamingLLM, SnapKV, Palu, and KIVI. A custom Triton kernel (FlashFourierAttention) is proposed but is still under development. The paper also includes ablation studies on basis function choice (FourierT vs LegT) and compression schema design.\",\n  \"Strengths\": [\n    \"The paper identifies an interesting and well-validated empirical phenomenon about head dimension specialization in transformers, supported by noise injection experiments showing that upper dimensions are critical for long-range retrieval.\",\n    \"The approach is novel in combining dimension-aware compression with Fourier-based projection, differing from prior uniform compression or token eviction methods.\",\n    \"The experimental evaluation covers multiple baselines and benchmarks, and includes useful ablation studies on basis function choice and compression schema.\",\n    \"The paper provides good analysis of why FourierT is preferred over LegT, with both reconstruction loss and downstream task evidence.\"\n  ],\n  \"Weaknesses\": [\n    \"The paper is incomplete: the custom Triton kernel FlashFourierAttention is explicitly stated as 'still in progress', and efficiency experiments (memory consumption, speed) are deferred to a future version. This is a critical omission for a method whose primary goal is memory reduction.\",\n    \"The performance claims are somewhat overstated. The results show FourierAttention is not consistently the best; SnapKV achieves higher average scores on LLaMA3.1-8B (37.07 vs 36.98), and the differences are often marginal.\",\n    \"No memory consumption or computational overhead measurements are reported, making it impossible to verify the claimed efficiency benefits.\",\n    \"The dimension selection mechanism (compressing dimensions with smaller reconstruction error) appears to require a full compress-decompress pass, which could introduce significant overhead not accounted for in the evaluation.\",\n    \"The NIAH results are referenced via figures but not included in the provided text, making it difficult to fully assess the claims about NIAH performance.\",\n    \"Some implementation details are unclear, such as how the reconstruction error threshold is set, and the exact memory savings achieved by the 76% compression rate.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"What is the actual memory reduction in terms of total KV cache size, and what is the end-to-end inference speed compared to baselines? These metrics are essential to validate the claimed efficiency benefits.\",\n    \"How is the dimension selection threshold determined? Does the reconstruction error computation require processing the entire sequence, and what is its computational overhead?\",\n    \"The paper states 76% of KV caches are compressed to a fixed length. What is the effective compression ratio (memory savings) when accounting for the fixed-length representation and the uncompressed dimensions?\",\n    \"How does FourierAttention perform at longer context lengths (e.g., 64K, 128K) where memory pressure is more severe?\",\n    \"The results show SnapKV is competitive or better on some metrics. What are the specific scenarios where FourierAttention provides clear advantages over SnapKV?\",\n    \"Can you provide the actual NIAH results (figures 4 and 5) in tabular form for quantitative comparison?\"\n  ],\n  \"Limitations\": [\n    \"The custom kernel FlashFourierAttention is not yet implemented, so the practical efficiency of the method is unvalidated.\",\n    \"No efficiency metrics (memory, latency, throughput) are reported, which is a major gap for a compression method.\",\n    \"The evaluation is limited to two model sizes (3B and 8B); larger models or different architectures are not tested.\",\n    \"The paper does not discuss potential negative societal impacts, though as an efficiency method, the impact is likely limited.\",\n    \"The method's overhead for dimension selection and the compress-decompress process is not quantified.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 3,\n  \"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 11813,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 10021,
+        "completion_tokens": 1713,
+        "reasoning_tokens": 0,
+        "total_tokens": 13526
+      },
+      "attempts": 1,
+      "response_id": "5d391bd7-9a96-4eba-b7c7-f1c99afe5185"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper proposes FourierAttention, a training-free KV cache compression method for LLMs. The key insight is that transformer head dimensions exhibit heterogeneous roles: lower dimensions prioritize local context while upper dimensions capture long-range dependencies. FourierAttention identifies long-context-insensitive dimensions and compresses them by projecting their temporal evolution onto a fixed set of orthogonal Fourier basis functions (HiPPO-FourierT), retaining only dominant spectral coefficients. The method preserves sensitive dimensions fully, resulting in an asymmetric inverted-pyramid compression schema (more compression for V cache and lower layers). The paper also introduces a custom Triton kernel, FlashFourierAttention, for efficient deployment, though this is still in progress. Evaluations on LLaMA3.1-8B and LLaMA3.2-3B using LongBench and NIAH benchmarks show competitive performance compared to baselines like StreamingLLM, SnapKV, Palu, and KIVI.",
+        "Strengths": [
+          "The observation of head dimension specialization (lower vs upper dimensions) is novel and well-empirically validated through noise perturbation experiments on NIAH tasks.",
+          "The application of HiPPO-FourierT (Fourier basis) over polynomial bases (LegT) is well-motivated due to parallelizability, and the comparison between basis functions provides useful insights.",
+          "The asymmetric compression schema (V-priority and lower-layer-priority) is an interesting finding that contrasts with existing approaches like PyramidKV.",
+          "Comprehensive evaluation across two LLaMA models with LongBench and NIAH benchmarks, including multiple baselines covering both token eviction and feature compression.",
+          "The paper is generally well-written and clearly structured, with ablation studies on basis function choice and compression schemas."
+        ],
+        "Weaknesses": [
+          "The FlashFourierAttention kernel is explicitly stated as 'still in progress', and no efficiency measurements (memory, latency, throughput) are provided. This is a critical omission for a KV cache compression paper whose primary motivation is memory efficiency.",
+          "The claim of 'best long-context accuracy' is overstated. On LongBench, the method does not consistently outperform SnapKV (e.g., on LLaMA3.1-8B, SnapKV achieves 37.07 avg vs 36.98 for FourierAttention). Performance is particularly weak on summarization tasks (QRpt, QSum).",
+          "The dimension selection method based on reconstruction MSE is somewhat circular: dimensions that are easy to reconstruct are compressed, which may not directly translate to task performance preservation. The paper does not provide a rigorous analysis of why this selection criterion correlates with downstream accuracy.",
+          "No analysis of the computational overhead of the compression/decompression process during inference. The paper claims 'computational efficiency' but does not provide any latency or throughput numbers.",
+          "The Fourier transform approximation may introduce artifacts (e.g., spectral leakage, boundary effects) that are not discussed.",
+          "Related work coverage is incomplete; recent KV cache compression methods such as KVQuant, GEAR, and tensor-train-based approaches are not discussed.",
+          "The paper's experiments are limited to LLaMA models; no evaluation on other architectures (e.g., Mistral, Qwen) limits generalizability claims.",
+          "The compression ratios and memory savings are not explicitly quantified in terms of actual KV cache size reduction."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 2,
+        "Questions": [
+          "The FlashFourierAttention kernel is described as 'still in progress'. Can you provide preliminary efficiency measurements (e.g., memory savings, latency, throughput) even with a naive implementation of the decompression step? Without any efficiency data, how can the practical benefits of the method be assessed?",
+          "On LongBench, the method underperforms SnapKV on LLaMA3.1-8B and shows significant degradation on summarization tasks (QRpt, QSum). What is the reason for this? Is the Fourier approximation less effective for summarization tasks that require long-range semantic compression?",
+          "The dimension selection is based on reconstruction MSE. Could you provide a more detailed analysis of how this selection criterion relates to downstream task performance? Would a task-aware or attention-based selection criterion yield better results?",
+          "What is the actual compression ratio achieved by the method in terms of KV cache size? The paper mentions '76% KV caches are compressed to a fixed length', but what does this translate to in terms of actual memory savings compared to the baseline?",
+          "How does the method handle the trade-off between the number of Fourier coefficients (k=512) and performance? Have you experimented with different values of k?",
+          "The paper mentions the Fourier transform is applied to a translated window. How is the window size determined, and what happens when the sequence length exceeds the maximum context length?",
+          "Have you evaluated the method on longer contexts (e.g., 64k, 128k) to understand its scaling behavior?",
+          "The noise perturbation experiment shows that perturbing upper dimensions causes a catastrophic drop in NIAH accuracy. Does this hold for all layers, or is this effect layer-dependent?"
+        ],
+        "Limitations": [
+          "The FlashFourierAttention kernel is incomplete, and no efficiency measurements are provided, which is a significant limitation for a paper focused on memory efficiency.",
+          "The method's performance is inconsistent across tasks and models, with notable degradation on summarization tasks.",
+          "The evaluation is limited to LLaMA models; generalizability to other architectures is unverified.",
+          "The paper does not provide a theoretical analysis of the approximation error introduced by the Fourier compression or its impact on attention computation.",
+          "The potential negative societal impact is not discussed, though this is a common issue for efficiency-focused papers and not a major concern here."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes FourierAttention, a training-free KV cache compression method that exploits the observation that different head dimensions have different sensitivities to context length. The method compresses \"long-context-insensitive\" dimensions using a Fourier transform (HiPPO-FourierT framework) while preserving sensitive dimensions. The paper also introduces a Triton kernel (FlashFourierAttention) for efficient deployment, though this is still in progress.\n\nStrengths:\n1. Interesting and novel observation about head dimension specialization (lower vs upper dimensions) with empirical validation via noise perturbation experiments.\n2. The use of Fourier basis (FourierT) over polynomial bases (LegT) is well-motivated due to parallelizability.\n3. Comprehensive evaluation on LongBench and NIAH across two LLaMA models with comparisons to multiple baselines.\n4. Ablation studies on basis functions and compression schemas.\n5. The paper is generally well-written and organized.\n\nWeaknesses:\n1. The FlashFourierAttention kernel is still \"in progress\" - this is a significant missing component since the paper claims efficiency gains but doesn't provide actual efficiency measurements. This is a major limitation for a paper whose core contribution is memory efficiency.\n2. Performance on LongBench is not clearly superior - on LLaMA3.1-8B, SnapKV achieves higher average (37.07 vs 36.98), and on several individual tasks, the method underperforms baselines significantly (e.g., QRpt, QSum on LLaMA3.1-8B).\n3. The claim of \"best long-context accuracy\" is overstated given the LongBench results show mixed performance.\n4. No efficiency metrics (memory, latency, throughput) are provided at all, which is critical for a KV cache compression paper.\n5. The dimension selection method (based on reconstruction MSE) seems somewhat circular - it compresses dimensions that are easy to reconstruct, which may not directly correlate with task performance.\n6. The paper doesn't discuss potential issues with the Fourier transform approximation, such as boundary effects or spectral leakage.\n7. Related work comparison is somewhat limited - missing recent works on KV cache compression (e.g., KVQuant, GEAR, etc.).\n8. The paper states \"we will report this in detail in the next version\" for efficiency experiments - this is a clear sign of incomplete work.\n\nOriginality: The observation about head dimension heterogeneity and the application of HiPPO-FourierT to KV cache compression is novel. The idea of compressing only certain dimensions is interesting and different from existing approaches.\n\nQuality: The experimental methodology is reasonable, but the lack of efficiency measurements and the incomplete kernel implementation weaken the paper's claims. The ablation studies are good but limited in scope.\n\nClarity: The paper is generally clear but has some issues. The methodology section is complex and could benefit from clearer explanations. Some figures are referenced but not described in detail.\n\nSignificance: The problem is important, and the approach is interesting. However, the mixed experimental results and lack of efficiency data limit the practical significance.\n\nOverall assessment: This is a borderline paper. The core idea is interesting and the analysis of head dimension specialization is valuable. However, the paper falls short in several important ways: (1) the efficiency claims are unsubstantiated without actual measurements, (2) the performance gains over baselines are inconsistent, and (3) the FlashFourierAttention kernel is incomplete. The paper needs significant additional work to be accepted at a top venue. I would lean toward rejection but acknowledge the potential.\n\nDecision: Reject (borderline)\n\nConfidence: 4 (confident in assessment, but some aspects could be clarified)REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper proposes FourierAttention, a training-free KV cache compression method for LLMs. The key insight is that transformer head dimensions exhibit heterogeneous roles: lower dimensions prioritize local context while upper dimensions capture long-range dependencies. FourierAttention identifies long-context-insensitive dimensions and compresses them by projecting their temporal evolution onto a fixed set of orthogonal Fourier basis functions (HiPPO-FourierT), retaining only dominant spectral coefficients. The method preserves sensitive dimensions fully, resulting in an asymmetric inverted-pyramid compression schema (more compression for V cache and lower layers). The paper also introduces a custom Triton kernel, FlashFourierAttention, for efficient deployment, though this is still in progress. Evaluations on LLaMA3.1-8B and LLaMA3.2-3B using LongBench and NIAH benchmarks show competitive performance compared to baselines like StreamingLLM, SnapKV, Palu, and KIVI.\",\n  \"Strengths\": [\n    \"The observation of head dimension specialization (lower vs upper dimensions) is novel and well-empirically validated through noise perturbation experiments on NIAH tasks.\",\n    \"The application of HiPPO-FourierT (Fourier basis) over polynomial bases (LegT) is well-motivated due to parallelizability, and the comparison between basis functions provides useful insights.\",\n    \"The asymmetric compression schema (V-priority and lower-layer-priority) is an interesting finding that contrasts with existing approaches like PyramidKV.\",\n    \"Comprehensive evaluation across two LLaMA models with LongBench and NIAH benchmarks, including multiple baselines covering both token eviction and feature compression.\",\n    \"The paper is generally well-written and clearly structured, with ablation studies on basis function choice and compression schemas.\"\n  ],\n  \"Weaknesses\": [\n    \"The FlashFourierAttention kernel is explicitly stated as 'still in progress', and no efficiency measurements (memory, latency, throughput) are provided. This is a critical omission for a KV cache compression paper whose primary motivation is memory efficiency.\",\n    \"The claim of 'best long-context accuracy' is overstated. On LongBench, the method does not consistently outperform SnapKV (e.g., on LLaMA3.1-8B, SnapKV achieves 37.07 avg vs 36.98 for FourierAttention). Performance is particularly weak on summarization tasks (QRpt, QSum).\",\n    \"The dimension selection method based on reconstruction MSE is somewhat circular: dimensions that are easy to reconstruct are compressed, which may not directly translate to task performance preservation. The paper does not provide a rigorous analysis of why this selection criterion correlates with downstream accuracy.\",\n    \"No analysis of the computational overhead of the compression/decompression process during inference. The paper claims 'computational efficiency' but does not provide any latency or throughput numbers.\",\n    \"The Fourier transform approximation may introduce artifacts (e.g., spectral leakage, boundary effects) that are not discussed.\",\n    \"Related work coverage is incomplete; recent KV cache compression methods such as KVQuant, GEAR, and tensor-train-based approaches are not discussed.\",\n    \"The paper's experiments are limited to LLaMA models; no evaluation on other architectures (e.g., Mistral, Qwen) limits generalizability claims.\",\n    \"The compression ratios and memory savings are not explicitly quantified in terms of actual KV cache size reduction.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"The FlashFourierAttention kernel is described as 'still in progress'. Can you provide preliminary efficiency measurements (e.g., memory savings, latency, throughput) even with a naive implementation of the decompression step? Without any efficiency data, how can the practical benefits of the method be assessed?\",\n    \"On LongBench, the method underperforms SnapKV on LLaMA3.1-8B and shows significant degradation on summarization tasks (QRpt, QSum). What is the reason for this? Is the Fourier approximation less effective for summarization tasks that require long-range semantic compression?\",\n    \"The dimension selection is based on reconstruction MSE. Could you provide a more detailed analysis of how this selection criterion relates to downstream task performance? Would a task-aware or attention-based selection criterion yield better results?\",\n    \"What is the actual compression ratio achieved by the method in terms of KV cache size? The paper mentions '76% KV caches are compressed to a fixed length', but what does this translate to in terms of actual memory savings compared to the baseline?\",\n    \"How does the method handle the trade-off between the number of Fourier coefficients (k=512) and performance? Have you experimented with different values of k?\",\n    \"The paper mentions the Fourier transform is applied to a translated window. How is the window size determined, and what happens when the sequence length exceeds the maximum context length?\",\n    \"Have you evaluated the method on longer contexts (e.g., 64k, 128k) to understand its scaling behavior?\",\n    \"The noise perturbation experiment shows that perturbing upper dimensions causes a catastrophic drop in NIAH accuracy. Does this hold for all layers, or is this effect layer-dependent?\"\n  ],\n  \"Limitations\": [\n    \"The FlashFourierAttention kernel is incomplete, and no efficiency measurements are provided, which is a significant limitation for a paper focused on memory efficiency.\",\n    \"The method's performance is inconsistent across tasks and models, with notable degradation on summarization tasks.\",\n    \"The evaluation is limited to LLaMA models; generalizability to other architectures is unverified.\",\n    \"The paper does not provide a theoretical analysis of the approximation error introduced by the Fourier compression or its impact on attention computation.\",\n    \"The potential negative societal impact is not discussed, though this is a common issue for efficiency-focused papers and not a major concern here.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 11813,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 10021,
+        "completion_tokens": 2046,
+        "reasoning_tokens": 0,
+        "total_tokens": 13859
+      },
+      "attempts": 1,
+      "response_id": "50ce5142-9a49-417d-a50e-af7bf10a3285"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "FourierAttention is a training-free KV cache compression method for LLMs. The paper first identifies a bifurcation in transformer head dimensions: lower dimensions (0-69) focus on local context, while upper dimensions (70-127) capture long-range dependencies, validated via noise perturbation on NIAH tasks. Based on this, FourierAttention compresses the 'long-context-insensitive' dimensions using HiPPO-FourierT (translated Fourier transform) into fixed-length spectral coefficients, while preserving the upper dimensions intact. The method employs an asymmetric inverted-pyramid compression schema (more V and lower-layer cache compressed) based on standard deviation analysis. The paper evaluates on LLaMA3.1-8B and LLaMA3.2-3B using LongBench and NIAH, comparing against StreamingLLM, SnapKV, Palu, and KIVI. A custom Triton kernel (FlashFourierAttention) is mentioned but is still in progress.",
+        "Strengths": [
+          "Novel and interesting observation about head dimension specialization (lower vs upper dimensions capturing local vs long-range context), validated with noise perturbation experiments.",
+          "Applies HiPPO-FourierT to KV cache compression, which is a new application and distinct from prior uniform compression methods.",
+          "Includes thoughtful ablations comparing FourierT vs LegT basis functions and different compression schemas (uniform, KV-inverted, layer-inverted), showing the method's design choices are well-motivated.",
+          "The fine-grained compression schema based on standard deviation analysis (compressing more V and lower-layer cache) is a practical contribution.",
+          "The paper is generally clearly written and well-organized."
+        ],
+        "Weaknesses": [
+          "The paper is incomplete: the FlashFourierAttention kernel is explicitly stated as 'still in progress,' and efficiency experiments (memory savings, latency) are deferred to a future version. This is a critical missing piece for a compression method whose main claim is memory efficiency.",
+          "LongBench results do not consistently show 'best' performance. On LLaMA3.1-8B, SnapKV achieves a higher average (37.07 vs 36.98 for Ours). The improvement over SnapKV on LLaMA3.2-3B is marginal (36.33 vs 34.83). The claim of 'best long-context accuracy' is overstated.",
+          "The NIAH results are only presented in figures (not included in the text), making it difficult to verify the claimed superiority.",
+          "The dimension selection procedure (Section 3.4) is not fully specified: how thresholds are set for 'compressible' dimensions, whether it's per-layer or per-head, and how sensitive performance is to these choices.",
+          "The comparison with KIVI appears unfair: the KIVI TrQA score on LLaMA3.1-8B (10.83) is drastically lower than the original (90.97), suggesting a potential issue with the setup or a typo.",
+          "Missing comparisons with other relevant KV cache compression methods (e.g., H2O, PyramidKV, Eigen Attention), limiting the scope of the related work evaluation.",
+          "No actual memory reduction numbers (in bytes or percentage) are reported, only the percentage of dimensions compressed."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 2,
+        "Questions": [
+          "What are the actual memory savings (in bytes) and end-to-end inference latency improvements compared to baselines? The paper claims memory efficiency but provides no quantitative measurements.",
+          "How is the set of compressed dimensions determined? Is it per-layer, per-head, or a global threshold based on reconstruction MSE? How sensitive is the final performance to the specific choice of dimensions?",
+          "The NIAH results are only shown in figures. Can you provide the exact numerical scores for the NIAH task (e.g., average accuracy across depths and context lengths) for all methods?",
+          "For KIVI on LLaMA3.1-8B, the TrQA score is 10.83, which is drastically lower than the original model's 90.97. Is this a typo or a real result? If real, how is this a fair comparison?",
+          "What is the effective memory reduction considering the overhead of storing Fourier coefficients (which are 2k per dimension) versus the raw tokens? For k=512 and a sequence length of 32k, the compression ratio per dimension is 512/32768 = 1.56%, but does the total memory footprint account for the uncompressed dimensions?",
+          "How does the method scale to context lengths beyond 32k (e.g., 128k or 1M tokens)? Does the fixed-length compression remain effective?"
+        ],
+        "Limitations": [
+          "The most critical limitation is the incomplete FlashFourierAttention kernel and the absence of efficiency results, which are essential to validate the core claim of memory-efficient deployment.",
+          "The performance on LongBench is not consistently superior to SnapKV, raising questions about the practical advantage of the method over simpler token eviction approaches.",
+          "The paper does not discuss potential negative societal impacts, such as potential biases introduced by aggressive compression or the implications of deploying compressed models in resource-constrained environments.",
+          "The evaluation is limited to LLaMA models (3.1-8B and 3.2-3B); generalizability to other architectures (e.g., Mistral, Qwen) is unknown."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes FourierAttention, a training-free KV cache compression method that compresses certain head dimensions of the KV cache using Fourier basis functions (HiPPO-FourierT framework). The key claims are: (1) lower head dimensions capture local context while upper dimensions capture long-range dependencies; (2) compressing the \"long-context-insensitive\" dimensions via Fourier projection preserves accuracy while reducing memory.\n\nStrengths:\n- The core observation about head dimension specialization is interesting and empirically validated (noise perturbation experiments, NIAH accuracy drops).\n- The use of HiPPO-FourierT for compression is a novel application to KV cache compression, distinct from prior uniform compression methods.\n- The paper includes ablations on basis functions (FourierT vs LegT) and compression schema (uniform vs KV-inverted vs layer-inverted), showing thoughtful analysis.\n- The fine-grained compression schema based on standard deviation analysis is a nice contribution.\n\nWeaknesses:\n- The paper is clearly incomplete: the FlashFourierAttention kernel is \"still in progress,\" and efficiency experiments are explicitly deferred (\"we will report this in detail in the next version of the paper\"). This is a major issue for a paper whose main selling point is memory efficiency.\n- The LongBench results are not convincingly \"best.\" On LLaMA3.1-8B, SnapKV achieves a higher average (37.07 vs 36.98 for Ours). On LLaMA3.2-3B, Ours is closest to the original (36.33 vs 38.04 original, SnapKV 34.83), but the improvement is marginal. The claim of \"best long-context accuracy\" is overstated.\n- The NIAH results are only shown in figures (not included in the text excerpt), making it hard to verify the claim.\n- The dimension selection method (Section 3.4) is based on reconstruction MSE, but the procedure for identifying which dimensions to compress is not fully specified (e.g., how many dimensions are compressed per layer, how the thresholds are set).\n- The paper does not report actual memory savings or latency numbers, which is critical for a compression method.\n- The comparison with KIVI is problematic: KIVI is a quantization method, and the paper compares at 75% compression for KIVI but the baseline settings for other methods are unclear. The KIVI results on some tasks (e.g., TrQA 10.83 for LLaMA3.1-8B) are suspiciously low compared to the original, suggesting the comparison may not be apples-to-apples.\n- The paper lacks a comparison with other recent KV cache compression methods (e.g., H2O, PyramidKV, or low-rank methods like Eigen Attention), limiting the scope of related work.\n\nOriginality: Medium-High. The head dimension specialization observation is novel, and the application of HiPPO-FourierT to KV compression is new. However, the overall framework (compress some dimensions, keep others) is a natural extension of existing ideas.\n\nQuality: Fair. The empirical validation of the head dimension hypothesis is solid, but the incomplete kernel and missing efficiency results significantly weaken the paper. The LongBench comparison is not fully convincing.\n\nClarity: Good. The paper is well-structured and the methodology is explained clearly, though some details (e.g., exact dimension selection procedure, NIAH setup) are missing.\n\nSignificance: Medium. The idea of dimension-aware compression is valuable, but the lack of efficiency results and the marginal performance gains over SnapKV limit its immediate impact.\n\nQuestions for authors:\n1. What are the actual memory savings and inference latency numbers for FourierAttention compared to baselines? The paper claims memory efficiency but provides no measurements.\n2. How is the dimension selection threshold determined? Is it per-layer, per-head, or per-model? How sensitive is performance to this choice?\n3. Why does the NIAH figure not show the original model's performance for comparison? What are the exact NIAH scores?\n4. For KIVI, the TrQA score (10.83) is much lower than the original (90.97). Is this a typo or a real result? If real, how is this a fair comparison?\n5. The paper mentions \"76% KV caches are compressed to a fixed length.\" What is the effective memory reduction in terms of bytes (considering the overhead of storing Fourier coefficients)?\n6. How does the method handle sequences longer than the maximum context length used in training (e.g., 128k tokens)?\n\nLimitations:\n- The paper explicitly acknowledges the kernel is incomplete and efficiency results are missing. This is a critical limitation that should be addressed before acceptance.\n- The method's performance on LongBench is not consistently superior to SnapKV, raising questions about its practical advantage.\n- The paper does not discuss potential negative societal impacts (e.g., bias in compressed models, deployment in resource-constrained settings).\n\nEthical concerns: None apparent.\n\nSoundness: 2 (fair) - The core hypothesis is well-supported, but the missing efficiency evaluation and incomplete kernel make the central claims (memory efficiency without performance compromise) inadequately supported.\n\nPresentation: 3 (good) - Well-written and organized, but missing key details (e.g., NIAH scores, efficiency results) and has some formatting issues in the equations.\n\nContribution: 2 (fair) - The idea is interesting, but the paper is incomplete and the performance gains are marginal. It does not yet advance the state of the art in a demonstrable way.\n\nOverall: 4 (Borderline reject) - The paper has a novel idea and solid initial validation, but the missing efficiency results and incomplete kernel are major flaws. The performance claims are overstated. I would lean towards rejection in its current form, but the idea has potential for a resubmission with complete results.\n\nConfidence: 4 - I am confident in my assessment, though I did not check all math details carefully.\n\nDecision: Reject (since the paper is clearly incomplete and efficiency results are promised but not delivered, which is a critical requirement for a compression paper).REVIEW JSON:\n```json\n{\n  \"Summary\": \"FourierAttention is a training-free KV cache compression method for LLMs. The paper first identifies a bifurcation in transformer head dimensions: lower dimensions (0-69) focus on local context, while upper dimensions (70-127) capture long-range dependencies, validated via noise perturbation on NIAH tasks. Based on this, FourierAttention compresses the 'long-context-insensitive' dimensions using HiPPO-FourierT (translated Fourier transform) into fixed-length spectral coefficients, while preserving the upper dimensions intact. The method employs an asymmetric inverted-pyramid compression schema (more V and lower-layer cache compressed) based on standard deviation analysis. The paper evaluates on LLaMA3.1-8B and LLaMA3.2-3B using LongBench and NIAH, comparing against StreamingLLM, SnapKV, Palu, and KIVI. A custom Triton kernel (FlashFourierAttention) is mentioned but is still in progress.\",\n  \"Strengths\": [\n    \"Novel and interesting observation about head dimension specialization (lower vs upper dimensions capturing local vs long-range context), validated with noise perturbation experiments.\",\n    \"Applies HiPPO-FourierT to KV cache compression, which is a new application and distinct from prior uniform compression methods.\",\n    \"Includes thoughtful ablations comparing FourierT vs LegT basis functions and different compression schemas (uniform, KV-inverted, layer-inverted), showing the method's design choices are well-motivated.\",\n    \"The fine-grained compression schema based on standard deviation analysis (compressing more V and lower-layer cache) is a practical contribution.\",\n    \"The paper is generally clearly written and well-organized.\"\n  ],\n  \"Weaknesses\": [\n    \"The paper is incomplete: the FlashFourierAttention kernel is explicitly stated as 'still in progress,' and efficiency experiments (memory savings, latency) are deferred to a future version. This is a critical missing piece for a compression method whose main claim is memory efficiency.\",\n    \"LongBench results do not consistently show 'best' performance. On LLaMA3.1-8B, SnapKV achieves a higher average (37.07 vs 36.98 for Ours). The improvement over SnapKV on LLaMA3.2-3B is marginal (36.33 vs 34.83). The claim of 'best long-context accuracy' is overstated.\",\n    \"The NIAH results are only presented in figures (not included in the text), making it difficult to verify the claimed superiority.\",\n    \"The dimension selection procedure (Section 3.4) is not fully specified: how thresholds are set for 'compressible' dimensions, whether it's per-layer or per-head, and how sensitive performance is to these choices.\",\n    \"The comparison with KIVI appears unfair: the KIVI TrQA score on LLaMA3.1-8B (10.83) is drastically lower than the original (90.97), suggesting a potential issue with the setup or a typo.\",\n    \"Missing comparisons with other relevant KV cache compression methods (e.g., H2O, PyramidKV, Eigen Attention), limiting the scope of the related work evaluation.\",\n    \"No actual memory reduction numbers (in bytes or percentage) are reported, only the percentage of dimensions compressed.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"What are the actual memory savings (in bytes) and end-to-end inference latency improvements compared to baselines? The paper claims memory efficiency but provides no quantitative measurements.\",\n    \"How is the set of compressed dimensions determined? Is it per-layer, per-head, or a global threshold based on reconstruction MSE? How sensitive is the final performance to the specific choice of dimensions?\",\n    \"The NIAH results are only shown in figures. Can you provide the exact numerical scores for the NIAH task (e.g., average accuracy across depths and context lengths) for all methods?\",\n    \"For KIVI on LLaMA3.1-8B, the TrQA score is 10.83, which is drastically lower than the original model's 90.97. Is this a typo or a real result? If real, how is this a fair comparison?\",\n    \"What is the effective memory reduction considering the overhead of storing Fourier coefficients (which are 2k per dimension) versus the raw tokens? For k=512 and a sequence length of 32k, the compression ratio per dimension is 512/32768 = 1.56%, but does the total memory footprint account for the uncompressed dimensions?\",\n    \"How does the method scale to context lengths beyond 32k (e.g., 128k or 1M tokens)? Does the fixed-length compression remain effective?\"\n  ],\n  \"Limitations\": [\n    \"The most critical limitation is the incomplete FlashFourierAttention kernel and the absence of efficiency results, which are essential to validate the core claim of memory-efficient deployment.\",\n    \"The performance on LongBench is not consistently superior to SnapKV, raising questions about the practical advantage of the method over simpler token eviction approaches.\",\n    \"The paper does not discuss potential negative societal impacts, such as potential biases introduced by aggressive compression or the implications of deploying compressed models in resource-constrained environments.\",\n    \"The evaluation is limited to LLaMA models (3.1-8B and 3.2-3B); generalizability to other architectures (e.g., Mistral, Qwen) is unknown.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 11813,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 10021,
+        "completion_tokens": 2498,
+        "reasoning_tokens": 0,
+        "total_tokens": 14311
+      },
+      "attempts": 1,
+      "response_id": "ca4e6ebf-c37b-4577-901d-9577a4e604aa"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper proposes FourierAttention, a training-free KV cache compression method for LLMs. The key insight is that transformer head dimensions have heterogeneous roles: lower dimensions prioritize local context while upper dimensions capture long-range dependencies. Based on this, FourierAttention compresses long-context-insensitive dimensions by projecting their temporal evolution onto a fixed set of orthogonal Fourier bases (from the HiPPO framework), retaining only dominant spectral coefficients. The method uses a fine-grained compression schema that compresses more V-cache and lower-layer dimensions. A custom Triton kernel (FlashFourierAttention) is mentioned but is still in progress. Experiments on LLaMA3.1-8B and LLaMA3.2-3B evaluate LongBench and NIAH performance, showing competitive accuracy with baselines like SnapKV, StreamingLLM, Palu, and KIVI.",
+        "Strengths": [
+          "The observation about head dimension specialization (lower dims for local, upper dims for long-range) is interesting and well-validated through noise perturbation experiments and attention visualization.",
+          "The use of FourierT basis from HiPPO is well-motivated with empirical comparisons against LegT, showing better reconstruction and downstream performance.",
+          "The fine-grained compression schema (V-priority, lower-layer priority) is thoughtful and backed by ablations showing its advantage over uniform or inverted schemes.",
+          "The method is training-free and the theoretical framing via HiPPO provides a principled foundation.",
+          "Evaluation on two LLaMA models with multiple baselines on LongBench and NIAH provides reasonable coverage."
+        ],
+        "Weaknesses": [
+          "The paper claims 'best long-context accuracy' but the LongBench results show FourierAttention is actually slightly worse than SnapKV on LLaMA3.1-8B (36.98 vs 37.07 average), contradicting the headline claim.",
+          "The custom Triton kernel FlashFourierAttention is explicitly stated as 'still in progress', and no efficiency experiments (memory usage, throughput, latency) are reported. This is a critical missing component for a KV cache compression paper whose central motivation is memory efficiency.",
+          "The memory savings are not concretely quantified. The paper says 76% of KV caches are compressed but doesn't report actual memory footprint comparisons or effective compression ratios relative to baselines.",
+          "The comparison setup may not be apples-to-apples: baselines are configured with specific compression settings (e.g., Palu at 70%, KIVI at 75%), but the paper doesn't clarify if the effective memory usage is comparable across methods.",
+          "The NIAH results are presented in figures without clear quantified summary in the text, making it difficult to assess the claimed superiority.",
+          "The paper has several incomplete aspects: missing efficiency experiments, promises of 'next version' details, and unclear explanations around dimension selection methodology (how exactly the compression dimensions are chosen).",
+          "The writing has some issues: Equation (6) has an apparent typo (using K^mc for V reconstruction), and some notation is confusing (e.g., D^ku vs D^kc definitions)."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 2,
+        "Questions": [
+          "Can you provide concrete memory footprint numbers and throughput/latency comparisons with baselines? The paper's central claim is memory efficiency, but no efficiency experiments are reported.",
+          "How exactly are the dimensions to be compressed selected? The paper mentions 'prioritizing dimensions with smaller mean-squared error in reconstruction' but doesn't detail the selection algorithm or whether this is done per-layer, per-head, or globally.",
+          "What is the effective memory compression ratio of FourierAttention compared to the baselines (e.g., SnapKV, Palu, KIVI) at the settings used? Are the comparisons fair in terms of total KV cache memory?",
+          "The paper claims 'best long-context accuracy' but SnapKV outperforms on LLaMA3.1-8B LongBench. How do you reconcile this claim with the reported results?",
+          "For the NIAH results in Figures 4 and 5, can you provide the numerical accuracy values and clarify at what context lengths and depths the method succeeds or fails?",
+          "How does the kernel design in FlashFourierAttention handle the decompression during attention? What are the expected performance gains once completed?",
+          "What is the computational overhead of the Fourier transform during prefilling? Does the compression itself add significant latency?"
+        ],
+        "Limitations": [
+          "The paper acknowledges the incomplete FlashFourierAttention kernel and the performance gap compared to pretrained models, which is good. However, the lack of efficiency evaluation is a major limitation that should be addressed before acceptance.",
+          "The method requires determining the compression schema (which dimensions to compress) which may be model-specific and require calibration on validation data. This calibration cost is not discussed.",
+          "The evaluation is limited to LLaMA3.1-8B and LLaMA3.2-3B; it's unclear how well the findings generalize to other architectures (e.g., different head sizes, model scales, or different positional encodings).",
+          "Potential negative societal impact: while the method itself is benign, reducing memory requirements could enable deployment of large models in more resource-constrained settings, which could have dual-use implications. However, this is not a significant concern."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes FourierAttention, a training-free KV cache compression method that leverages the observation that different head dimensions have different roles (lower dimensions for local context, upper dimensions for long-range). The method uses a translated Fourier transform (from the HiPPO framework) to compress long-context-insensitive dimensions into fixed-length spectral coefficients. They also mention a custom Triton kernel (FlashFourierAttention) that is still in progress.\n\nKey strengths:\n- The observation about head dimension specialization is interesting and potentially novel\n- The use of Fourier basis (FourierT from HiPPO) rather than polynomial bases is well-motivated with empirical validation\n- The fine-grained compression schema (V-priority, lower-layer priority) is thoughtful and shows good ablation\n- Reasonable evaluation on LongBench and NIAH with LLaMA3.1-8B and LLaMA3.2-3B\n\nKey weaknesses:\n- The paper claims \"best long-context accuracy\" but the results show it's actually slightly worse than SnapKV on LLaMA3.1-8B in LongBench average (36.98 vs 37.07)\n- The custom kernel FlashFourierAttention is \"still in progress\" - a major component of the claimed contribution is incomplete. No efficiency results are provided, which is critical for a memory compression paper\n- The memory savings claims are vague - they say 76% of KV caches are compressed but don't report actual memory usage or throughput comparisons\n- The comparison setup may be unfair - they set specific compression ratios for baselines but need to clarify if the effective memory is comparable\n- The paper is incomplete in several ways: missing efficiency experiments, \"next version\" promises, and some unclear details in the methodology (e.g., how dimensions are selected, exact compression ratios)\n- The NIAH results are shown in figures but not quantified in the text clearly\n- Potential overclaiming: \"achieves the best long-context accuracy\" is not fully supported by the data\n\nThe paper has a solid idea and interesting analysis, but the incomplete implementation (kernel still in progress) and missing efficiency evaluations are significant issues. The accuracy results are competitive but not clearly superior. This feels like work in progress rather than a complete submission.\n\nI would rate this as a borderline reject - the idea is interesting and the accuracy results are reasonable, but the missing efficiency evaluation (which is central to a KV cache compression paper) and incomplete kernel implementation are major concerns. The claims are somewhat overstated relative to the evidence.\n\nDecision: Reject (borderline reject territory, but the incomplete efficiency evaluation and overclaimed results push it to reject)\n\nRatings:\n- Soundness: 3 (good) - the methodology seems sound, though the efficiency claims are unverified\n- Presentation: 2 (fair) - incomplete paper, missing key experiments, some unclear writing\n- Contribution: 2 (fair) - interesting idea but incomplete execution\n- Overall: 4 (borderline reject)REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper proposes FourierAttention, a training-free KV cache compression method for LLMs. The key insight is that transformer head dimensions have heterogeneous roles: lower dimensions prioritize local context while upper dimensions capture long-range dependencies. Based on this, FourierAttention compresses long-context-insensitive dimensions by projecting their temporal evolution onto a fixed set of orthogonal Fourier bases (from the HiPPO framework), retaining only dominant spectral coefficients. The method uses a fine-grained compression schema that compresses more V-cache and lower-layer dimensions. A custom Triton kernel (FlashFourierAttention) is mentioned but is still in progress. Experiments on LLaMA3.1-8B and LLaMA3.2-3B evaluate LongBench and NIAH performance, showing competitive accuracy with baselines like SnapKV, StreamingLLM, Palu, and KIVI.\",\n  \"Strengths\": [\n    \"The observation about head dimension specialization (lower dims for local, upper dims for long-range) is interesting and well-validated through noise perturbation experiments and attention visualization.\",\n    \"The use of FourierT basis from HiPPO is well-motivated with empirical comparisons against LegT, showing better reconstruction and downstream performance.\",\n    \"The fine-grained compression schema (V-priority, lower-layer priority) is thoughtful and backed by ablations showing its advantage over uniform or inverted schemes.\",\n    \"The method is training-free and the theoretical framing via HiPPO provides a principled foundation.\",\n    \"Evaluation on two LLaMA models with multiple baselines on LongBench and NIAH provides reasonable coverage.\"\n  ],\n  \"Weaknesses\": [\n    \"The paper claims 'best long-context accuracy' but the LongBench results show FourierAttention is actually slightly worse than SnapKV on LLaMA3.1-8B (36.98 vs 37.07 average), contradicting the headline claim.\",\n    \"The custom Triton kernel FlashFourierAttention is explicitly stated as 'still in progress', and no efficiency experiments (memory usage, throughput, latency) are reported. This is a critical missing component for a KV cache compression paper whose central motivation is memory efficiency.\",\n    \"The memory savings are not concretely quantified. The paper says 76% of KV caches are compressed but doesn't report actual memory footprint comparisons or effective compression ratios relative to baselines.\",\n    \"The comparison setup may not be apples-to-apples: baselines are configured with specific compression settings (e.g., Palu at 70%, KIVI at 75%), but the paper doesn't clarify if the effective memory usage is comparable across methods.\",\n    \"The NIAH results are presented in figures without clear quantified summary in the text, making it difficult to assess the claimed superiority.\",\n    \"The paper has several incomplete aspects: missing efficiency experiments, promises of 'next version' details, and unclear explanations around dimension selection methodology (how exactly the compression dimensions are chosen).\",\n    \"The writing has some issues: Equation (6) has an apparent typo (using K^mc for V reconstruction), and some notation is confusing (e.g., D^ku vs D^kc definitions).\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"Can you provide concrete memory footprint numbers and throughput/latency comparisons with baselines? The paper's central claim is memory efficiency, but no efficiency experiments are reported.\",\n    \"How exactly are the dimensions to be compressed selected? The paper mentions 'prioritizing dimensions with smaller mean-squared error in reconstruction' but doesn't detail the selection algorithm or whether this is done per-layer, per-head, or globally.\",\n    \"What is the effective memory compression ratio of FourierAttention compared to the baselines (e.g., SnapKV, Palu, KIVI) at the settings used? Are the comparisons fair in terms of total KV cache memory?\",\n    \"The paper claims 'best long-context accuracy' but SnapKV outperforms on LLaMA3.1-8B LongBench. How do you reconcile this claim with the reported results?\",\n    \"For the NIAH results in Figures 4 and 5, can you provide the numerical accuracy values and clarify at what context lengths and depths the method succeeds or fails?\",\n    \"How does the kernel design in FlashFourierAttention handle the decompression during attention? What are the expected performance gains once completed?\",\n    \"What is the computational overhead of the Fourier transform during prefilling? Does the compression itself add significant latency?\"\n  ],\n  \"Limitations\": [\n    \"The paper acknowledges the incomplete FlashFourierAttention kernel and the performance gap compared to pretrained models, which is good. However, the lack of efficiency evaluation is a major limitation that should be addressed before acceptance.\",\n    \"The method requires determining the compression schema (which dimensions to compress) which may be model-specific and require calibration on validation data. This calibration cost is not discussed.\",\n    \"The evaluation is limited to LLaMA3.1-8B and LLaMA3.2-3B; it's unclear how well the findings generalize to other architectures (e.g., different head sizes, model scales, or different positional encodings).\",\n    \"Potential negative societal impact: while the method itself is benign, reducing memory requirements could enable deployment of large models in more resource-constrained settings, which could have dual-use implications. However, this is not a significant concern.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 11813,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 10021,
+        "completion_tokens": 1832,
+        "reasoning_tokens": 0,
+        "total_tokens": 13645
+      },
+      "attempts": 1,
+      "response_id": "086d663a-22e2-4488-b9f8-5cb2e99cc197"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper proposes FourierAttention, a training-free KV cache compression method for LLMs. The key insight is that transformer head dimensions have heterogeneous roles: lower dimensions capture local context while upper dimensions are critical for long-range dependencies. The method compresses the long-context-insensitive dimensions using a translated Fourier transform (based on the HiPPO framework) into fixed-length spectral coefficients, while preserving the sensitive dimensions fully. A custom Triton kernel (FlashFourierAttention) is proposed but is still in progress. The method is evaluated on LLaMA3.1-8B and LLaMA3.2-3B using LongBench and NIAH benchmarks, showing competitive performance with baselines like SnapKV, StreamingLLM, Palu, and KIVI.",
+        "Strengths": [
+          "The observation of head dimension specialization (lower dims for local, upper dims for long-range) is novel and well-validated through noise perturbation experiments on NIAH.",
+          "The use of Fourier transforms over polynomial bases (LegT) is well-motivated by parallelizability and shows empirically better reconstruction quality.",
+          "The fine-grained compression schema (asymmetric, inverted pyramid based on KV cache statistics) is a thoughtful and well-analyzed contribution with ablation studies.",
+          "The paper is well-organized and the methodology is clearly described.",
+          "The comparison with LegT and the ablation on compression schemas provide useful insights into the design choices."
+        ],
+        "Weaknesses": [
+          "The central claim of achieving 'the best long-context accuracy on LongBench and NIAH' is overstated. On LongBench, the method is slightly inferior to SnapKV on LLaMA3.1-8B (36.98 vs 37.07) and only marginally better on LLaMA3.2-3B (36.33 vs 34.83).",
+          "The custom kernel FlashFourierAttention is explicitly stated as 'still in progress' — no efficiency measurements (latency, memory, throughput) are provided, which is a critical gap for a KV cache compression paper claiming 'efficient deployment without performance compromise.'",
+          "The effective compression ratio and memory savings are not clearly quantified or compared against baselines in an apples-to-apples manner.",
+          "The NIAH results are only presented in figures (not included in the text), making it difficult to verify the claimed superiority.",
+          "Missing comparisons with more recent strong baselines like H2O, PyramidKV, and other state-of-the-art methods.",
+          "The dimension selection methodology is somewhat vague — details on how the mean-squared error is computed and how dimensions are selected per-layer/per-head are lacking.",
+          "The paper appears to be work in progress — the efficiency kernel is incomplete, and the authors defer key experiments to 'the next version.'"
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 2,
+        "Questions": [
+          "Can you provide the actual NIAH accuracy numbers (not just figures) for all methods at 32k context length?",
+          "What is the exact effective compression ratio of your method compared to the baselines? How does the memory footprint of your compressed KV cache compare to SnapKV, KIVI, and Palu under the settings used?",
+          "How is the dimension selection based on 'mean-squared error in reconstruction' performed? Is it computed per-layer, per-head, or globally? What are the computational costs of this selection process?",
+          "Why does your method perform notably worse than SnapKV on some LongBench tasks like QSum and QRpt? Are there specific task characteristics that explain this?",
+          "What are the expected efficiency gains from FlashFourierAttention once completed? Can you provide preliminary estimates or theoretical analysis of the memory/latency improvements?",
+          "How does your method handle KV cache eviction during decoding when the sequence length exceeds the maximum context length?",
+          "The paper mentions '76% KV caches are compressed to a fixed length' — does this mean the actual memory savings are 76%, or is this just the fraction of dimensions compressed? Please clarify the effective compression ratio."
+        ],
+        "Limitations": [
+          "The paper does not provide any efficiency evaluation (latency, memory, throughput), which is essential for a KV cache compression method. The custom kernel is incomplete.",
+          "The performance gains over baselines are marginal and not consistently superior across benchmarks and models.",
+          "The method's effectiveness is only demonstrated on LLaMA models; generalization to other architectures (e.g., Mistral, Qwen) is unclear.",
+          "The paper does not address potential negative societal impacts, though this is a relatively low-risk efficiency method.",
+          "The dimension specialization observation may be specific to certain model families and may not generalize."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThe paper proposes FourierAttention, a training-free KV cache compression method that leverages the observation that different head dimensions have different sensitivities to context length. Lower dimensions focus on local context while upper dimensions capture long-range dependencies. The method compresses the long-context-insensitive dimensions using a Fourier transform (HiPPO-FourierT framework) into fixed-length spectral coefficients, while preserving the sensitive dimensions fully. A custom Triton kernel (FlashFourierAttention) is mentioned but noted as \"still in progress.\"\n\nKey strengths:\n1. The observation about head dimension specialization is interesting and empirically validated through noise perturbation experiments on NIAH.\n2. The use of Fourier transforms (vs. polynomial bases like LegT) for compression is well-motivated by parallelizability and shows better reconstruction quality.\n3. The fine-grained compression schema (asymmetric, inverted pyramid based on KV cache statistics) is a thoughtful contribution.\n4. The paper includes ablation studies on basis functions and compression schemas.\n\nKey weaknesses:\n1. The paper's central claim of achieving \"the best long-context accuracy on LongBench and NIAH\" is not well supported. Looking at the tables, on LongBench the method is actually slightly inferior to SnapKV on LLaMA3.1-8B (36.98 vs 37.07 avg) and only marginally better on LLaMA3.2-3B (36.33 vs 34.83). The claim of \"best\" appears overstated.\n2. The custom kernel FlashFourierAttention is described as \"still in progress\" — this is a major missing component. The paper claims \"efficient deployment without performance compromise\" but provides no efficiency measurements at all. This is a significant gap for a systems-oriented ML paper.\n3. The compression ratio is not clearly specified. The paper says \"76% KV caches are compressed to a fixed length\" but doesn't clearly state the actual memory savings or the effective compression ratio compared to baselines. The comparison with baselines (e.g., KIVI at 4-bit 75% compression) may not be apples-to-apples.\n4. The methodology for dimension selection is somewhat vague — it says \"prioritizing dimensions with smaller mean-squared error in reconstruction\" but doesn't provide details on how this is computed or whether it's done per-layer, per-head, etc.\n5. The paper lacks efficiency benchmarks (latency, memory, throughput) which are crucial for KV cache compression methods. The authors explicitly defer this to \"the next version.\"\n6. The NIAH results are only shown in figures (which are not included in the text provided) — the paper claims superiority but the actual numbers are not presented in a table.\n7. The paper doesn't compare against more recent or stronger baselines like H2O, PyramidKV, or other state-of-the-art compression methods.\n8. The writing has some issues (e.g., \"K cahce\" typo in Figure 3 caption, incomplete sentences, and the paper appears to be an arXiv preprint with some formatting issues).\n\nOverall, the core idea is interesting and the empirical validation of the dimension specialization hypothesis is compelling. However, the paper is incomplete — the efficiency kernel is not done, the performance claims are overstated, and the evaluation lacks critical efficiency metrics. This feels like work in progress rather than a complete submission.\n\nDecision: Reject (borderline). The idea has merit but the paper is incomplete and the claims are not fully supported. The lack of efficiency evaluation is a critical gap for a KV cache compression paper.\n\nConfidence: 4 (I'm fairly confident in my assessment, though the missing figures make it harder to fully evaluate the NIAH claims).\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper proposes FourierAttention, a training-free KV cache compression method for LLMs. The key insight is that transformer head dimensions have heterogeneous roles: lower dimensions capture local context while upper dimensions are critical for long-range dependencies. The method compresses the long-context-insensitive dimensions using a translated Fourier transform (based on the HiPPO framework) into fixed-length spectral coefficients, while preserving the sensitive dimensions fully. A custom Triton kernel (FlashFourierAttention) is proposed but is still in progress. The method is evaluated on LLaMA3.1-8B and LLaMA3.2-3B using LongBench and NIAH benchmarks, showing competitive performance with baselines like SnapKV, StreamingLLM, Palu, and KIVI.\",\n    \"Strengths\": [\n        \"The observation of head dimension specialization (lower dims for local, upper dims for long-range) is novel and well-validated through noise perturbation experiments on NIAH.\",\n        \"The use of Fourier transforms over polynomial bases (LegT) is well-motivated by parallelizability and shows empirically better reconstruction quality.\",\n        \"The fine-grained compression schema (asymmetric, inverted pyramid based on KV cache statistics) is a thoughtful and well-analyzed contribution with ablation studies.\",\n        \"The paper is well-organized and the methodology is clearly described.\",\n        \"The comparison with LegT and the ablation on compression schemas provide useful insights into the design choices.\"\n    ],\n    \"Weaknesses\": [\n        \"The central claim of achieving 'the best long-context accuracy on LongBench and NIAH' is overstated. On LongBench, the method is slightly inferior to SnapKV on LLaMA3.1-8B (36.98 vs 37.07) and only marginally better on LLaMA3.2-3B (36.33 vs 34.83).\",\n        \"The custom kernel FlashFourierAttention is explicitly stated as 'still in progress' — no efficiency measurements (latency, memory, throughput) are provided, which is a critical gap for a KV cache compression paper claiming 'efficient deployment without performance compromise.'\",\n        \"The effective compression ratio and memory savings are not clearly quantified or compared against baselines in an apples-to-apples manner.\",\n        \"The NIAH results are only presented in figures (not included in the text), making it difficult to verify the claimed superiority.\",\n        \"Missing comparisons with more recent strong baselines like H2O, PyramidKV, and other state-of-the-art methods.\",\n        \"The dimension selection methodology is somewhat vague — details on how the mean-squared error is computed and how dimensions are selected per-layer/per-head are lacking.\",\n        \"The paper appears to be work in progress — the efficiency kernel is incomplete, and the authors defer key experiments to 'the next version.'\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 2,\n    \"Clarity\": 3,\n    \"Significance\": 2,\n    \"Questions\": [\n        \"Can you provide the actual NIAH accuracy numbers (not just figures) for all methods at 32k context length?\",\n        \"What is the exact effective compression ratio of your method compared to the baselines? How does the memory footprint of your compressed KV cache compare to SnapKV, KIVI, and Palu under the settings used?\",\n        \"How is the dimension selection based on 'mean-squared error in reconstruction' performed? Is it computed per-layer, per-head, or globally? What are the computational costs of this selection process?\",\n        \"Why does your method perform notably worse than SnapKV on some LongBench tasks like QSum and QRpt? Are there specific task characteristics that explain this?\",\n        \"What are the expected efficiency gains from FlashFourierAttention once completed? Can you provide preliminary estimates or theoretical analysis of the memory/latency improvements?\",\n        \"How does your method handle KV cache eviction during decoding when the sequence length exceeds the maximum context length?\",\n        \"The paper mentions '76% KV caches are compressed to a fixed length' — does this mean the actual memory savings are 76%, or is this just the fraction of dimensions compressed? Please clarify the effective compression ratio.\"\n    ],\n    \"Limitations\": [\n        \"The paper does not provide any efficiency evaluation (latency, memory, throughput), which is essential for a KV cache compression method. The custom kernel is incomplete.\",\n        \"The performance gains over baselines are marginal and not consistently superior across benchmarks and models.\",\n        \"The method's effectiveness is only demonstrated on LLaMA models; generalization to other architectures (e.g., Mistral, Qwen) is unclear.\",\n        \"The paper does not address potential negative societal impacts, though this is a relatively low-risk efficiency method.\",\n        \"The dimension specialization observation may be specific to certain model families and may not generalize.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 2,\n    \"Presentation\": 3,\n    \"Contribution\": 2,\n    \"Overall\": 4,\n    \"Confidence\": 4,\n    \"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 11813,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 10021,
+        "completion_tokens": 1840,
+        "reasoning_tokens": 0,
+        "total_tokens": 13653
+      },
+      "attempts": 1,
+      "response_id": "3f50d9d4-8290-4f0b-8689-afbfd5ba3a4b"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 0,
+      "Reject": 5
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Quality": {
+        "values": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "mean": 2,
+        "rounded_mean": 2,
+        "population_sd": 0.0,
+        "min": 2,
+        "max": 2
+      },
+      "Clarity": {
+        "values": [
+          3,
+          3,
+          3,
+          2,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "mean": 2,
+        "rounded_mean": 2,
+        "population_sd": 0.0,
+        "min": 2,
+        "max": 2
+      },
+      "Soundness": {
+        "values": [
+          2,
+          2,
+          2,
+          3,
+          2
+        ],
+        "mean": 2.2,
+        "rounded_mean": 2,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          3,
+          3,
+          2,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "mean": 2,
+        "rounded_mean": 2,
+        "population_sd": 0.0,
+        "min": 2,
+        "max": 2
+      },
+      "Overall": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      },
+      "Confidence": {
+        "values": [
+          3,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 3.8,
+        "rounded_mean": 4,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "This paper proposes FourierAttention, a training-free KV cache compression method for LLMs. The key insight is that transformer head dimensions have heterogeneous roles: lower dimensions capture local context while upper dimensions handle long-range dependencies, validated via noise perturbation experiments on NIAH tasks. FourierAttention compresses the long-context-insensitive (lower) dimensions using a translated Fourier transform (HiPPO-FourierT), projecting their temporal evolution onto fixed-length spectral coefficients, while preserving the long-context-sensitive upper dimensions completely. The method employs an asymmetric inverted-pyramid compression schema (more compression for V cache and lower layers) based on standard deviation analysis. The paper evaluates on LLaMA3.1-8B and LLaMA3.2-3B using LongBench and NIAH benchmarks, comparing against StreamingLLM, SnapKV, Palu, and KIVI. A custom Triton kernel (FlashFourierAttention) is mentioned but is explicitly stated as still in progress.",
+      "Strengths": [
+        "The observation of head dimension specialization (lower vs upper dimensions capturing local vs long-range context) is novel and well-validated through noise perturbation experiments, which is a solid empirical contribution.",
+        "The application of HiPPO-FourierT (Fourier basis) over polynomial bases (LegT) is well-motivated due to parallelizability and shows better reconstruction quality and downstream performance in the provided ablations.",
+        "The fine-grained asymmetric compression schema (V-priority and lower-layer-priority) is a thoughtful design choice, supported by ablation studies that demonstrate its advantage over uniform or inverted schemes.",
+        "The method is training-free and provides a principled theoretical framing via the HiPPO framework, which is a refreshing approach compared to purely heuristic compression methods.",
+        "The paper is generally clearly written and well-organized, with useful ablations on basis function choice and compression schemas that aid understanding of the design decisions."
+      ],
+      "Weaknesses": [
+        "The paper is critically incomplete: the custom Triton kernel FlashFourierAttention is explicitly stated as 'still in progress,' and no efficiency experiments (memory consumption, latency, throughput) are reported. This is a major omission for a KV cache compression method whose central claim is memory efficiency.",
+        "The claim of 'best long-context accuracy' is overstated. On LongBench, the method is not consistently superior to SnapKV (e.g., on LLaMA3.1-8B, SnapKV achieves 37.07 avg vs 36.98 for FourierAttention), and performance is notably weaker on summarization tasks (QRpt, QSum).",
+        "The effective memory compression ratio and actual memory savings are not quantified or compared against baselines in an apples-to-apples manner. The statement that '76% of KV caches are compressed' does not translate directly to memory savings without accounting for the fixed-length representation and uncompressed dimensions.",
+        "The dimension selection mechanism (based on reconstruction MSE) is not fully specified: it is unclear whether it is per-layer, per-head, or global, how thresholds are set, and what the computational overhead of this selection process is. The circularity of compressing dimensions that are easy to reconstruct is not rigorously justified in relation to downstream performance.",
+        "The NIAH results are only presented in figures and not included in the text, making it difficult to quantitatively verify the claimed superiority.",
+        "The comparison with KIVI appears potentially unfair: the KIVI TrQA score on LLaMA3.1-8B (10.83) is drastically lower than the original model's 90.97, suggesting a possible setup issue or typo that needs clarification.",
+        "Related work coverage is incomplete; recent strong baselines such as H2O, PyramidKV, KVQuant, GEAR, and tensor-train-based approaches are not discussed or compared.",
+        "The evaluation is limited to LLaMA models (3.1-8B and 3.2-3B); generalizability to other architectures (e.g., Mistral, Qwen) is unverified.",
+        "The paper appears to be work in progress, deferring key efficiency experiments and kernel implementation details to a future version."
+      ],
+      "Originality": 3,
+      "Quality": 2,
+      "Clarity": 3,
+      "Significance": 2,
+      "Questions": [
+        "What are the actual memory savings (in bytes or percentage of total KV cache) and end-to-end inference latency/throughput improvements compared to baselines? Without any efficiency data, how can the practical benefits of the method be assessed?",
+        "How exactly is the set of dimensions to be compressed determined? Is the reconstruction MSE computed per-layer, per-head, or globally? What is the computational overhead of this selection process, and how sensitive is final performance to these choices?",
+        "Can you provide the exact numerical NIAH accuracy results (not just figures) for all methods at the tested context lengths and depths?",
+        "What is the effective memory compression ratio of FourierAttention compared to SnapKV, KIVI, and Palu under the settings used? Are the comparisons fair in terms of total KV cache memory footprint?",
+        "The paper states '76% of KV caches are compressed to a fixed length.' Does this translate to 76% memory savings, or is it just the fraction of dimensions compressed? Please clarify the effective compression ratio.",
+        "Why does the method perform notably worse than SnapKV on some LongBench tasks like QSum and QRpt? Are there specific task characteristics that explain this degradation?",
+        "How does the method scale to context lengths beyond 32k (e.g., 64k, 128k) where memory pressure is more severe?",
+        "The KIVI TrQA score on LLaMA3.1-8B (10.83) is drastically lower than the original model's 90.97. Is this a typo or a real result? If real, how is this a fair comparison?",
+        "Have you experimented with different numbers of Fourier coefficients (k=512)? How does performance vary with k?",
+        "What are the expected efficiency gains from FlashFourierAttention once completed? Can you provide a theoretical analysis or preliminary estimates of memory/latency improvements?"
+      ],
+      "Limitations": [
+        "The most critical limitation is the incomplete FlashFourierAttention kernel and the complete absence of efficiency measurements, which are essential to validate the core claim of memory-efficient deployment.",
+        "The performance gains over baselines are marginal and not consistently superior across benchmarks and models, raising questions about the practical advantage of the method over simpler token eviction approaches like SnapKV.",
+        "The evaluation is limited to LLaMA models; generalizability to other architectures (e.g., different head sizes, model scales, or positional encodings) is unknown.",
+        "The dimension specialization observation may be specific to certain model families and may not generalize.",
+        "The paper does not provide a theoretical analysis of the approximation error introduced by the Fourier compression or its impact on attention computation, nor does it discuss potential artifacts such as spectral leakage or boundary effects.",
+        "The calibration cost of determining the compression schema (which dimensions to compress) on validation data is not discussed.",
+        "Potential negative societal impact is not discussed, though as an efficiency method the impact is likely limited. However, reducing memory requirements could enable broader deployment of large models in resource-constrained settings, which could have dual-use implications."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 2,
+      "Presentation": 3,
+      "Contribution": 2,
+      "Overall": 4,
+      "Confidence": 5,
+      "Decision": "Reject"
+    },
+    "raw_response": "THOUGHT:\nAll five reviewers unanimously recommend rejection, and I agree. The paper presents a novel and interesting observation about head dimension specialization and a creative use of Fourier-based projection for KV cache compression. However, the submission is fundamentally incomplete for a conference paper: the custom kernel is explicitly \"still in progress,\" no efficiency measurements (memory, latency, throughput) are provided despite memory efficiency being the core motivation, and the performance claims are overstated given that results are only marginally competitive with or slightly worse than SnapKV on some benchmarks. The NIAH results are only in figures, the dimension selection methodology is vague, and several reviewers noted potential unfair comparisons (e.g., KIVI's abnormally low score). The consensus across all reviewers is that this is promising work-in-progress but not ready for publication. I will aggregate the reviews into a single meta-review that reflects these shared concerns while being constructive about the paper's strengths and potential.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper proposes FourierAttention, a training-free KV cache compression method for LLMs. The key insight is that transformer head dimensions have heterogeneous roles: lower dimensions capture local context while upper dimensions handle long-range dependencies, validated via noise perturbation experiments on NIAH tasks. FourierAttention compresses the long-context-insensitive (lower) dimensions using a translated Fourier transform (HiPPO-FourierT), projecting their temporal evolution onto fixed-length spectral coefficients, while preserving the long-context-sensitive upper dimensions completely. The method employs an asymmetric inverted-pyramid compression schema (more compression for V cache and lower layers) based on standard deviation analysis. The paper evaluates on LLaMA3.1-8B and LLaMA3.2-3B using LongBench and NIAH benchmarks, comparing against StreamingLLM, SnapKV, Palu, and KIVI. A custom Triton kernel (FlashFourierAttention) is mentioned but is explicitly stated as still in progress.\",\n  \"Strengths\": [\n    \"The observation of head dimension specialization (lower vs upper dimensions capturing local vs long-range context) is novel and well-validated through noise perturbation experiments, which is a solid empirical contribution.\",\n    \"The application of HiPPO-FourierT (Fourier basis) over polynomial bases (LegT) is well-motivated due to parallelizability and shows better reconstruction quality and downstream performance in the provided ablations.\",\n    \"The fine-grained asymmetric compression schema (V-priority and lower-layer-priority) is a thoughtful design choice, supported by ablation studies that demonstrate its advantage over uniform or inverted schemes.\",\n    \"The method is training-free and provides a principled theoretical framing via the HiPPO framework, which is a refreshing approach compared to purely heuristic compression methods.\",\n    \"The paper is generally clearly written and well-organized, with useful ablations on basis function choice and compression schemas that aid understanding of the design decisions.\"\n  ],\n  \"Weaknesses\": [\n    \"The paper is critically incomplete: the custom Triton kernel FlashFourierAttention is explicitly stated as 'still in progress,' and no efficiency experiments (memory consumption, latency, throughput) are reported. This is a major omission for a KV cache compression method whose central claim is memory efficiency.\",\n    \"The claim of 'best long-context accuracy' is overstated. On LongBench, the method is not consistently superior to SnapKV (e.g., on LLaMA3.1-8B, SnapKV achieves 37.07 avg vs 36.98 for FourierAttention), and performance is notably weaker on summarization tasks (QRpt, QSum).\",\n    \"The effective memory compression ratio and actual memory savings are not quantified or compared against baselines in an apples-to-apples manner. The statement that '76% of KV caches are compressed' does not translate directly to memory savings without accounting for the fixed-length representation and uncompressed dimensions.\",\n    \"The dimension selection mechanism (based on reconstruction MSE) is not fully specified: it is unclear whether it is per-layer, per-head, or global, how thresholds are set, and what the computational overhead of this selection process is. The circularity of compressing dimensions that are easy to reconstruct is not rigorously justified in relation to downstream performance.\",\n    \"The NIAH results are only presented in figures and not included in the text, making it difficult to quantitatively verify the claimed superiority.\",\n    \"The comparison with KIVI appears potentially unfair: the KIVI TrQA score on LLaMA3.1-8B (10.83) is drastically lower than the original model's 90.97, suggesting a possible setup issue or typo that needs clarification.\",\n    \"Related work coverage is incomplete; recent strong baselines such as H2O, PyramidKV, KVQuant, GEAR, and tensor-train-based approaches are not discussed or compared.\",\n    \"The evaluation is limited to LLaMA models (3.1-8B and 3.2-3B); generalizability to other architectures (e.g., Mistral, Qwen) is unverified.\",\n    \"The paper appears to be work in progress, deferring key efficiency experiments and kernel implementation details to a future version.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"What are the actual memory savings (in bytes or percentage of total KV cache) and end-to-end inference latency/throughput improvements compared to baselines? Without any efficiency data, how can the practical benefits of the method be assessed?\",\n    \"How exactly is the set of dimensions to be compressed determined? Is the reconstruction MSE computed per-layer, per-head, or globally? What is the computational overhead of this selection process, and how sensitive is final performance to these choices?\",\n    \"Can you provide the exact numerical NIAH accuracy results (not just figures) for all methods at the tested context lengths and depths?\",\n    \"What is the effective memory compression ratio of FourierAttention compared to SnapKV, KIVI, and Palu under the settings used? Are the comparisons fair in terms of total KV cache memory footprint?\",\n    \"The paper states '76% of KV caches are compressed to a fixed length.' Does this translate to 76% memory savings, or is it just the fraction of dimensions compressed? Please clarify the effective compression ratio.\",\n    \"Why does the method perform notably worse than SnapKV on some LongBench tasks like QSum and QRpt? Are there specific task characteristics that explain this degradation?\",\n    \"How does the method scale to context lengths beyond 32k (e.g., 64k, 128k) where memory pressure is more severe?\",\n    \"The KIVI TrQA score on LLaMA3.1-8B (10.83) is drastically lower than the original model's 90.97. Is this a typo or a real result? If real, how is this a fair comparison?\",\n    \"Have you experimented with different numbers of Fourier coefficients (k=512)? How does performance vary with k?\",\n    \"What are the expected efficiency gains from FlashFourierAttention once completed? Can you provide a theoretical analysis or preliminary estimates of memory/latency improvements?\"\n  ],\n  \"Limitations\": [\n    \"The most critical limitation is the incomplete FlashFourierAttention kernel and the complete absence of efficiency measurements, which are essential to validate the core claim of memory-efficient deployment.\",\n    \"The performance gains over baselines are marginal and not consistently superior across benchmarks and models, raising questions about the practical advantage of the method over simpler token eviction approaches like SnapKV.\",\n    \"The evaluation is limited to LLaMA models; generalizability to other architectures (e.g., different head sizes, model scales, or positional encodings) is unknown.\",\n    \"The dimension specialization observation may be specific to certain model families and may not generalize.\",\n    \"The paper does not provide a theoretical analysis of the approximation error introduced by the Fourier compression or its impact on attention computation, nor does it discuss potential artifacts such as spectral leakage or boundary effects.\",\n    \"The calibration cost of determining the compression schema (which dimensions to compress) on validation data is not discussed.\",\n    \"Potential negative societal impact is not discussed, though as an efficiency method the impact is likely limited. However, reducing memory requirements could enable broader deployment of large models in resource-constrained settings, which could have dual-use implications.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 5,\n  \"Decision\": \"Reject\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 7462,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 7462,
+      "completion_tokens": 1815,
+      "reasoning_tokens": 0,
+      "total_tokens": 9277
+    },
+    "attempts": 1,
+    "response_id": "a1822c03-4ad5-45eb-b119-d32daf5b4337"
+  },
+  "final_review": {
+    "Summary": "This paper proposes FourierAttention, a training-free KV cache compression method for LLMs. The key insight is that transformer head dimensions have heterogeneous roles: lower dimensions capture local context while upper dimensions handle long-range dependencies, validated via noise perturbation experiments on NIAH tasks. FourierAttention compresses the long-context-insensitive (lower) dimensions using a translated Fourier transform (HiPPO-FourierT), projecting their temporal evolution onto fixed-length spectral coefficients, while preserving the long-context-sensitive upper dimensions completely. The method employs an asymmetric inverted-pyramid compression schema (more compression for V cache and lower layers) based on standard deviation analysis. The paper evaluates on LLaMA3.1-8B and LLaMA3.2-3B using LongBench and NIAH benchmarks, comparing against StreamingLLM, SnapKV, Palu, and KIVI. A custom Triton kernel (FlashFourierAttention) is mentioned but is explicitly stated as still in progress.",
+    "Strengths": [
+      "The observation of head dimension specialization (lower vs upper dimensions capturing local vs long-range context) is novel and well-validated through noise perturbation experiments, which is a solid empirical contribution.",
+      "The application of HiPPO-FourierT (Fourier basis) over polynomial bases (LegT) is well-motivated due to parallelizability and shows better reconstruction quality and downstream performance in the provided ablations.",
+      "The fine-grained asymmetric compression schema (V-priority and lower-layer-priority) is a thoughtful design choice, supported by ablation studies that demonstrate its advantage over uniform or inverted schemes.",
+      "The method is training-free and provides a principled theoretical framing via the HiPPO framework, which is a refreshing approach compared to purely heuristic compression methods.",
+      "The paper is generally clearly written and well-organized, with useful ablations on basis function choice and compression schemas that aid understanding of the design decisions."
+    ],
+    "Weaknesses": [
+      "The paper is critically incomplete: the custom Triton kernel FlashFourierAttention is explicitly stated as 'still in progress,' and no efficiency experiments (memory consumption, latency, throughput) are reported. This is a major omission for a KV cache compression method whose central claim is memory efficiency.",
+      "The claim of 'best long-context accuracy' is overstated. On LongBench, the method is not consistently superior to SnapKV (e.g., on LLaMA3.1-8B, SnapKV achieves 37.07 avg vs 36.98 for FourierAttention), and performance is notably weaker on summarization tasks (QRpt, QSum).",
+      "The effective memory compression ratio and actual memory savings are not quantified or compared against baselines in an apples-to-apples manner. The statement that '76% of KV caches are compressed' does not translate directly to memory savings without accounting for the fixed-length representation and uncompressed dimensions.",
+      "The dimension selection mechanism (based on reconstruction MSE) is not fully specified: it is unclear whether it is per-layer, per-head, or global, how thresholds are set, and what the computational overhead of this selection process is. The circularity of compressing dimensions that are easy to reconstruct is not rigorously justified in relation to downstream performance.",
+      "The NIAH results are only presented in figures and not included in the text, making it difficult to quantitatively verify the claimed superiority.",
+      "The comparison with KIVI appears potentially unfair: the KIVI TrQA score on LLaMA3.1-8B (10.83) is drastically lower than the original model's 90.97, suggesting a possible setup issue or typo that needs clarification.",
+      "Related work coverage is incomplete; recent strong baselines such as H2O, PyramidKV, KVQuant, GEAR, and tensor-train-based approaches are not discussed or compared.",
+      "The evaluation is limited to LLaMA models (3.1-8B and 3.2-3B); generalizability to other architectures (e.g., Mistral, Qwen) is unverified.",
+      "The paper appears to be work in progress, deferring key efficiency experiments and kernel implementation details to a future version."
+    ],
+    "Originality": 3,
+    "Quality": 2,
+    "Clarity": 3,
+    "Significance": 2,
+    "Questions": [
+      "What are the actual memory savings (in bytes or percentage of total KV cache) and end-to-end inference latency/throughput improvements compared to baselines? Without any efficiency data, how can the practical benefits of the method be assessed?",
+      "How exactly is the set of dimensions to be compressed determined? Is the reconstruction MSE computed per-layer, per-head, or globally? What is the computational overhead of this selection process, and how sensitive is final performance to these choices?",
+      "Can you provide the exact numerical NIAH accuracy results (not just figures) for all methods at the tested context lengths and depths?",
+      "What is the effective memory compression ratio of FourierAttention compared to SnapKV, KIVI, and Palu under the settings used? Are the comparisons fair in terms of total KV cache memory footprint?",
+      "The paper states '76% of KV caches are compressed to a fixed length.' Does this translate to 76% memory savings, or is it just the fraction of dimensions compressed? Please clarify the effective compression ratio.",
+      "Why does the method perform notably worse than SnapKV on some LongBench tasks like QSum and QRpt? Are there specific task characteristics that explain this degradation?",
+      "How does the method scale to context lengths beyond 32k (e.g., 64k, 128k) where memory pressure is more severe?",
+      "The KIVI TrQA score on LLaMA3.1-8B (10.83) is drastically lower than the original model's 90.97. Is this a typo or a real result? If real, how is this a fair comparison?",
+      "Have you experimented with different numbers of Fourier coefficients (k=512)? How does performance vary with k?",
+      "What are the expected efficiency gains from FlashFourierAttention once completed? Can you provide a theoretical analysis or preliminary estimates of memory/latency improvements?"
+    ],
+    "Limitations": [
+      "The most critical limitation is the incomplete FlashFourierAttention kernel and the complete absence of efficiency measurements, which are essential to validate the core claim of memory-efficient deployment.",
+      "The performance gains over baselines are marginal and not consistently superior across benchmarks and models, raising questions about the practical advantage of the method over simpler token eviction approaches like SnapKV.",
+      "The evaluation is limited to LLaMA models; generalizability to other architectures (e.g., different head sizes, model scales, or positional encodings) is unknown.",
+      "The dimension specialization observation may be specific to certain model families and may not generalize.",
+      "The paper does not provide a theoretical analysis of the approximation error introduced by the Fourier compression or its impact on attention computation, nor does it discuss potential artifacts such as spectral leakage or boundary effects.",
+      "The calibration cost of determining the compression schema (which dimensions to compress) on validation data is not discussed.",
+      "Potential negative societal impact is not discussed, though as an efficiency method the impact is likely limited. However, reducing memory requirements could enable broader deployment of large models in resource-constrained settings, which could have dual-use implications."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 2,
+    "Presentation": 3,
+    "Contribution": 2,
+    "Overall": 4,
+    "Confidence": 4,
+    "Decision": "Reject"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 66527,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 57567,
+    "completion_tokens": 11744,
+    "reasoning_tokens": 0,
+    "total_tokens": 78271,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.00805938,
+    "output_usd": 0.00328832,
+    "total_usd": 0.01137279
+  },
+  "elapsed_seconds": 36.394,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Reject",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B126",
+    "filename": "B126.txt",
+    "blind_text_sha256": "48da9978ae07b36bb0f92a0084a0d88feb888dd688b07fa36e00a3e46208ebbd",
+    "characters": 35110,
+    "full_text_saved": false
+  }
+}

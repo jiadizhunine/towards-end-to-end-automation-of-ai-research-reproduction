@@ -1,0 +1,690 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:45:30.807128+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper proposes BEMA (Bias-Corrected Exponential Moving Average), a modification to standard EMA for stabilizing stochastic optimization in language model fine-tuning. The authors frame stabilizer design as a statistical estimation problem on an Ornstein-Uhlenbeck process, derive the MLE as the optimal estimator, and show that it removes the bias causing EMA's lag while retaining variance reduction. The practical algorithm is a simple two-line change to existing EMA implementations. Theoretical analysis provides provable acceleration over both EMA and vanilla training. Empirical evaluation on Qwen2.5-1.5B, Gemma3-1B, and Llama3.2-1B across multiple benchmarks (BoolQ, GSM8K, MMLU-HS) shows BEMA generally outperforms EMA and vanilla training, with extensive ablations on hyperparameters.",
+        "Strengths": [
+          "Novel theoretical framing of stabilizer design as statistical estimation on an OU process",
+          "Rigorous theoretical analysis with complete proofs (Girsanov, Cramer-Rao, MLE derivation)",
+          "Simple practical implementation requiring only two-line change to existing EMA",
+          "Extensive empirical evaluation across multiple models and benchmarks",
+          "Thorough hyperparameter ablations and sensitivity analysis",
+          "Honest discussion of limitations and cases where BEMA shows mixed results",
+          "Good code snippet and algorithm pseudocode for reproducibility",
+          "Theoretical results complement and explain empirical observations"
+        ],
+        "Weaknesses": [
+          "Theoretical model assumes quadratic loss (OU process), which limits generalizability claims",
+          "Practical implementation uses crude isotropic approximation (A = αI) instead of full Hessian",
+          "Mixed empirical results on smaller models (Gemma3-1B, Llama3.2-1B), especially for downstream tasks",
+          "Hyperparameter sensitivity (η especially) requires careful tuning; performance collapse at η=0.1 for BoolQ",
+          "Evaluation uses generation-based scoring, making direct comparison with standard benchmark scores difficult",
+          "No comparison with more recent variance reduction techniques or adaptive stabilizers",
+          "Limited analysis of computational overhead in wall-clock time",
+          "The theoretical optimality relies on knowing A, which is unavailable in practice"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "How sensitive is BEMA to the choice of η, and what guidelines can be provided for selecting it in practice?",
+          "Does BEMA provide benefits in pre-training scenarios, or is it specific to fine-tuning?",
+          "How does BEMA interact with other regularization techniques such as weight decay or dropout?",
+          "Can you provide more evidence for the claim that post-training is approximately convex?",
+          "What is the actual wall-clock time overhead of BEMA compared to standard EMA?",
+          "Can the theoretical framework be extended to adaptive optimizers like AdamW, which are used in all experiments?",
+          "Have you considered comparing BEMA with other bias-corrected averaging schemes or adaptive EMA approaches?",
+          "What happens when the loss landscape is significantly non-quadratic, e.g., during catastrophic forgetting scenarios?"
+        ],
+        "Limitations": [
+          "The quadratic approximation may not hold in all fine-tuning scenarios, especially with significant distribution shift",
+          "The practical implementation uses isotropic A, which may not capture direction-dependent curvature of the loss landscape",
+          "Results on smaller models (Gemma3-1B, Llama3.2-1B) show mixed gains, particularly for downstream tasks",
+          "No analysis of BEMA's effect on model calibration, uncertainty estimation, or out-of-distribution performance",
+          "Potential negative impact: widespread adoption of BEMA might mask underlying training instability issues rather than addressing root causes",
+          "The paper does not explore BEMA's interaction with other training paradigms like RLHF or GRPO, which are increasingly important"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes BEMA (Bias-Corrected Exponential Moving Average), a modification to standard EMA for stabilizing stochastic optimization in language model fine-tuning. The key theoretical contribution is framing stabilizer design as a statistical estimation problem on an Ornstein-Uhlenbeck process, deriving the MLE as the optimal estimator, and showing it removes the bias that causes EMA's \"lag\" while retaining variance reduction. The practical algorithm is a simple two-line change to existing EMA implementations.\n\nStrengths:\n- Strong theoretical foundation with rigorous proofs (Girsanov theorem, Cramer-Rao bounds, MLE derivation)\n- The insight of framing stabilization as statistical estimation is novel and well-motivated\n- Practical implementation is simple and drop-in compatible with existing EMA\n- Extensive empirical evaluation across multiple models (Qwen2.5-1.5B, Gemma3-1B, Llama3.2-1B) and benchmarks\n- Good ablations on hyperparameters (η, κ, τ, ρ, φ), learning rate decay, batch size\n- Honest discussion of limitations and cases where BEMA doesn't help (e.g., Llama3.2-1B instruction following issues)\n\nWeaknesses:\n- The theoretical model assumes quadratic loss (OU process), which is acknowledged but limits generalizability claims\n- The choice of A = αI in practice is quite crude compared to the theoretical optimal with full A\n- Empirical gains on some benchmarks (especially Llama3.2-1B) are modest or unclear\n- The paper doesn't compare against more recent stabilizers like SWA with adaptive scheduling or other variance reduction techniques\n- Evaluation uses generation-based scoring (not standard multiple-choice evaluation), making direct comparison with literature difficult\n- Some hyperparameter sensitivity (η especially) requires tuning; collapse at η=0.1 for BoolQ suggests fragility\n- The theoretical optimality result relies on knowing A, which is not available in practice\n\nOriginality: The framing of stabilizer design as statistical estimation on the OU process is novel and insightful. The MLE derivation and its practical instantiation as BEMA is a creative combination of stochastic calculus and deep learning practice.\n\nQuality: The theory is rigorous with complete proofs. The empirical evaluation is thorough with multiple models and benchmarks, though some results are mixed (especially for smaller models). The paper is honest about limitations.\n\nClarity: The paper is well-written and organized. The progression from theory to practice is clear. Code snippet helps implementation understanding.\n\nSignificance: The work addresses an important practical problem (training instability in LM fine-tuning). The proposed method is simple and could be widely adopted. The theoretical framework provides a foundation for further research on stabilizer design.\n\nQuestions:\n1. How sensitive is BEMA to the choice of η? The paper shows collapse at η=0.1 for BoolQ - what's the safe range?\n2. Does BEMA help in pre-training or only fine-tuning?\n3. How does BEMA interact with other regularization techniques like weight decay or dropout?\n4. The paper mentions \"approximately convex\" post-training - can you provide more evidence for this?\n5. What's the computational overhead of BEMA compared to EMA in wall-clock time?\n6. Can the theoretical framework be extended to adaptive optimizers like AdamW?\n\nLimitations:\n- The quadratic approximation may not hold in all fine-tuning scenarios\n- The practical implementation uses isotropic A, which may not capture direction-dependent curvature\n- Results on smaller models (Gemma3-1B, Llama3.2-1B) show mixed gains\n- No analysis of BEMA's effect on model calibration or uncertainty\n- Potential negative impact: if BEMA becomes standard practice, it may mask underlying stability issues in training pipelines\n\nEthical concerns: None identified.\n\nSoundness: 3 (good) - The theory is solid, but the practical approximation (A = αI) and mixed empirical results on some models temper the claims.\n\nPresentation: 4 (excellent) - Well-organized, clear writing, good use of figures and code snippet.\n\nContribution: 3 (good) - Novel theoretical framework and practical algorithm, but the empirical gains are not uniform across all settings.\n\nOverall: 7 (Accept) - The paper makes a solid contribution with novel theoretical insights and a practical algorithm. The simple implementation and drop-in compatibility make it likely to be adopted. However, the mixed results on some models and hyperparameter sensitivity prevent it from being a stronger accept.\n\nConfidence: 4 (confident) - I'm familiar with the related work on stochastic optimization and EMA, and I've checked the main theoretical claims carefully.\n\nDecision: Accept\n\nREVIEW JSON:\n```json\n{\n\"Summary\": \"The paper proposes BEMA (Bias-Corrected Exponential Moving Average), a modification to standard EMA for stabilizing stochastic optimization in language model fine-tuning. The authors frame stabilizer design as a statistical estimation problem on an Ornstein-Uhlenbeck process, derive the MLE as the optimal estimator, and show that it removes the bias causing EMA's lag while retaining variance reduction. The practical algorithm is a simple two-line change to existing EMA implementations. Theoretical analysis provides provable acceleration over both EMA and vanilla training. Empirical evaluation on Qwen2.5-1.5B, Gemma3-1B, and Llama3.2-1B across multiple benchmarks (BoolQ, GSM8K, MMLU-HS) shows BEMA generally outperforms EMA and vanilla training, with extensive ablations on hyperparameters.\",\n\"Strengths\": [\n\"Novel theoretical framing of stabilizer design as statistical estimation on an OU process\",\n\"Rigorous theoretical analysis with complete proofs (Girsanov, Cramer-Rao, MLE derivation)\",\n\"Simple practical implementation requiring only two-line change to existing EMA\",\n\"Extensive empirical evaluation across multiple models and benchmarks\",\n\"Thorough hyperparameter ablations and sensitivity analysis\",\n\"Honest discussion of limitations and cases where BEMA shows mixed results\",\n\"Good code snippet and algorithm pseudocode for reproducibility\",\n\"Theoretical results complement and explain empirical observations\"\n],\n\"Weaknesses\": [\n\"Theoretical model assumes quadratic loss (OU process), which limits generalizability claims\",\n\"Practical implementation uses crude isotropic approximation (A = αI) instead of full Hessian\",\n\"Mixed empirical results on smaller models (Gemma3-1B, Llama3.2-1B), especially for downstream tasks\",\n\"Hyperparameter sensitivity (η especially) requires careful tuning; performance collapse at η=0.1 for BoolQ\",\n\"Evaluation uses generation-based scoring, making direct comparison with standard benchmark scores difficult\",\n\"No comparison with more recent variance reduction techniques or adaptive stabilizers\",\n\"Limited analysis of computational overhead in wall-clock time\",\n\"The theoretical optimality relies on knowing A, which is unavailable in practice\"\n],\n\"Originality\": 4,\n\"Quality\": 3,\n\"Clarity\": 4,\n\"Significance\": 3,\n\"Questions\": [\n\"How sensitive is BEMA to the choice of η, and what guidelines can be provided for selecting it in practice?\",\n\"Does BEMA provide benefits in pre-training scenarios, or is it specific to fine-tuning?\",\n\"How does BEMA interact with other regularization techniques such as weight decay or dropout?\",\n\"Can you provide more evidence for the claim that post-training is approximately convex?\",\n\"What is the actual wall-clock time overhead of BEMA compared to standard EMA?\",\n\"Can the theoretical framework be extended to adaptive optimizers like AdamW, which are used in all experiments?\",\n\"Have you considered comparing BEMA with other bias-corrected averaging schemes or adaptive EMA approaches?\",\n\"What happens when the loss landscape is significantly non-quadratic, e.g., during catastrophic forgetting scenarios?\"\n],\n\"Limitations\": [\n\"The quadratic approximation may not hold in all fine-tuning scenarios, especially with significant distribution shift\",\n\"The practical implementation uses isotropic A, which may not capture direction-dependent curvature of the loss landscape\",\n\"Results on smaller models (Gemma3-1B, Llama3.2-1B) show mixed gains, particularly for downstream tasks\",\n\"No analysis of BEMA's effect on model calibration, uncertainty estimation, or out-of-distribution performance\",\n\"Potential negative impact: widespread adoption of BEMA might mask underlying training instability issues rather than addressing root causes\",\n\"The paper does not explore BEMA's interaction with other training paradigms like RLHF or GRPO, which are increasingly important\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 4,\n\"Contribution\": 3,\n\"Overall\": 7,\n\"Confidence\": 4,\n\"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 37633,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 35841,
+        "completion_tokens": 1784,
+        "reasoning_tokens": 0,
+        "total_tokens": 39417
+      },
+      "attempts": 1,
+      "response_id": "85ea8504-2785-4c10-ac71-c35766192d64"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "This paper introduces BEMA (Bias-Corrected Exponential Moving Average), a modification to standard EMA for stabilizing stochastic optimization in language model fine-tuning. The authors formulate stabilization as a statistical estimation problem for the Ornstein-Uhlenbeck (OU) process, derive the Maximum Likelihood Estimator (MLE) as the optimal stabilizer, and show that it eliminates the bias/lag that plagues standard EMA while maintaining variance reduction. The practical implementation requires only a two-line change to existing EMA code. Theoretical analysis proves BEMA achieves the Cramer-Rao lower bound for the OU process. Empirical evaluation on Qwen2.5-1.5B, Gemma3-1B, and Llama3.2-1B models fine-tuned on Tulu-3-SFT shows consistent improvements over EMA and vanilla training on BoolQ, GSM8K, and MMLU-HS benchmarks, along with extensive ablations over hyperparameters.",
+        "Strengths": [
+          "Novel theoretical framework: Formulating stabilizer design as statistical estimation for the OU process and deriving the MLE is a fresh and principled approach",
+          "Simple practical implementation: BEMA requires only a two-line change to existing EMA code, making it easy to adopt",
+          "Solid theoretical foundation: The MLE derivation and optimality results are rigorous, and the paper demonstrates BEMA achieves the Cramer-Rao lower bound",
+          "Comprehensive empirical evaluation: Multiple models, benchmarks, and extensive hyperparameter ablations",
+          "Clear writing and presentation: The paper is well-organized with clear motivation and explanation of the method"
+        ],
+        "Weaknesses": [
+          "Theory-practice gap: The OU process model is quite idealized, and the practical simplification to A = αI is a significant departure from the theoretical framework",
+          "Modest empirical gains in some settings: For Llama3.2-1B, the paper admits vanilla training sometimes outperforms both EMA and BEMA",
+          "Limited comparison to recent baselines: The paper doesn't comprehensively compare against more recent stabilization techniques or learning rate schedule approaches",
+          "Limited training duration: Only 2 epochs of fine-tuning are considered, and it's unclear if benefits persist for longer training runs",
+          "The paper doesn't deeply explore interaction with different optimizers (e.g., SGD vs. AdamW) despite using AdamW throughout"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "How sensitive is BEMA performance to the choice of decay rate γ? The paper fixes γ=1.0 but doesn't explore this hyperparameter.",
+          "Would the benefits of BEMA persist or diminish with longer training runs (more than 2 epochs)?",
+          "How does BEMA interact with different optimizers, particularly SGD with momentum or other adaptive methods besides AdamW?",
+          "Could the bias correction term cause instability when the loss landscape is highly non-convex and the quadratic approximation fails significantly?",
+          "What would happen if the Hessian A were estimated more accurately (e.g., using curvature information from Adam's second moment estimates) rather than using the isotropic approximation?"
+        ],
+        "Limitations": [
+          "The theoretical analysis relies on the OU process model, which is a significant idealization of real LM training dynamics",
+          "The practical implementation uses an isotropic approximation for the Hessian (A = αI), which may not capture important curvature information",
+          "Empirical gains are inconsistent across models, with limited improvements for Llama3.2-1B",
+          "The paper doesn't address potential negative societal impacts, though the technique itself appears benign",
+          "Evaluation is limited to SFT; applicability to RLHF or other training paradigms is not explored"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces BEMA (Bias-Corrected Exponential Moving Average), a modification to standard EMA for stabilizing stochastic optimization in language model fine-tuning. The key idea is to derive the optimal estimator (MLE) for the Ornstein-Uhlenbeck process and use it to correct the bias in EMA. The paper provides theoretical analysis showing BEMA achieves the variance-reduction of EMA while eliminating the lag/bias, and empirical validation on several LM fine-tuning tasks.\n\nStrengths:\n1. The theoretical motivation is solid - deriving the MLE for the OU process and showing its optimality is a nice contribution.\n2. The practical implementation is simple (two-line change to EMA), making it easy to adopt.\n3. The empirical evaluation is fairly comprehensive with multiple models (Qwen2.5-1.5B, Gemma3-1B, Llama3.2-1B), multiple benchmarks (BoolQ, GSM8K, MMLU-HS), and ablations over hyperparameters.\n4. The paper is generally well-written and clear.\n\nWeaknesses:\n1. The theoretical model (OU process) is quite idealized - the connection to real LM training is somewhat hand-wavy. The paper acknowledges this but the gap is significant.\n2. The empirical gains, while consistent, are sometimes modest (especially for Llama3.2-1B where the paper admits vanilla training sometimes outperforms).\n3. The choice of A = αI in practice is a significant simplification from the theory - the paper doesn't deeply investigate how sensitive results are to this choice.\n4. The paper doesn't compare against more recent stabilization techniques or learning rate schedules in a comprehensive way.\n5. The evaluation uses generation-based metrics which makes scores lower than typical, but this is acknowledged and defended.\n\nOriginality: The idea of using the MLE for the OU process to debias EMA is novel and clever. The connection between statistical estimation theory and stabilizer design is fresh.\n\nQuality: The theoretical results appear sound (though I didn't check all proofs in the appendix carefully). The empirical work is reasonably thorough but could be stronger in terms of comparison baselines.\n\nClarity: The paper is well-organized and clearly written. The motivation is clear and the practical implementation is well-explained.\n\nSignificance: If BEMA genuinely provides consistent improvements over EMA with minimal implementation overhead, this could be valuable for practitioners. The theoretical framework also opens up interesting directions for future work.\n\nQuestions:\n1. How sensitive is BEMA to the choice of the decay rate γ? The paper fixes γ=1.0, but doesn't explore this.\n2. What happens with longer training runs? The paper only trains for 2 epochs - would the benefits persist or diminish?\n3. How does BEMA interact with different optimizers (e.g., SGD with momentum vs. AdamW)?\n4. Could the bias correction term cause issues when the loss landscape is highly non-convex and the quadratic approximation fails badly?\n\nLimitations:\n- The paper doesn't deeply address potential negative societal impacts (though this is a fairly benign optimization technique).\n- The theoretical model may not capture important aspects of real LM training.\n- Performance on some models (especially Llama3.2-1B) shows limited gains.\n\nEthical Concerns: None significant - this is an optimization technique with no apparent ethical issues.\n\nOverall assessment: This is a solid paper with a nice theoretical contribution and reasonable empirical validation. The idea is novel and practically useful. However, the gap between theory and practice is significant, and the empirical gains are sometimes modest. I'd rate this as a borderline accept - the theoretical contribution is strong, but the empirical validation could be more comprehensive. Given the simplicity of implementation and potential utility, I lean towards acceptance.\n\nDecision: Accept (borderline)\n\nConfidence: 4 (I'm fairly confident in my assessment, though I didn't check all mathematical details carefully)\n\nRatings:\n- Originality: 4 (very high)\n- Quality: 3 (good)\n- Clarity: 4 (excellent)\n- Significance: 3 (good)\n- Soundness: 3 (good)\n- Presentation: 4 (excellent)\n- Contribution: 3 (good)\n- Overall: 6 (Weak Accept)\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper introduces BEMA (Bias-Corrected Exponential Moving Average), a modification to standard EMA for stabilizing stochastic optimization in language model fine-tuning. The authors formulate stabilization as a statistical estimation problem for the Ornstein-Uhlenbeck (OU) process, derive the Maximum Likelihood Estimator (MLE) as the optimal stabilizer, and show that it eliminates the bias/lag that plagues standard EMA while maintaining variance reduction. The practical implementation requires only a two-line change to existing EMA code. Theoretical analysis proves BEMA achieves the Cramer-Rao lower bound for the OU process. Empirical evaluation on Qwen2.5-1.5B, Gemma3-1B, and Llama3.2-1B models fine-tuned on Tulu-3-SFT shows consistent improvements over EMA and vanilla training on BoolQ, GSM8K, and MMLU-HS benchmarks, along with extensive ablations over hyperparameters.\",\n  \"Strengths\": [\n    \"Novel theoretical framework: Formulating stabilizer design as statistical estimation for the OU process and deriving the MLE is a fresh and principled approach\",\n    \"Simple practical implementation: BEMA requires only a two-line change to existing EMA code, making it easy to adopt\",\n    \"Solid theoretical foundation: The MLE derivation and optimality results are rigorous, and the paper demonstrates BEMA achieves the Cramer-Rao lower bound\",\n    \"Comprehensive empirical evaluation: Multiple models, benchmarks, and extensive hyperparameter ablations\",\n    \"Clear writing and presentation: The paper is well-organized with clear motivation and explanation of the method\"\n  ],\n  \"Weaknesses\": [\n    \"Theory-practice gap: The OU process model is quite idealized, and the practical simplification to A = αI is a significant departure from the theoretical framework\",\n    \"Modest empirical gains in some settings: For Llama3.2-1B, the paper admits vanilla training sometimes outperforms both EMA and BEMA\",\n    \"Limited comparison to recent baselines: The paper doesn't comprehensively compare against more recent stabilization techniques or learning rate schedule approaches\",\n    \"Limited training duration: Only 2 epochs of fine-tuning are considered, and it's unclear if benefits persist for longer training runs\",\n    \"The paper doesn't deeply explore interaction with different optimizers (e.g., SGD vs. AdamW) despite using AdamW throughout\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 4,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How sensitive is BEMA performance to the choice of decay rate γ? The paper fixes γ=1.0 but doesn't explore this hyperparameter.\",\n    \"Would the benefits of BEMA persist or diminish with longer training runs (more than 2 epochs)?\",\n    \"How does BEMA interact with different optimizers, particularly SGD with momentum or other adaptive methods besides AdamW?\",\n    \"Could the bias correction term cause instability when the loss landscape is highly non-convex and the quadratic approximation fails significantly?\",\n    \"What would happen if the Hessian A were estimated more accurately (e.g., using curvature information from Adam's second moment estimates) rather than using the isotropic approximation?\"\n  ],\n  \"Limitations\": [\n    \"The theoretical analysis relies on the OU process model, which is a significant idealization of real LM training dynamics\",\n    \"The practical implementation uses an isotropic approximation for the Hessian (A = αI), which may not capture important curvature information\",\n    \"Empirical gains are inconsistent across models, with limited improvements for Llama3.2-1B\",\n    \"The paper doesn't address potential negative societal impacts, though the technique itself appears benign\",\n    \"Evaluation is limited to SFT; applicability to RLHF or other training paradigms is not explored\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 4,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 37633,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 35841,
+        "completion_tokens": 1732,
+        "reasoning_tokens": 0,
+        "total_tokens": 39365
+      },
+      "attempts": 1,
+      "response_id": "3279bbf2-567a-4f90-8f13-e3446de157b9"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "This paper introduces BEMA (Bias-Corrected Exponential Moving Average), a novel stabilizer for stochastic optimization in language model fine-tuning. The authors frame stabilization as a statistical estimation problem and, in the context of a stochastic quadratic (Ornstein-Uhlenbeck) model, derive the Maximum Likelihood Estimator (MLE) for the optimum. This MLE, which corrects the bias of standard EMA, forms the basis of BEMA. The paper provides theoretical guarantees showing that BEMA matches the Cramer-Rao lower bound, making it asymptotically optimal, and demonstrates empirically that BEMA outperforms both vanilla training and EMA on a variety of LM fine-tuning benchmarks (BoolQ, GSM8K, MMLU-HS) and models (Qwen2.5-1.5B, Gemma3-1B, Llama3.2-1B). The practical implementation requires only a small change to existing EMA code.",
+        "Strengths": [
+          "Novel and theoretically grounded approach: Deriving a bias-corrected average from the MLE of an OU process is an original contribution that provides a principled solution to the known EMA lag problem.",
+          "Solid theoretical analysis: The paper provides a clear theoretical framework, proves the optimality of the proposed MLE (matching the Cramer-Rao bound), and characterizes its finite-time performance. The proofs are deferred to an appendix but appear rigorous.",
+          "Extensive empirical validation: The authors conduct a thorough empirical study across multiple model sizes (1B-1.5B), diverse benchmarks, and a wide range of hyperparameter settings, providing strong evidence for the practical benefits of BEMA.",
+          "Clear and practical contribution: BEMA is presented as a simple, drop-in replacement for EMA, requiring only a minor code change, which significantly lowers the barrier for adoption.",
+          "Honest evaluation: The paper acknowledges limitations, such as the scalar approximation of the Hessian, the sometimes modest gains on smaller models, and the focus on SFT, without overclaiming its results."
+        ],
+        "Weaknesses": [
+          "Theory-practice gap: The theoretical optimality relies on the full knowledge of the Hessian matrix A, but the practical implementation uses a scalar approximation (alpha_t * I). The paper does not provide a rigorous justification for why this approximation works well, relying instead on empirical observation.",
+          "Limited comparison to recent stabilizers: While comparisons to EMA, OUEMA, and DEMA are included, a comparison to other modern bias-corrected or adaptive averaging techniques (e.g., Switch EMA, Noisy EMA) would strengthen the empirical claims of superiority.",
+          "Modest gains on some models: The improvements on Llama3.2-1B are noted as modest, and the paper attributes this to the model's poor instruction-following. This limits the generalizability of the claims across all model families.",
+          "Focus on SFT only: The paper exclusively evaluates BEMA on SFT. While this is a valid and important setting, the paper's motivation (GVA in closed-loop) also applies to other post-training paradigms like RLHF, which are left for future work."
+        ],
+        "Originality": 4,
+        "Quality": 4,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "The practical BEMA algorithm uses A = alpha_t * I. How sensitive is the performance to the choice of the functional form of alpha_t? Have you considered using a diagonal approximation of A from the AdamW optimizer's second moment estimate, which is already computed during training?",
+          "In the theoretical model, the MLE is derived for the continuous-time OU process. How does the discretization (finite step size) affect the optimality of BEMA? Have you considered a discrete-time analogue of the MLE?",
+          "The paper shows that the choice of tau (burn-in time) is optimal at 0. Could this be because the pre-trained model is already a good estimate of the minimum, making the initial bias correction less important? Would the conclusion change if starting from a randomly initialized model?",
+          "What is the theoretical or empirical justification for the specific polynomial decay schedule for the EMA weights (kappa)? How does the optimal kappa interact with the learning rate schedule and the choice of eta?",
+          "Have you considered comparing BEMA to simply using a larger batch size or a more aggressive learning rate decay schedule, which are alternative methods for reducing gradient variance?",
+          "For the Llama3.2-1B results, where the model fails to follow instructions, could the evaluation protocol (e.g., using Qwen's chat template) be a confounding factor? Would a model-specific evaluation protocol yield clearer results?"
+        ],
+        "Limitations": [
+          "The primary limitation is the gap between the theoretical model and the practical algorithm: the scalar approximation of the Hessian is a heuristic that is not fully theoretically justified.",
+          "The empirical evaluation is limited to SFT and does not cover other important post-training paradigms such as RLHF or GRPO.",
+          "The gains on some models (e.g., Llama3.2-1B) are modest, and the paper's evaluation is confounded by the model's inherent instruction-following capabilities.",
+          "The computational cost of the BEMA update, especially with frequent updates (small phi), is not thoroughly benchmarked against EMA, which could be a practical concern.",
+          "The paper does not discuss potential negative societal impacts of the work. While this is a general optimization method, its application to improving LMs could contribute to the development of more capable AI systems, with associated risks."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 4,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes BEMA (Bias-Corrected Exponential Moving Average), a modification to standard EMA for stabilizing stochastic optimization, particularly in the context of fine-tuning language models. The authors provide a theoretical analysis in the context of stochastic quadratic optimization (OU process), deriving the MLE for the minimum, which leads to the BEMA update rule. They then validate the approach empirically on several benchmark tasks with Qwen2.5-1.5B, Gemma3-1B, and Llama3.2-1B models.\n\nThe paper is well-structured, with a clear motivation: EMA reduces variance but introduces bias (lag), and BEMA aims to correct this bias. The theoretical contributions (deriving the MLE and showing its optimality) are solid. The empirical evaluation is extensive, covering multiple models, tasks, and hyperparameter sensitivity analyses.\n\nStrengths:\n- Novel approach: Applying MLE from OU process theory to design a bias-corrected EMA is a novel and theoretically motivated idea.\n- Solid theory: The theoretical section is rigorous, with clear propositions and proofs (deferred to appendix). The derivation of the MLE and its optimality (matching the Cramer-Rao lower bound) is a strong contribution.\n- Extensive empirical evaluation: The paper includes experiments on multiple models (Qwen2.5-1.5B, Gemma3-1B, Llama3.2-1B), multiple benchmarks (BoolQ, GSM8K, MMLU-HS), and thorough ablations on hyperparameters.\n- Practical: BEMA is described as a simple two-line change to EMA, making it easy to adopt.\n\nWeaknesses:\n- The practical implementation (Algorithm 1) uses a scalar approximation for the Hessian matrix A (A = alpha_t * I), which is a significant departure from the theoretical MLE that assumes knowledge of the full matrix A. The paper acknowledges this but the justification for why the scalar approximation works well empirically is not deeply analyzed.\n- The empirical gains are sometimes modest, especially on the smaller models (Llama3.2-1B), where the paper notes the model's poor instruction-following capabilities confound the results.\n- The paper focuses primarily on SFT; the discussion of broader applicability (RLHF, etc.) is left as future work.\n- The paper does not compare BEMA to other recent bias-correction methods for EMA, such as the \"Noisy EMA\" or \"Switch EMA\" approaches, which might be relevant baselines. The comparison to DEMA and OUEMA is good, but a comparison to more recent empirical stabilizers would be stronger.\n\nOverall, this is a technically sound and well-written paper with a novel theoretical contribution and a practical algorithm. The empirical results are generally positive, showing improvements over EMA and vanilla training. The main concerns are the gap between theory and practice (scalar approximation of A) and the sometimes modest empirical gains. However, the paper is honest about these limitations and the theoretical motivation is compelling. I lean towards acceptance.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper introduces BEMA (Bias-Corrected Exponential Moving Average), a novel stabilizer for stochastic optimization in language model fine-tuning. The authors frame stabilization as a statistical estimation problem and, in the context of a stochastic quadratic (Ornstein-Uhlenbeck) model, derive the Maximum Likelihood Estimator (MLE) for the optimum. This MLE, which corrects the bias of standard EMA, forms the basis of BEMA. The paper provides theoretical guarantees showing that BEMA matches the Cramer-Rao lower bound, making it asymptotically optimal, and demonstrates empirically that BEMA outperforms both vanilla training and EMA on a variety of LM fine-tuning benchmarks (BoolQ, GSM8K, MMLU-HS) and models (Qwen2.5-1.5B, Gemma3-1B, Llama3.2-1B). The practical implementation requires only a small change to existing EMA code.\",\n  \"Strengths\": [\n    \"Novel and theoretically grounded approach: Deriving a bias-corrected average from the MLE of an OU process is an original contribution that provides a principled solution to the known EMA lag problem.\",\n    \"Solid theoretical analysis: The paper provides a clear theoretical framework, proves the optimality of the proposed MLE (matching the Cramer-Rao bound), and characterizes its finite-time performance. The proofs are deferred to an appendix but appear rigorous.\",\n    \"Extensive empirical validation: The authors conduct a thorough empirical study across multiple model sizes (1B-1.5B), diverse benchmarks, and a wide range of hyperparameter settings, providing strong evidence for the practical benefits of BEMA.\",\n    \"Clear and practical contribution: BEMA is presented as a simple, drop-in replacement for EMA, requiring only a minor code change, which significantly lowers the barrier for adoption.\",\n    \"Honest evaluation: The paper acknowledges limitations, such as the scalar approximation of the Hessian, the sometimes modest gains on smaller models, and the focus on SFT, without overclaiming its results.\"\n  ],\n  \"Weaknesses\": [\n    \"Theory-practice gap: The theoretical optimality relies on the full knowledge of the Hessian matrix A, but the practical implementation uses a scalar approximation (alpha_t * I). The paper does not provide a rigorous justification for why this approximation works well, relying instead on empirical observation.\",\n    \"Limited comparison to recent stabilizers: While comparisons to EMA, OUEMA, and DEMA are included, a comparison to other modern bias-corrected or adaptive averaging techniques (e.g., Switch EMA, Noisy EMA) would strengthen the empirical claims of superiority.\",\n    \"Modest gains on some models: The improvements on Llama3.2-1B are noted as modest, and the paper attributes this to the model's poor instruction-following. This limits the generalizability of the claims across all model families.\",\n    \"Focus on SFT only: The paper exclusively evaluates BEMA on SFT. While this is a valid and important setting, the paper's motivation (GVA in closed-loop) also applies to other post-training paradigms like RLHF, which are left for future work.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 4,\n  \"Clarity\": 4,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"The practical BEMA algorithm uses A = alpha_t * I. How sensitive is the performance to the choice of the functional form of alpha_t? Have you considered using a diagonal approximation of A from the AdamW optimizer's second moment estimate, which is already computed during training?\",\n    \"In the theoretical model, the MLE is derived for the continuous-time OU process. How does the discretization (finite step size) affect the optimality of BEMA? Have you considered a discrete-time analogue of the MLE?\",\n    \"The paper shows that the choice of tau (burn-in time) is optimal at 0. Could this be because the pre-trained model is already a good estimate of the minimum, making the initial bias correction less important? Would the conclusion change if starting from a randomly initialized model?\",\n    \"What is the theoretical or empirical justification for the specific polynomial decay schedule for the EMA weights (kappa)? How does the optimal kappa interact with the learning rate schedule and the choice of eta?\",\n    \"Have you considered comparing BEMA to simply using a larger batch size or a more aggressive learning rate decay schedule, which are alternative methods for reducing gradient variance?\",\n    \"For the Llama3.2-1B results, where the model fails to follow instructions, could the evaluation protocol (e.g., using Qwen's chat template) be a confounding factor? Would a model-specific evaluation protocol yield clearer results?\"\n  ],\n  \"Limitations\": [\n    \"The primary limitation is the gap between the theoretical model and the practical algorithm: the scalar approximation of the Hessian is a heuristic that is not fully theoretically justified.\",\n    \"The empirical evaluation is limited to SFT and does not cover other important post-training paradigms such as RLHF or GRPO.\",\n    \"The gains on some models (e.g., Llama3.2-1B) are modest, and the paper's evaluation is confounded by the model's inherent instruction-following capabilities.\",\n    \"The computational cost of the BEMA update, especially with frequent updates (small phi), is not thoroughly benchmarked against EMA, which could be a practical concern.\",\n    \"The paper does not discuss potential negative societal impacts of the work. While this is a general optimization method, its application to improving LMs could contribute to the development of more capable AI systems, with associated risks.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 4,\n  \"Presentation\": 4,\n  \"Contribution\": 3,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 37633,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 35841,
+        "completion_tokens": 1867,
+        "reasoning_tokens": 0,
+        "total_tokens": 39500
+      },
+      "attempts": 1,
+      "response_id": "2656a48d-2fc1-412c-a9c7-2eb0bce4c24a"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper proposes BEMA (Bias-Corrected Exponential Moving Average), a novel stabilization technique for stochastic optimization in language model fine-tuning. The authors derive BEMA from the Maximum Likelihood Estimator of the Ornstein-Uhlenbeck process, which models the continuous-time limit of SGD on quadratic losses. BEMA corrects the bias inherent in standard EMA by adding a term proportional to the total displacement of the optimization trajectory. The paper provides theoretical analysis showing BEMA achieves the Cramer-Rao lower bound, and demonstrates through extensive experiments on multiple LM benchmarks (BoolQ, GSM8K, MMLU-HS) and models (Qwen2.5-1.5B, Gemma3-1B, Llama3.2-1B) that BEMA outperforms both vanilla training and EMA in terms of convergence speed and final performance.",
+        "Strengths": [
+          "Theoretical contribution is rigorous and well-motivated, deriving the optimal stabilizer from first principles via MLE for the OU process",
+          "Practical implementation is simple (two-line code change from EMA) and computationally efficient",
+          "Extensive empirical evaluation across multiple models, benchmarks, and ablations",
+          "Clear writing and logical flow from theory to practice",
+          "Honest assessment of limitations, including cases where BEMA's benefits are modest"
+        ],
+        "Weaknesses": [
+          "The theoretical analysis relies on the quadratic loss assumption, which may not fully capture the complexity of LM training landscapes",
+          "Empirical gains are modest in some settings (e.g., Llama3.2-1B) and the paper does not fully explore when BEMA is most beneficial",
+          "Multiple new hyperparameters (η, κ, τ, ρ, φ) are introduced, which may hinder practical adoption despite demonstrated robustness",
+          "The comparison with OUEMA lacks a clear theoretical explanation for why BEMA is superior in practice",
+          "Limited to small models (1-1.5B parameters); scalability to larger models is unclear"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How should practitioners set the α_t parameter (η) in practice? The paper shows sensitivity to this parameter but does not provide clear guidelines for choosing it without extensive tuning.",
+          "Does BEMA provide benefits when used with optimizers other than AdamW, such as SGD with momentum or Shampoo? The theoretical analysis is based on SGD, but all experiments use AdamW.",
+          "How does BEMA interact with other common stabilization techniques like learning rate warmup, gradient clipping, or weight decay? Could these be complementary or redundant?",
+          "The paper shows that increasing update frequency φ accelerates convergence but risks overfitting. Is there a principled way to choose φ, or is it purely empirical?",
+          "Can the theoretical framework be extended to non-quadratic losses or to account for the discrete-time nature of actual training? What are the key limitations of the OU process approximation?"
+        ],
+        "Limitations": [
+          "The empirical evaluation is limited to SFT and small models (1-1.5B parameters); applicability to larger models or other training paradigms (RLHF, GRPO) is unexplored",
+          "The paper does not provide a detailed comparison of computational overhead, particularly the costs associated with storing θ_0 and the frequency of BEMA updates",
+          "The hyperparameter space is large, and while the paper demonstrates robustness, it does not provide a systematic guide for practitioners to configure BEMA for new tasks",
+          "Potential negative societal impacts of improved LM fine-tuning are not discussed",
+          "The theoretical framework relies on strong assumptions (quadratic loss, isotropic noise) that may not hold in practice, and the paper does not fully characterize when these assumptions break down"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes BEMA (Bias-Corrected Exponential Moving Average), a modification of EMA for stabilizing stochastic optimization in language model fine-tuning. The key idea is to correct the bias in EMA by adding a term proportional to the total displacement of the trajectory, derived from the MLE for the Ornstein-Uhlenbeck process. The paper provides theoretical analysis showing that BEMA achieves the Cramer-Rao lower bound and empirically demonstrates improvements over EMA and vanilla training on several benchmarks.\n\nStrengths:\n1. The theoretical motivation is rigorous and well-developed. The derivation of the MLE for the OU process and the subsequent practical instantiation as BEMA is elegant and well-justified.\n2. The empirical evaluation is extensive, covering multiple models (Qwen, Gemma, Llama), multiple benchmarks (BoolQ, GSM8K, MMLU-HS), and thorough ablations.\n3. The paper is clearly written and well-organized. The connection between the theory and practice is well-explained.\n4. BEMA is a simple, practical intervention requiring only a two-line code change, making it easily adoptable.\n\nWeaknesses:\n1. The theoretical analysis is based on the OU process (quadratic loss), which is a significant simplification of real LM training. The paper acknowledges this but the gap between theory and practice could be better addressed.\n2. The empirical gains, while consistent, appear modest in some cases (e.g., Llama3.2-1B). The paper acknowledges this but could provide more discussion on when BEMA is most beneficial.\n3. The paper introduces several hyperparameters (η, κ, τ, ρ, φ) which might make it less practical for practitioners. While the paper shows robustness, the interaction between these parameters is not fully explored.\n4. The comparison with OUEMA is interesting but the paper does not clearly explain why BEMA is theoretically superior to OUEMA in the practical setting (since OUEMA is also unbiased).\n\nQuestions:\n1. The paper claims BEMA is \"theoretically motivated\" but the practical implementation uses A = α_t I. How sensitive is BEMA to the choice of α_t? The paper shows some results but does not provide clear guidance on how to set this in practice.\n2. The paper mentions that BEMA can be seen as a \"drop-in replacement\" for EMA. How does BEMA interact with other stabilization techniques like learning rate warmup or gradient clipping?\n3. The theoretical analysis assumes continuous time. How well does the discrete-time implementation match the theory? Are there any discretization effects that could be problematic?\n4. The paper shows BEMA works well with AdamW. Does BEMA provide any benefit when used with SGD or other optimizers?\n\nLimitations:\n1. The paper focuses on SFT and does not explore other training paradigms like RLHF or GRPO.\n2. The evaluation is limited to small models (1-1.5B parameters). It is unclear if the benefits of BEMA scale to larger models.\n3. The paper does not discuss the computational overhead of BEMA in detail, particularly the cost of storing θ_0 and the frequency of updates.\n4. The paper does not address potential negative societal impacts of improved LM fine-tuning.\n\nEthical Concerns: No significant ethical concerns identified.\n\nSoundness: The theoretical analysis appears sound, with rigorous proofs. The empirical methodology is appropriate with multiple seeds and diverse tasks. The paper is honest about limitations.\n\nPresentation: The paper is well-written and organized. The notation is clear and the flow from theory to practice is logical.\n\nContribution: The contribution is moderate. BEMA is a simple modification that provides consistent improvements, and the theoretical framing is novel. The practical impact could be significant given the simplicity of the intervention.\n\nOverall: This is a solid paper with good theoretical grounding and extensive empirical evaluation. The improvements are consistent but modest. The paper would benefit from more discussion on practical hyperparameter settings and limitations. I would lean toward acceptance given the solid technical quality and potential practical impact.REVIEW JSON:\n```json\n{\n\"Summary\": \"The paper proposes BEMA (Bias-Corrected Exponential Moving Average), a novel stabilization technique for stochastic optimization in language model fine-tuning. The authors derive BEMA from the Maximum Likelihood Estimator of the Ornstein-Uhlenbeck process, which models the continuous-time limit of SGD on quadratic losses. BEMA corrects the bias inherent in standard EMA by adding a term proportional to the total displacement of the optimization trajectory. The paper provides theoretical analysis showing BEMA achieves the Cramer-Rao lower bound, and demonstrates through extensive experiments on multiple LM benchmarks (BoolQ, GSM8K, MMLU-HS) and models (Qwen2.5-1.5B, Gemma3-1B, Llama3.2-1B) that BEMA outperforms both vanilla training and EMA in terms of convergence speed and final performance.\",\n\"Strengths\": [\n\"Theoretical contribution is rigorous and well-motivated, deriving the optimal stabilizer from first principles via MLE for the OU process\",\n\"Practical implementation is simple (two-line code change from EMA) and computationally efficient\",\n\"Extensive empirical evaluation across multiple models, benchmarks, and ablations\",\n\"Clear writing and logical flow from theory to practice\",\n\"Honest assessment of limitations, including cases where BEMA's benefits are modest\"\n],\n\"Weaknesses\": [\n\"The theoretical analysis relies on the quadratic loss assumption, which may not fully capture the complexity of LM training landscapes\",\n\"Empirical gains are modest in some settings (e.g., Llama3.2-1B) and the paper does not fully explore when BEMA is most beneficial\",\n\"Multiple new hyperparameters (η, κ, τ, ρ, φ) are introduced, which may hinder practical adoption despite demonstrated robustness\",\n\"The comparison with OUEMA lacks a clear theoretical explanation for why BEMA is superior in practice\",\n\"Limited to small models (1-1.5B parameters); scalability to larger models is unclear\"\n],\n\"Originality\": 3,\n\"Quality\": 3,\n\"Clarity\": 3,\n\"Significance\": 3,\n\"Questions\": [\n\"How should practitioners set the α_t parameter (η) in practice? The paper shows sensitivity to this parameter but does not provide clear guidelines for choosing it without extensive tuning.\",\n\"Does BEMA provide benefits when used with optimizers other than AdamW, such as SGD with momentum or Shampoo? The theoretical analysis is based on SGD, but all experiments use AdamW.\",\n\"How does BEMA interact with other common stabilization techniques like learning rate warmup, gradient clipping, or weight decay? Could these be complementary or redundant?\",\n\"The paper shows that increasing update frequency φ accelerates convergence but risks overfitting. Is there a principled way to choose φ, or is it purely empirical?\",\n\"Can the theoretical framework be extended to non-quadratic losses or to account for the discrete-time nature of actual training? What are the key limitations of the OU process approximation?\"\n],\n\"Limitations\": [\n\"The empirical evaluation is limited to SFT and small models (1-1.5B parameters); applicability to larger models or other training paradigms (RLHF, GRPO) is unexplored\",\n\"The paper does not provide a detailed comparison of computational overhead, particularly the costs associated with storing θ_0 and the frequency of BEMA updates\",\n\"The hyperparameter space is large, and while the paper demonstrates robustness, it does not provide a systematic guide for practitioners to configure BEMA for new tasks\",\n\"Potential negative societal impacts of improved LM fine-tuning are not discussed\",\n\"The theoretical framework relies on strong assumptions (quadratic loss, isotropic noise) that may not hold in practice, and the paper does not fully characterize when these assumptions break down\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 3,\n\"Contribution\": 3,\n\"Overall\": 7,\n\"Confidence\": 4,\n\"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 37633,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 35841,
+        "completion_tokens": 1642,
+        "reasoning_tokens": 0,
+        "total_tokens": 39275
+      },
+      "attempts": 1,
+      "response_id": "9ef7901b-7c23-417d-89fe-8ea31dd10e27"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper introduces BEMA (Bias-Corrected Exponential Moving Average), a modification of EMA that corrects for the bias introduced by averaging old iterates during stochastic optimization. The authors formulate stabilization as a statistical estimation problem in a stochastic quadratic optimization model (OU process), derive the MLE of the minimizer (which is BEMA), and prove it is asymptotically optimal (matching the Cramér-Rao lower bound). They provide a practical implementation requiring only a two-line change to standard EMA code, and empirically evaluate BEMA on LM fine-tuning (Qwen2.5-1.5B, Gemma3-1B, Llama3.2-1B) across multiple benchmarks (BoolQ, GSM8K, MMLU-HS), demonstrating improved convergence and final performance over both EMA and vanilla training, along with extensive ablations on hyperparameters.",
+        "Strengths": [
+          "Strong theoretical foundation: The derivation of the MLE for the OU process is clean, and the optimality result matching the Cramér-Rao lower bound provides a principled justification for BEMA.",
+          "Practical simplicity: BEMA is a drop-in replacement for EMA, requiring only a two-line code change, which makes it easy for practitioners to adopt.",
+          "Comprehensive empirical evaluation: The authors test on multiple models (Qwen2.5-1.5B, Gemma3-1B, Llama3.2-1B) and benchmarks (BoolQ, GSM8K, MMLU-HS), with evaluation on generations (not just likelihood), which is appropriate for the closed-loop setting they target.",
+          "Thorough ablations: The paper investigates the effect of all key hyperparameters (η, κ, τ, ρ, φ), learning rate decay, batch size, and compares BEMA to alternative stabilizers (EMA, OUEMA, DEMA).",
+          "Honest treatment of limitations: The authors acknowledge the gap between the quadratic model and real LM training, and discuss cases where their approach may fail (e.g., too-strong interventions)."
+        ],
+        "Weaknesses": [
+          "Theory-practice gap: The theoretical analysis relies heavily on the noisy quadratic model / OU process, which is a significant simplification of real LM fine-tuning. The connection is heuristic, and the paper does not provide strong evidence that the quadratic approximation holds well enough for the theoretical guarantees to directly transfer.",
+          "Modest empirical gains in some settings: While BEMA consistently outperforms EMA, the improvements are sometimes modest (especially on Llama3.2-1B), and in some cases vanilla training without stabilization performs comparably or better.",
+          "Hyperparameter sensitivity: The optimal η varies across tasks and models, and while the paper shows robustness, it still requires tuning. The paper does not provide clear guidance on how to select η in practice without a validation set.",
+          "Limited comparison to other bias-correction methods: The comparison to DEMA and OUEMA is good, but the paper does not compare to more recent or sophisticated averaging schemes that might also address bias.",
+          "The claim that BEMA 'obviates the need for learning rate decay' is based on a single set of experiments and may be overstated; more evidence would be needed to support this strong claim."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "1. The theoretical results are derived in continuous time for the OU process. How well does the discrete-time implementation of BEMA (Algorithm 1) match the theoretical MLE? Are there discretization errors that could affect the claimed optimality in practice?",
+          "2. The choice of A = α_t I (isotropic) is a significant simplification. The paper mentions that a more adaptive choice is future work. Can you provide any intuition or preliminary evidence on how much performance could be gained by using a more accurate (e.g., diagonal) approximation of the Hessian?",
+          "3. In Figure 3, performance collapses for η=0.1 on BoolQ. What is the mechanism for this failure? Is it due to the failure of the quadratic approximation, or is it related to the stability of the correction term?",
+          "4. How sensitive is BEMA to the choice of φ (update frequency) in terms of wall-clock time? The paper mentions computational savings, but could you quantify the actual speedup for a typical LM fine-tuning run?",
+          "5. For the learning rate decay experiments, the paper finds that no decay with BEMA works best. Is this conclusion robust across different models and tasks, or is it specific to the Qwen2.5-1.5B setup?",
+          "6. The paper evaluates on generations with temperature 1 and 50 samples. How do the results change with different sampling temperatures or fewer samples? Is the variance of the evaluation estimates accounted for in the reported numbers?"
+        ],
+        "Limitations": [
+          "The theoretical analysis is limited to the noisy quadratic model, and the extension to non-convex LM loss landscapes is heuristic.",
+          "The empirical evaluation focuses on SFT for relatively small models (≤1.5B parameters). The effectiveness of BEMA for larger models or other training paradigms (e.g., RLHF) is unexplored.",
+          "BEMA introduces an additional hyperparameter (η) that requires tuning. While the paper shows robustness, the optimal value varies across settings.",
+          "The potential negative societal impact is not discussed. While the paper is about optimization methodology, improvements in LM fine-tuning could indirectly contribute to more capable models, with associated risks (e.g., misuse). The paper should at least acknowledge this.",
+          "The claim that BEMA can 'obviate the need for learning rate decay' is based on limited evidence and should be stated more cautiously."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 4,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes BEMA (Bias-Corrected Exponential Moving Average), a modification of EMA that corrects for the bias introduced by averaging old iterates during training. The authors provide theoretical analysis in a stochastic quadratic optimization setting (OU process), showing BEMA achieves the MLE of the minimizer and is asymptotically optimal. They then evaluate BEMA on language model fine-tuning tasks, showing improvements over vanilla training and EMA.\n\nThe theoretical contribution is solid: deriving the MLE for the OU process and showing it matches the Cramér-Rao lower bound. The practical implementation is simple (2-line change to EMA) which is appealing. The empirical evaluation is fairly comprehensive: multiple models (Qwen2.5-1.5B, Gemma3-1B, Llama3.2-1B), multiple benchmarks (BoolQ, GSM8K, MMLU-HS), and ablations on hyperparameters.\n\nStrengths:\n- Strong theoretical foundation: The MLE derivation for the OU process is clean, and the optimality result matching the Cramér-Rao bound is a strong contribution.\n- Practical simplicity: BEMA requires minimal code changes to implement, making it a drop-in replacement for EMA.\n- Comprehensive empirical evaluation: Multiple models, benchmarks, hyperparameter sweeps, and comparisons to alternative stabilizers.\n- Good treatment of limitations: The authors acknowledge the quadratic model's limitations and discuss when the approach may fail (e.g., when the intervention is too strong).\n\nWeaknesses:\n- The theoretical model (noisy quadratic / OU process) is quite restrictive, and the connection to real LM fine-tuning is somewhat heuristic. The authors do acknowledge this but the gap is significant.\n- The empirical gains, while consistent, are sometimes modest (especially on Llama3.2-1B). The paper would be stronger with more dramatic or more consistent improvements.\n- The hyperparameter sensitivity (especially η) requires tuning; while the paper shows robustness, the optimal η varies across tasks.\n- The comparison to vanilla training is sometimes unclear: in some cases vanilla training without stabilization performs comparably or better.\n\nOriginality: The idea of debiasing EMA via a correction term is relatively novel, and the MLE derivation for the OU process applied to optimization is a fresh perspective. This is not just a trivial combination of existing ideas. Rating: 4 (very high)\n\nQuality: The theory is rigorous (the proofs seem correct), and the empirical work is careful with multiple seeds, proper evaluation on generations (not just likelihood), and thorough ablations. The main weakness is the gap between theory and practice, but this is common in optimization papers. Rating: 3 (high)\n\nClarity: The paper is generally well-written and organized. The theoretical sections are clear, the algorithm is clearly presented, and the empirical results are well-documented. Some parts of the appendix are dense but that's expected for proofs. Rating: 4 (very high)\n\nSignificance: The paper addresses a real problem (EMA bias/lag) and offers a practical solution. The potential impact is meaningful for practitioners doing LM fine-tuning. However, the improvements, while consistent, are not always dramatic, and the practical adoption may depend on how much the hyperparameter tuning matters relative to EMA. Rating: 3 (high)\n\nOverall: This is a solid paper with good theory and comprehensive empirical work. The practical recommendation (use BEMA instead of EMA) is actionable and backed by evidence. The main concerns are the theory-practice gap and the sometimes modest empirical gains. I would lean towards acceptance given the soundness of the work and the clarity of the contribution.\n\nDecision: Accept\n\nConfidence: 4 (confident, but not absolutely certain since I didn't check every proof detail)REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper introduces BEMA (Bias-Corrected Exponential Moving Average), a modification of EMA that corrects for the bias introduced by averaging old iterates during stochastic optimization. The authors formulate stabilization as a statistical estimation problem in a stochastic quadratic optimization model (OU process), derive the MLE of the minimizer (which is BEMA), and prove it is asymptotically optimal (matching the Cramér-Rao lower bound). They provide a practical implementation requiring only a two-line change to standard EMA code, and empirically evaluate BEMA on LM fine-tuning (Qwen2.5-1.5B, Gemma3-1B, Llama3.2-1B) across multiple benchmarks (BoolQ, GSM8K, MMLU-HS), demonstrating improved convergence and final performance over both EMA and vanilla training, along with extensive ablations on hyperparameters.\",\n  \"Strengths\": [\n    \"Strong theoretical foundation: The derivation of the MLE for the OU process is clean, and the optimality result matching the Cramér-Rao lower bound provides a principled justification for BEMA.\",\n    \"Practical simplicity: BEMA is a drop-in replacement for EMA, requiring only a two-line code change, which makes it easy for practitioners to adopt.\",\n    \"Comprehensive empirical evaluation: The authors test on multiple models (Qwen2.5-1.5B, Gemma3-1B, Llama3.2-1B) and benchmarks (BoolQ, GSM8K, MMLU-HS), with evaluation on generations (not just likelihood), which is appropriate for the closed-loop setting they target.\",\n    \"Thorough ablations: The paper investigates the effect of all key hyperparameters (η, κ, τ, ρ, φ), learning rate decay, batch size, and compares BEMA to alternative stabilizers (EMA, OUEMA, DEMA).\",\n    \"Honest treatment of limitations: The authors acknowledge the gap between the quadratic model and real LM training, and discuss cases where their approach may fail (e.g., too-strong interventions).\"\n  ],\n  \"Weaknesses\": [\n    \"Theory-practice gap: The theoretical analysis relies heavily on the noisy quadratic model / OU process, which is a significant simplification of real LM fine-tuning. The connection is heuristic, and the paper does not provide strong evidence that the quadratic approximation holds well enough for the theoretical guarantees to directly transfer.\",\n    \"Modest empirical gains in some settings: While BEMA consistently outperforms EMA, the improvements are sometimes modest (especially on Llama3.2-1B), and in some cases vanilla training without stabilization performs comparably or better.\",\n    \"Hyperparameter sensitivity: The optimal η varies across tasks and models, and while the paper shows robustness, it still requires tuning. The paper does not provide clear guidance on how to select η in practice without a validation set.\",\n    \"Limited comparison to other bias-correction methods: The comparison to DEMA and OUEMA is good, but the paper does not compare to more recent or sophisticated averaging schemes that might also address bias.\",\n    \"The claim that BEMA 'obviates the need for learning rate decay' is based on a single set of experiments and may be overstated; more evidence would be needed to support this strong claim.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 4,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"1. The theoretical results are derived in continuous time for the OU process. How well does the discrete-time implementation of BEMA (Algorithm 1) match the theoretical MLE? Are there discretization errors that could affect the claimed optimality in practice?\",\n    \"2. The choice of A = α_t I (isotropic) is a significant simplification. The paper mentions that a more adaptive choice is future work. Can you provide any intuition or preliminary evidence on how much performance could be gained by using a more accurate (e.g., diagonal) approximation of the Hessian?\",\n    \"3. In Figure 3, performance collapses for η=0.1 on BoolQ. What is the mechanism for this failure? Is it due to the failure of the quadratic approximation, or is it related to the stability of the correction term?\",\n    \"4. How sensitive is BEMA to the choice of φ (update frequency) in terms of wall-clock time? The paper mentions computational savings, but could you quantify the actual speedup for a typical LM fine-tuning run?\",\n    \"5. For the learning rate decay experiments, the paper finds that no decay with BEMA works best. Is this conclusion robust across different models and tasks, or is it specific to the Qwen2.5-1.5B setup?\",\n    \"6. The paper evaluates on generations with temperature 1 and 50 samples. How do the results change with different sampling temperatures or fewer samples? Is the variance of the evaluation estimates accounted for in the reported numbers?\"\n  ],\n  \"Limitations\": [\n    \"The theoretical analysis is limited to the noisy quadratic model, and the extension to non-convex LM loss landscapes is heuristic.\",\n    \"The empirical evaluation focuses on SFT for relatively small models (≤1.5B parameters). The effectiveness of BEMA for larger models or other training paradigms (e.g., RLHF) is unexplored.\",\n    \"BEMA introduces an additional hyperparameter (η) that requires tuning. While the paper shows robustness, the optimal value varies across settings.\",\n    \"The potential negative societal impact is not discussed. While the paper is about optimization methodology, improvements in LM fine-tuning could indirectly contribute to more capable models, with associated risks (e.g., misuse). The paper should at least acknowledge this.\",\n    \"The claim that BEMA can 'obviate the need for learning rate decay' is based on limited evidence and should be stated more cautiously.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 4,\n  \"Presentation\": 4,\n  \"Contribution\": 3,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 37633,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 35841,
+        "completion_tokens": 2060,
+        "reasoning_tokens": 0,
+        "total_tokens": 39693
+      },
+      "attempts": 1,
+      "response_id": "d0c6b11e-979b-46bd-a513-7cf6552227dc"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 5,
+      "Reject": 0
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          4,
+          4,
+          4,
+          3,
+          4
+        ],
+        "mean": 3.8,
+        "rounded_mean": 4,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          4,
+          3,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Clarity": {
+        "values": [
+          4,
+          4,
+          4,
+          3,
+          4
+        ],
+        "mean": 3.8,
+        "rounded_mean": 4,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Significance": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          4,
+          3,
+          4
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Presentation": {
+        "values": [
+          4,
+          4,
+          4,
+          3,
+          4
+        ],
+        "mean": 3.8,
+        "rounded_mean": 4,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Contribution": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          7,
+          6,
+          7,
+          7,
+          7
+        ],
+        "mean": 6.8,
+        "rounded_mean": 7,
+        "population_sd": 0.4,
+        "min": 6,
+        "max": 7
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper introduces BEMA (Bias-Corrected Exponential Moving Average), a modification of standard EMA for stabilizing stochastic optimization in language model fine-tuning. The authors frame stabilizer design as a statistical estimation problem on an Ornstein-Uhlenbeck process, derive the Maximum Likelihood Estimator (MLE) as the optimal estimator, and show that it removes the bias/lag of standard EMA while retaining variance reduction. The practical algorithm is a simple two-line change to existing EMA implementations. Theoretical analysis proves BEMA achieves the Cramér-Rao lower bound. Empirical evaluation on Qwen2.5-1.5B, Gemma3-1B, and Llama3.2-1B across multiple benchmarks (BoolQ, GSM8K, MMLU-HS) shows BEMA generally outperforms EMA and vanilla training, with extensive ablations on hyperparameters.",
+      "Strengths": [
+        "Novel theoretical framing: Formulating stabilizer design as statistical estimation on an OU process and deriving the MLE is a fresh, principled approach.",
+        "Rigorous theoretical analysis: Complete proofs (Girsanov, Cramér-Rao, MLE derivation) support the optimality claims.",
+        "Simple practical implementation: BEMA requires only a two-line change to existing EMA code, lowering the barrier for adoption.",
+        "Comprehensive empirical evaluation: Multiple models, benchmarks, and extensive hyperparameter ablations provide strong evidence of practical benefits.",
+        "Honest treatment of limitations: The authors acknowledge the theory-practice gap and cases where BEMA shows modest or mixed results.",
+        "Clear writing and presentation: The paper is well-organized, with clear motivation and explanation of the method."
+      ],
+      "Weaknesses": [
+        "Theory-practice gap: The theoretical optimality relies on full knowledge of the Hessian, but the practical implementation uses an isotropic approximation (A = αI) that is not fully theoretically justified.",
+        "Modest empirical gains in some settings: Improvements on Llama3.2-1B are limited, and vanilla training sometimes performs comparably or better.",
+        "Limited comparison to recent baselines: No comparison with newer bias-corrected or adaptive averaging schemes (e.g., Switch EMA, Noisy EMA) or alternative variance reduction techniques.",
+        "Limited training scope: Only 2 epochs of SFT are considered; applicability to larger models, RLHF/GRPO, or longer training runs is unexplored.",
+        "Hyperparameter sensitivity: The new hyperparameter η requires tuning, and the paper does not provide clear guidelines for selecting it in practice.",
+        "The claim that BEMA 'obviates the need for learning rate decay' is based on limited evidence and may be overstated."
+      ],
+      "Originality": 4,
+      "Quality": 3,
+      "Clarity": 4,
+      "Significance": 3,
+      "Questions": [
+        "How should practitioners set the η (α_t) parameter in practice, and what guidelines can be provided without extensive tuning?",
+        "How sensitive is BEMA to the choice of update frequency φ in terms of wall-clock time, and what is the actual computational overhead compared to EMA?",
+        "Does BEMA provide benefits with optimizers other than AdamW (e.g., SGD with momentum), given that the theory is based on SGD?",
+        "Can the theoretical framework be extended to non-quadratic losses or discrete-time settings, and what are the key limitations of the OU process approximation?",
+        "How does BEMA interact with other regularization techniques (weight decay, dropout, gradient clipping) and training paradigms (RLHF, GRPO)?",
+        "Is the conclusion that BEMA removes the need for learning rate decay robust across different models and tasks?",
+        "Could a more accurate approximation of the Hessian (e.g., using Adam's second moment estimates) improve performance further?"
+      ],
+      "Limitations": [
+        "The theoretical analysis relies on the noisy quadratic model / OU process, which is a significant idealization of real LM training dynamics; the connection to practice is heuristic.",
+        "The practical implementation uses an isotropic approximation for the Hessian, which may not capture direction-dependent curvature.",
+        "Empirical evaluation is limited to SFT on small models (1-1.5B parameters); applicability to larger models or other post-training paradigms (RLHF, GRPO) is unexplored.",
+        "Gains are inconsistent across models, with limited improvements for Llama3.2-1B.",
+        "The paper introduces several new hyperparameters (η, κ, τ, ρ, φ), which may hinder practical adoption without clearer guidance.",
+        "Potential negative societal impacts of improved LM fine-tuning are not discussed; the paper should at least acknowledge the indirect risks of more capable models."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 4,
+      "Contribution": 3,
+      "Overall": 7,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "THOUGHT:\nAll five reviewers recommend acceptance with overall scores of 6-7. The paper presents a novel, theoretically grounded stabilizer (BEMA) for stochastic optimization in LM fine-tuning, with rigorous MLE derivation for the OU process, simple practical implementation, and extensive empirical evaluation. Common weaknesses identified across reviews include: the theory-practice gap (isotropic Hessian approximation), modest gains on some models, limited comparison to recent baselines, and unexplored interactions with other optimizers/training paradigms (RLHF, larger models). However, the consensus is that the theoretical contribution is solid, the method is practical, and the evaluation is thorough. The paper is honest about limitations.\n\nAs Area Chair, I should aggregate these into a meta-review. The overall decision should be Accept, given the consistent support from all reviewers and the paper's clear contributions. I will note the common concerns but emphasize that the strengths outweigh the weaknesses. I should also mention that the paper could benefit from addressing the theory-practice gap and broader comparisons in a camera-ready version.\n\nFor the meta-review, I'll use the format expected: summary, strengths, weaknesses, ratings (based on consensus), questions, limitations, ethical concerns (false), soundness (3 - good, given the theory-practice gap but rigorous proofs), presentation (4 - excellent clarity), contribution (3 - good), overall (7 - Accept), confidence (4 - confident). The decision is Accept.\n\nI need to write the JSON carefully, ensuring all fields are present and the ratings reflect the consensus of the reviewers. The \"Questions\" should be a consolidated set of the most important questions from the reviewers. The \"Limitations\" should synthesize the common limitations.THOUGHT:\nThe paper has received five reviews, all recommending acceptance (scores 6, 7, 7, 7, 7). The reviews are largely positive, praising the novel theoretical framing (MLE for OU process), the simple practical implementation, the rigorous theoretical analysis, and the comprehensive empirical evaluation. Common weaknesses identified across reviews include: (1) a gap between the theoretical model (quadratic/OU) and the practical implementation (isotropic Hessian approximation), (2) modest or mixed empirical gains on some models (especially Llama3.2-1B), (3) limited comparison to recent stabilization techniques, and (4) unexplored interactions with other optimizers and training paradigms (RLHF, larger models). Despite these concerns, all reviewers agree the paper is technically solid, original, and valuable.\n\nThe consensus is clear: this is a strong paper with a novel contribution, rigorous theory, and practical utility. The weaknesses are typical of papers that bridge theory and practice and do not undermine the central claims. As Area Chair, I will write a meta-review that acknowledges the common criticisms but recommends acceptance, noting that the authors should address the theory-practice gap and broaden evaluation in a camera-ready version.\n\nFor the meta-review, I will consolidate the strengths and weaknesses, provide a balanced summary, and assign ratings that reflect the consensus (Soundness: 3, Presentation: 4, Contribution: 3, Overall: 7, Confidence: 4). The decision is Accept.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper introduces BEMA (Bias-Corrected Exponential Moving Average), a modification of standard EMA for stabilizing stochastic optimization in language model fine-tuning. The authors frame stabilizer design as a statistical estimation problem on an Ornstein-Uhlenbeck process, derive the Maximum Likelihood Estimator (MLE) as the optimal estimator, and show that it removes the bias/lag of standard EMA while retaining variance reduction. The practical algorithm is a simple two-line change to existing EMA implementations. Theoretical analysis proves BEMA achieves the Cramér-Rao lower bound. Empirical evaluation on Qwen2.5-1.5B, Gemma3-1B, and Llama3.2-1B across multiple benchmarks (BoolQ, GSM8K, MMLU-HS) shows BEMA generally outperforms EMA and vanilla training, with extensive ablations on hyperparameters.\",\n  \"Strengths\": [\n    \"Novel theoretical framing: Formulating stabilizer design as statistical estimation on an OU process and deriving the MLE is a fresh, principled approach.\",\n    \"Rigorous theoretical analysis: Complete proofs (Girsanov, Cramér-Rao, MLE derivation) support the optimality claims.\",\n    \"Simple practical implementation: BEMA requires only a two-line change to existing EMA code, lowering the barrier for adoption.\",\n    \"Comprehensive empirical evaluation: Multiple models, benchmarks, and extensive hyperparameter ablations provide strong evidence of practical benefits.\",\n    \"Honest treatment of limitations: The authors acknowledge the theory-practice gap and cases where BEMA shows modest or mixed results.\",\n    \"Clear writing and presentation: The paper is well-organized, with clear motivation and explanation of the method.\"\n  ],\n  \"Weaknesses\": [\n    \"Theory-practice gap: The theoretical optimality relies on full knowledge of the Hessian, but the practical implementation uses an isotropic approximation (A = αI) that is not fully theoretically justified.\",\n    \"Modest empirical gains in some settings: Improvements on Llama3.2-1B are limited, and vanilla training sometimes performs comparably or better.\",\n    \"Limited comparison to recent baselines: No comparison with newer bias-corrected or adaptive averaging schemes (e.g., Switch EMA, Noisy EMA) or alternative variance reduction techniques.\",\n    \"Limited training scope: Only 2 epochs of SFT are considered; applicability to larger models, RLHF/GRPO, or longer training runs is unexplored.\",\n    \"Hyperparameter sensitivity: The new hyperparameter η requires tuning, and the paper does not provide clear guidelines for selecting it in practice.\",\n    \"The claim that BEMA 'obviates the need for learning rate decay' is based on limited evidence and may be overstated.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 4,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How should practitioners set the η (α_t) parameter in practice, and what guidelines can be provided without extensive tuning?\",\n    \"How sensitive is BEMA to the choice of update frequency φ in terms of wall-clock time, and what is the actual computational overhead compared to EMA?\",\n    \"Does BEMA provide benefits with optimizers other than AdamW (e.g., SGD with momentum), given that the theory is based on SGD?\",\n    \"Can the theoretical framework be extended to non-quadratic losses or discrete-time settings, and what are the key limitations of the OU process approximation?\",\n    \"How does BEMA interact with other regularization techniques (weight decay, dropout, gradient clipping) and training paradigms (RLHF, GRPO)?\",\n    \"Is the conclusion that BEMA removes the need for learning rate decay robust across different models and tasks?\",\n    \"Could a more accurate approximation of the Hessian (e.g., using Adam's second moment estimates) improve performance further?\"\n  ],\n  \"Limitations\": [\n    \"The theoretical analysis relies on the noisy quadratic model / OU process, which is a significant idealization of real LM training dynamics; the connection to practice is heuristic.\",\n    \"The practical implementation uses an isotropic approximation for the Hessian, which may not capture direction-dependent curvature.\",\n    \"Empirical evaluation is limited to SFT on small models (1-1.5B parameters); applicability to larger models or other post-training paradigms (RLHF, GRPO) is unexplored.\",\n    \"Gains are inconsistent across models, with limited improvements for Llama3.2-1B.\",\n    \"The paper introduces several new hyperparameters (η, κ, τ, ρ, φ), which may hinder practical adoption without clearer guidance.\",\n    \"Potential negative societal impacts of improved LM fine-tuning are not discussed; the paper should at least acknowledge the indirect risks of more capable models.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 4,\n  \"Contribution\": 3,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 6809,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 6809,
+      "completion_tokens": 1712,
+      "reasoning_tokens": 0,
+      "total_tokens": 8521
+    },
+    "attempts": 1,
+    "response_id": "815318a4-222c-49f3-b116-8ba953261452"
+  },
+  "final_review": {
+    "Summary": "The paper introduces BEMA (Bias-Corrected Exponential Moving Average), a modification of standard EMA for stabilizing stochastic optimization in language model fine-tuning. The authors frame stabilizer design as a statistical estimation problem on an Ornstein-Uhlenbeck process, derive the Maximum Likelihood Estimator (MLE) as the optimal estimator, and show that it removes the bias/lag of standard EMA while retaining variance reduction. The practical algorithm is a simple two-line change to existing EMA implementations. Theoretical analysis proves BEMA achieves the Cramér-Rao lower bound. Empirical evaluation on Qwen2.5-1.5B, Gemma3-1B, and Llama3.2-1B across multiple benchmarks (BoolQ, GSM8K, MMLU-HS) shows BEMA generally outperforms EMA and vanilla training, with extensive ablations on hyperparameters.",
+    "Strengths": [
+      "Novel theoretical framing: Formulating stabilizer design as statistical estimation on an OU process and deriving the MLE is a fresh, principled approach.",
+      "Rigorous theoretical analysis: Complete proofs (Girsanov, Cramér-Rao, MLE derivation) support the optimality claims.",
+      "Simple practical implementation: BEMA requires only a two-line change to existing EMA code, lowering the barrier for adoption.",
+      "Comprehensive empirical evaluation: Multiple models, benchmarks, and extensive hyperparameter ablations provide strong evidence of practical benefits.",
+      "Honest treatment of limitations: The authors acknowledge the theory-practice gap and cases where BEMA shows modest or mixed results.",
+      "Clear writing and presentation: The paper is well-organized, with clear motivation and explanation of the method."
+    ],
+    "Weaknesses": [
+      "Theory-practice gap: The theoretical optimality relies on full knowledge of the Hessian, but the practical implementation uses an isotropic approximation (A = αI) that is not fully theoretically justified.",
+      "Modest empirical gains in some settings: Improvements on Llama3.2-1B are limited, and vanilla training sometimes performs comparably or better.",
+      "Limited comparison to recent baselines: No comparison with newer bias-corrected or adaptive averaging schemes (e.g., Switch EMA, Noisy EMA) or alternative variance reduction techniques.",
+      "Limited training scope: Only 2 epochs of SFT are considered; applicability to larger models, RLHF/GRPO, or longer training runs is unexplored.",
+      "Hyperparameter sensitivity: The new hyperparameter η requires tuning, and the paper does not provide clear guidelines for selecting it in practice.",
+      "The claim that BEMA 'obviates the need for learning rate decay' is based on limited evidence and may be overstated."
+    ],
+    "Originality": 4,
+    "Quality": 3,
+    "Clarity": 4,
+    "Significance": 3,
+    "Questions": [
+      "How should practitioners set the η (α_t) parameter in practice, and what guidelines can be provided without extensive tuning?",
+      "How sensitive is BEMA to the choice of update frequency φ in terms of wall-clock time, and what is the actual computational overhead compared to EMA?",
+      "Does BEMA provide benefits with optimizers other than AdamW (e.g., SGD with momentum), given that the theory is based on SGD?",
+      "Can the theoretical framework be extended to non-quadratic losses or discrete-time settings, and what are the key limitations of the OU process approximation?",
+      "How does BEMA interact with other regularization techniques (weight decay, dropout, gradient clipping) and training paradigms (RLHF, GRPO)?",
+      "Is the conclusion that BEMA removes the need for learning rate decay robust across different models and tasks?",
+      "Could a more accurate approximation of the Hessian (e.g., using Adam's second moment estimates) improve performance further?"
+    ],
+    "Limitations": [
+      "The theoretical analysis relies on the noisy quadratic model / OU process, which is a significant idealization of real LM training dynamics; the connection to practice is heuristic.",
+      "The practical implementation uses an isotropic approximation for the Hessian, which may not capture direction-dependent curvature.",
+      "Empirical evaluation is limited to SFT on small models (1-1.5B parameters); applicability to larger models or other post-training paradigms (RLHF, GRPO) is unexplored.",
+      "Gains are inconsistent across models, with limited improvements for Llama3.2-1B.",
+      "The paper introduces several new hyperparameters (η, κ, τ, ρ, φ), which may hinder practical adoption without clearer guidance.",
+      "Potential negative societal impacts of improved LM fine-tuning are not discussed; the paper should at least acknowledge the indirect risks of more capable models."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 4,
+    "Contribution": 3,
+    "Overall": 7,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 194974,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 186014,
+    "completion_tokens": 10797,
+    "reasoning_tokens": 0,
+    "total_tokens": 205771,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.02604196,
+    "output_usd": 0.00302316,
+    "total_usd": 0.02909021
+  },
+  "elapsed_seconds": 37.435,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Accept",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B079",
+    "filename": "B079.txt",
+    "blind_text_sha256": "9c7146255af7ce13d8444d25c649874c0949a7d75bd8aba4a4afd9642972a77e",
+    "characters": 132448,
+    "full_text_saved": false
+  }
+}

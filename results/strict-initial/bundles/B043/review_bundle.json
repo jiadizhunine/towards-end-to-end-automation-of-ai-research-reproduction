@@ -1,0 +1,588 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T09:03:06.525129+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "max",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "meta",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper studies how to allocate a fixed training compute budget between full-precision (FP) pretraining and quantization-aware training (QAT) for quantized LLMs. Through experiments across model sizes (86M-2.2B), bit widths (1/2/4/6), and total token budgets, it reports that the optimal QAT fraction grows with the total tokens-per-parameter-byte statistic, contradicting earlier assumptions of a fixed 10% QAT ratio. The authors propose a loss scaling law that models final loss as a function of parameter count, FP and QAT token counts, and bit width, and use it to predict optimal QAT fractions, QAT vs. FP accuracy, and the optimal bit width under memory constraints. They also introduce a cooldown-and-QAT-fusion learning rate schedule that performs LR decay jointly with QAT, reporting token-efficiency gains especially for 4-bit and 6-bit quantization.",
+        "Strengths": [
+          "The paper tackles a practically important and under-explored resource-allocation problem: how to split compute between full-precision pretraining and QAT.",
+          "The experimental scale is substantial: 757 QAT runs plus FP checkpoints, model sizes from 86M to 2.2B, multiple bit widths, and validation on a second dataset (SlimPajama) and on a held-out 2.2B model.",
+          "The proposed loss scaling law unifies different bit widths and QAT/FP allocations, and the paper verifies several non-trivial predictions (optimal fraction, bit-width under memory constraints, FP accuracy restoration) against experiments.",
+          "The cooldown/QAT fusion idea is simple, novel, and shows consistent improvements for 4-bit and 6-bit QAT, with the reported token-equivalent savings being non-negligible.",
+          "The paper is generally clearly written, with detailed appendices covering hyperparameters, model configurations, experiment grids, and quantized model accuracy.",
+          "The discussion of token-budget vs. compute-budget duality and QAT overhead is useful for practitioners."
+        ],
+        "Weaknesses": [
+          "The core scaling-law functional forms (both for the optimal fraction and for the loss) appear ad hoc. The tokens-per-parameter-byte statistic is motivated intuitively, but the paper does not provide a derivation or comparison with alternative simpler forms (e.g., power laws) beyond a single fitted parameter a.",
+          "The loss scaling law has many free parameters (all lowercase Greek letters), and the paper does not report parameter values, confidence intervals, or model-selection/regularization details. With ~757 QAT points and 374 FP points, overfitting or non-identifiability is a concern.",
+          "The optimal QAT fraction is only evaluated on a coarse grid of discrete fractions, so the claimed optima and the fitted MAE (~0.07-0.10) may not reflect the true continuous optimum.",
+          "The claims about 'optimal bit width under memory constraints' and 'when QAT restores FP accuracy' rely on extrapolation of the scaling law beyond or at the edges of the fitted data range, and no uncertainty propagation is provided.",
+          "The cooldown/QAT fusion results are mixed for 1-bit and 2-bit settings, with some experiments showing worse perplexity; the paper's explanation (large optimal QAT fraction) is plausible but not rigorously tested.",
+          "All experiments use one architecture (Llama-2-like decoder-only transformer), one optimizer (Adam), one QAT method family (ParetoQ), and pretraining on DCLM/SlimPajama; generality to other architectures, optimizers, or QAT algorithms is not established.",
+          "The QAT overhead benchmark may be specific to their PyTorch compilation setup; the paper's token-based optimal fractions could be misleading in settings where QAT steps are substantially more expensive."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How many free parameters are in the loss scaling law (Eq. 4.1), and what are their fitted values? Were constraints or regularization used to avoid overfitting?",
+          "Why was the optimal-fraction form f = exp(log S - a/log S)/S chosen? How does its fit compare with a simple power-law or other functional forms?",
+          "What is the sensitivity of the fitted optimal fraction to the discrete set of QAT fractions tested in each experiment? Could the 'optimal' fractions be systematically biased by grid spacing?",
+          "Are there confidence intervals or bootstrap estimates for the scaling-law predictions, especially for the memory-constrained optimal bit-width and FP-accuracy-restoration token counts?",
+          "For the cooldown/QAT fusion experiments, what is the statistical significance of the perplexity differences? The reported differences are often below 1%, so how reproducible are these gains across seeds?",
+          "How does using full parameter count N (including embeddings) in tokens-per-parameter-byte affect results, given that embeddings are quantized to only 4 bits and not scaled with B? Would using non-embedding parameter count change the fit or conclusions?",
+          "The paper assumes QAT compute is roughly equal to FP compute. In settings where QAT has non-negligible overhead, the token-based optimal fraction would need adjustment—do the fitted scaling laws still hold if D_qat is replaced by an overhead-scaled compute measure?"
+        ],
+        "Limitations": [
+          "Results are limited to a single transformer architecture (Llama-2 style), and exact quantitative conclusions may not transfer to other architectures such as Mamba or hybrid models.",
+          "The scaling law is trained on DCLM data and only validated on SlimPajama for 4-bit QAT; data quality and distribution shifts could affect the fitted exponents and optimal fractions.",
+          "The QAT methods are limited to ParetoQ's algorithms (elastic binarization, stretched elastic, LSQ); other QAT techniques may have different loss landscapes and optimal fractions.",
+          "The optimal fractions are only searched on a coarse grid, so the reported optima are approximate and may understate the potential gains from fine-grained scheduling.",
+          "The cooldown/QAT fusion approach does not consistently help for 1-bit and 2-bit QAT, and the paper does not provide a deeper analysis of when fusion fails.",
+          "No uncertainty quantification is provided for the scaling-law fits; practitioners relying on these predictions have no sense of their reliability."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper studies how to allocate a fixed training compute budget between full-precision (FP) pretraining and quantization-aware training (QAT) for quantized LLMs. Through experiments across model sizes (86M-2.2B), bit widths (1/2/4/6), and total token budgets, it reports that the optimal QAT fraction grows with the total tokens-per-parameter-byte statistic, contradicting earlier assumptions of a fixed 10% QAT ratio. The authors propose a loss scaling law that models final loss as a function of parameter count, FP and QAT token counts, and bit width, and use it to predict optimal QAT fractions, QAT vs. FP accuracy, and the optimal bit width under memory constraints. They also introduce a cooldown-and-QAT-fusion learning rate schedule that performs LR decay jointly with QAT, reporting token-efficiency gains especially for 4-bit and 6-bit quantization.\",\n  \"Strengths\": [\n    \"The paper tackles a practically important and under-explored resource-allocation problem: how to split compute between full-precision pretraining and QAT.\",\n    \"The experimental scale is substantial: 757 QAT runs plus FP checkpoints, model sizes from 86M to 2.2B, multiple bit widths, and validation on a second dataset (SlimPajama) and on a held-out 2.2B model.\",\n    \"The proposed loss scaling law unifies different bit widths and QAT/FP allocations, and the paper verifies several non-trivial predictions (optimal fraction, bit-width under memory constraints, FP accuracy restoration) against experiments.\",\n    \"The cooldown/QAT fusion idea is simple, novel, and shows consistent improvements for 4-bit and 6-bit QAT, with the reported token-equivalent savings being non-negligible.\",\n    \"The paper is generally clearly written, with detailed appendices covering hyperparameters, model configurations, experiment grids, and quantized model accuracy.\",\n    \"The discussion of token-budget vs. compute-budget duality and QAT overhead is useful for practitioners.\"\n  ],\n  \"Weaknesses\": [\n    \"The core scaling-law functional forms (both for the optimal fraction and for the loss) appear ad hoc. The tokens-per-parameter-byte statistic is motivated intuitively, but the paper does not provide a derivation or comparison with alternative simpler forms (e.g., power laws) beyond a single fitted parameter a.\",\n    \"The loss scaling law has many free parameters (all lowercase Greek letters), and the paper does not report parameter values, confidence intervals, or model-selection/regularization details. With ~757 QAT points and 374 FP points, overfitting or non-identifiability is a concern.\",\n    \"The optimal QAT fraction is only evaluated on a coarse grid of discrete fractions, so the claimed optima and the fitted MAE (~0.07-0.10) may not reflect the true continuous optimum.\",\n    \"The claims about 'optimal bit width under memory constraints' and 'when QAT restores FP accuracy' rely on extrapolation of the scaling law beyond or at the edges of the fitted data range, and no uncertainty propagation is provided.\",\n    \"The cooldown/QAT fusion results are mixed for 1-bit and 2-bit settings, with some experiments showing worse perplexity; the paper's explanation (large optimal QAT fraction) is plausible but not rigorously tested.\",\n    \"All experiments use one architecture (Llama-2-like decoder-only transformer), one optimizer (Adam), one QAT method family (ParetoQ), and pretraining on DCLM/SlimPajama; generality to other architectures, optimizers, or QAT algorithms is not established.\",\n    \"The QAT overhead benchmark may be specific to their PyTorch compilation setup; the paper's token-based optimal fractions could be misleading in settings where QAT steps are substantially more expensive.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How many free parameters are in the loss scaling law (Eq. 4.1), and what are their fitted values? Were constraints or regularization used to avoid overfitting?\",\n    \"Why was the optimal-fraction form f = exp(log S - a/log S)/S chosen? How does its fit compare with a simple power-law or other functional forms?\",\n    \"What is the sensitivity of the fitted optimal fraction to the discrete set of QAT fractions tested in each experiment? Could the 'optimal' fractions be systematically biased by grid spacing?\",\n    \"Are there confidence intervals or bootstrap estimates for the scaling-law predictions, especially for the memory-constrained optimal bit-width and FP-accuracy-restoration token counts?\",\n    \"For the cooldown/QAT fusion experiments, what is the statistical significance of the perplexity differences? The reported differences are often below 1%, so how reproducible are these gains across seeds?\",\n    \"How does using full parameter count N (including embeddings) in tokens-per-parameter-byte affect results, given that embeddings are quantized to only 4 bits and not scaled with B? Would using non-embedding parameter count change the fit or conclusions?\",\n    \"The paper assumes QAT compute is roughly equal to FP compute. In settings where QAT has non-negligible overhead, the token-based optimal fraction would need adjustment—do the fitted scaling laws still hold if D_qat is replaced by an overhead-scaled compute measure?\"\n  ],\n  \"Limitations\": [\n    \"Results are limited to a single transformer architecture (Llama-2 style), and exact quantitative conclusions may not transfer to other architectures such as Mamba or hybrid models.\",\n    \"The scaling law is trained on DCLM data and only validated on SlimPajama for 4-bit QAT; data quality and distribution shifts could affect the fitted exponents and optimal fractions.\",\n    \"The QAT methods are limited to ParetoQ's algorithms (elastic binarization, stretched elastic, LSQ); other QAT techniques may have different loss landscapes and optimal fractions.\",\n    \"The optimal fractions are only searched on a coarse grid, so the reported optima are approximate and may understate the potential gains from fine-grained scheduling.\",\n    \"The cooldown/QAT fusion approach does not consistently help for 1-bit and 2-bit QAT, and the paper does not provide a deeper analysis of when fusion fails.\",\n    \"No uncertainty quantification is provided for the scaling-law fits; practitioners relying on these predictions have no sense of their reliability.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 31296,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 30528,
+        "completion_tokens": 2564,
+        "reasoning_tokens": 1135,
+        "total_tokens": 33860
+      },
+      "attempts": 1,
+      "response_id": "ddeafe56-1290-4035-b4a5-e467b9951d83"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper investigates how to split a fixed training compute budget between full-precision (FP) pretraining and quantization-aware training (QAT) when producing quantized LLMs. Through experiments with 86M-2.2B parameter transformers trained on DCLM, it shows that the optimal QAT fraction increases with total tokens per parameter-byte, contradicts earlier fixed 10% guidance. It fits an analytic loss scaling law over N, D_fp, D_qat, and bit width B, and uses it to predict optimal QAT fractions, QAT vs FP loss gaps, bit-width choices under memory constraints, and a 'cooldown & QAT fusion' schedule that yields modest perplexity gains at 4/6 bits.",
+        "Strengths": [
+          "Large-scale empirical study spanning 86M to 2.2B parameters, 1/2/4/6-bit QAT, and up to ~1.4T tokens; the observation that optimal QAT fraction grows with compute is clearly demonstrated and overturns a common fixed-10% heuristic.",
+          "The proposed tokens-per-parameter-byte statistic provides a compact, interpretable predictor of optimal QAT fraction that transfers across model sizes and bit widths, including a held-out 2.2B model and a different dataset/hyperparameter setting.",
+          "The loss scaling law is fit to 757 QAT runs plus FP checkpoints and yields useful downstream predictions (optimal bit width for memory bounds, FP-accuracy restoration) that are partially verified experimentally.",
+          "Cooldown & QAT fusion is a practical, simple scheduling change that gives consistent gains for 4/6-bit QAT, reported in token-equivalent savings."
+        ],
+        "Weaknesses": [
+          "The entire study uses one transformer family (Llama-2-like) and one QAT framework (ParetoQ); generality to other architectures, quantization schemes, or activation quantization is not established.",
+          "The scaling law is a high-capacity ad hoc expression with ~18 fitted parameters; no derivation or principled justification is given, and the reported optimal-fraction MAE of ~0.07-0.10 is large enough to question the precision of the practical guidance.",
+          "The main result is an empirical trend; the paper does not explain why the optimal QAT fraction should scale with S_total or whether the trend saturates outside the tested range.",
+          "Cooldown & QAT fusion does not help for 1- and 2-bit QAT, and even worsens several 1-bit settings; the paper's explanation is post hoc and not tested.",
+          "Compute-budget vs token-budget dualism is only treated via a simple substitution; actual FLOP overhead measurements are only briefly reported and not integrated into the main analysis."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How sensitive are the fitted parameters and the predicted optimal fractions to the choice of QAT algorithm (e.g., LSQ vs ParetoQ) and to quantization of activations versus weights only?",
+          "What are confidence intervals for the scaling-law parameters and for the predicted optimal QAT fractions; how many random initializations were used and how variable were the final fits?",
+          "Does the optimal fraction continue to increase beyond the largest S_total tested, or does it plateau? What does the fitted functional form predict as S_total→∞?",
+          "For cooldown & QAT fusion, is the benefit simply a longer effective cooldown (higher LR at the start of QAT), and would a cosine schedule with a later peak produce the same effect?",
+          "In the memory-constrained bit-width analysis, are embedding/LM-head bits included in the memory budget, and does the optimal bit-width recommendation change if activations or the KV cache are included?"
+        ],
+        "Limitations": [
+          "Empirical scope limited to decoder-only transformers with tied embeddings and a single data distribution (DCLM), plus a smaller SlimPajama check; results may not transfer to encoder-decoder or MoE models.",
+          "The scaling law is fitted to a specific QAT recipe (ParetoQ with per-output scales, no activation quantization) and may not apply to other quantization setups.",
+          "The optimal fraction fit is coarse due to grid-sampled QAT fractions; MAE 0.09 means a practitioner's predicted fraction could be off by ~9 percentage points.",
+          "No theoretical grounding for the functional form or the tokens-per-parameter-byte statistic; extrapolation beyond tested ranges is risky.",
+          "Potential negative societal impact is not discussed; the paper focuses on efficiency and no misuse risk is identified."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper investigates how to split a fixed training compute budget between full-precision (FP) pretraining and quantization-aware training (QAT) when producing quantized LLMs. Through experiments with 86M-2.2B parameter transformers trained on DCLM, it shows that the optimal QAT fraction increases with total tokens per parameter-byte, contradicts earlier fixed 10% guidance. It fits an analytic loss scaling law over N, D_fp, D_qat, and bit width B, and uses it to predict optimal QAT fractions, QAT vs FP loss gaps, bit-width choices under memory constraints, and a 'cooldown & QAT fusion' schedule that yields modest perplexity gains at 4/6 bits.\",\n  \"Strengths\": [\n    \"Large-scale empirical study spanning 86M to 2.2B parameters, 1/2/4/6-bit QAT, and up to ~1.4T tokens; the observation that optimal QAT fraction grows with compute is clearly demonstrated and overturns a common fixed-10% heuristic.\",\n    \"The proposed tokens-per-parameter-byte statistic provides a compact, interpretable predictor of optimal QAT fraction that transfers across model sizes and bit widths, including a held-out 2.2B model and a different dataset/hyperparameter setting.\",\n    \"The loss scaling law is fit to 757 QAT runs plus FP checkpoints and yields useful downstream predictions (optimal bit width for memory bounds, FP-accuracy restoration) that are partially verified experimentally.\",\n    \"Cooldown & QAT fusion is a practical, simple scheduling change that gives consistent gains for 4/6-bit QAT, reported in token-equivalent savings.\"\n  ],\n  \"Weaknesses\": [\n    \"The entire study uses one transformer family (Llama-2-like) and one QAT framework (ParetoQ); generality to other architectures, quantization schemes, or activation quantization is not established.\",\n    \"The scaling law is a high-capacity ad hoc expression with ~18 fitted parameters; no derivation or principled justification is given, and the reported optimal-fraction MAE of ~0.07-0.10 is large enough to question the precision of the practical guidance.\",\n    \"The main result is an empirical trend; the paper does not explain why the optimal QAT fraction should scale with S_total or whether the trend saturates outside the tested range.\",\n    \"Cooldown & QAT fusion does not help for 1- and 2-bit QAT, and even worsens several 1-bit settings; the paper's explanation is post hoc and not tested.\",\n    \"Compute-budget vs token-budget dualism is only treated via a simple substitution; actual FLOP overhead measurements are only briefly reported and not integrated into the main analysis.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How sensitive are the fitted parameters and the predicted optimal fractions to the choice of QAT algorithm (e.g., LSQ vs ParetoQ) and to quantization of activations versus weights only?\",\n    \"What are confidence intervals for the scaling-law parameters and for the predicted optimal QAT fractions; how many random initializations were used and how variable were the final fits?\",\n    \"Does the optimal fraction continue to increase beyond the largest S_total tested, or does it plateau? What does the fitted functional form predict as S_total→∞?\",\n    \"For cooldown & QAT fusion, is the benefit simply a longer effective cooldown (higher LR at the start of QAT), and would a cosine schedule with a later peak produce the same effect?\",\n    \"In the memory-constrained bit-width analysis, are embedding/LM-head bits included in the memory budget, and does the optimal bit-width recommendation change if activations or the KV cache are included?\"\n  ],\n  \"Limitations\": [\n    \"Empirical scope limited to decoder-only transformers with tied embeddings and a single data distribution (DCLM), plus a smaller SlimPajama check; results may not transfer to encoder-decoder or MoE models.\",\n    \"The scaling law is fitted to a specific QAT recipe (ParetoQ with per-output scales, no activation quantization) and may not apply to other quantization setups.\",\n    \"The optimal fraction fit is coarse due to grid-sampled QAT fractions; MAE 0.09 means a practitioner's predicted fraction could be off by ~9 percentage points.\",\n    \"No theoretical grounding for the functional form or the tokens-per-parameter-byte statistic; extrapolation beyond tested ranges is risky.\",\n    \"Potential negative societal impact is not discussed; the paper focuses on efficiency and no misuse risk is identified.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 31296,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 30528,
+        "completion_tokens": 2685,
+        "reasoning_tokens": 1633,
+        "total_tokens": 33981
+      },
+      "attempts": 1,
+      "response_id": "0a6b4a89-aeab-41af-b19e-9e08811e4dbf"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper investigates how to optimally allocate compute between full-precision (FP) pretraining and quantization-aware training (QAT) for LLMs. Through extensive experiments across model sizes (86M to 2.2B), QAT bit widths (1, 2, 4, 6), and total token budgets (up to 1.4T), it finds that the optimal fraction of tokens spent on QAT increases with total compute, contradicting prior fixed-ratio assumptions. The authors propose a loss scaling law that models final loss as a function of parameter count, FP/QAT token counts, and bit width, using the tokens-per-parameter-byte statistic. This law predicts optimal QAT fractions and final performance, and is validated on held-out 2.2B models and a different dataset. They also propose a cooldown-and-QAT-fusion scheduling method that performs learning rate decay jointly with QAT, yielding compute savings for 4-bit and 6-bit QAT.",
+        "Strengths": [
+          "Extensive experimental study across model sizes, bit widths, and token budgets, revealing that the optimal QAT fraction grows with total compute, challenging prior fixed-ratio assumptions.",
+          "Proposes a unified loss scaling law with the tokens-per-parameter-byte statistic that fits 757 QAT experiments well (R^2 > 0.98) and accurately predicts optimal QAT fractions, including on a held-out 2.2B model.",
+          "Provides practical insights: quantifies compute waste of suboptimal QAT fractions, predicts when QAT matches FP accuracy, and derives optimal bit-width under memory constraints.",
+          "Introduces cooldown & QAT fusion, a simple scheduling change that yields consistent perplexity improvements (often >10% token savings) for 4-bit and 6-bit QAT."
+        ],
+        "Weaknesses": [
+          "The scaling law has many free parameters (about 15 Greek letters) and an ad hoc functional form; no theoretical derivation or systematic comparison to simpler baselines (e.g., per-bit-width Chinchilla fits) is provided to justify its superiority.",
+          "Optimal QAT fractions are only measured on coarse grids (e.g., 10%, 20%, ...), so the reported f* may be off by the grid spacing; the MAE ~0.09 is not negligible.",
+          "Cooldown & QAT fusion is not universally beneficial: it often hurts 1-bit and 2-bit QAT (negative wasted-token savings), and the paper provides only a post hoc explanation rather than a predictive rule.",
+          "The tokens-per-parameter-byte statistic conflates bit-width with training length; the finding that f* increases with S_total may partly reflect the known fact that lower-bit QAT requires longer adaptation, rather than a truly novel scaling phenomenon.",
+          "The paper does not quantify uncertainty in scaling law fits; predictions for optimal bit-width and FP restoration are presented as deterministic, which could mislead practitioners given the noise in the experiments."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How sensitive is the scaling law fit to the choice of Huber loss versus L2, and to the per-bit-width reweighting? Is there a risk that the reported R^2 is inflated by the large number of parameters?",
+          "Could the observed increase of optimal QAT fraction with compute be simply a consequence of the fact that for larger D_total, the absolute QAT budget needed to reach a certain adaptation level also grows? How does f* behave if one uses a separate scaling law for QAT error as in Chen et al. (2025b)?",
+          "For cooldown & QAT fusion, what happens when the total QAT fraction is not the optimal one? Does fusion still provide savings, and how does it interact with the scaling law?",
+          "The paper uses ParetoQ only; would the scaling law hold for other QAT methods (e.g., straight-through estimator without learned scales) or for activation quantization?",
+          "In the memory-constrained optimal bit-width analysis, what is the sensitivity to the assumed compute estimate C≈6ND? Does using the overhead-adjusted compute alter the conclusions?"
+        ],
+        "Limitations": [
+          "Only one transformer architecture (Llama-2-like decoder-only) is studied; the scaling law may not transfer to other architectures or modalities.",
+          "The experiments use a single dataset (DCLM) with a limited reproduction on SlimPajama; data quality effects could change the law.",
+          "The QAT algorithm suite (ParetoQ) may not represent all QAT methods; the law's parameters are tied to this choice.",
+          "The scaling law is fit to a finite range of model sizes and token counts; extrapolation beyond the tested domain (e.g., >2.2B or >1.4T) is untested.",
+          "Cooldown & QAT fusion's benefits are limited to higher-bit settings; its mechanism is not fully understood, and it may not generalize to other schedulers."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper investigates how to optimally allocate compute between full-precision (FP) pretraining and quantization-aware training (QAT) for LLMs. Through extensive experiments across model sizes (86M to 2.2B), QAT bit widths (1, 2, 4, 6), and total token budgets (up to 1.4T), it finds that the optimal fraction of tokens spent on QAT increases with total compute, contradicting prior fixed-ratio assumptions. The authors propose a loss scaling law that models final loss as a function of parameter count, FP/QAT token counts, and bit width, using the tokens-per-parameter-byte statistic. This law predicts optimal QAT fractions and final performance, and is validated on held-out 2.2B models and a different dataset. They also propose a cooldown-and-QAT-fusion scheduling method that performs learning rate decay jointly with QAT, yielding compute savings for 4-bit and 6-bit QAT.\",\n  \"Strengths\": [\n    \"Extensive experimental study across model sizes, bit widths, and token budgets, revealing that the optimal QAT fraction grows with total compute, challenging prior fixed-ratio assumptions.\",\n    \"Proposes a unified loss scaling law with the tokens-per-parameter-byte statistic that fits 757 QAT experiments well (R^2 > 0.98) and accurately predicts optimal QAT fractions, including on a held-out 2.2B model.\",\n    \"Provides practical insights: quantifies compute waste of suboptimal QAT fractions, predicts when QAT matches FP accuracy, and derives optimal bit-width under memory constraints.\",\n    \"Introduces cooldown & QAT fusion, a simple scheduling change that yields consistent perplexity improvements (often >10% token savings) for 4-bit and 6-bit QAT.\"\n  ],\n  \"Weaknesses\": [\n    \"The scaling law has many free parameters (about 15 Greek letters) and an ad hoc functional form; no theoretical derivation or systematic comparison to simpler baselines (e.g., per-bit-width Chinchilla fits) is provided to justify its superiority.\",\n    \"Optimal QAT fractions are only measured on coarse grids (e.g., 10%, 20%, ...), so the reported f* may be off by the grid spacing; the MAE ~0.09 is not negligible.\",\n    \"Cooldown & QAT fusion is not universally beneficial: it often hurts 1-bit and 2-bit QAT (negative wasted-token savings), and the paper provides only a post hoc explanation rather than a predictive rule.\",\n    \"The tokens-per-parameter-byte statistic conflates bit-width with training length; the finding that f* increases with S_total may partly reflect the known fact that lower-bit QAT requires longer adaptation, rather than a truly novel scaling phenomenon.\",\n    \"The paper does not quantify uncertainty in scaling law fits; predictions for optimal bit-width and FP restoration are presented as deterministic, which could mislead practitioners given the noise in the experiments.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How sensitive is the scaling law fit to the choice of Huber loss versus L2, and to the per-bit-width reweighting? Is there a risk that the reported R^2 is inflated by the large number of parameters?\",\n    \"Could the observed increase of optimal QAT fraction with compute be simply a consequence of the fact that for larger D_total, the absolute QAT budget needed to reach a certain adaptation level also grows? How does f* behave if one uses a separate scaling law for QAT error as in Chen et al. (2025b)?\",\n    \"For cooldown & QAT fusion, what happens when the total QAT fraction is not the optimal one? Does fusion still provide savings, and how does it interact with the scaling law?\",\n    \"The paper uses ParetoQ only; would the scaling law hold for other QAT methods (e.g., straight-through estimator without learned scales) or for activation quantization?\",\n    \"In the memory-constrained optimal bit-width analysis, what is the sensitivity to the assumed compute estimate C≈6ND? Does using the overhead-adjusted compute alter the conclusions?\"\n  ],\n  \"Limitations\": [\n    \"Only one transformer architecture (Llama-2-like decoder-only) is studied; the scaling law may not transfer to other architectures or modalities.\",\n    \"The experiments use a single dataset (DCLM) with a limited reproduction on SlimPajama; data quality effects could change the law.\",\n    \"The QAT algorithm suite (ParetoQ) may not represent all QAT methods; the law's parameters are tied to this choice.\",\n    \"The scaling law is fit to a finite range of model sizes and token counts; extrapolation beyond the tested domain (e.g., >2.2B or >1.4T) is untested.\",\n    \"Cooldown & QAT fusion's benefits are limited to higher-bit settings; its mechanism is not fully understood, and it may not generalize to other schedulers.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 31296,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 30528,
+        "completion_tokens": 3459,
+        "reasoning_tokens": 2325,
+        "total_tokens": 34755
+      },
+      "attempts": 1,
+      "response_id": "8a880205-73bb-489d-b45c-7f2b8e1e1dab"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "This paper studies the optimal allocation of compute between full-precision (FP) pretraining and quantization-aware training (QAT) when training quantized LLMs. Through extensive experiments across model sizes (86M-2.2B), bit widths (1,2,4,6), and compute budgets, the authors find that the optimal QAT fraction increases with total compute, contrary to previous fixed-ratio recommendations. They introduce the tokens-per-parameter-byte statistic to unify predictions across setups and propose a loss scaling law as a function of model size, FP/QAT token counts, and bit width. The law is used to predict optimal QAT fractions, compare QAT vs FP accuracy, and select optimal bit width under memory constraints. The paper also proposes a 'cooldown & QAT fusion' technique that performs learning rate decay jointly with QAT, yielding compute savings for 4/6-bit QAT.",
+        "Strengths": [
+          "Extensive experimental study: 757 QAT runs across 5 model sizes (86M to 2.2B), 4 bit widths, and token budgets up to 1.4T, providing a rich dataset for scaling-law analysis.",
+          "The key finding that the optimal QAT fraction grows with compute (tokens-per-parameter-byte) is novel and practically important, directly challenging prior assumptions of a fixed 10% QAT ratio.",
+          "The proposed tokens-per-parameter-byte statistic effectively aligns data across different model sizes and bit widths, leading to a compact prediction for the optimal fraction.",
+          "The unified loss scaling law covers multiple bit widths in a single formula and is validated by held-out experiments on a 2.2B model and on a different dataset/hyperparameter configuration (SlimPajama), showing some generalization.",
+          "The cooldown & QAT fusion technique is simple, clearly motivated, and demonstrates consistent perplexity improvements (often >10% in 'wasted tokens' equivalent) for 4-bit and 6-bit QAT across model sizes.",
+          "The paper includes a thorough appendix with model configurations, hyperparameters, full result tables, and additional analyses, supporting reproducibility."
+        ],
+        "Weaknesses": [
+          "The loss scaling law (Eq. 4.1) is highly parameterized (at least 13 free parameters) and the specific functional form appears ad hoc, with terms like 'irreducible QAT error' and 'pure QAT penalty' lacking a clear derivation or physical interpretation; this raises risk of overfitting despite the reported R^2 values.",
+          "The key claim that optimal QAT fraction increases with compute is presented as universal, but the experiments use a specific training recipe (WSD scheduler with 20% cooldown for FP, cosine schedule with 5% warmup for QAT, and ParetoQ quantizer). The sensitivity to these choices is only partially explored; in particular, no ablation varies the cooldown length or QAT schedule within the main scaling-law study.",
+          "The 'wasted tokens' metric in Section 7 and Table 2 is computed from the scaling law itself, which may create a self-fulfilling comparison; the true compute savings of cooldown & QAT fusion are not directly measured via wall-clock or FLOPs, and the token-equivalent calculation assumes the scaling law is accurate at extrapolated points.",
+          "The comparison with previous work (Liu et al., 2025) is based on a single fixed ratio (10%) and a different experimental setup; the paper does not reproduce that prior setup or provide a controlled comparison, weakening the 'contrary to previous findings' claim.",
+          "The scaling law is derived and validated only with ParetoQ as the QAT algorithm; no experiments with other QAT methods (e.g., LSQ variants without the ParetoQ compendium) are performed, so the law's generality to QAT algorithms is unverified.",
+          "Section 5 uses the scaling law with B=16 as a proxy for full-precision loss, which is an indirect and potentially biased estimate; direct comparisons with actual FP checkpoints are only shown in the appendix and may not fully match the B=16 surrogate."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How sensitive is the optimal QAT fraction to the learning-rate schedule? In particular, would the same scaling law hold if the FP stage uses a cosine schedule or if the QAT stage uses a WSD-style cooldown instead of cosine decay?",
+          "What is the exact number of fitted parameters in Eq. (4.1), and how was the final fit selected among random initializations? Were any model-selection criteria (e.g., BIC/AIC) or cross-validation schemes used to guard against overfitting?",
+          "The tokens-per-parameter-byte statistic uses B/8, assuming a base-8 bits-per-byte. How well does this statistic work for non-power-of-two bit widths such as 3-bit or 5-bit? Have you validated the scaling law for bit widths outside {1,2,4,6}?",
+          "For the cooldown & QAT fusion, why is the improvement absent or negative for 1-bit and 2-bit QAT? Does the optimal fraction in those settings change when fusion is applied, and would a practitioner need to re-optimize the fraction for the fused scheme?",
+          "The scaling law is fitted on DCLM data. In the SlimPajama validation, only 4-bit QAT and small model sizes were tested. Are there any experiments validating the loss scaling law for other bit widths on SlimPajama or other datasets?",
+          "Can the loss scaling law be expressed in a simpler form (e.g., a modification of the Chinchilla law with fewer parameters) that achieves similar predictive accuracy? If so, does the simpler form yield the same qualitative predictions?"
+        ],
+        "Limitations": [
+          "The scaling laws are empirical and architecture-specific (Llama-like decoder-only transformer with tied embeddings); they may not transfer to encoder-decoder models, MoE architectures, or models with different quantization schemes (e.g., activation quantization).",
+          "The study evaluates only weight quantization (and embedding/LM head quantized to at least 4 bits); it does not address fully quantized training (e.g., quantized activations) or mixed-precision schemes, limiting practical scope.",
+          "The prediction of optimal bit width under memory constraints (Section 6) is derived from the scaling law but verified only qualitatively via interpolation in the appendix; the experimental validation is subject to interpolation artifacts and does not cover the full parameter-precision trade-off space.",
+          "The paper does not discuss possible negative societal impacts. While training efficiency improvements can reduce energy consumption, they could also lower the cost of developing capable language models, potentially increasing risks related to misuse; this is not addressed."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"This paper studies the optimal allocation of compute between full-precision (FP) pretraining and quantization-aware training (QAT) when training quantized LLMs. Through extensive experiments across model sizes (86M-2.2B), bit widths (1,2,4,6), and compute budgets, the authors find that the optimal QAT fraction increases with total compute, contrary to previous fixed-ratio recommendations. They introduce the tokens-per-parameter-byte statistic to unify predictions across setups and propose a loss scaling law as a function of model size, FP/QAT token counts, and bit width. The law is used to predict optimal QAT fractions, compare QAT vs FP accuracy, and select optimal bit width under memory constraints. The paper also proposes a 'cooldown & QAT fusion' technique that performs learning rate decay jointly with QAT, yielding compute savings for 4/6-bit QAT.\",\n  \"Strengths\": [\n    \"Extensive experimental study: 757 QAT runs across 5 model sizes (86M to 2.2B), 4 bit widths, and token budgets up to 1.4T, providing a rich dataset for scaling-law analysis.\",\n    \"The key finding that the optimal QAT fraction grows with compute (tokens-per-parameter-byte) is novel and practically important, directly challenging prior assumptions of a fixed 10% QAT ratio.\",\n    \"The proposed tokens-per-parameter-byte statistic effectively aligns data across different model sizes and bit widths, leading to a compact prediction for the optimal fraction.\",\n    \"The unified loss scaling law covers multiple bit widths in a single formula and is validated by held-out experiments on a 2.2B model and on a different dataset/hyperparameter configuration (SlimPajama), showing some generalization.\",\n    \"The cooldown & QAT fusion technique is simple, clearly motivated, and demonstrates consistent perplexity improvements (often >10% in 'wasted tokens' equivalent) for 4-bit and 6-bit QAT across model sizes.\",\n    \"The paper includes a thorough appendix with model configurations, hyperparameters, full result tables, and additional analyses, supporting reproducibility.\"\n  ],\n  \"Weaknesses\": [\n    \"The loss scaling law (Eq. 4.1) is highly parameterized (at least 13 free parameters) and the specific functional form appears ad hoc, with terms like 'irreducible QAT error' and 'pure QAT penalty' lacking a clear derivation or physical interpretation; this raises risk of overfitting despite the reported R^2 values.\",\n    \"The key claim that optimal QAT fraction increases with compute is presented as universal, but the experiments use a specific training recipe (WSD scheduler with 20% cooldown for FP, cosine schedule with 5% warmup for QAT, and ParetoQ quantizer). The sensitivity to these choices is only partially explored; in particular, no ablation varies the cooldown length or QAT schedule within the main scaling-law study.\",\n    \"The 'wasted tokens' metric in Section 7 and Table 2 is computed from the scaling law itself, which may create a self-fulfilling comparison; the true compute savings of cooldown & QAT fusion are not directly measured via wall-clock or FLOPs, and the token-equivalent calculation assumes the scaling law is accurate at extrapolated points.\",\n    \"The comparison with previous work (Liu et al., 2025) is based on a single fixed ratio (10%) and a different experimental setup; the paper does not reproduce that prior setup or provide a controlled comparison, weakening the 'contrary to previous findings' claim.\",\n    \"The scaling law is derived and validated only with ParetoQ as the QAT algorithm; no experiments with other QAT methods (e.g., LSQ variants without the ParetoQ compendium) are performed, so the law's generality to QAT algorithms is unverified.\",\n    \"Section 5 uses the scaling law with B=16 as a proxy for full-precision loss, which is an indirect and potentially biased estimate; direct comparisons with actual FP checkpoints are only shown in the appendix and may not fully match the B=16 surrogate.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How sensitive is the optimal QAT fraction to the learning-rate schedule? In particular, would the same scaling law hold if the FP stage uses a cosine schedule or if the QAT stage uses a WSD-style cooldown instead of cosine decay?\",\n    \"What is the exact number of fitted parameters in Eq. (4.1), and how was the final fit selected among random initializations? Were any model-selection criteria (e.g., BIC/AIC) or cross-validation schemes used to guard against overfitting?\",\n    \"The tokens-per-parameter-byte statistic uses B/8, assuming a base-8 bits-per-byte. How well does this statistic work for non-power-of-two bit widths such as 3-bit or 5-bit? Have you validated the scaling law for bit widths outside {1,2,4,6}?\",\n    \"For the cooldown & QAT fusion, why is the improvement absent or negative for 1-bit and 2-bit QAT? Does the optimal fraction in those settings change when fusion is applied, and would a practitioner need to re-optimize the fraction for the fused scheme?\",\n    \"The scaling law is fitted on DCLM data. In the SlimPajama validation, only 4-bit QAT and small model sizes were tested. Are there any experiments validating the loss scaling law for other bit widths on SlimPajama or other datasets?\",\n    \"Can the loss scaling law be expressed in a simpler form (e.g., a modification of the Chinchilla law with fewer parameters) that achieves similar predictive accuracy? If so, does the simpler form yield the same qualitative predictions?\"\n  ],\n  \"Limitations\": [\n    \"The scaling laws are empirical and architecture-specific (Llama-like decoder-only transformer with tied embeddings); they may not transfer to encoder-decoder models, MoE architectures, or models with different quantization schemes (e.g., activation quantization).\",\n    \"The study evaluates only weight quantization (and embedding/LM head quantized to at least 4 bits); it does not address fully quantized training (e.g., quantized activations) or mixed-precision schemes, limiting practical scope.\",\n    \"The prediction of optimal bit width under memory constraints (Section 6) is derived from the scaling law but verified only qualitatively via interpolation in the appendix; the experimental validation is subject to interpolation artifacts and does not cover the full parameter-precision trade-off space.\",\n    \"The paper does not discuss possible negative societal impacts. While training efficiency improvements can reduce energy consumption, they could also lower the cost of developing capable language models, potentially increasing risks related to misuse; this is not addressed.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 31296,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 30528,
+        "completion_tokens": 4260,
+        "reasoning_tokens": 2744,
+        "total_tokens": 35556
+      },
+      "attempts": 1,
+      "response_id": "3046a297-0754-4365-9e9b-a5cc7a9c1ead"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "This paper studies how to allocate a fixed compute budget between full-precision (FP) pretraining and quantization-aware training (QAT) for LLMs. Through extensive experiments across model sizes (86M-2.2B), bit widths (1/2/4/6), and token budgets, the authors find that the optimal QAT fraction (as a share of total tokens) increases with total compute, contradicting earlier assumptions of a fixed ~10% optimum. They introduce a tokens-per-parameter-byte statistic (S_total = D_total / (N*B/8)) that predicts the optimal QAT fraction, and propose an empirical loss scaling law L(N, D_fp, D_qat, B) that fits 757 QAT runs (R^2 > 0.98) and generalizes to held-out 2.2B models. The scaling law is used to predict when QAT matches FP accuracy and which bit width is optimal under memory constraints. They also propose a 'cooldown & QAT fusion' learning-rate schedule that runs QAT during the LR cooldown phase, showing small perplexity gains (often <1%) for 4/6-bit QAT that translate to claimed compute savings of up to tens of percent in 'wasted tokens'.",
+        "Strengths": [
+          "The paper addresses a practically important and under-explored question: how to divide a fixed compute budget between FP pretraining and QAT. The finding that the optimal QAT fraction grows with compute (quantified by tokens-per-parameter-byte) is novel and directly actionable.",
+          "The experimental scope is impressive: multiple model sizes (86M to 2.2B), bit widths (1,2,4,6), and token counts (up to 1.4T), plus a held-out 2.2B model and a different dataset (SlimPajama) for validation. This supports the generality of the main claim.",
+          "The proposed loss scaling law explicitly models the FP+QAT pipeline (D_fp and D_qat separately) across bit widths, which goes beyond prior QAT scaling laws that assumed QAT from scratch or required per-bit fits. The law provides a unified tool for planning and analysis.",
+          "The cooldown & QAT fusion idea is simple, intuitive, and shows consistent improvements for 4/6-bit QAT across many settings, offering a practical way to save compute without hurting accuracy.",
+          "The paper includes extensive appendices with experimental details, hyperparameters, and additional analyses (e.g., QAT overhead measurements, robustness checks), which aids reproducibility."
+        ],
+        "Weaknesses": [
+          "The scaling law (Eq. 4.1) has a heavily parameterized, ad-hoc functional form with around 15 free parameters, yet the paper provides no statistical justification (e.g., model selection, parameter uncertainties, or comparison to simpler alternatives). This raises concerns about overfitting and generalizability beyond the fitted range, despite the held-out 2.2B and SlimPajama checks.",
+          "The optimal QAT fraction predictor f(S_total) = exp(-a/log S_total) is presented in a convoluted way and the claimed 'almost linear dependency in log-log coordinates' is inconsistent with this functional form (which is not a power law). The choice appears motivated by the constraint f <= 1 rather than by the data, and no alternative forms are tested.",
+          "The tokens-per-parameter-byte statistic is introduced heuristically as a better predictor than tokens-per-parameter, but the paper only gives a qualitative comparison. A more rigorous analysis (e.g., nested model comparison or ablation) is needed to justify this specific normalization.",
+          "The cooldown & QAT fusion experiments show only tiny perplexity differences (often <1%), and the 'wasted tokens' metric used to magnify these differences is not well defined or standard. The claimed 'substantial improvements' may overstate the practical benefit, especially since some 1/2-bit configurations show degradation.",
+          "The paper lacks a direct quantitative comparison of the proposed scaling law with prior QAT scaling laws (e.g., Chen et al. 2025b) in terms of prediction accuracy, making it difficult to assess the actual improvement.",
+          "The ParetoQ QAT method and the specific Llama-2 architecture may limit the generalizability of the findings; the paper does not test with other QAT algorithms or architectures, despite claiming the phenomena should hold."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "How sensitive are the fitted scaling-law parameters to the number of random initializations and the Huber loss threshold? Were confidence intervals or bootstrap estimates computed for the parameters, and if so, what do they reveal about the stability of the fit?",
+          "The optimal QAT fraction predictor is f(S_total) = exp(-a/log S_total). Why not use a simpler power law with a saturation cap (e.g., f = 1 - c/S^b) or a piecewise fit? The claimed log-log linearity does not match this form.",
+          "For the tokens-per-parameter-byte statistic, why divide by B/8 (bytes) rather than just N? Is there an information-theoretic or empirical basis for this specific scaling, and does it improve predictions significantly over D_total/N?",
+          "In the cooldown & QAT fusion scheme, what is the exact learning-rate schedule for QAT? Is the fusion applied only to the cooldown portion, or does QAT start at the beginning of the cooldown? How is the fusion variant's LR schedule defined relative to the unfused one?",
+          "The 'wasted tokens' metric in Table 2 is reported as a percentage of total tokens (e.g., 13.2%). How exactly is this calculated from the scaling law, and what is the statistical uncertainty in these estimates?",
+          "The paper predicts optimal bit-width under memory constraints (Section 6) but the verification in Appendix 16 uses only a few experimental points and linear interpolation. What is the quantitative accuracy of the predicted optimal bit-width compared to the experimental optimum?",
+          "How does the proposed scaling law compare to the prior QAT scaling law of Chen et al. (2025b) on the same data? The paper states the prior law has issues but does not provide a direct empirical comparison."
+        ],
+        "Limitations": [
+          "Findings are based on a single architecture (Llama-2-like decoder-only transformer) and primarily one dataset (DCLM); exact numerical values may not transfer to other architectures, data distributions, or QAT algorithms (e.g., GPTQ-style PTQ).",
+          "The scaling law is empirical and lacks a theoretical foundation; its validity outside the fitted compute/model-size/bit-width ranges is uncertain, and the number of parameters risks overfitting.",
+          "The definition of 'optimal QAT fraction' is based solely on final pre-training loss (perplexity), not on downstream task performance, which may be more relevant for deployment decisions.",
+          "The compute/token budget duality is only briefly addressed; in real setups, QAT overhead may not be negligible, and the proposed substitution D_qat' = D_qat / r assumes a constant overhead factor that may not hold across implementations.",
+          "The cooldown & QAT fusion is only evaluated for 4/6-bit QAT across a limited set of model sizes and token counts; its benefits for 1/2-bit are inconsistent and not thoroughly explained."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"This paper studies how to allocate a fixed compute budget between full-precision (FP) pretraining and quantization-aware training (QAT) for LLMs. Through extensive experiments across model sizes (86M-2.2B), bit widths (1/2/4/6), and token budgets, the authors find that the optimal QAT fraction (as a share of total tokens) increases with total compute, contradicting earlier assumptions of a fixed ~10% optimum. They introduce a tokens-per-parameter-byte statistic (S_total = D_total / (N*B/8)) that predicts the optimal QAT fraction, and propose an empirical loss scaling law L(N, D_fp, D_qat, B) that fits 757 QAT runs (R^2 > 0.98) and generalizes to held-out 2.2B models. The scaling law is used to predict when QAT matches FP accuracy and which bit width is optimal under memory constraints. They also propose a 'cooldown & QAT fusion' learning-rate schedule that runs QAT during the LR cooldown phase, showing small perplexity gains (often <1%) for 4/6-bit QAT that translate to claimed compute savings of up to tens of percent in 'wasted tokens'.\",\n  \"Strengths\": [\n    \"The paper addresses a practically important and under-explored question: how to divide a fixed compute budget between FP pretraining and QAT. The finding that the optimal QAT fraction grows with compute (quantified by tokens-per-parameter-byte) is novel and directly actionable.\",\n    \"The experimental scope is impressive: multiple model sizes (86M to 2.2B), bit widths (1,2,4,6), and token counts (up to 1.4T), plus a held-out 2.2B model and a different dataset (SlimPajama) for validation. This supports the generality of the main claim.\",\n    \"The proposed loss scaling law explicitly models the FP+QAT pipeline (D_fp and D_qat separately) across bit widths, which goes beyond prior QAT scaling laws that assumed QAT from scratch or required per-bit fits. The law provides a unified tool for planning and analysis.\",\n    \"The cooldown & QAT fusion idea is simple, intuitive, and shows consistent improvements for 4/6-bit QAT across many settings, offering a practical way to save compute without hurting accuracy.\",\n    \"The paper includes extensive appendices with experimental details, hyperparameters, and additional analyses (e.g., QAT overhead measurements, robustness checks), which aids reproducibility.\"\n  ],\n  \"Weaknesses\": [\n    \"The scaling law (Eq. 4.1) has a heavily parameterized, ad-hoc functional form with around 15 free parameters, yet the paper provides no statistical justification (e.g., model selection, parameter uncertainties, or comparison to simpler alternatives). This raises concerns about overfitting and generalizability beyond the fitted range, despite the held-out 2.2B and SlimPajama checks.\",\n    \"The optimal QAT fraction predictor f(S_total) = exp(-a/log S_total) is presented in a convoluted way and the claimed 'almost linear dependency in log-log coordinates' is inconsistent with this functional form (which is not a power law). The choice appears motivated by the constraint f <= 1 rather than by the data, and no alternative forms are tested.\",\n    \"The tokens-per-parameter-byte statistic is introduced heuristically as a better predictor than tokens-per-parameter, but the paper only gives a qualitative comparison. A more rigorous analysis (e.g., nested model comparison or ablation) is needed to justify this specific normalization.\",\n    \"The cooldown & QAT fusion experiments show only tiny perplexity differences (often <1%), and the 'wasted tokens' metric used to magnify these differences is not well defined or standard. The claimed 'substantial improvements' may overstate the practical benefit, especially since some 1/2-bit configurations show degradation.\",\n    \"The paper lacks a direct quantitative comparison of the proposed scaling law with prior QAT scaling laws (e.g., Chen et al. 2025b) in terms of prediction accuracy, making it difficult to assess the actual improvement.\",\n    \"The ParetoQ QAT method and the specific Llama-2 architecture may limit the generalizability of the findings; the paper does not test with other QAT algorithms or architectures, despite claiming the phenomena should hold.\"\n\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"How sensitive are the fitted scaling-law parameters to the number of random initializations and the Huber loss threshold? Were confidence intervals or bootstrap estimates computed for the parameters, and if so, what do they reveal about the stability of the fit?\",\n    \"The optimal QAT fraction predictor is f(S_total) = exp(-a/log S_total). Why not use a simpler power law with a saturation cap (e.g., f = 1 - c/S^b) or a piecewise fit? The claimed log-log linearity does not match this form.\",\n    \"For the tokens-per-parameter-byte statistic, why divide by B/8 (bytes) rather than just N? Is there an information-theoretic or empirical basis for this specific scaling, and does it improve predictions significantly over D_total/N?\",\n    \"In the cooldown & QAT fusion scheme, what is the exact learning-rate schedule for QAT? Is the fusion applied only to the cooldown portion, or does QAT start at the beginning of the cooldown? How is the fusion variant's LR schedule defined relative to the unfused one?\",\n    \"The 'wasted tokens' metric in Table 2 is reported as a percentage of total tokens (e.g., 13.2%). How exactly is this calculated from the scaling law, and what is the statistical uncertainty in these estimates?\",\n    \"The paper predicts optimal bit-width under memory constraints (Section 6) but the verification in Appendix 16 uses only a few experimental points and linear interpolation. What is the quantitative accuracy of the predicted optimal bit-width compared to the experimental optimum?\",\n    \"How does the proposed scaling law compare to the prior QAT scaling law of Chen et al. (2025b) on the same data? The paper states the prior law has issues but does not provide a direct empirical comparison.\"\n  ],\n  \"Limitations\": [\n    \"Findings are based on a single architecture (Llama-2-like decoder-only transformer) and primarily one dataset (DCLM); exact numerical values may not transfer to other architectures, data distributions, or QAT algorithms (e.g., GPTQ-style PTQ).\",\n    \"The scaling law is empirical and lacks a theoretical foundation; its validity outside the fitted compute/model-size/bit-width ranges is uncertain, and the number of parameters risks overfitting.\",\n    \"The definition of 'optimal QAT fraction' is based solely on final pre-training loss (perplexity), not on downstream task performance, which may be more relevant for deployment decisions.\",\n    \"The compute/token budget duality is only briefly addressed; in real setups, QAT overhead may not be negligible, and the proposed substitution D_qat' = D_qat / r assumes a constant overhead factor that may not hold across implementations.\",\n    \"The cooldown & QAT fusion is only evaluated for 4/6-bit QAT across a limited set of model sizes and token counts; its benefits for 1/2-bit are inconsistent and not thoroughly explained.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 31296,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 30528,
+        "completion_tokens": 4252,
+        "reasoning_tokens": 2600,
+        "total_tokens": 35548
+      },
+      "attempts": 1,
+      "response_id": "d4b1a8aa-6e33-4d31-a7bc-18be9c050f68"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 5,
+      "Reject": 0
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          4
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          4
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          6,
+          6,
+          6,
+          6,
+          6
+        ],
+        "mean": 6,
+        "rounded_mean": 6,
+        "population_sd": 0.0,
+        "min": 6,
+        "max": 6
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "This paper studies how to allocate a fixed training compute budget between full-precision (FP) pretraining and quantization-aware training (QAT) when producing quantized LLMs. Through extensive experiments across model sizes (86M-2.2B), bit widths (1,2,4,6), and total token budgets (up to 1.4T), it finds that the optimal fraction of tokens spent on QAT increases with total compute (quantified by a tokens-per-parameter-byte statistic), contradicting prior fixed-ratio heuristics. The authors propose a loss scaling law unifying FP and QAT tokens across bit widths, use it to predict optimal QAT fractions, bit-width choices under memory constraints, and QAT/FP equivalence points, and introduce a 'cooldown & QAT fusion' learning-rate schedule that yields modest gains for 4/6-bit QAT. The law is validated on held-out 2.2B models and a different dataset.",
+      "Strengths": [
+        "Large-scale empirical study spanning 86M-2.2B parameters, 1/2/4/6-bit QAT, and up to 1.4T tokens, with a held-out 2.2B model and a different dataset (SlimPajama) for validation, supporting the generality of the main trend.",
+        "The key finding that the optimal QAT fraction grows with compute (rather than being fixed at ~10%) is novel, practically important, and clearly demonstrated, challenging prior assumptions.",
+        "Proposes a unified loss scaling law over N, D_fp, D_qat, and bit width B, which fits 757 QAT runs and yields useful downstream predictions (optimal fractions, bit-width under memory bounds, FP accuracy restoration) with reasonable accuracy.",
+        "The cooldown & QAT fusion technique is simple, intuitive, and provides consistent perplexity gains (often >10% token-equivalent savings) for 4/6-bit QAT, offering a practical compute-saving schedule.",
+        "The paper is generally clear and well-organized, with extensive appendices providing experimental details, hyperparameters, and additional robustness checks."
+      ],
+      "Weaknesses": [
+        "The loss scaling law has a heavily parameterized, ad hoc functional form (~15 free parameters) with no theoretical derivation, no confidence intervals, and no systematic comparison to simpler alternatives (e.g., per-bit-width Chinchilla fits), raising overfitting and non-identifiability concerns.",
+        "Optimal QAT fractions are only evaluated on coarse discrete grids (e.g., 10%, 20%, ...), so the reported optima and MAE (~0.07-0.10) may be biased by grid spacing; the precision of the practical guidance is therefore limited.",
+        "Generality is limited to a single Llama-2-like decoder-only architecture, one QAT framework (ParetoQ), and primarily one dataset (DCLM); results may not transfer to other architectures, quantization schemes, or activation quantization.",
+        "Cooldown & QAT fusion does not help (and sometimes hurts) 1-bit and 2-bit QAT, with only a post hoc explanation provided; the mechanism is not fully understood.",
+        "The 'wasted tokens' metric used to quantify fusion benefits is computed from the scaling law itself, potentially creating a self-fulfilling comparison; no direct wall-clock or FLOP measurements are used for the main claims.",
+        "No uncertainty quantification is provided for scaling-law predictions, especially for extrapolated settings like memory-constrained optimal bit-width and QAT/FP equivalence points, which could mislead practitioners."
+      ],
+      "Originality": 3,
+      "Quality": 3,
+      "Clarity": 3,
+      "Significance": 3,
+      "Questions": [
+        "How sensitive are the scaling-law parameters and predictions to the choice of QAT algorithm (e.g., LSQ vs ParetoQ), the learning-rate schedule (WSD cooldown length), and the inclusion of non-embedding parameters?",
+        "What is the exact number of fitted parameters in Eq. (4.1), and how were model selection, regularization, and random initializations handled? Were confidence intervals or bootstrap estimates computed?",
+        "Would a simpler functional form (e.g., a per-bit-width Chinchilla law) achieve similar predictive accuracy? If so, does it lead to the same qualitative conclusions about optimal fractions?",
+        "For cooldown & QAT fusion, what is the interaction with the optimal QAT fraction? Does fusion shift the optimal fraction, and why does it fail for 1/2-bit QAT?",
+        "How well does the tokens-per-parameter-byte statistic generalize to non-power-of-two bit widths (e.g., 3-bit or 5-bit)?",
+        "How does the proposed scaling law compare directly to prior QAT scaling laws (e.g., Chen et al. 2025b) on the same data?"
+      ],
+      "Limitations": [
+        "Scaling laws are empirical and architecture-specific (Llama-2-like decoder-only transformer with tied embeddings); they may not transfer to encoder-decoder, MoE, or hybrid models.",
+        "The study evaluates only weight quantization (and embedding/LM heads quantized to at least 4 bits); it does not address activation quantization or fully quantized training.",
+        "The scaling law is fitted on DCLM data and validated only partially on SlimPajama (4-bit, small models); data distribution shifts may affect the fitted exponents and optimal fractions.",
+        "The QAT algorithm suite (ParetoQ) may not represent all QAT methods; other QAT techniques could have different loss landscapes and optimal fractions.",
+        "The optimal fractions are only searched on a coarse grid, so the reported optima are approximate and may understate potential gains from fine-grained scheduling.",
+        "The cooldown & QAT fusion approach does not consistently help for 1-bit and 2-bit QAT, and the paper does not provide a deeper analysis of when fusion fails.",
+        "No uncertainty quantification is provided for scaling-law fits; practitioners relying on these predictions have no sense of their reliability.",
+        "Potential negative societal impacts of cheaper LLM training are not discussed; while efficiency gains can reduce energy use, they may also lower barriers to developing powerful models."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 3,
+      "Contribution": 3,
+      "Overall": 6,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "{\n  \"Summary\": \"This paper studies how to allocate a fixed training compute budget between full-precision (FP) pretraining and quantization-aware training (QAT) when producing quantized LLMs. Through extensive experiments across model sizes (86M-2.2B), bit widths (1,2,4,6), and total token budgets (up to 1.4T), it finds that the optimal fraction of tokens spent on QAT increases with total compute (quantified by a tokens-per-parameter-byte statistic), contradicting prior fixed-ratio heuristics. The authors propose a loss scaling law unifying FP and QAT tokens across bit widths, use it to predict optimal QAT fractions, bit-width choices under memory constraints, and QAT/FP equivalence points, and introduce a 'cooldown & QAT fusion' learning-rate schedule that yields modest gains for 4/6-bit QAT. The law is validated on held-out 2.2B models and a different dataset.\",\n  \"Strengths\": [\n    \"Large-scale empirical study spanning 86M-2.2B parameters, 1/2/4/6-bit QAT, and up to 1.4T tokens, with a held-out 2.2B model and a different dataset (SlimPajama) for validation, supporting the generality of the main trend.\",\n    \"The key finding that the optimal QAT fraction grows with compute (rather than being fixed at ~10%) is novel, practically important, and clearly demonstrated, challenging prior assumptions.\",\n    \"Proposes a unified loss scaling law over N, D_fp, D_qat, and bit width B, which fits 757 QAT runs and yields useful downstream predictions (optimal fractions, bit-width under memory bounds, FP accuracy restoration) with reasonable accuracy.\",\n    \"The cooldown & QAT fusion technique is simple, intuitive, and provides consistent perplexity gains (often >10% token-equivalent savings) for 4/6-bit QAT, offering a practical compute-saving schedule.\",\n    \"The paper is generally clear and well-organized, with extensive appendices providing experimental details, hyperparameters, and additional robustness checks.\"\n  ],\n  \"Weaknesses\": [\n    \"The loss scaling law has a heavily parameterized, ad hoc functional form (~15 free parameters) with no theoretical derivation, no confidence intervals, and no systematic comparison to simpler alternatives (e.g., per-bit-width Chinchilla fits), raising overfitting and non-identifiability concerns.\",\n    \"Optimal QAT fractions are only evaluated on coarse discrete grids (e.g., 10%, 20%, ...), so the reported optima and MAE (~0.07-0.10) may be biased by grid spacing; the precision of the practical guidance is therefore limited.\",\n    \"Generality is limited to a single Llama-2-like decoder-only architecture, one QAT framework (ParetoQ), and primarily one dataset (DCLM); results may not transfer to other architectures, quantization schemes, or activation quantization.\",\n    \"Cooldown & QAT fusion does not help (and sometimes hurts) 1-bit and 2-bit QAT, with only a post hoc explanation provided; the mechanism is not fully understood.\",\n    \"The 'wasted tokens' metric used to quantify fusion benefits is computed from the scaling law itself, potentially creating a self-fulfilling comparison; no direct wall-clock or FLOP measurements are used for the main claims.\",\n    \"No uncertainty quantification is provided for scaling-law predictions, especially for extrapolated settings like memory-constrained optimal bit-width and QAT/FP equivalence points, which could mislead practitioners.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How sensitive are the scaling-law parameters and predictions to the choice of QAT algorithm (e.g., LSQ vs ParetoQ), the learning-rate schedule (WSD cooldown length), and the inclusion of non-embedding parameters?\",\n    \"What is the exact number of fitted parameters in Eq. (4.1), and how were model selection, regularization, and random initializations handled? Were confidence intervals or bootstrap estimates computed?\",\n    \"Would a simpler functional form (e.g., a per-bit-width Chinchilla law) achieve similar predictive accuracy? If so, does it lead to the same qualitative conclusions about optimal fractions?\",\n    \"For cooldown & QAT fusion, what is the interaction with the optimal QAT fraction? Does fusion shift the optimal fraction, and why does it fail for 1/2-bit QAT?\",\n    \"How well does the tokens-per-parameter-byte statistic generalize to non-power-of-two bit widths (e.g., 3-bit or 5-bit)?\",\n    \"How does the proposed scaling law compare directly to prior QAT scaling laws (e.g., Chen et al. 2025b) on the same data?\"\n  ],\n  \"Limitations\": [\n    \"Scaling laws are empirical and architecture-specific (Llama-2-like decoder-only transformer with tied embeddings); they may not transfer to encoder-decoder, MoE, or hybrid models.\",\n    \"The study evaluates only weight quantization (and embedding/LM heads quantized to at least 4 bits); it does not address activation quantization or fully quantized training.\",\n    \"The scaling law is fitted on DCLM data and validated only partially on SlimPajama (4-bit, small models); data distribution shifts may affect the fitted exponents and optimal fractions.\",\n    \"The QAT algorithm suite (ParetoQ) may not represent all QAT methods; other QAT techniques could have different loss landscapes and optimal fractions.\",\n    \"The optimal fractions are only searched on a coarse grid, so the reported optima are approximate and may understate potential gains from fine-grained scheduling.\",\n    \"The cooldown & QAT fusion approach does not consistently help for 1-bit and 2-bit QAT, and the paper does not provide a deeper analysis of when fusion fails.\",\n    \"No uncertainty quantification is provided for scaling-law fits; practitioners relying on these predictions have no sense of their reliability.\",\n    \"Potential negative societal impacts of cheaper LLM training are not discussed; while efficiency gains can reduce energy use, they may also lower barriers to developing powerful models.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+    "usage": {
+      "prompt_tokens": 7598,
+      "prompt_cache_hit_tokens": 7552,
+      "prompt_cache_miss_tokens": 46,
+      "completion_tokens": 2050,
+      "reasoning_tokens": 670,
+      "total_tokens": 9648
+    },
+    "attempts": 2,
+    "response_id": "3fc28501-2545-4902-9d56-64b1997e7e9a"
+  },
+  "final_review": {
+    "Summary": "This paper studies how to allocate a fixed training compute budget between full-precision (FP) pretraining and quantization-aware training (QAT) when producing quantized LLMs. Through extensive experiments across model sizes (86M-2.2B), bit widths (1,2,4,6), and total token budgets (up to 1.4T), it finds that the optimal fraction of tokens spent on QAT increases with total compute (quantified by a tokens-per-parameter-byte statistic), contradicting prior fixed-ratio heuristics. The authors propose a loss scaling law unifying FP and QAT tokens across bit widths, use it to predict optimal QAT fractions, bit-width choices under memory constraints, and QAT/FP equivalence points, and introduce a 'cooldown & QAT fusion' learning-rate schedule that yields modest gains for 4/6-bit QAT. The law is validated on held-out 2.2B models and a different dataset.",
+    "Strengths": [
+      "Large-scale empirical study spanning 86M-2.2B parameters, 1/2/4/6-bit QAT, and up to 1.4T tokens, with a held-out 2.2B model and a different dataset (SlimPajama) for validation, supporting the generality of the main trend.",
+      "The key finding that the optimal QAT fraction grows with compute (rather than being fixed at ~10%) is novel, practically important, and clearly demonstrated, challenging prior assumptions.",
+      "Proposes a unified loss scaling law over N, D_fp, D_qat, and bit width B, which fits 757 QAT runs and yields useful downstream predictions (optimal fractions, bit-width under memory bounds, FP accuracy restoration) with reasonable accuracy.",
+      "The cooldown & QAT fusion technique is simple, intuitive, and provides consistent perplexity gains (often >10% token-equivalent savings) for 4/6-bit QAT, offering a practical compute-saving schedule.",
+      "The paper is generally clear and well-organized, with extensive appendices providing experimental details, hyperparameters, and additional robustness checks."
+    ],
+    "Weaknesses": [
+      "The loss scaling law has a heavily parameterized, ad hoc functional form (~15 free parameters) with no theoretical derivation, no confidence intervals, and no systematic comparison to simpler alternatives (e.g., per-bit-width Chinchilla fits), raising overfitting and non-identifiability concerns.",
+      "Optimal QAT fractions are only evaluated on coarse discrete grids (e.g., 10%, 20%, ...), so the reported optima and MAE (~0.07-0.10) may be biased by grid spacing; the precision of the practical guidance is therefore limited.",
+      "Generality is limited to a single Llama-2-like decoder-only architecture, one QAT framework (ParetoQ), and primarily one dataset (DCLM); results may not transfer to other architectures, quantization schemes, or activation quantization.",
+      "Cooldown & QAT fusion does not help (and sometimes hurts) 1-bit and 2-bit QAT, with only a post hoc explanation provided; the mechanism is not fully understood.",
+      "The 'wasted tokens' metric used to quantify fusion benefits is computed from the scaling law itself, potentially creating a self-fulfilling comparison; no direct wall-clock or FLOP measurements are used for the main claims.",
+      "No uncertainty quantification is provided for scaling-law predictions, especially for extrapolated settings like memory-constrained optimal bit-width and QAT/FP equivalence points, which could mislead practitioners."
+    ],
+    "Originality": 3,
+    "Quality": 3,
+    "Clarity": 3,
+    "Significance": 3,
+    "Questions": [
+      "How sensitive are the scaling-law parameters and predictions to the choice of QAT algorithm (e.g., LSQ vs ParetoQ), the learning-rate schedule (WSD cooldown length), and the inclusion of non-embedding parameters?",
+      "What is the exact number of fitted parameters in Eq. (4.1), and how were model selection, regularization, and random initializations handled? Were confidence intervals or bootstrap estimates computed?",
+      "Would a simpler functional form (e.g., a per-bit-width Chinchilla law) achieve similar predictive accuracy? If so, does it lead to the same qualitative conclusions about optimal fractions?",
+      "For cooldown & QAT fusion, what is the interaction with the optimal QAT fraction? Does fusion shift the optimal fraction, and why does it fail for 1/2-bit QAT?",
+      "How well does the tokens-per-parameter-byte statistic generalize to non-power-of-two bit widths (e.g., 3-bit or 5-bit)?",
+      "How does the proposed scaling law compare directly to prior QAT scaling laws (e.g., Chen et al. 2025b) on the same data?"
+    ],
+    "Limitations": [
+      "Scaling laws are empirical and architecture-specific (Llama-2-like decoder-only transformer with tied embeddings); they may not transfer to encoder-decoder, MoE, or hybrid models.",
+      "The study evaluates only weight quantization (and embedding/LM heads quantized to at least 4 bits); it does not address activation quantization or fully quantized training.",
+      "The scaling law is fitted on DCLM data and validated only partially on SlimPajama (4-bit, small models); data distribution shifts may affect the fitted exponents and optimal fractions.",
+      "The QAT algorithm suite (ParetoQ) may not represent all QAT methods; other QAT techniques could have different loss landscapes and optimal fractions.",
+      "The optimal fractions are only searched on a coarse grid, so the reported optima are approximate and may understate potential gains from fine-grained scheduling.",
+      "The cooldown & QAT fusion approach does not consistently help for 1-bit and 2-bit QAT, and the paper does not provide a deeper analysis of when fusion fails.",
+      "No uncertainty quantification is provided for scaling-law fits; practitioners relying on these predictions have no sense of their reliability.",
+      "Potential negative societal impacts of cheaper LLM training are not discussed; while efficiency gains can reduce energy use, they may also lower barriers to developing powerful models."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 3,
+    "Contribution": 3,
+    "Overall": 6,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair model output",
+  "usage": {
+    "prompt_tokens": 164078,
+    "prompt_cache_hit_tokens": 11392,
+    "prompt_cache_miss_tokens": 152686,
+    "completion_tokens": 19270,
+    "reasoning_tokens": 11107,
+    "total_tokens": 183348,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 3.19e-05,
+    "cache_miss_input_usd": 0.02137604,
+    "output_usd": 0.0053956,
+    "total_usd": 0.02680354
+  },
+  "elapsed_seconds": 65.74,
+  "input": {
+    "blind_id": "B043",
+    "filename": "B043.txt",
+    "blind_text_sha256": "4815252cfeee5da98f86f63d7908524686c8288c011f9490cf64940fc1a87cee",
+    "characters": 97967,
+    "full_text_saved": false
+  }
+}

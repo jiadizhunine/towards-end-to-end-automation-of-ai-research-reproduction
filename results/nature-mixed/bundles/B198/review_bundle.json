@@ -1,0 +1,706 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:52:23.848529+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "This paper studies the effect of the L0 hyperparameter (average number of active features per token) on Sparse Autoencoders (SAEs) for LLM interpretability. The authors show that if L0 is set too low, SAEs 'cheat' by mixing correlated features to improve reconstruction, resulting in polysemantic latents. If L0 is too high, degenerate solutions that also mix features occur. They demonstrate this phenomenon in toy models with known ground-truth features and show that MSE loss actively incentivizes this incorrect behavior. They also demonstrate that sparsity-reconstruction tradeoff plots, commonly used to evaluate SAEs, are misleading because a ground-truth SAE can score worse on reconstruction than an incorrect SAE that mixes features. The authors propose a proxy metric called the nth decoder projection score (s_n^dec) that can help identify the correct L0, and validate it on Gemma-2-2b and Llama-3.2-1b by showing that the metric's 'elbow' coincides with peak sparse probing performance. They conclude that most commonly used SAEs have an L0 that is too low.",
+        "Strengths": [
+          "Clear and compelling toy model experiments that directly demonstrate the phenomenon of feature mixing at low L0, with ground-truth validation",
+          "Important critique of sparsity-reconstruction tradeoff plots, showing they can lead to incorrect conclusions about SAE quality",
+          "Simple and intuitive proposed metric (nth decoder projection) that effectively identifies low-L0 problems",
+          "Honest assessment of limitations and acknowledgment that the metric is not a perfect guide",
+          "Relevant to a broad audience of SAE practitioners and interpretability researchers",
+          "Code is provided for reproducibility"
+        ],
+        "Weaknesses": [
+          "The proposed metric requires training a full sweep of SAEs at different L0 values, which is computationally expensive and limits its practical utility",
+          "The metric's behavior at high L0 is inconsistent across models and architectures, making it less reliable as a general guide",
+          "The 'correct L0' concept is somewhat idealized; in real LLMs, features likely have heterogeneous optimal L0s, which the authors acknowledge but don't fully address",
+          "Only a few layers of two models were tested; broader validation across layers and models would strengthen claims",
+          "The claim that 'most commonly used SAEs have an L0 that is too low' is based on a limited survey of open-source SAEs",
+          "The JumpReLU 'sticking' behavior near correct L0 is interesting but not fully explained"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How sensitive is the proposed metric to the choice of n? The paper mentions using n near h/2 works best, but is there a principled way to choose n?",
+          "The metric's behavior at high L0 is inconsistent—could this be due to the specific training dynamics of BatchTopK vs JumpReLU? Would you expect different results with other SAE architectures?",
+          "Have you considered how the metric behaves with SAEs that have different numbers of latents (h)? Does the optimal n scale linearly with h?",
+          "The 'correct L0' concept assumes all features have the same optimal L0. How should practitioners interpret the metric when there's a range of L0s that all seem reasonable?",
+          "How robust is the finding that low L0 is harmful across different training data distributions and model architectures?",
+          "Could the auto-L0 optimization procedure described in Appendix A.6 be made more practical for real LLM training?"
+        ],
+        "Limitations": [
+          "The work assumes linear features (LRH), which may not hold for all LLM features",
+          "The metric requires training multiple SAEs, which is computationally prohibitive for large models",
+          "Only BatchTopK and JumpReLU architectures were tested",
+          "The LLM experiments are limited to a few layers",
+          "The claim about 'most SAEs having too low L0' is based on limited survey of open-source SAEs",
+          "The paper does not address how to handle heterogeneous optimal L0s across different latents"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper investigates the effect of the L0 hyperparameter (average number of active features per token) on Sparse Autoencoders (SAEs) for LLM interpretability. The key claims are: (1) if L0 is set too low, SAEs mix correlated features to improve reconstruction at the cost of monosemanticity; (2) if L0 is too high, degenerate solutions that mix features also occur; (3) there is a \"correct\" L0 that disentangles features; (4) the sparsity-reconstruction tradeoff is misleading; and (5) they propose a proxy metric (nth decoder projection) to guide L0 selection.\n\nThe paper is technically sound in its toy model experiments, which clearly demonstrate the phenomenon of feature mixing at low L0 and show that MSE loss actively incentivizes this behavior. The toy model experiments are well-designed and provide convincing evidence for the central claims. The LLM experiments on Gemma-2-2b and Llama-3.2-1b are reasonable, though limited to a few layers. The proposed metric shows promise but has limitations—it doesn't always have a clean minimum, especially for JumpReLU SAEs at high L0.\n\nStrengths:\n- Clear and compelling toy model demonstrations of the phenomenon\n- The critique of sparsity-reconstruction tradeoff plots is well-argued and important\n- The proposed metric is simple, intuitive, and reasonably validated\n- The work addresses a significant practical question in the SAE community\n- Code is provided\n\nWeaknesses:\n- The proposed metric requires training a full sweep of SAEs, which is computationally expensive—this limits its practical utility\n- The metric's behavior at high L0 is inconsistent (sometimes flat, sometimes increasing), making it less reliable as a general guide\n- The \"correct L0\" concept is somewhat idealized; in real LLMs, features likely have heterogeneous optimal L0s, which the authors acknowledge but don't fully address\n- Only a few layers of two models were tested; broader validation would strengthen claims\n- The claim that \"most commonly used SAEs have an L0 that is too low\" is based on a limited analysis of open-source SAEs\n- The JumpReLU \"sticking\" behavior near correct L0 is interesting but not fully explained\n\nOriginality: The work is original in its systematic study of L0 effects on SAE feature quality. While related work (Chanin et al. 2025 on feature hedging) touches on similar ideas, this paper specifically focuses on L0 as a hyperparameter and provides a practical metric for selection.\n\nQuality: The toy experiments are rigorous and well-controlled. The LLM experiments are adequate but limited in scope. The paper is honest about limitations.\n\nClarity: The paper is well-written and clearly organized. The toy model setup and metrics are explained well.\n\nSignificance: This is a significant contribution to the SAE interpretability field. It challenges common practice and provides practical guidance. The finding that low L0 is actively harmful is important.\n\nOverall: This is a solid paper with important findings for the SAE community. The toy model experiments are convincing, and the LLM validation, while limited, supports the main claims. The proposed metric is a useful heuristic despite its limitations. I would lean towards acceptance, as the core message is important and the evidence is sufficient, though not overwhelming.\n\nQuestions for authors:\n1. How sensitive is the proposed metric to the choice of n? The paper mentions using n near h/2 works best, but is there a principled way to choose n?\n2. The metric's behavior at high L0 is inconsistent—could this be due to the specific training dynamics of BatchTopK vs JumpReLU? Would you expect different results with other SAE architectures?\n3. Have you considered how the metric behaves with SAEs that have different numbers of latents (h)? Does the optimal n scale linearly with h?\n4. The \"correct L0\" concept assumes all features have the same optimal L0. How should practitioners interpret the metric when there's a range of L0s that all seem reasonable?\n\nLimitations:\n- The work assumes linear features (LRH), which may not hold for all LLM features\n- The metric requires training multiple SAEs, which is computationally prohibitive for large models\n- Only BatchTopK and JumpReLU architectures were tested\n- The LLM experiments are limited to a few layers\n- The claim about \"most SAEs having too low L0\" is based on limited survey of open-source SAEs\n\nEthical concerns: None identified. This is purely technical interpretability research with no direct negative societal impact.\n\nSoundness: 3 (good) - Toy experiments are excellent; LLM validation is adequate but limited. The metric is reasonable but not fully validated.\n\nPresentation: 3 (good) - Well-written and organized, but some figures are dense and the appendix is extensive.\n\nContribution: 3 (good) - Important practical findings for SAE practitioners, but the metric's utility is somewhat limited by computational cost.\n\nOverall: 6 (Weak Accept) - The paper makes a valid and important point about L0, with strong toy model evidence. The LLM validation is sufficient to support the main claims, though the proposed metric is not a complete solution. The limitations are acknowledged and the work is honest about what it doesn't address.\n\nConfidence: 4 - I am confident in my assessment, though I haven't checked all the math details in the appendices.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper studies the effect of the L0 hyperparameter (average number of active features per token) on Sparse Autoencoders (SAEs) for LLM interpretability. The authors show that if L0 is set too low, SAEs 'cheat' by mixing correlated features to improve reconstruction, resulting in polysemantic latents. If L0 is too high, degenerate solutions that also mix features occur. They demonstrate this phenomenon in toy models with known ground-truth features and show that MSE loss actively incentivizes this incorrect behavior. They also demonstrate that sparsity-reconstruction tradeoff plots, commonly used to evaluate SAEs, are misleading because a ground-truth SAE can score worse on reconstruction than an incorrect SAE that mixes features. The authors propose a proxy metric called the nth decoder projection score (s_n^dec) that can help identify the correct L0, and validate it on Gemma-2-2b and Llama-3.2-1b by showing that the metric's 'elbow' coincides with peak sparse probing performance. They conclude that most commonly used SAEs have an L0 that is too low.\",\n  \"Strengths\": [\n    \"Clear and compelling toy model experiments that directly demonstrate the phenomenon of feature mixing at low L0, with ground-truth validation\",\n    \"Important critique of sparsity-reconstruction tradeoff plots, showing they can lead to incorrect conclusions about SAE quality\",\n    \"Simple and intuitive proposed metric (nth decoder projection) that effectively identifies low-L0 problems\",\n    \"Honest assessment of limitations and acknowledgment that the metric is not a perfect guide\",\n    \"Relevant to a broad audience of SAE practitioners and interpretability researchers\",\n    \"Code is provided for reproducibility\"\n  ],\n  \"Weaknesses\": [\n    \"The proposed metric requires training a full sweep of SAEs at different L0 values, which is computationally expensive and limits its practical utility\",\n    \"The metric's behavior at high L0 is inconsistent across models and architectures, making it less reliable as a general guide\",\n    \"The 'correct L0' concept is somewhat idealized; in real LLMs, features likely have heterogeneous optimal L0s, which the authors acknowledge but don't fully address\",\n    \"Only a few layers of two models were tested; broader validation across layers and models would strengthen claims\",\n    \"The claim that 'most commonly used SAEs have an L0 that is too low' is based on a limited survey of open-source SAEs\",\n    \"The JumpReLU 'sticking' behavior near correct L0 is interesting but not fully explained\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How sensitive is the proposed metric to the choice of n? The paper mentions using n near h/2 works best, but is there a principled way to choose n?\",\n    \"The metric's behavior at high L0 is inconsistent—could this be due to the specific training dynamics of BatchTopK vs JumpReLU? Would you expect different results with other SAE architectures?\",\n    \"Have you considered how the metric behaves with SAEs that have different numbers of latents (h)? Does the optimal n scale linearly with h?\",\n    \"The 'correct L0' concept assumes all features have the same optimal L0. How should practitioners interpret the metric when there's a range of L0s that all seem reasonable?\",\n    \"How robust is the finding that low L0 is harmful across different training data distributions and model architectures?\",\n    \"Could the auto-L0 optimization procedure described in Appendix A.6 be made more practical for real LLM training?\"\n  ],\n  \"Limitations\": [\n    \"The work assumes linear features (LRH), which may not hold for all LLM features\",\n    \"The metric requires training multiple SAEs, which is computationally prohibitive for large models\",\n    \"Only BatchTopK and JumpReLU architectures were tested\",\n    \"The LLM experiments are limited to a few layers\",\n    \"The claim about 'most SAEs having too low L0' is based on limited survey of open-source SAEs\",\n    \"The paper does not address how to handle heterogeneous optimal L0s across different latents\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 20778,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 18986,
+        "completion_tokens": 2102,
+        "reasoning_tokens": 0,
+        "total_tokens": 22880
+      },
+      "attempts": 1,
+      "response_id": "32cd60dd-ea57-4987-9778-d2bb0a9f6e58"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "This paper studies the effect of the L0 hyperparameter (average number of active features per token) on sparse autoencoder (SAE) quality. Using toy models with known ground-truth features, the authors show that L0 values both too low and too high cause SAEs to mix correlated or anti-correlated features, producing polysemantic latents. They demonstrate that sparsity-reconstruction tradeoff plots can be misleading, as incorrect SAEs can achieve better reconstruction than ground-truth SAEs at low L0. They propose a proxy metric, the nth decoder projection score (s_n^dec), which is minimized at the correct L0 in toy models and correlates with peak sparse probing performance in LLM SAEs (Gemma-2-2b, Llama-3.2-1b). The paper concludes that most commonly used SAEs have too-low L0 values, and that L0 must be carefully tuned.",
+        "Strengths": [
+          "Addresses an important and under-explored problem: the correct setting of L0 in SAEs, which is typically treated as a free parameter.",
+          "Clear toy model experiments with ground-truth features provide strong evidence for the feature-mixing phenomenon at incorrect L0.",
+          "Shows that sparsity-reconstruction tradeoff plots can actively mislead SAE evaluation, which is a significant methodological insight.",
+          "The proposed nth decoder projection metric is simple, intuitive, and validated on both toy models and real LLM SAEs, showing correlation with sparse probing performance.",
+          "Honest discussion of limitations, including the need for L0 sweeps and the ambiguous interpretation of the metric at high L0.",
+          "Includes useful analysis of JumpReLU vs BatchTopK SAE differences, adding depth to the findings."
+        ],
+        "Weaknesses": [
+          "The claim that 'most commonly used SAEs have an L0 that is too low' is based on a limited analysis (only layer 12 of Gemma-2-2b on Neuronpedia), which may not generalize.",
+          "The proposed metric requires training a sweep of SAEs over L0, which is computationally expensive and not directly usable for automatic L0 selection during training (the attempted optimization in Appendix A.6 is noted as needing heavy tuning).",
+          "The interpretation of the metric in LLM settings is ambiguous: sometimes the global minimum is at high L0, and the paper advises using the 'elbow' instead, which is subjective.",
+          "The correlation between the metric and sparse probing performance is demonstrated but not deeply analyzed; the paper does not fully explain why the metric aligns with probing at certain k values.",
+          "Experiments are limited to two layers of two models, so the generalizability across layers and architectures is uncertain.",
+          "The paper does not explore downstream tasks beyond sparse probing, leaving open whether feature mixing affects other interpretability applications."
+        ],
+        "Originality": 4,
+        "Quality": 4,
+        "Clarity": 4,
+        "Significance": 4,
+        "Questions": [
+          "How sensitive is the nth decoder projection metric to the choice of n? The paper recommends n near h/2 but shows different behaviors for different n. What guidance can you provide for practitioners choosing n?",
+          "The paper notes the metric sometimes has a shallow region or global minimum at high L0. How should practitioners decide between using the global minimum versus the 'elbow'? Is there a principled way to identify the elbow automatically?",
+          "Have you tested the metric on SAEs trained on other layers (e.g., early or late layers) or other models? Do you expect the same patterns to hold?",
+          "The analysis of open-source SAEs in Appendix A.7 is limited to one layer. Could you provide a broader survey to support the claim that most SAEs have too-low L0?",
+          "How does the feature-mixing phenomenon interact with SAE width (number of latents)? Would a wider SAE be more or less prone to this issue at fixed L0?",
+          "Does the proposed metric work for SAEs with different architectures (e.g., Gated SAEs, Matryoshka SAEs) or is it specific to BatchTopK/JumpReLU?"
+        ],
+        "Limitations": [
+          "The investigation is limited to features satisfying the linear representation hypothesis; non-linear features are not considered.",
+          "Only a few layers of two LLMs are tested due to computational cost, limiting generalizability.",
+          "The proposed metric requires training sweeps over L0, which is expensive and may be impractical for large-scale use.",
+          "The paper does not fully resolve how to automatically and reliably find the correct L0 during training, as the optimization attempt in Appendix A.6 is noted as difficult.",
+          "Potential negative societal impact is minimal, but the paper could discuss how improved SAE interpretability might be misused for surveillance or manipulation."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 4,
+        "Presentation": 4,
+        "Contribution": 4,
+        "Overall": 8,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper investigates the effect of L0 (sparsity level) on sparse autoencoders (SAEs) used for interpreting LLMs. The authors make a compelling case that L0 is not a free parameter and that both too-low and too-high L0 values lead to feature mixing and polysemanticity. They demonstrate this in toy models with ground-truth features and validate on Gemma-2-2b and Llama-3.2-1b SAEs. They propose a proxy metric (nth decoder projection) to guide L0 selection.\n\nStrengths:\n- Clear and important research question: L0 selection is a central practical issue in SAE training.\n- Solid toy model experiments with ground-truth knowledge, clearly showing the phenomenon of feature mixing at incorrect L0.\n- The demonstration that sparsity-reconstruction tradeoff plots are misleading is a significant contribution.\n- The proposed metric is simple, intuitive, and validated on toy models and LLMs, correlating with sparse probing performance.\n- Good discussion of limitations and alternative metrics.\n\nWeaknesses:\n- The claim that \"most commonly used SAEs have an L0 that is too low\" is based on a limited analysis of Neuronpedia SAEs (only layer 12 of Gemma-2-2b). This generalization may be premature.\n- The proposed metric requires training a sweep over L0, which is computationally expensive and not directly usable during training (the automatic optimization attempt in Appendix A.6 is noted as requiring heavy hyperparameter tuning).\n- The \"true L0\" concept is clear in toy models but ambiguous in real LLMs—the paper acknowledges this but doesn't fully resolve how to interpret the metric's minimum vs. elbow.\n- The correlation between the metric and sparse probing is shown but not deeply analyzed; the authors note the metric sometimes has a shallow region or global minimum at high L0, which could confuse practitioners.\n- Limited investigation of different layers and models; only 2 layers of 2 models are tested.\n- The connection between feature mixing and downstream task performance is not thoroughly explored beyond sparse probing.\n\nOverall, this is a well-executed and thought-provoking paper that addresses a real gap in SAE research. The toy model results are convincing, and the LLM validation is reasonable. The main limitation is the practical utility of the proposed metric, but the paper is honest about this. I lean toward acceptance given the significance of the findings to the SAE community.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper studies the effect of the L0 hyperparameter (average number of active features per token) on sparse autoencoder (SAE) quality. Using toy models with known ground-truth features, the authors show that L0 values both too low and too high cause SAEs to mix correlated or anti-correlated features, producing polysemantic latents. They demonstrate that sparsity-reconstruction tradeoff plots can be misleading, as incorrect SAEs can achieve better reconstruction than ground-truth SAEs at low L0. They propose a proxy metric, the nth decoder projection score (s_n^dec), which is minimized at the correct L0 in toy models and correlates with peak sparse probing performance in LLM SAEs (Gemma-2-2b, Llama-3.2-1b). The paper concludes that most commonly used SAEs have too-low L0 values, and that L0 must be carefully tuned.\",\n    \"Strengths\": [\n        \"Addresses an important and under-explored problem: the correct setting of L0 in SAEs, which is typically treated as a free parameter.\",\n        \"Clear toy model experiments with ground-truth features provide strong evidence for the feature-mixing phenomenon at incorrect L0.\",\n        \"Shows that sparsity-reconstruction tradeoff plots can actively mislead SAE evaluation, which is a significant methodological insight.\",\n        \"The proposed nth decoder projection metric is simple, intuitive, and validated on both toy models and real LLM SAEs, showing correlation with sparse probing performance.\",\n        \"Honest discussion of limitations, including the need for L0 sweeps and the ambiguous interpretation of the metric at high L0.\",\n        \"Includes useful analysis of JumpReLU vs BatchTopK SAE differences, adding depth to the findings.\"\n    ],\n    \"Weaknesses\": [\n        \"The claim that 'most commonly used SAEs have an L0 that is too low' is based on a limited analysis (only layer 12 of Gemma-2-2b on Neuronpedia), which may not generalize.\",\n        \"The proposed metric requires training a sweep of SAEs over L0, which is computationally expensive and not directly usable for automatic L0 selection during training (the attempted optimization in Appendix A.6 is noted as needing heavy tuning).\",\n        \"The interpretation of the metric in LLM settings is ambiguous: sometimes the global minimum is at high L0, and the paper advises using the 'elbow' instead, which is subjective.\",\n        \"The correlation between the metric and sparse probing performance is demonstrated but not deeply analyzed; the paper does not fully explain why the metric aligns with probing at certain k values.\",\n        \"Experiments are limited to two layers of two models, so the generalizability across layers and architectures is uncertain.\",\n        \"The paper does not explore downstream tasks beyond sparse probing, leaving open whether feature mixing affects other interpretability applications.\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 4,\n    \"Clarity\": 4,\n    \"Significance\": 4,\n    \"Questions\": [\n        \"How sensitive is the nth decoder projection metric to the choice of n? The paper recommends n near h/2 but shows different behaviors for different n. What guidance can you provide for practitioners choosing n?\",\n        \"The paper notes the metric sometimes has a shallow region or global minimum at high L0. How should practitioners decide between using the global minimum versus the 'elbow'? Is there a principled way to identify the elbow automatically?\",\n        \"Have you tested the metric on SAEs trained on other layers (e.g., early or late layers) or other models? Do you expect the same patterns to hold?\",\n        \"The analysis of open-source SAEs in Appendix A.7 is limited to one layer. Could you provide a broader survey to support the claim that most SAEs have too-low L0?\",\n        \"How does the feature-mixing phenomenon interact with SAE width (number of latents)? Would a wider SAE be more or less prone to this issue at fixed L0?\",\n        \"Does the proposed metric work for SAEs with different architectures (e.g., Gated SAEs, Matryoshka SAEs) or is it specific to BatchTopK/JumpReLU?\"\n    ],\n    \"Limitations\": [\n        \"The investigation is limited to features satisfying the linear representation hypothesis; non-linear features are not considered.\",\n        \"Only a few layers of two LLMs are tested due to computational cost, limiting generalizability.\",\n        \"The proposed metric requires training sweeps over L0, which is expensive and may be impractical for large-scale use.\",\n        \"The paper does not fully resolve how to automatically and reliably find the correct L0 during training, as the optimization attempt in Appendix A.6 is noted as difficult.\",\n        \"Potential negative societal impact is minimal, but the paper could discuss how improved SAE interpretability might be misused for surveillance or manipulation.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 4,\n    \"Presentation\": 4,\n    \"Contribution\": 4,\n    \"Overall\": 8,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 20778,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 18986,
+        "completion_tokens": 1592,
+        "reasoning_tokens": 0,
+        "total_tokens": 22370
+      },
+      "attempts": 1,
+      "response_id": "a20dd584-6bfe-4eb7-b5e8-4d11095eb1a9"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper studies the effect of L0 (sparsity level) on Sparse Autoencoders (SAEs), showing that L0 must be set correctly for SAEs to learn disentangled, monosemantic features. Through toy models with ground-truth features, the authors demonstrate that both too low and too high L0 cause SAEs to mix correlated features, and that sparsity-reconstruction tradeoff plots are misleading since incorrect SAEs can achieve better reconstruction than ground-truth ones at low L0. They propose a proxy metric ($n$th decoder projection, $s_n^{dec}$) based on decoder-activation projections to detect the correct L0, and validate it on toy models and LLMs (Gemma-2-2b, Llama-3.2-1b) for both BatchTopK and JumpReLU SAEs. The metric correlates with sparse probing performance, and the paper argues that most commonly used SAEs have L0 too low.",
+        "Strengths": [
+          "Novel and important claim that sparsity-reconstruction tradeoff plots are misleading, with clear toy model evidence showing ground-truth SAE can have worse reconstruction than incorrect SAE at low L0.",
+          "The proposed $s_n^{dec}$ metric is simple, intuitive, and validated on both toy models and real LLMs, correlating with sparse probing performance.",
+          "Thorough experimental setup: multiple toy models, two LLMs, multiple layers, BatchTopK and JumpReLU SAEs, with code provided.",
+          "Honest discussion of limitations, including the metric's behavior at high L0 and the difficulty of automating L0 selection.",
+          "The finding that most open-source SAEs have L0 too low has direct practical implications for the interpretability community."
+        ],
+        "Weaknesses": [
+          "The toy model assumes perfectly orthogonal features and a simple correlated Bernoulli process, which may not capture the complexity of real LLM activations (e.g., non-linear features, hierarchical structure). The authors acknowledge this but don't deeply explore robustness.",
+          "The $s_n^{dec}$ metric requires training a sweep over L0, which is expensive; the automated approach mentioned in the appendix is admitted to be impractical for LLMs, limiting immediate utility.",
+          "The claim that 'most commonly used SAEs have L0 too low' is based on a cursory search of Neuronpedia; the analysis of open-source SAEs is brief and could be more rigorous.",
+          "The paper doesn't provide theoretical justification for why $s_n^{dec}$ should be minimized at the true L0; it's purely empirical. The connection to feature hedging is plausible but not rigorously formalized.",
+          "The evaluation of 'correct' L0 in LLMs relies on sparse probing performance, which is itself a proxy; the authors could discuss potential circularity.",
+          "Some figures (e.g., Figure 9) show that the metric has a shallow region at high L0 for Gemma-2-2b, making the 'elbow' interpretation somewhat subjective."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "Can you provide a more formal theoretical argument for why $s_n^{dec}$ should be minimized at the true L0, rather than just empirical observations?",
+          "How sensitive is the $s_n^{dec}$ metric to the choice of $n$? The paper mentions $n \\approx h/2$ works well, but could you show more analysis of the sensitivity?",
+          "For the claim that most open-source SAEs have L0 too low, could you provide a more systematic analysis of Neuronpedia SAEs, including model sizes, layers, and training details?",
+          "Have you considered testing the $s_n^{dec}$ metric on SAEs trained with other architectures (e.g., TopK, L1) to check generalizability?",
+          "Could you discuss potential circularity in using sparse probing performance as the ground truth for 'correct' L0, since the probing itself may be affected by the same feature mixing issues?",
+          "In Figure 9, for Gemma-2-2b, the $s_n^{dec}$ plot has a long shallow region at high L0. How do you decide the 'elbow' point in such cases, and is this choice robust?",
+          "Have you explored the effect of L0 on downstream interpretability tasks beyond sparse probing, such as causal interventions or feature visualization?"
+        ],
+        "Limitations": [
+          "The toy model assumes linear, orthogonal features, which may not hold in real LLMs where features can be non-linear or hierarchical.",
+          "The $s_n^{dec}$ metric requires training a sweep over L0, which is computationally expensive, and the automated optimization approach is not yet practical for LLMs.",
+          "The paper only investigates a few layers of two LLMs; the behavior at other layers or larger models is not verified.",
+          "The analysis of open-source SAEs is based on a brief scan of Neuronpedia and may not be representative of all SAEs in the field.",
+          "The paper does not explore how unbalanced correlations or non-uniform feature magnitudes affect the conclusions.",
+          "Potential negative societal impact: The findings could be misinterpreted as a reason to distrust all SAE-based interpretability results, potentially undermining transparency efforts in AI safety. However, the paper's intent is to improve SAE training, which is a positive contribution."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 4,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper investigates the effect of L0 (sparsity level) on Sparse Autoencoders (SAEs) and argues that L0 must be set correctly to learn disentangled features. The authors show through toy models that both too low and too high L0 cause feature mixing, propose a proxy metric ($s_n^{dec}$) to detect the correct L0, and validate on LLMs (Gemma-2-2b, Llama-3.2-1b). The paper is well-motivated, addresses an important practical question in mechanistic interpretability, and provides both theoretical (toy model) and empirical (LLM) evidence.\n\nStrengths:\n- Novel and important claim that sparsity-reconstruction tradeoff plots are misleading, with clear toy model demonstration that ground-truth SAE can have worse reconstruction than an incorrect one at low L0.\n- The proposed metric $s_n^{dec}$ is simple, intuitive, and validated on both toy models and real LLMs, correlating with sparse probing performance.\n- Thorough experimental setup: multiple toy models, two LLMs, multiple layers, BatchTopK and JumpReLU SAEs, with code provided.\n- Honest discussion of limitations, including the metric's behavior at high L0 and the difficulty of automating L0 selection.\n\nWeaknesses:\n- The toy model assumes features are perfectly orthogonal and follow a simple correlated Bernoulli process; this may not capture the complexity of real LLM activations (e.g., non-linear features, hierarchical structure). The authors acknowledge this but don't deeply explore robustness.\n- The $s_n^{dec}$ metric requires training a sweep over L0, which is expensive; the paper mentions an automated approach but admits it's not yet practical for LLMs. This limits immediate utility.\n- The claim that \"most commonly used SAEs have L0 too low\" is based on a cursory search of Neuronpedia; the analysis of open-source SAEs is brief and could be more rigorous.\n- The paper doesn't provide theoretical justification for why the $s_n^{dec}$ metric should be minimized at the true L0; it's purely empirical. The connection to feature hedging is plausible but not rigorously formalized.\n- The evaluation of \"correct\" L0 in LLMs relies on sparse probing performance, which is itself a proxy; the authors could discuss potential circularity.\n- Some figures (e.g., Figure 9) show that the metric has a shallow region at high L0 for Gemma-2-2b, making the \"elbow\" interpretation somewhat subjective.\n\nOverall, the paper makes a valuable contribution to SAE interpretability, with strong toy model evidence and reasonable LLM validation. The main weaknesses are the lack of theoretical grounding for the metric and the practical difficulty of applying it. I lean toward acceptance, as the core finding (L0 must be set correctly) is important and well-supported, even if the metric is imperfect.\n\nFor the review, I'll rate: Originality 3 (high), Quality 3 (good), Clarity 3 (good), Significance 4 (excellent). Soundness 3, Presentation 3, Contribution 4. Overall 7 (Accept). Confidence 4.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper studies the effect of L0 (sparsity level) on Sparse Autoencoders (SAEs), showing that L0 must be set correctly for SAEs to learn disentangled, monosemantic features. Through toy models with ground-truth features, the authors demonstrate that both too low and too high L0 cause SAEs to mix correlated features, and that sparsity-reconstruction tradeoff plots are misleading since incorrect SAEs can achieve better reconstruction than ground-truth ones at low L0. They propose a proxy metric ($n$th decoder projection, $s_n^{dec}$) based on decoder-activation projections to detect the correct L0, and validate it on toy models and LLMs (Gemma-2-2b, Llama-3.2-1b) for both BatchTopK and JumpReLU SAEs. The metric correlates with sparse probing performance, and the paper argues that most commonly used SAEs have L0 too low.\",\n  \"Strengths\": [\n    \"Novel and important claim that sparsity-reconstruction tradeoff plots are misleading, with clear toy model evidence showing ground-truth SAE can have worse reconstruction than incorrect SAE at low L0.\",\n    \"The proposed $s_n^{dec}$ metric is simple, intuitive, and validated on both toy models and real LLMs, correlating with sparse probing performance.\",\n    \"Thorough experimental setup: multiple toy models, two LLMs, multiple layers, BatchTopK and JumpReLU SAEs, with code provided.\",\n    \"Honest discussion of limitations, including the metric's behavior at high L0 and the difficulty of automating L0 selection.\",\n    \"The finding that most open-source SAEs have L0 too low has direct practical implications for the interpretability community.\"\n  ],\n  \"Weaknesses\": [\n    \"The toy model assumes perfectly orthogonal features and a simple correlated Bernoulli process, which may not capture the complexity of real LLM activations (e.g., non-linear features, hierarchical structure). The authors acknowledge this but don't deeply explore robustness.\",\n    \"The $s_n^{dec}$ metric requires training a sweep over L0, which is expensive; the automated approach mentioned in the appendix is admitted to be impractical for LLMs, limiting immediate utility.\",\n    \"The claim that 'most commonly used SAEs have L0 too low' is based on a cursory search of Neuronpedia; the analysis of open-source SAEs is brief and could be more rigorous.\",\n    \"The paper doesn't provide theoretical justification for why $s_n^{dec}$ should be minimized at the true L0; it's purely empirical. The connection to feature hedging is plausible but not rigorously formalized.\",\n    \"The evaluation of 'correct' L0 in LLMs relies on sparse probing performance, which is itself a proxy; the authors could discuss potential circularity.\",\n    \"Some figures (e.g., Figure 9) show that the metric has a shallow region at high L0 for Gemma-2-2b, making the 'elbow' interpretation somewhat subjective.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"Can you provide a more formal theoretical argument for why $s_n^{dec}$ should be minimized at the true L0, rather than just empirical observations?\",\n    \"How sensitive is the $s_n^{dec}$ metric to the choice of $n$? The paper mentions $n \\\\approx h/2$ works well, but could you show more analysis of the sensitivity?\",\n    \"For the claim that most open-source SAEs have L0 too low, could you provide a more systematic analysis of Neuronpedia SAEs, including model sizes, layers, and training details?\",\n    \"Have you considered testing the $s_n^{dec}$ metric on SAEs trained with other architectures (e.g., TopK, L1) to check generalizability?\",\n    \"Could you discuss potential circularity in using sparse probing performance as the ground truth for 'correct' L0, since the probing itself may be affected by the same feature mixing issues?\",\n    \"In Figure 9, for Gemma-2-2b, the $s_n^{dec}$ plot has a long shallow region at high L0. How do you decide the 'elbow' point in such cases, and is this choice robust?\",\n    \"Have you explored the effect of L0 on downstream interpretability tasks beyond sparse probing, such as causal interventions or feature visualization?\"\n  ],\n  \"Limitations\": [\n    \"The toy model assumes linear, orthogonal features, which may not hold in real LLMs where features can be non-linear or hierarchical.\",\n    \"The $s_n^{dec}$ metric requires training a sweep over L0, which is computationally expensive, and the automated optimization approach is not yet practical for LLMs.\",\n    \"The paper only investigates a few layers of two LLMs; the behavior at other layers or larger models is not verified.\",\n    \"The analysis of open-source SAEs is based on a brief scan of Neuronpedia and may not be representative of all SAEs in the field.\",\n    \"The paper does not explore how unbalanced correlations or non-uniform feature magnitudes affect the conclusions.\",\n    \"Potential negative societal impact: The findings could be misinterpreted as a reason to distrust all SAE-based interpretability results, potentially undermining transparency efforts in AI safety. However, the paper's intent is to improve SAE training, which is a positive contribution.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 4,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 20778,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 18986,
+        "completion_tokens": 1880,
+        "reasoning_tokens": 0,
+        "total_tokens": 22658
+      },
+      "attempts": 1,
+      "response_id": "24e9f98a-5419-4728-ac7a-2d5388fbdaab"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "This paper investigates the role of the L0 hyperparameter (average number of active latents per token) in Sparse Autoencoders (SAEs), challenging the common view that L0 is a free parameter tuned via sparsity-reconstruction tradeoff plots. Using toy models with ground-truth features, the authors demonstrate that both too-low and too-high L0 cause SAEs to mix correlated features into latents, producing polysemantic representations. Importantly, they show that low L0 SAEs can achieve better reconstruction loss than ground-truth SAEs by 'cheating' via feature hedging, making sparsity-reconstruction plots misleading for SAE evaluation. The paper introduces a proxy metric, the n-th decoder projection (s_n^dec), which measures how well SAE latents project onto arbitrary inputs, and shows it is minimized at the correct L0 in toy models and aligns with peak sparse probing performance in LLMs (Gemma-2-2b, Llama-3.2-1b). The authors conclude that most commonly used SAEs have L0 set too low, and that L0 must be carefully tuned for SAEs to learn correct features.",
+        "Strengths": [
+          "The paper addresses a fundamental and underappreciated issue in SAE training, with direct practical implications for the interpretability community.",
+          "Toy model experiments with ground-truth features provide clear causal evidence for the feature mixing phenomenon, showing that MSE loss actively incentivizes incorrect dictionaries at low L0.",
+          "The proposed metric (s_n^dec) is simple, intuitive, and validated across toy models, multiple LLMs, and both BatchTopK and JumpReLU SAE architectures.",
+          "The work convincingly demonstrates that sparsity-reconstruction tradeoff plots are misleading, potentially invalidating a common evaluation practice in the field.",
+          "The authors are honest about limitations, including the metric's behavior at high L0 and the challenges of automating L0 selection.",
+          "The paper includes useful appendices with extended analyses, including an alternative metric (decoder pairwise cosine similarity) and a discussion of automatic L0 optimization."
+        ],
+        "Weaknesses": [
+          "The claim that 'most commonly used SAEs have L0 too low' is based on a limited survey of Neuronpedia SAEs and only a few LLM layers, making it suggestive but not conclusive.",
+          "The proposed metric requires training a sweep of SAEs at different L0 values, which is computationally expensive and may limit practical adoption.",
+          "LLM experiments are limited to two models (Gemma-2-2b, Llama-3.2-1b) and a few layers, raising questions about generalizability across architectures and layers.",
+          "The 'elbow' detection in LLM s_n^dec plots is somewhat heuristic; the paper doesn't provide a rigorous algorithm for automatically identifying the correct L0 from these plots.",
+          "The paper does not deeply explore why the metric behaves differently between BatchTopK and JumpReLU at high L0, leaving some ambiguity about the robustness of the method.",
+          "The toy model uses orthogonal features, and the paper does not investigate how non-orthogonal or non-linear feature structures (as in Engels et al. 2025) would affect the conclusions."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "How sensitive is the s_n^dec metric to the choice of n? The paper shows results for n=12, 18, and h/2, but how robust is the 'elbow' detection across different n values, especially in LLM settings?",
+          "The paper claims most open-source SAEs have L0 too low. Given the computational cost of training sweeps, what practical recommendation would you give to practitioners who cannot afford multiple SAE trainings?",
+          "For the LLM experiments, how was the 'true' optimal L0 determined beyond sparse probing? Is there any additional validation (e.g., human interpretability studies or downstream task performance) that supports the chosen optimal L0?",
+          "The toy model uses orthogonal features. How would non-orthogonal or non-linear features (as in Engels et al. 2025) affect the conclusions and the behavior of the s_n^dec metric?",
+          "Could the s_n^dec metric be adapted to work during training without full sweeps, perhaps by monitoring it dynamically and adjusting L0 on the fly? The appendix discusses this but notes significant challenges.",
+          "In the LLM experiments, what is the variance in sparse probing performance across seeds at the optimal L0? Are the differences between L0 values statistically significant?"
+        ],
+        "Limitations": [
+          "The paper focuses on linear features satisfying the Linear Representation Hypothesis and does not investigate non-linear feature structures, which may be present in real LLMs.",
+          "The LLM validation is limited to two models (Gemma-2-2b, Llama-3.2-1b) and a few layers, which may not capture the full diversity of SAE behavior across architectures.",
+          "The proposed metric requires training sweeps over L0, which is computationally expensive and may be prohibitive for many practitioners.",
+          "The paper does not provide a fully automated method for L0 selection, only a diagnostic tool that requires manual interpretation of plots.",
+          "Potential negative societal impact is not discussed, though this is a technical interpretability paper with minimal direct societal implications."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper investigates the critical role of L0 (sparsity) in Sparse Autoencoders (SAEs), arguing that incorrect L0 settings lead to feature mixing and polysemantic latents, contrary to the common view that L0 is merely a sparsity-reconstruction tradeoff hyperparameter. The authors provide compelling toy model experiments demonstrating that both too-low and too-high L0 cause SAEs to mix correlated features, with low L0 being particularly insidious as it actively incentivizes incorrect dictionaries that achieve better MSE than ground-truth features. They introduce a proxy metric (n-th decoder projection) to detect the optimal L0, validating it on toy models and LLMs (Gemma-2-2b, Llama-3.2-1b), showing alignment with sparse probing performance.\n\nStrengths:\n- The paper addresses a fundamental and underappreciated issue in SAE training, with practical implications for the interpretability community.\n- The toy model experiments are well-designed with ground-truth features, providing clear causal evidence for the feature mixing phenomenon.\n- The proposed metric (s_n^dec) is simple, intuitive, and validated across multiple settings.\n- The work includes both BatchTopK and JumpReLU SAEs, strengthening generalizability.\n- The authors are honest about limitations, including the metric's behavior at high L0 and the difficulty of automating L0 selection.\n\nWeaknesses:\n- The claim that \"most commonly used SAEs have an L0 that is too low\" is based on a limited survey (Neuronpedia) and only a few LLM layers. The evidence is suggestive but not conclusive.\n- The metric s_n^dec requires training a sweep of SAEs at different L0 values, which is expensive. The authors acknowledge this but don't propose a fully practical solution.\n- The LLM experiments are limited to two models and a few layers. While reasonable, the generalizability of the \"optimal L0\" claim could be questioned.\n- The paper doesn't deeply explore why the metric's behavior differs between BatchTopK and JumpReLU at high L0, leaving some ambiguity about the robustness of the proposed method.\n- The \"elbow\" detection in LLM plots is somewhat heuristic; the paper doesn't provide a rigorous algorithm for automatically identifying the correct L0 from these plots.\n\nOriginality: High. While related work (Chanin et al. 2025, feature hedging) touches on similar ideas, this paper specifically focuses on L0 as a critical hyperparameter and provides both causal toy experiments and a practical metric.\n\nQuality: Good. The experiments are thorough within their scope, with multiple seeds and both toy and LLM settings. The paper is careful to distinguish between correlation and causation in the toy models. However, the LLM validation is somewhat limited in breadth.\n\nClarity: Good. The paper is well-written and organized, with clear figures and explanations. The distinction between \"latents\" and \"features\" is helpful. The appendices provide useful supplementary details.\n\nSignificance: High. The finding that L0 is not a free parameter but must be carefully tuned has direct implications for SAE practitioners. The proposed metric could become a standard tool for SAE evaluation.\n\nQuestions:\n1. How sensitive is the s_n^dec metric to the choice of n? The paper shows results for n=12, 18, and h/2, but how robust is the \"elbow\" detection across different n values?\n2. The paper claims most open-source SAEs have L0 too low. Given the cost of training sweeps, what would be a practical recommendation for practitioners who cannot afford multiple SAE trainings?\n3. For the LLM experiments, how was the \"true\" optimal L0 determined beyond sparse probing? Is there any other validation (e.g., human interpretability studies)?\n4. The toy model uses orthogonal features. How would non-orthogonal or non-linear features (as in Engels et al. 2025) affect the conclusions?\n5. Could the s_n^dec metric be adapted to work during training without full sweeps, perhaps by monitoring it dynamically?\n\nLimitations:\n- The paper focuses on linear features and doesn't explore non-linear feature structures.\n- The LLM validation is limited to two models and a few layers.\n- The proposed metric requires training sweeps, which may be prohibitive for some practitioners.\n- The paper doesn't provide a fully automated method for L0 selection, only a diagnostic tool.\n- Potential negative societal impact is not discussed, though this is a technical interpretability paper with minimal direct societal implications.\n\nEthical Concerns: None identified. The paper is purely technical and doesn't involve human subjects, sensitive data, or dual-use concerns.\n\nOverall Assessment: This is a solid, well-executed paper that addresses an important issue in SAE interpretability. The toy experiments are convincing, and the LLM validation, while limited, is reasonable. The proposed metric is a useful contribution. However, the practical utility is somewhat limited by the need for training sweeps, and the claim about most SAEs having too low L0 needs broader validation. I lean toward acceptance due to the significance of the finding and the quality of the toy experiments, but with reservations about the breadth of LLM validation.\n\nSoundness: 3 (good) - well-supported claims in toy models, but LLM validation is limited.\n\nPresentation: 3 (good) - clear writing, but some figures could be more informative.\n\nContribution: 3 (good) - important finding with practical implications, though not groundbreaking.\n\nOverall: 6 (weak accept) - technically sound with moderate-to-high impact, but limited by the need for sweeps and narrow LLM validation.\n\nConfidence: 4 - I'm confident in my assessment, having checked the math and being familiar with SAE literature.\n\nDecision: Accept (leaning toward accept due to significance, despite minor reservations).REVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper investigates the role of the L0 hyperparameter (average number of active latents per token) in Sparse Autoencoders (SAEs), challenging the common view that L0 is a free parameter tuned via sparsity-reconstruction tradeoff plots. Using toy models with ground-truth features, the authors demonstrate that both too-low and too-high L0 cause SAEs to mix correlated features into latents, producing polysemantic representations. Importantly, they show that low L0 SAEs can achieve better reconstruction loss than ground-truth SAEs by 'cheating' via feature hedging, making sparsity-reconstruction plots misleading for SAE evaluation. The paper introduces a proxy metric, the n-th decoder projection (s_n^dec), which measures how well SAE latents project onto arbitrary inputs, and shows it is minimized at the correct L0 in toy models and aligns with peak sparse probing performance in LLMs (Gemma-2-2b, Llama-3.2-1b). The authors conclude that most commonly used SAEs have L0 set too low, and that L0 must be carefully tuned for SAEs to learn correct features.\",\n  \"Strengths\": [\n    \"The paper addresses a fundamental and underappreciated issue in SAE training, with direct practical implications for the interpretability community.\",\n    \"Toy model experiments with ground-truth features provide clear causal evidence for the feature mixing phenomenon, showing that MSE loss actively incentivizes incorrect dictionaries at low L0.\",\n    \"The proposed metric (s_n^dec) is simple, intuitive, and validated across toy models, multiple LLMs, and both BatchTopK and JumpReLU SAE architectures.\",\n    \"The work convincingly demonstrates that sparsity-reconstruction tradeoff plots are misleading, potentially invalidating a common evaluation practice in the field.\",\n    \"The authors are honest about limitations, including the metric's behavior at high L0 and the challenges of automating L0 selection.\",\n    \"The paper includes useful appendices with extended analyses, including an alternative metric (decoder pairwise cosine similarity) and a discussion of automatic L0 optimization.\"\n  ],\n  \"Weaknesses\": [\n    \"The claim that 'most commonly used SAEs have L0 too low' is based on a limited survey of Neuronpedia SAEs and only a few LLM layers, making it suggestive but not conclusive.\",\n    \"The proposed metric requires training a sweep of SAEs at different L0 values, which is computationally expensive and may limit practical adoption.\",\n    \"LLM experiments are limited to two models (Gemma-2-2b, Llama-3.2-1b) and a few layers, raising questions about generalizability across architectures and layers.\",\n    \"The 'elbow' detection in LLM s_n^dec plots is somewhat heuristic; the paper doesn't provide a rigorous algorithm for automatically identifying the correct L0 from these plots.\",\n    \"The paper does not deeply explore why the metric behaves differently between BatchTopK and JumpReLU at high L0, leaving some ambiguity about the robustness of the method.\",\n    \"The toy model uses orthogonal features, and the paper does not investigate how non-orthogonal or non-linear feature structures (as in Engels et al. 2025) would affect the conclusions.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"How sensitive is the s_n^dec metric to the choice of n? The paper shows results for n=12, 18, and h/2, but how robust is the 'elbow' detection across different n values, especially in LLM settings?\",\n    \"The paper claims most open-source SAEs have L0 too low. Given the computational cost of training sweeps, what practical recommendation would you give to practitioners who cannot afford multiple SAE trainings?\",\n    \"For the LLM experiments, how was the 'true' optimal L0 determined beyond sparse probing? Is there any additional validation (e.g., human interpretability studies or downstream task performance) that supports the chosen optimal L0?\",\n    \"The toy model uses orthogonal features. How would non-orthogonal or non-linear features (as in Engels et al. 2025) affect the conclusions and the behavior of the s_n^dec metric?\",\n    \"Could the s_n^dec metric be adapted to work during training without full sweeps, perhaps by monitoring it dynamically and adjusting L0 on the fly? The appendix discusses this but notes significant challenges.\",\n    \"In the LLM experiments, what is the variance in sparse probing performance across seeds at the optimal L0? Are the differences between L0 values statistically significant?\"\n  ],\n  \"Limitations\": [\n    \"The paper focuses on linear features satisfying the Linear Representation Hypothesis and does not investigate non-linear feature structures, which may be present in real LLMs.\",\n    \"The LLM validation is limited to two models (Gemma-2-2b, Llama-3.2-1b) and a few layers, which may not capture the full diversity of SAE behavior across architectures.\",\n    \"The proposed metric requires training sweeps over L0, which is computationally expensive and may be prohibitive for many practitioners.\",\n    \"The paper does not provide a fully automated method for L0 selection, only a diagnostic tool that requires manual interpretation of plots.\",\n    \"Potential negative societal impact is not discussed, though this is a technical interpretability paper with minimal direct societal implications.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 20778,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 18986,
+        "completion_tokens": 2427,
+        "reasoning_tokens": 0,
+        "total_tokens": 23205
+      },
+      "attempts": 1,
+      "response_id": "859ee74d-2ffb-47af-a427-13355cb53129"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper investigates the role of L0 (sparsity) in Sparse Autoencoders (SAEs), arguing that L0 is not a neutral hyperparameter but must be set correctly to avoid feature mixing and polysemanticity. Through toy model experiments with ground-truth features, the authors show that both too-low and too-high L0 cause SAEs to mix correlated features, and that MSE loss actively incentivizes incorrect solutions at low L0. They challenge the standard sparsity-reconstruction tradeoff plots, demonstrating that a perfect ground-truth SAE can score worse on reconstruction than a flawed one. They propose a proxy metric, the n-th decoder projection (s_n^dec), which is minimized at the correct L0 in toy models and aligns with peak sparse probing performance in LLM SAEs (Gemma-2-2b, Llama-3.2-1b). The paper concludes that most commonly used SAEs have too low L0.",
+        "Strengths": [
+          "Addresses an important and under-explored question: the correct setting of L0 in SAEs, challenging the common assumption that L0 is a free parameter.",
+          "Well-designed toy model experiments with ground-truth features provide clear and convincing evidence of feature mixing at incorrect L0 values.",
+          "The proposed s_n^dec metric is simple, intuitive, and validated on both toy models and LLMs, showing correlation with sparse probing performance.",
+          "The paper is well-written and clearly structured, with helpful figures and comprehensive appendices.",
+          "Authors are honest about limitations (e.g., metric requires sweep, non-linear features not considered, limited LLM layers)."
+        ],
+        "Weaknesses": [
+          "LLM experiments are limited to two models and a few layers, making the claim that 'most SAEs have too low L0' somewhat speculative.",
+          "The metric requires training a full sweep of L0 values, which is computationally expensive; the authors acknowledge auto-tuning is difficult.",
+          "The interpretation of the s_n^dec curve (e.g., 'elbow' vs global minimum) is subjective and not fully principled; in some cases (Gemma-2-2b layer 5) there is no clear minimum.",
+          "The paper does not deeply explore why JumpReLU SAEs behave differently at high L0, beyond speculative discussion about per-latent thresholds.",
+          "The connection between toy model and LLM behavior is heuristic; no direct evidence of feature mixing in LLMs is provided."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How does the metric behave if the true L0 varies across different input distributions (e.g., different token types)? Would the optimal L0 be distribution-dependent?",
+          "Have you tested the metric on SAEs trained with different architectures (e.g., Gated SAEs, Matryoshka SAEs) beyond BatchTopK and JumpReLU?",
+          "In Figure 9, the Gemma-2-2b s_n^dec curve has a long shallow region at high L0. How should practitioners interpret this? Is the global minimum always reliable, or is the 'elbow' more robust?",
+          "The paper suggests that most SAEs have too low L0. Could this be an artifact of the training data or the specific SAE initialization? Have you tested SAEs with higher L0 from the start and found they still converge to lower L0?",
+          "Is there a theoretical justification for why the n-th decoder projection should be minimized at the true L0, or is this purely empirical?",
+          "How sensitive is the metric to the choice of n? The paper recommends n up to h/2, but the optimal n seems to vary. Is there a principled way to choose n?"
+        ],
+        "Limitations": [
+          "The paper only considers linear features (LRH), which is acknowledged; non-linear features could behave differently.",
+          "LLM experiments are limited to a few layers and models; broader validation is needed.",
+          "The metric requires a sweep over L0, which is expensive; auto-tuning is discussed but shown to be difficult.",
+          "The paper does not provide a clear way to determine the 'correct' L0 from the metric curve in all cases (e.g., when there is no clear minimum).",
+          "Potential negative societal impact is not discussed, but this is unlikely to be a concern for this type of interpretability work."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper investigates the effect of L0 (sparsity) on Sparse Autoencoders (SAEs) and argues that L0 must be set correctly to avoid feature mixing. The authors demonstrate through toy models and LLM experiments that both too-low and too-high L0 lead to polysemantic latents, and propose a proxy metric (n-th decoder projection) to identify the correct L0. The work challenges the common practice of treating L0 as a free parameter in sparsity-reconstruction tradeoffs.\n\nStrengths:\n- Novel and important question: The paper addresses a critical gap in SAE literature by questioning the assumption that L0 is a neutral hyperparameter. This is highly relevant to the interpretability community.\n- Strong toy model experiments: The controlled synthetic setup with ground-truth features provides clear evidence that low L0 causes feature mixing and that MSE loss actively incentivizes incorrect solutions.\n- The proposed metric (s_n^dec) is intuitive, computationally simple, and validated on both toy models and LLMs (Gemma-2-2b, Llama-3.2-1b). The correlation with sparse probing performance strengthens the claim.\n- The paper is well-written and clearly structured, with helpful figures and appendices providing additional details.\n- The authors are honest about limitations (e.g., metric not always perfect, requires sweep, non-linear features not considered).\n\nWeaknesses:\n- The LLM experiments are limited to two models and a few layers. The claim that \"most SAEs have too low L0\" is based on a small survey of Neuronpedia, which may not be representative.\n- The proposed metric requires training a full sweep of L0 values, which is computationally expensive. The authors acknowledge this but the practical utility is limited unless it can be optimized during training (which they show is difficult).\n- The connection between the toy model and LLM behavior is somewhat heuristic. The metric's \"elbow\" interpretation is subjective, and the paper does not provide a principled way to automatically select the optimal L0 from the curve.\n- The paper does not deeply explore why JumpReLU SAEs behave differently at high L0, beyond speculative discussion about per-latent thresholds.\n- The claim that \"sparsity-reconstruction tradeoff plots are misleading\" is well-supported in toy models but the LLM evidence is indirect (no direct comparison of reconstruction quality vs. ground truth, which is unavailable).\n\nOriginality: High. The paper identifies a specific failure mode (feature mixing due to incorrect L0) and provides a practical diagnostic. It builds on prior work (feature hedging, absorption) but offers new insights and a new metric.\n\nQuality: Good. The toy model experiments are rigorous and the LLM experiments are reasonable given computational constraints. However, the lack of a principled method to select L0 from the metric curve and the limited LLM coverage are weaknesses.\n\nClarity: Good. The paper is well-organized and explains concepts clearly. Some terminology (e.g., \"true L0\", \"ground-truth SAE\") is introduced effectively. The figures are helpful.\n\nSignificance: High. This work has direct implications for SAE practitioners, as it suggests that many existing SAEs may be suboptimal. The proposed metric could become a standard diagnostic tool. The challenge to sparsity-reconstruction tradeoff plots is important.\n\nQuestions for authors:\n1. How does the metric behave if the true L0 varies across different input distributions (e.g., different token types)? Would the optimal L0 be distribution-dependent?\n2. Have you tested the metric on SAEs trained with different architectures (e.g., Gated SAEs, Matryoshka SAEs) beyond BatchTopK and JumpReLU?\n3. In Figure 9, the Gemma-2-2b s_n^dec curve has a long shallow region at high L0. How should practitioners interpret this? Is the global minimum always reliable, or is the \"elbow\" more robust?\n4. The paper suggests that most SAEs have too low L0. Could this be an artifact of the training data or the specific SAE initialization? Have you tested SAEs with higher L0 from the start and found they still converge to lower L0?\n5. Is there a theoretical justification for why the n-th decoder projection should be minimized at the true L0, or is this purely empirical?\n6. How sensitive is the metric to the choice of n? The paper recommends n up to h/2, but the optimal n seems to vary. Is there a principled way to choose n?\n\nLimitations:\n- The paper only considers linear features (LRH), which is acknowledged. Non-linear features could behave differently.\n- The LLM experiments are limited to a few layers and models; broader validation is needed.\n- The metric requires a sweep over L0, which is expensive. The authors discuss auto-tuning but note it is difficult.\n- The paper does not provide a clear way to determine the \"correct\" L0 from the metric curve in all cases (e.g., when there is no clear minimum, as in Gemma-2-2b layer 5).\n- Potential negative societal impact is not discussed, but this is unlikely to be a concern for this type of interpretability work.\n\nEthical Concerns: None identified.\n\nSoundness: Good (3). The toy model evidence is strong, and the LLM results are suggestive but not conclusive. The metric is plausible but its generalizability is uncertain.\n\nPresentation: Good (3). The paper is clear, but some sections (e.g., the discussion of JumpReLU vs BatchTopK) could be more concise.\n\nContribution: High (3). The paper makes a significant contribution by challenging a common assumption and providing a practical tool. The impact on the SAE community is likely to be substantial.\n\nOverall: I lean towards Accept. The paper is technically sound, addresses an important problem, and provides a useful metric. The weaknesses (limited LLM validation, subjective metric interpretation) are not fatal but warrant discussion. The work is likely to be cited and built upon.\n\nDecision: Accept\n\nConfidence: 4 (I am confident in my assessment, but not absolutely certain about the generalizability of the metric to all SAE settings).REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper investigates the role of L0 (sparsity) in Sparse Autoencoders (SAEs), arguing that L0 is not a neutral hyperparameter but must be set correctly to avoid feature mixing and polysemanticity. Through toy model experiments with ground-truth features, the authors show that both too-low and too-high L0 cause SAEs to mix correlated features, and that MSE loss actively incentivizes incorrect solutions at low L0. They challenge the standard sparsity-reconstruction tradeoff plots, demonstrating that a perfect ground-truth SAE can score worse on reconstruction than a flawed one. They propose a proxy metric, the n-th decoder projection (s_n^dec), which is minimized at the correct L0 in toy models and aligns with peak sparse probing performance in LLM SAEs (Gemma-2-2b, Llama-3.2-1b). The paper concludes that most commonly used SAEs have too low L0.\",\n  \"Strengths\": [\n    \"Addresses an important and under-explored question: the correct setting of L0 in SAEs, challenging the common assumption that L0 is a free parameter.\",\n    \"Well-designed toy model experiments with ground-truth features provide clear and convincing evidence of feature mixing at incorrect L0 values.\",\n    \"The proposed s_n^dec metric is simple, intuitive, and validated on both toy models and LLMs, showing correlation with sparse probing performance.\",\n    \"The paper is well-written and clearly structured, with helpful figures and comprehensive appendices.\",\n    \"Authors are honest about limitations (e.g., metric requires sweep, non-linear features not considered, limited LLM layers).\"\n  ],\n  \"Weaknesses\": [\n    \"LLM experiments are limited to two models and a few layers, making the claim that 'most SAEs have too low L0' somewhat speculative.\",\n    \"The metric requires training a full sweep of L0 values, which is computationally expensive; the authors acknowledge auto-tuning is difficult.\",\n    \"The interpretation of the s_n^dec curve (e.g., 'elbow' vs global minimum) is subjective and not fully principled; in some cases (Gemma-2-2b layer 5) there is no clear minimum.\",\n    \"The paper does not deeply explore why JumpReLU SAEs behave differently at high L0, beyond speculative discussion about per-latent thresholds.\",\n    \"The connection between toy model and LLM behavior is heuristic; no direct evidence of feature mixing in LLMs is provided.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does the metric behave if the true L0 varies across different input distributions (e.g., different token types)? Would the optimal L0 be distribution-dependent?\",\n    \"Have you tested the metric on SAEs trained with different architectures (e.g., Gated SAEs, Matryoshka SAEs) beyond BatchTopK and JumpReLU?\",\n    \"In Figure 9, the Gemma-2-2b s_n^dec curve has a long shallow region at high L0. How should practitioners interpret this? Is the global minimum always reliable, or is the 'elbow' more robust?\",\n    \"The paper suggests that most SAEs have too low L0. Could this be an artifact of the training data or the specific SAE initialization? Have you tested SAEs with higher L0 from the start and found they still converge to lower L0?\",\n    \"Is there a theoretical justification for why the n-th decoder projection should be minimized at the true L0, or is this purely empirical?\",\n    \"How sensitive is the metric to the choice of n? The paper recommends n up to h/2, but the optimal n seems to vary. Is there a principled way to choose n?\"\n  ],\n  \"Limitations\": [\n    \"The paper only considers linear features (LRH), which is acknowledged; non-linear features could behave differently.\",\n    \"LLM experiments are limited to a few layers and models; broader validation is needed.\",\n    \"The metric requires a sweep over L0, which is expensive; auto-tuning is discussed but shown to be difficult.\",\n    \"The paper does not provide a clear way to determine the 'correct' L0 from the metric curve in all cases (e.g., when there is no clear minimum).\",\n    \"Potential negative societal impact is not discussed, but this is unlikely to be a concern for this type of interpretability work.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 20778,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 18986,
+        "completion_tokens": 2298,
+        "reasoning_tokens": 0,
+        "total_tokens": 23076
+      },
+      "attempts": 1,
+      "response_id": "618be76f-0fc4-4d83-9b3d-74a5bd14ee68"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 5,
+      "Reject": 0
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          3,
+          4,
+          3,
+          4,
+          4
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          4,
+          3,
+          3,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Clarity": {
+        "values": [
+          3,
+          4,
+          3,
+          3,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Significance": {
+        "values": [
+          3,
+          4,
+          4,
+          4,
+          3
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Soundness": {
+        "values": [
+          3,
+          4,
+          3,
+          3,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Presentation": {
+        "values": [
+          3,
+          4,
+          3,
+          3,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Contribution": {
+        "values": [
+          3,
+          4,
+          4,
+          3,
+          3
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Overall": {
+        "values": [
+          6,
+          8,
+          7,
+          6,
+          7
+        ],
+        "mean": 6.8,
+        "rounded_mean": 7,
+        "population_sd": 0.748,
+        "min": 6,
+        "max": 8
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "This paper investigates the role of the L0 hyperparameter (average number of active features per token) in Sparse Autoencoders (SAEs) for LLM interpretability. Using toy models with known ground-truth features, the authors demonstrate that both too-low and too-high L0 values cause SAEs to mix correlated features, producing polysemantic latents. They show that MSE loss actively incentivizes this incorrect behavior at low L0, and that sparsity-reconstruction tradeoff plots are misleading because a ground-truth SAE can score worse on reconstruction than an incorrect SAE that mixes features. The paper proposes a proxy metric, the nth decoder projection score (s_n^dec), which is minimized at the correct L0 in toy models and correlates with peak sparse probing performance in LLM SAEs (Gemma-2-2b, Llama-3.2-1b) for both BatchTopK and JumpReLU architectures. The authors conclude that most commonly used SAEs have L0 set too low and that L0 must be carefully tuned for SAEs to learn correct features.",
+      "Strengths": [
+        "Addresses an important and under-explored question: the correct setting of L0 in SAEs, challenging the common assumption that L0 is a free parameter tuned via sparsity-reconstruction tradeoff plots.",
+        "Clear and compelling toy model experiments with ground-truth features provide strong causal evidence for the feature-mixing phenomenon at incorrect L0 values.",
+        "The demonstration that sparsity-reconstruction tradeoff plots can actively mislead SAE evaluation is a significant methodological insight.",
+        "The proposed s_n^dec metric is simple, intuitive, and validated across toy models, multiple LLMs (Gemma-2-2b, Llama-3.2-1b), and two SAE architectures (BatchTopK, JumpReLU), showing correlation with sparse probing performance.",
+        "Honest and thorough discussion of limitations, including the metric's behavior at high L0, the computational cost of L0 sweeps, and the difficulty of automating L0 selection.",
+        "The finding that most open-source SAEs have L0 too low has direct practical implications for the interpretability community.",
+        "Code is provided for reproducibility, and the paper includes useful appendices with extended analyses."
+      ],
+      "Weaknesses": [
+        "The claim that 'most commonly used SAEs have an L0 that is too low' is based on a limited survey (primarily one layer of Gemma-2-2b on Neuronpedia) and may not generalize broadly.",
+        "The proposed metric requires training a full sweep of SAEs at different L0 values, which is computationally expensive and limits its practical utility; the automated optimization approach in the appendix is noted as needing heavy tuning and being impractical for LLMs.",
+        "LLM experiments are limited to two models (Gemma-2-2b, Llama-3.2-1b) and a few layers, raising questions about generalizability across architectures, layers, and model sizes.",
+        "The interpretation of the s_n^dec curve in LLM settings is somewhat subjective: sometimes the global minimum is at high L0, and the paper advises using an 'elbow' instead, without providing a rigorous algorithm for automatic identification.",
+        "The paper lacks a theoretical justification for why s_n^dec should be minimized at the true L0; the connection is purely empirical.",
+        "The toy model assumes linear, orthogonal features, and the paper does not explore how non-orthogonal or non-linear feature structures (e.g., as in Engels et al. 2025) would affect the conclusions.",
+        "The validation of 'correct' L0 in LLMs relies on sparse probing performance, which is itself a proxy and may be subject to the same feature-mixing issues; potential circularity is not fully discussed.",
+        "The paper does not explore downstream interpretability tasks beyond sparse probing (e.g., causal interventions, feature visualization)."
+      ],
+      "Originality": 4,
+      "Quality": 3,
+      "Clarity": 3,
+      "Significance": 4,
+      "Questions": [
+        "How sensitive is the s_n^dec metric to the choice of n? The paper recommends n near h/2, but the optimal n seems to vary; is there a principled way to choose n, and how robust is the 'elbow' detection across different n values in LLM settings?",
+        "The paper notes the metric sometimes has a shallow region or global minimum at high L0. How should practitioners decide between using the global minimum versus the 'elbow'? Is there a principled, automated way to identify the elbow?",
+        "Have you tested the metric on SAEs trained on other layers (e.g., early or late layers) or other models? Do you expect the same patterns to hold?",
+        "Could you provide a more systematic analysis of open-source SAEs (e.g., across model sizes, layers, and training details) to support the claim that most SAEs have too-low L0?",
+        "How does the feature-mixing phenomenon interact with SAE width (number of latents h)? Would a wider SAE be more or less prone to this issue at fixed L0?",
+        "Does the proposed metric work for SAEs with different architectures (e.g., Gated SAEs, Matryoshka SAEs, TopK, L1) beyond BatchTopK and JumpReLU?",
+        "Can you provide a more formal theoretical argument for why s_n^dec should be minimized at the true L0, rather than just empirical observations?",
+        "How was the 'true' optimal L0 determined in LLM experiments beyond sparse probing? Is there additional validation (e.g., human interpretability studies or downstream task performance) that supports the chosen optimal L0?",
+        "What is the variance in sparse probing performance across seeds at the optimal L0? Are the differences between L0 values statistically significant?",
+        "Could the s_n^dec metric be adapted to work during training without full sweeps, perhaps by monitoring it dynamically and adjusting L0 on the fly? The appendix discusses this but notes significant challenges."
+      ],
+      "Limitations": [
+        "The paper focuses on linear features satisfying the Linear Representation Hypothesis and does not investigate non-linear feature structures, which may be present in real LLMs.",
+        "LLM validation is limited to two models (Gemma-2-2b, Llama-3.2-1b) and a few layers, which may not capture the full diversity of SAE behavior across architectures.",
+        "The proposed metric requires training sweeps over L0, which is computationally expensive and may be prohibitive for many practitioners.",
+        "The paper does not provide a fully automated method for L0 selection, only a diagnostic tool that requires manual interpretation of plots.",
+        "The analysis of open-source SAEs is based on a brief scan of Neuronpedia and may not be representative of all SAEs in the field.",
+        "Potential negative societal impact is minimal, but the paper could briefly discuss how improved SAE interpretability might be misused (e.g., for surveillance or manipulation), and also caution against misinterpretation of findings as a reason to distrust all SAE-based interpretability results."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 3,
+      "Contribution": 4,
+      "Overall": 7,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "THOUGHT:\nThe paper addresses an important and timely issue in SAE training: the role of L0 in feature quality. All five reviewers agree on the core findings: toy models clearly show feature mixing at incorrect L0, sparsity-reconstruction tradeoff plots are misleading, and the proposed s_n^dec metric shows promise. All reviewers recommend acceptance (scores 6, 8, 7, 6, 7). The consensus is that the paper is technically solid with high significance for the interpretability community.\n\nKey strengths identified across reviews:\n- Clear toy model experiments with ground-truth features\n- Important critique of sparsity-reconstruction tradeoff plots\n- Simple and validated proxy metric\n- Honest discussion of limitations\n- Practical implications for SAE practitioners\n\nKey weaknesses consistently mentioned:\n- The claim about \"most SAEs have too-low L0\" is based on limited survey\n- The metric requires expensive L0 sweeps, limiting practical adoption\n- LLM experiments limited to two models and few layers\n- The \"elbow\" interpretation is subjective\n- No theoretical justification for the metric\n- Non-linear features not considered\n\nThe overall scores range from 6 to 8, with the majority at 6-7. The paper is clearly acceptable but not flawless. The main concerns are about generalizability and practical utility, not about the core scientific validity.\n\nMy meta-review should reflect the strong consensus on acceptance while noting the shared limitations. I'll set the overall score at 7, reflecting a solid technical contribution with clear significance, but acknowledging the limitations in scope and practical applicability.\n\nDecision: Accept\n\nI'll write a balanced meta-review that aggregates the common themes across all reviews.REVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper investigates the role of the L0 hyperparameter (average number of active features per token) in Sparse Autoencoders (SAEs) for LLM interpretability. Using toy models with known ground-truth features, the authors demonstrate that both too-low and too-high L0 values cause SAEs to mix correlated features, producing polysemantic latents. They show that MSE loss actively incentivizes this incorrect behavior at low L0, and that sparsity-reconstruction tradeoff plots are misleading because a ground-truth SAE can score worse on reconstruction than an incorrect SAE that mixes features. The paper proposes a proxy metric, the nth decoder projection score (s_n^dec), which is minimized at the correct L0 in toy models and correlates with peak sparse probing performance in LLM SAEs (Gemma-2-2b, Llama-3.2-1b) for both BatchTopK and JumpReLU architectures. The authors conclude that most commonly used SAEs have L0 set too low and that L0 must be carefully tuned for SAEs to learn correct features.\",\n  \"Strengths\": [\n    \"Addresses an important and under-explored question: the correct setting of L0 in SAEs, challenging the common assumption that L0 is a free parameter tuned via sparsity-reconstruction tradeoff plots.\",\n    \"Clear and compelling toy model experiments with ground-truth features provide strong causal evidence for the feature-mixing phenomenon at incorrect L0 values.\",\n    \"The demonstration that sparsity-reconstruction tradeoff plots can actively mislead SAE evaluation is a significant methodological insight.\",\n    \"The proposed s_n^dec metric is simple, intuitive, and validated across toy models, multiple LLMs (Gemma-2-2b, Llama-3.2-1b), and two SAE architectures (BatchTopK, JumpReLU), showing correlation with sparse probing performance.\",\n    \"Honest and thorough discussion of limitations, including the metric's behavior at high L0, the computational cost of L0 sweeps, and the difficulty of automating L0 selection.\",\n    \"The finding that most open-source SAEs have L0 too low has direct practical implications for the interpretability community.\",\n    \"Code is provided for reproducibility, and the paper includes useful appendices with extended analyses.\"\n  ],\n  \"Weaknesses\": [\n    \"The claim that 'most commonly used SAEs have an L0 that is too low' is based on a limited survey (primarily one layer of Gemma-2-2b on Neuronpedia) and may not generalize broadly.\",\n    \"The proposed metric requires training a full sweep of SAEs at different L0 values, which is computationally expensive and limits its practical utility; the automated optimization approach in the appendix is noted as needing heavy tuning and being impractical for LLMs.\",\n    \"LLM experiments are limited to two models (Gemma-2-2b, Llama-3.2-1b) and a few layers, raising questions about generalizability across architectures, layers, and model sizes.\",\n    \"The interpretation of the s_n^dec curve in LLM settings is somewhat subjective: sometimes the global minimum is at high L0, and the paper advises using an 'elbow' instead, without providing a rigorous algorithm for automatic identification.\",\n    \"The paper lacks a theoretical justification for why s_n^dec should be minimized at the true L0; the connection is purely empirical.\",\n    \"The toy model assumes linear, orthogonal features, and the paper does not explore how non-orthogonal or non-linear feature structures (e.g., as in Engels et al. 2025) would affect the conclusions.\",\n    \"The validation of 'correct' L0 in LLMs relies on sparse probing performance, which is itself a proxy and may be subject to the same feature-mixing issues; potential circularity is not fully discussed.\",\n    \"The paper does not explore downstream interpretability tasks beyond sparse probing (e.g., causal interventions, feature visualization).\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"How sensitive is the s_n^dec metric to the choice of n? The paper recommends n near h/2, but the optimal n seems to vary; is there a principled way to choose n, and how robust is the 'elbow' detection across different n values in LLM settings?\",\n    \"The paper notes the metric sometimes has a shallow region or global minimum at high L0. How should practitioners decide between using the global minimum versus the 'elbow'? Is there a principled, automated way to identify the elbow?\",\n    \"Have you tested the metric on SAEs trained on other layers (e.g., early or late layers) or other models? Do you expect the same patterns to hold?\",\n    \"Could you provide a more systematic analysis of open-source SAEs (e.g., across model sizes, layers, and training details) to support the claim that most SAEs have too-low L0?\",\n    \"How does the feature-mixing phenomenon interact with SAE width (number of latents h)? Would a wider SAE be more or less prone to this issue at fixed L0?\",\n    \"Does the proposed metric work for SAEs with different architectures (e.g., Gated SAEs, Matryoshka SAEs, TopK, L1) beyond BatchTopK and JumpReLU?\",\n    \"Can you provide a more formal theoretical argument for why s_n^dec should be minimized at the true L0, rather than just empirical observations?\",\n    \"How was the 'true' optimal L0 determined in LLM experiments beyond sparse probing? Is there additional validation (e.g., human interpretability studies or downstream task performance) that supports the chosen optimal L0?\",\n    \"What is the variance in sparse probing performance across seeds at the optimal L0? Are the differences between L0 values statistically significant?\",\n    \"Could the s_n^dec metric be adapted to work during training without full sweeps, perhaps by monitoring it dynamically and adjusting L0 on the fly? The appendix discusses this but notes significant challenges.\"\n  ],\n  \"Limitations\": [\n    \"The paper focuses on linear features satisfying the Linear Representation Hypothesis and does not investigate non-linear feature structures, which may be present in real LLMs.\",\n    \"LLM validation is limited to two models (Gemma-2-2b, Llama-3.2-1b) and a few layers, which may not capture the full diversity of SAE behavior across architectures.\",\n    \"The proposed metric requires training sweeps over L0, which is computationally expensive and may be prohibitive for many practitioners.\",\n    \"The paper does not provide a fully automated method for L0 selection, only a diagnostic tool that requires manual interpretation of plots.\",\n    \"The analysis of open-source SAEs is based on a brief scan of Neuronpedia and may not be representative of all SAEs in the field.\",\n    \"Potential negative societal impact is minimal, but the paper could briefly discuss how improved SAE interpretability might be misused (e.g., for surveillance or manipulation), and also caution against misinterpretation of findings as a reason to distrust all SAE-based interpretability results.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 4,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 7155,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 7155,
+      "completion_tokens": 1933,
+      "reasoning_tokens": 0,
+      "total_tokens": 9088
+    },
+    "attempts": 1,
+    "response_id": "41907a15-93c2-477e-a1b9-d52dc849d61d"
+  },
+  "final_review": {
+    "Summary": "This paper investigates the role of the L0 hyperparameter (average number of active features per token) in Sparse Autoencoders (SAEs) for LLM interpretability. Using toy models with known ground-truth features, the authors demonstrate that both too-low and too-high L0 values cause SAEs to mix correlated features, producing polysemantic latents. They show that MSE loss actively incentivizes this incorrect behavior at low L0, and that sparsity-reconstruction tradeoff plots are misleading because a ground-truth SAE can score worse on reconstruction than an incorrect SAE that mixes features. The paper proposes a proxy metric, the nth decoder projection score (s_n^dec), which is minimized at the correct L0 in toy models and correlates with peak sparse probing performance in LLM SAEs (Gemma-2-2b, Llama-3.2-1b) for both BatchTopK and JumpReLU architectures. The authors conclude that most commonly used SAEs have L0 set too low and that L0 must be carefully tuned for SAEs to learn correct features.",
+    "Strengths": [
+      "Addresses an important and under-explored question: the correct setting of L0 in SAEs, challenging the common assumption that L0 is a free parameter tuned via sparsity-reconstruction tradeoff plots.",
+      "Clear and compelling toy model experiments with ground-truth features provide strong causal evidence for the feature-mixing phenomenon at incorrect L0 values.",
+      "The demonstration that sparsity-reconstruction tradeoff plots can actively mislead SAE evaluation is a significant methodological insight.",
+      "The proposed s_n^dec metric is simple, intuitive, and validated across toy models, multiple LLMs (Gemma-2-2b, Llama-3.2-1b), and two SAE architectures (BatchTopK, JumpReLU), showing correlation with sparse probing performance.",
+      "Honest and thorough discussion of limitations, including the metric's behavior at high L0, the computational cost of L0 sweeps, and the difficulty of automating L0 selection.",
+      "The finding that most open-source SAEs have L0 too low has direct practical implications for the interpretability community.",
+      "Code is provided for reproducibility, and the paper includes useful appendices with extended analyses."
+    ],
+    "Weaknesses": [
+      "The claim that 'most commonly used SAEs have an L0 that is too low' is based on a limited survey (primarily one layer of Gemma-2-2b on Neuronpedia) and may not generalize broadly.",
+      "The proposed metric requires training a full sweep of SAEs at different L0 values, which is computationally expensive and limits its practical utility; the automated optimization approach in the appendix is noted as needing heavy tuning and being impractical for LLMs.",
+      "LLM experiments are limited to two models (Gemma-2-2b, Llama-3.2-1b) and a few layers, raising questions about generalizability across architectures, layers, and model sizes.",
+      "The interpretation of the s_n^dec curve in LLM settings is somewhat subjective: sometimes the global minimum is at high L0, and the paper advises using an 'elbow' instead, without providing a rigorous algorithm for automatic identification.",
+      "The paper lacks a theoretical justification for why s_n^dec should be minimized at the true L0; the connection is purely empirical.",
+      "The toy model assumes linear, orthogonal features, and the paper does not explore how non-orthogonal or non-linear feature structures (e.g., as in Engels et al. 2025) would affect the conclusions.",
+      "The validation of 'correct' L0 in LLMs relies on sparse probing performance, which is itself a proxy and may be subject to the same feature-mixing issues; potential circularity is not fully discussed.",
+      "The paper does not explore downstream interpretability tasks beyond sparse probing (e.g., causal interventions, feature visualization)."
+    ],
+    "Originality": 4,
+    "Quality": 3,
+    "Clarity": 3,
+    "Significance": 4,
+    "Questions": [
+      "How sensitive is the s_n^dec metric to the choice of n? The paper recommends n near h/2, but the optimal n seems to vary; is there a principled way to choose n, and how robust is the 'elbow' detection across different n values in LLM settings?",
+      "The paper notes the metric sometimes has a shallow region or global minimum at high L0. How should practitioners decide between using the global minimum versus the 'elbow'? Is there a principled, automated way to identify the elbow?",
+      "Have you tested the metric on SAEs trained on other layers (e.g., early or late layers) or other models? Do you expect the same patterns to hold?",
+      "Could you provide a more systematic analysis of open-source SAEs (e.g., across model sizes, layers, and training details) to support the claim that most SAEs have too-low L0?",
+      "How does the feature-mixing phenomenon interact with SAE width (number of latents h)? Would a wider SAE be more or less prone to this issue at fixed L0?",
+      "Does the proposed metric work for SAEs with different architectures (e.g., Gated SAEs, Matryoshka SAEs, TopK, L1) beyond BatchTopK and JumpReLU?",
+      "Can you provide a more formal theoretical argument for why s_n^dec should be minimized at the true L0, rather than just empirical observations?",
+      "How was the 'true' optimal L0 determined in LLM experiments beyond sparse probing? Is there additional validation (e.g., human interpretability studies or downstream task performance) that supports the chosen optimal L0?",
+      "What is the variance in sparse probing performance across seeds at the optimal L0? Are the differences between L0 values statistically significant?",
+      "Could the s_n^dec metric be adapted to work during training without full sweeps, perhaps by monitoring it dynamically and adjusting L0 on the fly? The appendix discusses this but notes significant challenges."
+    ],
+    "Limitations": [
+      "The paper focuses on linear features satisfying the Linear Representation Hypothesis and does not investigate non-linear feature structures, which may be present in real LLMs.",
+      "LLM validation is limited to two models (Gemma-2-2b, Llama-3.2-1b) and a few layers, which may not capture the full diversity of SAE behavior across architectures.",
+      "The proposed metric requires training sweeps over L0, which is computationally expensive and may be prohibitive for many practitioners.",
+      "The paper does not provide a fully automated method for L0 selection, only a diagnostic tool that requires manual interpretation of plots.",
+      "The analysis of open-source SAEs is based on a brief scan of Neuronpedia and may not be representative of all SAEs in the field.",
+      "Potential negative societal impact is minimal, but the paper could briefly discuss how improved SAE interpretability might be misused (e.g., for surveillance or manipulation), and also caution against misinterpretation of findings as a reason to distrust all SAE-based interpretability results."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 3,
+    "Contribution": 3,
+    "Overall": 7,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 111045,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 102085,
+    "completion_tokens": 12232,
+    "reasoning_tokens": 0,
+    "total_tokens": 123277,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.0142919,
+    "output_usd": 0.00342496,
+    "total_usd": 0.01774195
+  },
+  "elapsed_seconds": 36.859,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Accept",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B198",
+    "filename": "B198.txt",
+    "blind_text_sha256": "0203e74b6f13c307d34cc30f9185cd9ff759eed2f04d7aab94d10f84ab668870",
+    "characters": 69281,
+    "full_text_saved": false
+  }
+}

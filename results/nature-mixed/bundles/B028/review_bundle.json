@@ -1,0 +1,698 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:42:36.786100+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "This paper introduces a self-supervised algorithm for fine-tuning diffusion models to sample from tilted distributions defined by a reward function. The method iteratively (1) samples trajectories using the current h-transform estimate, (2) filters these samples using path-based importance weights with rejection sampling, and (3) updates the h-transform via a supervised score-matching loss on the accepted samples. The authors prove that this iterative procedure decreases the KL-reward objective. They demonstrate the method on class-conditional sampling (MNIST), super-resolution (Flowers), and reward fine-tuning of Stable Diffusion, highlighting memory efficiency compared to online fine-tuning methods.",
+        "Strengths": [
+          "Novel combination of path-based importance weighting with rejection sampling and supervised h-transform fine-tuning, enabling self-supervised conditional sampling without labeled data or trajectory backpropagation.",
+          "Theoretical guarantee (Theorem 5) that each iteration decreases the objective F, providing a principled foundation for the algorithm.",
+          "Memory-efficient approach that can fine-tune large models on a single consumer GPU (e.g., RTX 4090) using LoRA.",
+          "Demonstrates the method on a diverse set of applications including toy problems, inverse problems, class-conditional sampling, and text-to-image reward alignment."
+        ],
+        "Weaknesses": [
+          "Experimental evaluation is limited. The super-resolution experiment lacks quantitative comparison to baseline methods, and the text-to-image results show lower reward than adjoint matching. The MNIST results show that online fine-tuning achieves higher reward, though with worse diversity.",
+          "The theoretical result assumes exact minimization of the score-matching loss at each iteration, which is unrealistic with finite samples and stochastic optimization.",
+          "The importance weight approximation relies on the assumption that the terminal distributions of the data and guided processes are the same, which may introduce bias.",
+          "The method's dependence on the support of the pre-trained model is a fundamental limitation that is not thoroughly explored experimentally.",
+          "The paper could be clearer in its presentation, particularly in explaining the practical implementation details and the relationship between continuous and discrete-time formulations."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 3,
+        "Questions": [
+          "In the super-resolution experiment, what are the quantitative results (e.g., PSNR, SSIM) compared to baseline methods like DPS or reconstruction guidance? The paper only shows a loss curve.",
+          "How sensitive is the method to the hyperparameter c (acceptance threshold) and the choice of acceptance rate? Is there a principled way to set this?",
+          "The MNIST results show that online fine-tuning achieves higher expected reward. Could you comment on the trade-off between reward and diversity, and in which scenarios would practitioners prefer one over the other?",
+          "In the text-to-image experiments, how does the method perform with different reward models or prompts? Are the results consistent?",
+          "Could you provide more details on the off-policy extension mentioned in the limitations? How would the importance weights be computed in that case?",
+          "How does the method scale with the dimensionality of the problem? Are there any experiments on higher-dimensional datasets beyond the ones shown?"
+        ],
+        "Limitations": [
+          "The method relies on the existence of high-reward samples within the support of the pre-trained model's distribution. If the target distribution is too far from the pre-trained distribution, the importance weights may be extremely small, leading to poor performance.",
+          "The theoretical guarantee is for exact optimization at each step, which is not achievable in practice. The effect of approximation errors on convergence is not analyzed.",
+          "The method requires tuning of the acceptance threshold c and the KL regularization coefficient, which may be non-trivial in practice.",
+          "The path-based importance weights may suffer from high variance, especially for long trajectories, potentially leading to unstable training.",
+          "Potential negative societal impact includes the possibility of generating deepfakes or disinformation, as acknowledged by the authors."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 2,
+        "Contribution": 3,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes a self-supervised iterative fine-tuning method for diffusion models to sample from tilted distributions (e.g., conditional distributions, reward-aligned distributions). The method combines path-based importance weighting with rejection sampling to curate synthetic data, followed by supervised score-matching fine-tuning of the h-transform. The key theoretical contribution is Theorem 5, which proves that this iterative procedure monotonically decreases the KL-reward objective F.\n\nStrengths:\n- Novel combination of importance-weighted rejection sampling with supervised h-transform fine-tuning, providing a self-supervised alternative to existing methods that require either labeled data or expensive backpropagation through trajectories.\n- The theoretical guarantee (Theorem 5) that each iteration decreases the objective F is a solid contribution, providing a principled basis for the algorithm.\n- Practical advantages: memory-efficient (no backprop through generation), works with large pre-trained models via LoRA, and demonstrates results on multiple tasks (toy, MNIST, super-resolution, text-to-image).\n- The paper acknowledges limitations (e.g., dependence on support of pre-trained model) and discusses societal impacts.\n\nWeaknesses:\n- The experimental evaluation is somewhat limited. The MNIST results show that online fine-tuning achieves higher expected reward, though with worse FID. The text-to-image results show that the method underperforms adjoint matching in reward. The super-resolution experiment only shows a loss curve without quantitative comparison to baselines. This weakens the claim of practical effectiveness.\n- The theoretical result (Theorem 5) proves a descent property, but the assumptions (e.g., exact minimization of the score-matching loss at each step) are strong and may not hold in practice with stochastic gradient descent and finite samples. The proof also relies on the path measure of the fine-tuned model being of a specific form, which may be an approximation.\n- The importance weights are based on a Radon-Nikodym derivative approximation that assumes the terminal distributions of the data and h-guided processes are the same. This is discussed in Remark 2 but may introduce bias in practice.\n- The method relies on having \"good\" samples in the support of the pre-trained model, which is acknowledged as a limitation. However, the experiments don't thoroughly explore scenarios where this is problematic.\n- The paper is somewhat dense and could be improved in clarity, particularly in explaining the practical implementation details and the relationship between the continuous and discrete-time formulations.\n\nOverall, the paper presents a novel and theoretically motivated approach with some promising results, but the experimental evidence is not overwhelming, and the practical advantages over existing methods are not consistently demonstrated. The theoretical contribution is interesting but has limitations.\n\nI lean towards rejection because the experimental evaluation is not sufficiently strong to support the claims of effectiveness, especially when compared to strong baselines like online fine-tuning and adjoint matching. The method shows promise but needs more comprehensive evaluation.\n\nREVIEW JSON:\n```json\n{\n\"Summary\": \"This paper introduces a self-supervised algorithm for fine-tuning diffusion models to sample from tilted distributions defined by a reward function. The method iteratively (1) samples trajectories using the current h-transform estimate, (2) filters these samples using path-based importance weights with rejection sampling, and (3) updates the h-transform via a supervised score-matching loss on the accepted samples. The authors prove that this iterative procedure decreases the KL-reward objective. They demonstrate the method on class-conditional sampling (MNIST), super-resolution (Flowers), and reward fine-tuning of Stable Diffusion, highlighting memory efficiency compared to online fine-tuning methods.\",\n\"Strengths\": [\n    \"Novel combination of path-based importance weighting with rejection sampling and supervised h-transform fine-tuning, enabling self-supervised conditional sampling without labeled data or trajectory backpropagation.\",\n    \"Theoretical guarantee (Theorem 5) that each iteration decreases the objective F, providing a principled foundation for the algorithm.\",\n    \"Memory-efficient approach that can fine-tune large models on a single consumer GPU (e.g., RTX 4090) using LoRA.\",\n    \"Demonstrates the method on a diverse set of applications including toy problems, inverse problems, class-conditional sampling, and text-to-image reward alignment.\"\n],\n\"Weaknesses\": [\n    \"Experimental evaluation is limited. The super-resolution experiment lacks quantitative comparison to baseline methods, and the text-to-image results show lower reward than adjoint matching. The MNIST results show that online fine-tuning achieves higher reward, though with worse diversity.\",\n    \"The theoretical result assumes exact minimization of the score-matching loss at each iteration, which is unrealistic with finite samples and stochastic optimization.\",\n    \"The importance weight approximation relies on the assumption that the terminal distributions of the data and guided processes are the same, which may introduce bias.\",\n    \"The method's dependence on the support of the pre-trained model is a fundamental limitation that is not thoroughly explored experimentally.\",\n    \"The paper could be clearer in its presentation, particularly in explaining the practical implementation details and the relationship between continuous and discrete-time formulations.\"\n],\n\"Originality\": 3,\n\"Quality\": 2,\n\"Clarity\": 2,\n\"Significance\": 3,\n\"Questions\": [\n    \"In the super-resolution experiment, what are the quantitative results (e.g., PSNR, SSIM) compared to baseline methods like DPS or reconstruction guidance? The paper only shows a loss curve.\",\n    \"How sensitive is the method to the hyperparameter c (acceptance threshold) and the choice of acceptance rate? Is there a principled way to set this?\",\n    \"The MNIST results show that online fine-tuning achieves higher expected reward. Could you comment on the trade-off between reward and diversity, and in which scenarios would practitioners prefer one over the other?\",\n    \"In the text-to-image experiments, how does the method perform with different reward models or prompts? Are the results consistent?\",\n    \"Could you provide more details on the off-policy extension mentioned in the limitations? How would the importance weights be computed in that case?\",\n    \"How does the method scale with the dimensionality of the problem? Are there any experiments on higher-dimensional datasets beyond the ones shown?\"\n],\n\"Limitations\": [\n    \"The method relies on the existence of high-reward samples within the support of the pre-trained model's distribution. If the target distribution is too far from the pre-trained distribution, the importance weights may be extremely small, leading to poor performance.\",\n    \"The theoretical guarantee is for exact optimization at each step, which is not achievable in practice. The effect of approximation errors on convergence is not analyzed.\",\n    \"The method requires tuning of the acceptance threshold c and the KL regularization coefficient, which may be non-trivial in practice.\",\n    \"The path-based importance weights may suffer from high variance, especially for long trajectories, potentially leading to unstable training.\",\n    \"Potential negative societal impact includes the possibility of generating deepfakes or disinformation, as acknowledged by the authors.\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 2,\n\"Contribution\": 3,\n\"Overall\": 4,\n\"Confidence\": 4,\n\"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 49818,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 48026,
+        "completion_tokens": 1463,
+        "reasoning_tokens": 0,
+        "total_tokens": 51281
+      },
+      "attempts": 1,
+      "response_id": "ce7832b4-e378-4896-8703-62d9cda6503b"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper proposes a self-supervised iterative fine-tuning algorithm for diffusion models to sample from tilted distributions (e.g., conditional distributions, reward fine-tuning). The method iteratively: (1) samples trajectories from the current h-transform-guided diffusion model, (2) filters samples using path-based importance weights computed via Radon-Nikodym derivatives between SDEs and a rejection sampling scheme, and (3) updates the h-transform estimate using a supervised score-matching loss on the accepted samples. The authors prove a descent guarantee on a KL-reward objective. Experiments are conducted on a 2D toy example, MNIST class-conditional sampling, Flowers super-resolution, and Stable Diffusion reward fine-tuning. The method is memory-efficient and does not require differentiating through the score function.",
+        "Strengths": [
+          "The self-supervised framework avoids the need for samples from the tilted distribution, which is a significant advantage over supervised methods.",
+          "The path-based importance weights are computed on-the-fly during sampling, adding no extra computational cost.",
+          "The theoretical descent guarantee (Theorem 5) provides a solid foundation for the iterative algorithm.",
+          "The reward-informed network parametrization is a sensible inductive bias that aids in learning.",
+          "The method is memory-efficient, enabling fine-tuning of large models like Stable Diffusion on a single 16GB GPU, which is a practical benefit.",
+          "The paper compares against relevant baselines (classifier guidance, online fine-tuning, DPOK, Adjoint Matching) and provides implementation details."
+        ],
+        "Weaknesses": [
+          "Empirical results are mixed: on MNIST, online fine-tuning achieves higher reward; on text-to-image, the proposed method underperforms DPOK and Adjoint Matching on reward for most prompts and shows reduced diversity.",
+          "The theoretical guarantee only shows descent on the objective, not convergence to the global optimum (the h-transform), and relies on idealized assumptions (e.g., exact loss minimization).",
+          "The super-resolution experiment lacks quantitative comparison against standard posterior sampling methods (e.g., DPS, reconstruction guidance), weakening the evidence for this application.",
+          "The method's reliance on the pre-trained model's support containing high-reward samples is a significant practical limitation, acknowledged but not deeply analyzed.",
+          "The paper's clarity is hindered by dense notation, repeated theorems/remarks, and an incomplete description of Algorithm 1 in the main text.",
+          "Hyperparameter sensitivity (e.g., acceptance rate, buffer size, KL regularization weight) is not thoroughly investigated, making the method's robustness unclear."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 2,
+        "Significance": 2,
+        "Questions": [
+          "Can you provide a quantitative comparison for the super-resolution experiment against standard methods like DPS or reconstruction guidance?",
+          "How sensitive is the method to the acceptance rate and buffer size? Are there guidelines for setting these hyperparameters?",
+          "In the MNIST experiments, online fine-tuning achieves higher reward. Could the proposed method be combined with online fine-tuning to get both high reward and diversity?",
+          "Why does the diversity of the proposed method decrease so significantly in the text-to-image experiments, and how does this compare to the base model's diversity?",
+          "The theorem assumes the score-matching loss is minimized exactly. In practice, how does the approximation error affect the descent guarantee?",
+          "How does the method perform when the pre-trained model has limited support for high-reward samples? Could you provide a diagnostic or mitigation strategy?"
+        ],
+        "Limitations": [
+          "The method relies on the existence of high-reward samples in the pre-trained model's support, which may not hold for all tasks.",
+          "The theoretical analysis does not address the convergence rate or the impact of approximation errors in the score-matching step.",
+          "The empirical evaluation is limited in scope, particularly for inverse problems where no quantitative comparison is provided.",
+          "The paper does not explore the scalability of the method to very high-dimensional problems beyond the Stable Diffusion experiments.",
+          "Potential negative societal impacts include the misuse of fine-tuned models for generating misleading content (deepfakes), which is briefly mentioned."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes a self-supervised iterative fine-tuning method for diffusion models to sample from tilted distributions (e.g., conditional distributions, reward fine-tuning). The method combines path-based importance weights (Radon-Nikodym derivatives between SDEs) with a rejection sampling step and supervised score-matching fine-tuning of the h-transform. The key theoretical contribution is a descent guarantee for the KL-reward objective (Theorem 5). Experiments cover 2D toy, MNIST class conditioning, Flowers super-resolution, and Stable Diffusion reward fine-tuning.\n\nStrengths:\n1. The method is self-supervised and avoids differentiating through the score function, making it memory-efficient and applicable to large models (demonstrated on Stable Diffusion with 16GB GPU).\n2. The theoretical analysis (Theorem 5) provides a descent guarantee, which is a solid contribution.\n3. The path-based importance weights are computed on-the-fly without additional cost, which is elegant.\n4. The paper addresses an important problem (fine-tuning diffusion models for downstream tasks) and compares against strong baselines (DPOK, Adjoint Matching).\n5. The reward-informed network parametrization is a sensible inductive bias.\n\nWeaknesses:\n1. The empirical results are mixed. On MNIST, online fine-tuning (VarGrad) achieves higher expected reward than the proposed method, though with worse FID. On text-to-image, the proposed method underperforms both DPOK and Adjoint Matching on reward for most prompts, and the diversity is also lower than the base model. The main claimed advantage is memory efficiency, but the paper does not provide a clear win on quality metrics.\n2. The theoretical guarantee (Theorem 5) is somewhat weak: it shows descent on the objective F, but this does not guarantee convergence to the global optimum (the h-transform). The proof of part (iii) relies on the assumption that the score-matching loss finds the exact minimizer, which is unrealistic in practice.\n3. The method relies on the pre-trained model's support containing high-reward samples. The authors acknowledge this limitation but do not provide a thorough analysis or mitigation beyond mentioning off-policy samples.\n4. The experiments are limited in scale and comparison. For super-resolution, no quantitative comparison against other methods (e.g., DPS, reconstruction guidance) is provided—only a loss curve and sample images. The MNIST experiments use a simple classifier, and the FID metric is computed using the classifier's penultimate layer, which may not be standard.\n5. The paper has some clarity issues: the notation is dense, and the Algorithm 1 is referenced but not fully described in the main text. The relationship between the continuous SDE theory and the discrete DDPM implementation could be clearer.\n6. The replay buffer and KL regularization details are somewhat ad hoc, and the sensitivity to hyperparameters (e.g., acceptance rate, buffer size) is not thoroughly investigated.\n\nOriginality: The combination of path-based importance weights with iterative fine-tuning is novel. The paper builds on prior work (Hertrich & Gruhlke for rejection sampling, Denker et al. for supervised h-transform learning) but the synthesis is new. The theoretical descent result is a nice addition.\n\nQuality: The theoretical claims are mostly sound, but the empirical evaluation is not fully convincing. The paper is honest about limitations but does not provide a strong case for practical superiority over existing methods.\n\nClarity: The paper is reasonably well-written but has dense notation and some abrupt transitions (e.g., Theorem 1 repeated, Remark 2 and 3 repeated). The appendix contains important implementation details that should be highlighted in the main text.\n\nSignificance: The problem is important, and the memory-efficient approach could be valuable for practitioners. However, the mixed empirical results and limited comparisons reduce the significance.\n\nOverall assessment: This is a borderline paper. The theoretical contribution and the memory-efficient framework are interesting, but the empirical results are not compelling enough to clearly demonstrate an advantage over existing methods. The paper would benefit from stronger experiments, more baselines, and a clearer demonstration of practical utility.\n\nDecision: Reject (borderline). The technical soundness is decent, but the significance and empirical support are insufficient for acceptance at a top venue.\n\nRatings:\n- Originality: 3 (high)\n- Quality: 3 (good)\n- Clarity: 2 (fair)\n- Significance: 2 (fair)\n- Soundness: 3 (good)\n- Presentation: 2 (fair)\n- Contribution: 2 (fair)\n- Overall: 4 (borderline reject)\n- Confidence: 4 (confident)\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper proposes a self-supervised iterative fine-tuning algorithm for diffusion models to sample from tilted distributions (e.g., conditional distributions, reward fine-tuning). The method iteratively: (1) samples trajectories from the current h-transform-guided diffusion model, (2) filters samples using path-based importance weights computed via Radon-Nikodym derivatives between SDEs and a rejection sampling scheme, and (3) updates the h-transform estimate using a supervised score-matching loss on the accepted samples. The authors prove a descent guarantee on a KL-reward objective. Experiments are conducted on a 2D toy example, MNIST class-conditional sampling, Flowers super-resolution, and Stable Diffusion reward fine-tuning. The method is memory-efficient and does not require differentiating through the score function.\",\n    \"Strengths\": [\n        \"The self-supervised framework avoids the need for samples from the tilted distribution, which is a significant advantage over supervised methods.\",\n        \"The path-based importance weights are computed on-the-fly during sampling, adding no extra computational cost.\",\n        \"The theoretical descent guarantee (Theorem 5) provides a solid foundation for the iterative algorithm.\",\n        \"The reward-informed network parametrization is a sensible inductive bias that aids in learning.\",\n        \"The method is memory-efficient, enabling fine-tuning of large models like Stable Diffusion on a single 16GB GPU, which is a practical benefit.\",\n        \"The paper compares against relevant baselines (classifier guidance, online fine-tuning, DPOK, Adjoint Matching) and provides implementation details.\"\n    ],\n    \"Weaknesses\": [\n        \"Empirical results are mixed: on MNIST, online fine-tuning achieves higher reward; on text-to-image, the proposed method underperforms DPOK and Adjoint Matching on reward for most prompts and shows reduced diversity.\",\n        \"The theoretical guarantee only shows descent on the objective, not convergence to the global optimum (the h-transform), and relies on idealized assumptions (e.g., exact loss minimization).\",\n        \"The super-resolution experiment lacks quantitative comparison against standard posterior sampling methods (e.g., DPS, reconstruction guidance), weakening the evidence for this application.\",\n        \"The method's reliance on the pre-trained model's support containing high-reward samples is a significant practical limitation, acknowledged but not deeply analyzed.\",\n        \"The paper's clarity is hindered by dense notation, repeated theorems/remarks, and an incomplete description of Algorithm 1 in the main text.\",\n        \"Hyperparameter sensitivity (e.g., acceptance rate, buffer size, KL regularization weight) is not thoroughly investigated, making the method's robustness unclear.\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 3,\n    \"Clarity\": 2,\n    \"Significance\": 2,\n    \"Questions\": [\n        \"Can you provide a quantitative comparison for the super-resolution experiment against standard methods like DPS or reconstruction guidance?\",\n        \"How sensitive is the method to the acceptance rate and buffer size? Are there guidelines for setting these hyperparameters?\",\n        \"In the MNIST experiments, online fine-tuning achieves higher reward. Could the proposed method be combined with online fine-tuning to get both high reward and diversity?\",\n        \"Why does the diversity of the proposed method decrease so significantly in the text-to-image experiments, and how does this compare to the base model's diversity?\",\n        \"The theorem assumes the score-matching loss is minimized exactly. In practice, how does the approximation error affect the descent guarantee?\",\n        \"How does the method perform when the pre-trained model has limited support for high-reward samples? Could you provide a diagnostic or mitigation strategy?\"\n    ],\n    \"Limitations\": [\n        \"The method relies on the existence of high-reward samples in the pre-trained model's support, which may not hold for all tasks.\",\n        \"The theoretical analysis does not address the convergence rate or the impact of approximation errors in the score-matching step.\",\n        \"The empirical evaluation is limited in scope, particularly for inverse problems where no quantitative comparison is provided.\",\n        \"The paper does not explore the scalability of the method to very high-dimensional problems beyond the Stable Diffusion experiments.\",\n        \"Potential negative societal impacts include the misuse of fine-tuned models for generating misleading content (deepfakes), which is briefly mentioned.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 2,\n    \"Contribution\": 2,\n    \"Overall\": 4,\n    \"Confidence\": 4,\n    \"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 49818,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 48026,
+        "completion_tokens": 1885,
+        "reasoning_tokens": 0,
+        "total_tokens": 51703
+      },
+      "attempts": 1,
+      "response_id": "9dcbbdc0-b464-4674-8ae9-7ee724957a08"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "This paper proposes a self-supervised iterative fine-tuning method for diffusion models to sample from tilted distributions (e.g., conditional distributions or reward-aligned distributions). The method estimates the h-transform (guidance term) without requiring samples from the target distribution. The algorithm iteratively: (1) samples trajectories from the current model with the estimated h-transform, (2) filters these samples using path-based importance weights via rejection sampling, and (3) fine-tunes the h-transform using a supervised score-matching loss on the accepted samples. The authors provide a theoretical result showing that this iterative procedure decreases a loss function (KL to tilted distribution) in each step. Experiments are conducted on 2D toy examples, MNIST class-conditional sampling, Flowers super-resolution, and Stable Diffusion reward fine-tuning, demonstrating the method's applicability and memory efficiency.",
+        "Strengths": [
+          "Novel combination of importance-weighted rejection sampling with supervised h-transform learning for self-supervised fine-tuning.",
+          "Theoretical descent guarantee (Theorem 5) for the iterative scheme, providing a sound foundation.",
+          "Memory-efficient: avoids backpropagating through the entire SDE trajectory, enabling fine-tuning of large models like Stable Diffusion on a single 24GB GPU.",
+          "Broad experimental coverage: toy examples, class conditioning, inverse problems, and text-to-image alignment.",
+          "Honest evaluation with discussion of limitations and comparison with multiple baselines."
+        ],
+        "Weaknesses": [
+          "Theoretical result is limited: proves descent but not convergence to the global optimum (tilted distribution), and the proof relies on idealized assumptions (e.g., infinite data/capacity).",
+          "Empirical performance is mixed: underperforms online fine-tuning on reward for MNIST, and underperforms adjoint matching on reward for text-to-image. The main advantage is memory efficiency, which is a hardware constraint.",
+          "The path-based importance weights are approximations (continuous-time, exact score), and the paper does not analyze the bias introduced by these approximations or by discrete-time implementation.",
+          "Sensitivity to the acceptance rate hyperparameter c is not analyzed, and no guidance is provided for choosing it.",
+          "Incremental novelty: replay buffer and resampling schemes are borrowed from prior work.",
+          "Some notation confusion and dense appendix derivations affect clarity."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "1. In Theorem 5, the descent guarantee is for the path measure loss F. However, the update step uses score matching on marginals. Could you clarify under what conditions the score matching step guarantees that the new path measure P_{h*} achieves F(P_{h*}) <= F(tilde-P_h)? Is this exact or approximate?",
+          "2. The importance weights are computed using the RND between path measures. How sensitive is the method to the accuracy of the score function s_t? Have you tested with a partially trained or noisy score model?",
+          "3. For the text-to-image experiments, the diversity of your method (0.051, 0.077, 0.120) is lower than the base model (0.154, 0.108, 0.193) and Top-K sampling. Could you comment on why this is the case and whether the KL regularizer (Eq. 17) was used in these experiments?",
+          "4. How is the acceptance rate c chosen in practice? Is there a heuristic or do you tune it per task? Have you studied the sensitivity of the final performance to this parameter?",
+          "5. In the MNIST experiments, online fine-tuning achieves higher reward but worse FID. Is there a way to trade off reward and diversity in your method (e.g., by adjusting the temperature lambda)?",
+          "6. The paper mentions that the method does not require differentiating the score function. Could you elaborate on how the path-based importance weights are computed in discrete time without this differentiation, especially for the text-to-image case where the model uses classifier-free guidance?"
+        ],
+        "Limitations": [
+          "The method relies on the pre-trained model having sufficient support over high-reward regions. If the prior has low density in the target regions, the rejection sampling will have very low acceptance rates, making the method inefficient or ineffective.",
+          "The path-based importance weights are approximations, and the paper does not quantify the bias introduced by these approximations.",
+          "The method requires careful tuning of the acceptance rate c, which may be task-dependent and difficult to set in practice.",
+          "The empirical results show that the method often underperforms on reward metrics compared to online fine-tuning methods, while its main advantage is memory efficiency.",
+          "Potential negative societal impact: fine-tuning diffusion models to maximize arbitrary rewards could be used to generate deepfakes or disinformation, as noted by the authors."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes a self-supervised iterative fine-tuning method for diffusion models to sample from tilted distributions (e.g., conditional distributions, reward-aligned distributions). The key idea is to estimate the h-transform (guidance term) without requiring samples from the target distribution. The method iteratively: (1) samples trajectories from the current model with estimated h-transform, (2) filters these samples using path-based importance weights (rejection sampling), and (3) fine-tunes the h-transform using a supervised score-matching loss on the accepted samples. The authors provide a theoretical result (Theorem 5) showing that this iterative procedure decreases a loss function (KL to tilted distribution) in each step. Experiments are conducted on 2D toy examples, MNIST class-conditional sampling, Flowers super-resolution, and Stable Diffusion reward fine-tuning.\n\nStrengths:\n- Novel combination of ideas: combining importance-weighted rejection sampling with supervised h-transform learning for self-supervised fine-tuning is a reasonable and interesting approach.\n- Theoretical contribution: Theorem 5 provides a descent guarantee for the proposed iterative scheme, which is a nice addition.\n- Practical applicability: The method avoids backpropagating through the entire SDE trajectory (unlike online fine-tuning methods), making it memory-efficient and applicable to large models like Stable Diffusion on a single 24GB GPU.\n- Good experimental breadth: covers toy examples, class conditioning, inverse problems, and text-to-image alignment, demonstrating versatility.\n- Honest evaluation: The authors discuss limitations (e.g., dependence on support of the pre-trained model) and compare with several baselines.\n\nWeaknesses:\n- The theoretical result (Theorem 5) is somewhat limited. It proves a descent property for the loss, but does not guarantee convergence to the global optimum (the tilted distribution). The descent is on the path measure KL, but the step from the filtered distribution to the new h-transform is via score matching on marginals, which may not exactly align. The proof of part (iii) relies on the score matching loss recovering the correct path measure, but this is only exact in the limit of infinite data and capacity.\n- The empirical results are mixed. For MNIST class-conditional sampling, online fine-tuning (DPOK-style) achieves higher expected reward than the proposed method, though the proposed method has better FID in some cases. For text-to-image, the proposed method underperforms adjoint matching on reward and has lower diversity than baselines. The main advantage claimed is memory efficiency (16GB vs 34GB), but this is a hardware constraint rather than a methodological improvement.\n- The importance weights are computed using a path-based RND that approximates the ratio p_data/p_h. This approximation is exact only under idealized conditions (e.g., correct score functions, continuous-time limit). The paper does not analyze the bias introduced by this approximation or by the discrete-time implementation.\n- The method requires careful tuning of the acceptance rate hyperparameter c, and the paper does not provide sensitivity analysis or guidance on choosing this parameter.\n- The replay buffer and resampling scheme are borrowed from prior work (Midgley et al., Sendera et al.), and the novelty is somewhat incremental.\n- The paper is not entirely clear in some places. For instance, the notation is sometimes confusing (e.g., using P for both path measures and marginal densities). The derivation of the RND in the appendix is dense and could be better organized.\n\nOriginality: The combination of importance-weighted rejection with h-transform learning is novel, though the individual components are well-known. The theoretical descent guarantee is a useful addition. I would rate originality as medium-high.\n\nQuality: The paper is technically sound overall. The theoretical proof seems correct, though limited. The experiments are adequate but not overwhelmingly strong, as the method often underperforms baselines on reward metrics. The evaluation is honest about limitations. I would rate quality as good.\n\nClarity: The paper is reasonably well-written but has some notation issues and the appendix is dense. The main ideas are clear. I would rate clarity as good.\n\nSignificance: The method addresses an important problem (efficient fine-tuning of diffusion models for downstream tasks) and offers a memory-efficient alternative. However, the performance gains are not clearly demonstrated, and the method is not clearly superior to existing approaches. The significance is moderate. I would rate significance as medium.\n\nOverall: The paper presents a solid but not groundbreaking contribution. The theoretical result is nice, and the memory efficiency advantage is real, but the empirical performance is not consistently better than baselines. The method seems like a reasonable incremental step. I lean towards accepting, but with reservations about the empirical strength.\n\nDecision: I will lean towards Accept, as the paper is technically sound, presents a novel combination with theoretical backing, and addresses a practical problem. The weaknesses are not fatal, but the empirical results could be stronger.\n\nRating assignments:\n- Originality: 3 (high)\n- Quality: 3 (good)\n- Clarity: 3 (good)\n- Significance: 3 (high)\n- Soundness: 3 (good)\n- Presentation: 3 (good)\n- Contribution: 3 (good)\n- Overall: 6 (Weak Accept)\n- Confidence: 4 (confident)\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper proposes a self-supervised iterative fine-tuning method for diffusion models to sample from tilted distributions (e.g., conditional distributions or reward-aligned distributions). The method estimates the h-transform (guidance term) without requiring samples from the target distribution. The algorithm iteratively: (1) samples trajectories from the current model with the estimated h-transform, (2) filters these samples using path-based importance weights via rejection sampling, and (3) fine-tunes the h-transform using a supervised score-matching loss on the accepted samples. The authors provide a theoretical result showing that this iterative procedure decreases a loss function (KL to tilted distribution) in each step. Experiments are conducted on 2D toy examples, MNIST class-conditional sampling, Flowers super-resolution, and Stable Diffusion reward fine-tuning, demonstrating the method's applicability and memory efficiency.\",\n    \"Strengths\": [\n        \"Novel combination of importance-weighted rejection sampling with supervised h-transform learning for self-supervised fine-tuning.\",\n        \"Theoretical descent guarantee (Theorem 5) for the iterative scheme, providing a sound foundation.\",\n        \"Memory-efficient: avoids backpropagating through the entire SDE trajectory, enabling fine-tuning of large models like Stable Diffusion on a single 24GB GPU.\",\n        \"Broad experimental coverage: toy examples, class conditioning, inverse problems, and text-to-image alignment.\",\n        \"Honest evaluation with discussion of limitations and comparison with multiple baselines.\"\n    ],\n    \"Weaknesses\": [\n        \"Theoretical result is limited: proves descent but not convergence to the global optimum (tilted distribution), and the proof relies on idealized assumptions (e.g., infinite data/capacity).\",\n        \"Empirical performance is mixed: underperforms online fine-tuning on reward for MNIST, and underperforms adjoint matching on reward for text-to-image. The main advantage is memory efficiency, which is a hardware constraint.\",\n        \"The path-based importance weights are approximations (continuous-time, exact score), and the paper does not analyze the bias introduced by these approximations or by discrete-time implementation.\",\n        \"Sensitivity to the acceptance rate hyperparameter c is not analyzed, and no guidance is provided for choosing it.\",\n        \"Incremental novelty: replay buffer and resampling schemes are borrowed from prior work.\",\n        \"Some notation confusion and dense appendix derivations affect clarity.\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"1. In Theorem 5, the descent guarantee is for the path measure loss F. However, the update step uses score matching on marginals. Could you clarify under what conditions the score matching step guarantees that the new path measure P_{h*} achieves F(P_{h*}) <= F(tilde-P_h)? Is this exact or approximate?\",\n        \"2. The importance weights are computed using the RND between path measures. How sensitive is the method to the accuracy of the score function s_t? Have you tested with a partially trained or noisy score model?\",\n        \"3. For the text-to-image experiments, the diversity of your method (0.051, 0.077, 0.120) is lower than the base model (0.154, 0.108, 0.193) and Top-K sampling. Could you comment on why this is the case and whether the KL regularizer (Eq. 17) was used in these experiments?\",\n        \"4. How is the acceptance rate c chosen in practice? Is there a heuristic or do you tune it per task? Have you studied the sensitivity of the final performance to this parameter?\",\n        \"5. In the MNIST experiments, online fine-tuning achieves higher reward but worse FID. Is there a way to trade off reward and diversity in your method (e.g., by adjusting the temperature lambda)?\",\n        \"6. The paper mentions that the method does not require differentiating the score function. Could you elaborate on how the path-based importance weights are computed in discrete time without this differentiation, especially for the text-to-image case where the model uses classifier-free guidance?\"\n    ],\n    \"Limitations\": [\n        \"The method relies on the pre-trained model having sufficient support over high-reward regions. If the prior has low density in the target regions, the rejection sampling will have very low acceptance rates, making the method inefficient or ineffective.\",\n        \"The path-based importance weights are approximations, and the paper does not quantify the bias introduced by these approximations.\",\n        \"The method requires careful tuning of the acceptance rate c, which may be task-dependent and difficult to set in practice.\",\n        \"The empirical results show that the method often underperforms on reward metrics compared to online fine-tuning methods, while its main advantage is memory efficiency.\",\n        \"Potential negative societal impact: fine-tuning diffusion models to maximize arbitrary rewards could be used to generate deepfakes or disinformation, as noted by the authors.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 49818,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 48026,
+        "completion_tokens": 2162,
+        "reasoning_tokens": 0,
+        "total_tokens": 51980
+      },
+      "attempts": 1,
+      "response_id": "dcb924a6-0758-4489-86e3-21dd61c3ca36"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "This paper proposes a self-supervised algorithm for fine-tuning diffusion models to sample from tilted distributions (e.g., conditional distributions or reward-weighted priors). The method iteratively estimates the generalized h-transform by: (1) sampling trajectories from the current model, (2) resampling them using path-based importance weights that incorporate both the reward and the Radon-Nikodym derivative between the prior and current path measures, and (3) updating the h-transform via a supervised score-matching loss on the accepted samples. The authors prove that this iterative procedure decreases a variational loss function (Theorem 5). Experiments are conducted on a 2D toy example, class-conditional MNIST sampling, super-resolution inverse problems, and reward fine-tuning of Stable Diffusion with ImageReward. The key claimed advantage is memory efficiency—no backpropagation through the full generation trajectory—enabling fine-tuning on a single RTX 4090.",
+        "Strengths": [
+          "Novel combination of importance-weighted path resampling with h-transform learning, avoiding the need for samples from the tilted distribution.",
+          "Theoretical guarantee (Theorem 5) that each iteration decreases the loss function F, providing a solid foundation for the iterative scheme.",
+          "Memory-efficient: no differentiation through the full SDE trajectory, enabling fine-tuning of large models (Stable Diffusion) on a single 24GB GPU.",
+          "Comprehensive experimental evaluation across multiple domains (toy, MNIST, inverse problems, text-to-image), demonstrating the method's versatility.",
+          "The importance weights incorporate both reward and path probability, which is a principled approach to curating synthetic data and mitigating mode collapse.",
+          "Clearly written with good contextualization of related work.",
+          "The replay buffer and KL regularization strategies are practical and well-motivated."
+        ],
+        "Weaknesses": [
+          "The theoretical result only shows monotonic decrease of the loss, not convergence to the global optimum or a rate of convergence. The guarantee is relatively weak compared to what is claimed in the abstract ('decreases a certain loss function').",
+          "Experimental results are mixed: on MNIST, online fine-tuning achieves higher expected reward; on text-to-image, adjoint matching achieves higher reward. The method's advantage is primarily memory efficiency, not sample quality or reward maximization.",
+          "The importance weights may suffer from high variance, especially in high dimensions, which is not fully addressed in the paper. The adaptive choice of the threshold c is heuristic.",
+          "The comparison with baselines is not always fair: adjoint matching uses full model fine-tuning while the proposed method uses LoRA; DPOK uses different hyperparameters. The reported GPU hours and memory are informative but the performance comparison is confounded by these differences.",
+          "The method relies on the support of the pre-trained model containing high-reward samples. This limitation is acknowledged but not deeply analyzed; the proposed off-policy extension is not experimentally validated.",
+          "The toy example's 'reward-only' baseline is not clearly defined, making the comparison less transparent.",
+          "The paper lacks an ablation study on the importance of the path-based weights vs. reward-only weights beyond the toy example.",
+          "The FID scores for MNIST even/odd are quite high (110-198), suggesting the generated samples may not be of high quality across all tasks."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "In Theorem 5, the descent guarantee holds for the exact minimizer of the score-matching loss. In practice, you use a finite number of gradient steps. How does this approximation affect the practical convergence behavior? Do you observe any cases where the loss increases between iterations?",
+          "The importance weights are computed using the Radon-Nikodym derivative between path measures. In high dimensions (e.g., Stable Diffusion latent space), how does the variance of these weights behave? Have you considered variance reduction techniques beyond the rejection sampling step?",
+          "Could you provide a more detailed comparison of the computational cost (not just memory) of your method vs. DPOK and adjoint matching? The paper reports GPU hours but it's unclear how many trajectory samples are used per iteration for each method.",
+          "In the MNIST experiments, online fine-tuning achieves higher expected reward. Is there a trade-off between reward and diversity that is not fully captured by the FID metric? Could you provide precision-recall curves or other diversity metrics?",
+          "For the super-resolution experiment, how does your method compare to reconstruction guidance or other inference-time methods in terms of PSNR/SSIM? The paper only reports the SC loss.",
+          "The off-policy extension mentioned in the limitations is not tested. Do you have any preliminary results showing its effectiveness?",
+          "How sensitive is the method to the initial estimate of the h-transform? Have you tried starting from a random initialization vs. the reward-informed initialization?",
+          "What is the effect of the KL regularization parameter alpha_KL? Is there a sweet spot, and how does it interact with the acceptance rate?"
+        ],
+        "Limitations": [
+          "The method's performance is limited by the support of the pre-trained model; it cannot discover high-reward regions that are poorly covered. This is acknowledged but not deeply investigated.",
+          "The theoretical guarantee is a descent property, not convergence to the optimal h-transform. The practical implications of this are unclear.",
+          "The importance weights can have high variance, potentially leading to unstable training. The rejection sampling helps but may not fully resolve this in high dimensions.",
+          "The method requires careful tuning of the acceptance threshold c and other hyperparameters (buffer size, KL weight), which may limit its ease of use.",
+          "Potential negative societal impact includes the misuse of fine-tuned generative models for deepfakes and disinformation, which the authors acknowledge.",
+          "The experimental evaluation is limited in scale compared to some baselines; only three text prompts are used for Stable Diffusion fine-tuning."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper presents a self-supervised fine-tuning method for diffusion models to sample from tilted distributions. The key idea is iterative importance-weighted resampling of trajectories combined with supervised h-transform learning. The theoretical contribution includes a descent guarantee for the loss function. Experiments cover toy examples, MNIST class conditioning, super-resolution, and Stable Diffusion reward fine-tuning.\n\nStrengths:\n- Novel combination of importance weighting with h-transform learning, avoiding the need for samples from the tilted distribution\n- Theoretical guarantee (Theorem 5) that the method decreases the loss function\n- Practical advantage: no backpropagation through the full diffusion trajectory, enabling fine-tuning on smaller GPUs\n- Comprehensive experiments including large-scale text-to-image fine-tuning\n- Clear writing and good contextualization with related work\n\nWeaknesses:\n- The theoretical result is somewhat limited; it shows monotonic decrease of the loss but doesn't guarantee convergence to the global optimum\n- Experimental results show mixed performance: on MNIST, online fine-tuning achieves higher reward; on text-to-image, adjoint matching outperforms in reward\n- The method's reliance on sampling from the current model's support could limit exploration of high-reward regions not initially covered\n- The importance weights approximation via path measures may have high variance in practice\n- Comparison with baselines is not always fair (e.g., different memory requirements, different training times)\n- The \"reward-only\" baseline in the toy example seems poorly motivated and not clearly defined\n\nOriginality: The combination of importance-based resampling with h-transform learning is novel. The path-based importance weighting approach is a creative extension of existing work. The theoretical descent guarantee adds value.\n\nQuality: The paper is technically sound with appropriate theoretical analysis. Experiments are reasonably comprehensive, though the results are not consistently superior to baselines. The authors are honest about limitations.\n\nClarity: The paper is well-written and organized. The algorithmic description is clear. Some notation could be simplified for readability.\n\nSignificance: The method addresses an important problem (fine-tuning diffusion models without task-specific data) and offers practical advantages in terms of memory efficiency. The approach is likely to be used by researchers with limited computational resources.\n\nOverall assessment: This is a solid paper with a novel contribution, but the experimental results are mixed. The method doesn't consistently outperform baselines, and the theoretical guarantee is relatively weak. The memory efficiency advantage is real but the performance trade-offs need more investigation. I would rate this as a borderline accept.\n\nDecision: Accept (with reservations about experimental comparisons)\n\nConfidence: 4 (I'm fairly confident in my assessment but haven't deeply verified all mathematical details)REVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper proposes a self-supervised algorithm for fine-tuning diffusion models to sample from tilted distributions (e.g., conditional distributions or reward-weighted priors). The method iteratively estimates the generalized h-transform by: (1) sampling trajectories from the current model, (2) resampling them using path-based importance weights that incorporate both the reward and the Radon-Nikodym derivative between the prior and current path measures, and (3) updating the h-transform via a supervised score-matching loss on the accepted samples. The authors prove that this iterative procedure decreases a variational loss function (Theorem 5). Experiments are conducted on a 2D toy example, class-conditional MNIST sampling, super-resolution inverse problems, and reward fine-tuning of Stable Diffusion with ImageReward. The key claimed advantage is memory efficiency—no backpropagation through the full generation trajectory—enabling fine-tuning on a single RTX 4090.\",\n  \"Strengths\": [\n    \"Novel combination of importance-weighted path resampling with h-transform learning, avoiding the need for samples from the tilted distribution.\",\n    \"Theoretical guarantee (Theorem 5) that each iteration decreases the loss function F, providing a solid foundation for the iterative scheme.\",\n    \"Memory-efficient: no differentiation through the full SDE trajectory, enabling fine-tuning of large models (Stable Diffusion) on a single 24GB GPU.\",\n    \"Comprehensive experimental evaluation across multiple domains (toy, MNIST, inverse problems, text-to-image), demonstrating the method's versatility.\",\n    \"The importance weights incorporate both reward and path probability, which is a principled approach to curating synthetic data and mitigating mode collapse.\",\n    \"Clearly written with good contextualization of related work.\",\n    \"The replay buffer and KL regularization strategies are practical and well-motivated.\"\n  ],\n  \"Weaknesses\": [\n    \"The theoretical result only shows monotonic decrease of the loss, not convergence to the global optimum or a rate of convergence. The guarantee is relatively weak compared to what is claimed in the abstract ('decreases a certain loss function').\",\n    \"Experimental results are mixed: on MNIST, online fine-tuning achieves higher expected reward; on text-to-image, adjoint matching achieves higher reward. The method's advantage is primarily memory efficiency, not sample quality or reward maximization.\",\n    \"The importance weights may suffer from high variance, especially in high dimensions, which is not fully addressed in the paper. The adaptive choice of the threshold c is heuristic.\",\n    \"The comparison with baselines is not always fair: adjoint matching uses full model fine-tuning while the proposed method uses LoRA; DPOK uses different hyperparameters. The reported GPU hours and memory are informative but the performance comparison is confounded by these differences.\",\n    \"The method relies on the support of the pre-trained model containing high-reward samples. This limitation is acknowledged but not deeply analyzed; the proposed off-policy extension is not experimentally validated.\",\n    \"The toy example's 'reward-only' baseline is not clearly defined, making the comparison less transparent.\",\n    \"The paper lacks an ablation study on the importance of the path-based weights vs. reward-only weights beyond the toy example.\",\n    \"The FID scores for MNIST even/odd are quite high (110-198), suggesting the generated samples may not be of high quality across all tasks.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"In Theorem 5, the descent guarantee holds for the exact minimizer of the score-matching loss. In practice, you use a finite number of gradient steps. How does this approximation affect the practical convergence behavior? Do you observe any cases where the loss increases between iterations?\",\n    \"The importance weights are computed using the Radon-Nikodym derivative between path measures. In high dimensions (e.g., Stable Diffusion latent space), how does the variance of these weights behave? Have you considered variance reduction techniques beyond the rejection sampling step?\",\n    \"Could you provide a more detailed comparison of the computational cost (not just memory) of your method vs. DPOK and adjoint matching? The paper reports GPU hours but it's unclear how many trajectory samples are used per iteration for each method.\",\n    \"In the MNIST experiments, online fine-tuning achieves higher expected reward. Is there a trade-off between reward and diversity that is not fully captured by the FID metric? Could you provide precision-recall curves or other diversity metrics?\",\n    \"For the super-resolution experiment, how does your method compare to reconstruction guidance or other inference-time methods in terms of PSNR/SSIM? The paper only reports the SC loss.\",\n    \"The off-policy extension mentioned in the limitations is not tested. Do you have any preliminary results showing its effectiveness?\",\n    \"How sensitive is the method to the initial estimate of the h-transform? Have you tried starting from a random initialization vs. the reward-informed initialization?\",\n    \"What is the effect of the KL regularization parameter alpha_KL? Is there a sweet spot, and how does it interact with the acceptance rate?\"\n  ],\n  \"Limitations\": [\n    \"The method's performance is limited by the support of the pre-trained model; it cannot discover high-reward regions that are poorly covered. This is acknowledged but not deeply investigated.\",\n    \"The theoretical guarantee is a descent property, not convergence to the optimal h-transform. The practical implications of this are unclear.\",\n    \"The importance weights can have high variance, potentially leading to unstable training. The rejection sampling helps but may not fully resolve this in high dimensions.\",\n    \"The method requires careful tuning of the acceptance threshold c and other hyperparameters (buffer size, KL weight), which may limit its ease of use.\",\n    \"Potential negative societal impact includes the misuse of fine-tuned generative models for deepfakes and disinformation, which the authors acknowledge.\",\n    \"The experimental evaluation is limited in scale compared to some baselines; only three text prompts are used for Stable Diffusion fine-tuning.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 49818,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 48026,
+        "completion_tokens": 1850,
+        "reasoning_tokens": 0,
+        "total_tokens": 51668
+      },
+      "attempts": 1,
+      "response_id": "d9b3dde8-de37-40f5-bc67-73ada12706e9"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "This paper proposes a self-supervised algorithm for fine-tuning diffusion models to sample from tilted distributions (e.g., reward-conditioned posteriors). The method iteratively: (1) samples trajectories from the current model with an estimated h-transform, (2) filters them using path-based importance weights via an acceptance-rejection scheme, and (3) updates the h-transform using a supervised score-matching loss on the accepted samples. The authors prove that this iterative procedure decreases a KL-reward objective (Theorem 5). They demonstrate the method on a 2D toy example, class-conditional sampling on MNIST, super-resolution on Flowers, and reward fine-tuning of Stable Diffusion, highlighting memory efficiency compared to existing fine-tuning methods.",
+        "Strengths": [
+          "The method is self-supervised, requiring no samples from the tilted distribution, which addresses a key limitation of prior supervised h-transform learning (Denker et al., 2024).",
+          "It avoids backpropagating through the full SDE trajectory, enabling fine-tuning of large models (e.g., Stable Diffusion) on a single 16GB GPU, which is a practical advantage.",
+          "The theoretical descent guarantee (Theorem 5) provides some formal justification for the iterative procedure.",
+          "The paper tackles an important problem (conditional sampling from diffusion priors) and compares against strong baselines (DPOK, Adjoint Matching) on text-to-image reward fine-tuning.",
+          "The path-based importance weights are computed on-the-fly without additional computational cost."
+        ],
+        "Weaknesses": [
+          "Empirical results are mixed: on MNIST, online fine-tuning achieves higher reward; on text-to-image, the method underperforms both DPOK and Adjoint Matching in reward for two of three prompts. The main advantage is memory efficiency, which is a marginal contribution.",
+          "The theoretical proof of Theorem 5 has gaps, particularly in part (iii) where the score-matching loss is claimed to recover the full path measure, but the loss only matches marginal scores.",
+          "The importance weight approximation (using RND between path measures) introduces bias that is not analyzed. The replay buffer introduces off-policy samples without proper importance correction.",
+          "The KL regularization term is added heuristically, and its effect on the theoretical descent property is not discussed.",
+          "The 2D toy example is very small scale and the comparison against online fine-tuning uses an impractical baseline (full backprop through trajectory).",
+          "Clarity issues: notation conflates path measures and marginals, algorithm pseudocode is only for DDPM while experiments use VP-SDE and latent diffusion, making the paper hard to follow."
+        ],
+        "Originality": 2,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 2,
+        "Questions": [
+          "Can you clarify the relationship between the path measure \\(\\mathbb{P}_h\\) and the marginal distribution \\(p_h\\)? In the importance weight derivation (Eq. 12), you approximate \\(p_{\\text{data}}/p_h\\) with the RND of path measures. Is this approximation justified, and what bias does it introduce?",
+          "In Theorem 5(iii), you claim the minimizer of the score-matching loss (Eq. 15) has path measure \\(\\mathbb{P}_{h^*} = (\\tilde{P}_h^0/p_{\\text{data}})\\mathbb{P}_{\\text{data}}\\). However, Eq. 15 only matches marginal scores at time t. Can you elaborate on why this equality holds for the full path measure?",
+          "How does the KL regularization term (Eq. 17) affect the descent property of Theorem 5? Does the theorem still hold with this additional term?",
+          "For the text-to-image experiments, what is the sampling time for your method vs. baselines? The Top-K baseline uses 6x sampling time, but your method's evaluation time is not reported.",
+          "The replay buffer stores accepted samples from previous iterations. How are importance weights computed for these off-policy samples? Are they recomputed with the current h, or are they stale? Does this affect the theoretical guarantee?",
+          "The acceptance probability \\(\\alpha\\) depends on the hyperparameter \\(c\\), which is adaptively chosen. How sensitive are the results to this choice, and how is \\(c\\) updated across iterations?"
+        ],
+        "Limitations": [
+          "The method relies on the pre-trained model having support over high-reward regions; it may struggle when the tilted distribution is far from the prior support. This is acknowledged but not experimentally addressed (e.g., out-of-distribution rewards).",
+          "The method is only evaluated on a simple super-resolution task and a small MNIST dataset; more complex inverse problems (e.g., inpainting, deblurring) are not tested.",
+          "The societal impact statement is generic and does not discuss specific risks of fine-tuning on human preference rewards, such as bias amplification or misuse in deepfake generation.",
+          "The paper does not provide a thorough analysis of the computational cost of the iterative sampling process, which may be significant for large models."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes a self-supervised iterative fine-tuning method for diffusion models to sample from tilted distributions (e.g., reward-conditioned posteriors). The key idea is to iteratively: (1) sample trajectories from the current model with an estimated h-transform, (2) filter them using path-based importance weights (acceptance-rejection), and (3) fine-tune the h-transform using a supervised score-matching loss on the accepted samples. The theoretical contribution is a proof (Theorem 5) that this procedure decreases a KL-reward objective each iteration.\n\nStrengths:\n- The method is self-supervised (no need for samples from the tilted distribution), addressing a clear limitation of prior supervised h-transform learning (Denker et al., 2024).\n- It avoids differentiating through the full SDE trajectory, making it memory-efficient (demonstrated on Stable Diffusion with 16GB memory vs 34-36GB for baselines).\n- Theoretical descent guarantee (Theorem 5) is a nice addition, though the proof has some hand-wavy steps (e.g., the \"disintegration theorem\" argument in part iii seems to conflate path and marginal measures).\n- The paper addresses an important problem (conditional sampling from diffusion priors) and compares against strong baselines (DPOK, Adjoint Matching) on text-to-image reward fine-tuning.\n\nWeaknesses:\n- The empirical results are somewhat mixed: on MNIST class-conditional sampling, online fine-tuning achieves higher reward (though lower diversity), and on text-to-image, the method underperforms both DPOK and Adjoint Matching in reward for two of three prompts. The main selling point is memory efficiency, but this is not a strong enough differentiator for a top venue.\n- The 2D toy example is very small scale and the comparison against \"online fine-tuning\" uses full backprop through trajectory, which is not a practical baseline for larger models.\n- The importance weights are approximations (using RND between path measures), and the paper doesn't deeply analyze the bias introduced by this approximation. The acceptance-rejection scheme also relies on a hyperparameter c that is adaptively chosen, but sensitivity to this is not studied.\n- The KL regularization term (Eq. 17) is added heuristically, and its interaction with the main loss is not well motivated theoretically.\n- The replay buffer introduces off-policy samples, but the importance weights are computed assuming on-policy sampling; the paper doesn't address this mismatch (only briefly mentions off-policy in limitations).\n- The theoretical contribution (Theorem 5) is incremental: it combines known results (importance sampling from Hertrich & Gruhlke, h-transform from Denker et al.) in a straightforward way. The proof of part (iii) is not fully rigorous.\n- Clarity issues: The paper is dense and some notation is confusing (e.g., using \\mathbb{P} for both path measures and marginal distributions). The algorithm pseudocode is only for DDPM, but experiments use VP-SDE and Stable Diffusion (latent DDPM), which may confuse readers.\n- The comparison with Top-K sampling is somewhat unfair: Top-K uses 6x sampling time, while the method's sampling time is not reported during evaluation.\n\nOriginality: Medium. The combination of importance-weighted rejection with supervised h-transform learning is novel, but it builds heavily on existing work (Denker et al., Hertrich & Gruhlke). The theoretical analysis is a direct extension.\n\nQuality: Fair to Good. The theoretical claims are partially supported, but the proof has gaps. Experiments are reasonably thorough but show only marginal improvements over baselines, and the main advantage (memory) is not a fundamental algorithmic contribution.\n\nClarity: Fair. The paper is technically dense but poorly organized in places; some key definitions (e.g., path measures vs. marginals) are conflated. The appendices are helpful but the main text is hard to follow.\n\nSignificance: Moderate. The problem is important, but the proposed method does not clearly advance the state of the art in terms of sample quality or reward. Its main contribution is memory efficiency, which may be valuable for practitioners, but this is a minor advance.\n\nOverall: I lean towards rejection. The paper presents a reasonable method with a theoretical guarantee, but the empirical gains are modest, and the method is not clearly better than existing approaches. The memory advantage is real but is not the primary focus of the paper's claims. The theoretical proof needs tightening. I would rate this as a borderline reject, but given the choice between Accept and Reject, I choose Reject.\n\nSoundness: 2 (fair) - theoretical proof has gaps, experimental methodology is adequate but not comprehensive.\nPresentation: 2 (fair) - dense and sometimes confusing.\nContribution: 2 (fair) - incremental advance.\nOverall: 4 (borderline reject) - but since only Accept/Reject, I choose Reject.\nConfidence: 4 - I am fairly confident in my assessment, but I haven't checked all the math details.\n\nQuestions for authors:\n- Can you clarify the relationship between the path measure \\mathbb{P}_h and the marginal distribution p_h? In the importance weight derivation, you approximate p_data/p_h with the RND of path measures. Is this approximation justified?\n- In Theorem 5(iii), you claim that the minimizer of the score-matching loss has path measure \\mathbb{P}_{h*} = (\\tilde{P}_h^0/p_data)\\mathbb{P}_data. However, the score-matching loss in Eq. 15 only matches the marginal score at time t, not the full path measure. Can you elaborate on why this equality holds?\n- The KL regularization term (Eq. 17) is added to the loss. How does this affect the descent property of Theorem 5? Does the theorem still hold with this extra term?\n- For the text-to-image experiments, what is the sampling time for your method vs. baselines? The Top-K baseline uses 6x sampling time, but your method's evaluation time is not reported.\n- The replay buffer introduces off-policy samples. How do you handle the importance weights for these samples? Are they recomputed with the current h, or are they stale?\n\nLimitations:\n- The paper acknowledges that the method requires the pre-trained model to have support over high-reward regions. This is a significant limitation that is not addressed in experiments (e.g., what happens when the reward is out-of-distribution?).\n- The method's performance on more complex inverse problems (e.g., deblurring, inpainting) is not evaluated.\n- The societal impact statement is brief and generic; it does not discuss specific risks of fine-tuning on human preference rewards (e.g., bias amplification).\n\nEthical Concerns: No major ethical issues beyond the generic generative model concerns.\n\nDecision: Reject.REVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper proposes a self-supervised algorithm for fine-tuning diffusion models to sample from tilted distributions (e.g., reward-conditioned posteriors). The method iteratively: (1) samples trajectories from the current model with an estimated h-transform, (2) filters them using path-based importance weights via an acceptance-rejection scheme, and (3) updates the h-transform using a supervised score-matching loss on the accepted samples. The authors prove that this iterative procedure decreases a KL-reward objective (Theorem 5). They demonstrate the method on a 2D toy example, class-conditional sampling on MNIST, super-resolution on Flowers, and reward fine-tuning of Stable Diffusion, highlighting memory efficiency compared to existing fine-tuning methods.\",\n  \"Strengths\": [\n    \"The method is self-supervised, requiring no samples from the tilted distribution, which addresses a key limitation of prior supervised h-transform learning (Denker et al., 2024).\",\n    \"It avoids backpropagating through the full SDE trajectory, enabling fine-tuning of large models (e.g., Stable Diffusion) on a single 16GB GPU, which is a practical advantage.\",\n    \"The theoretical descent guarantee (Theorem 5) provides some formal justification for the iterative procedure.\",\n    \"The paper tackles an important problem (conditional sampling from diffusion priors) and compares against strong baselines (DPOK, Adjoint Matching) on text-to-image reward fine-tuning.\",\n    \"The path-based importance weights are computed on-the-fly without additional computational cost.\"\n  ],\n  \"Weaknesses\": [\n    \"Empirical results are mixed: on MNIST, online fine-tuning achieves higher reward; on text-to-image, the method underperforms both DPOK and Adjoint Matching in reward for two of three prompts. The main advantage is memory efficiency, which is a marginal contribution.\",\n    \"The theoretical proof of Theorem 5 has gaps, particularly in part (iii) where the score-matching loss is claimed to recover the full path measure, but the loss only matches marginal scores.\",\n    \"The importance weight approximation (using RND between path measures) introduces bias that is not analyzed. The replay buffer introduces off-policy samples without proper importance correction.\",\n    \"The KL regularization term is added heuristically, and its effect on the theoretical descent property is not discussed.\",\n    \"The 2D toy example is very small scale and the comparison against online fine-tuning uses an impractical baseline (full backprop through trajectory).\",\n    \"Clarity issues: notation conflates path measures and marginals, algorithm pseudocode is only for DDPM while experiments use VP-SDE and latent diffusion, making the paper hard to follow.\"\n  ],\n  \"Originality\": 2,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"Can you clarify the relationship between the path measure \\\\(\\\\mathbb{P}_h\\\\) and the marginal distribution \\\\(p_h\\\\)? In the importance weight derivation (Eq. 12), you approximate \\\\(p_{\\\\text{data}}/p_h\\\\) with the RND of path measures. Is this approximation justified, and what bias does it introduce?\",\n    \"In Theorem 5(iii), you claim the minimizer of the score-matching loss (Eq. 15) has path measure \\\\(\\\\mathbb{P}_{h^*} = (\\\\tilde{P}_h^0/p_{\\\\text{data}})\\\\mathbb{P}_{\\\\text{data}}\\\\). However, Eq. 15 only matches marginal scores at time t. Can you elaborate on why this equality holds for the full path measure?\",\n    \"How does the KL regularization term (Eq. 17) affect the descent property of Theorem 5? Does the theorem still hold with this additional term?\",\n    \"For the text-to-image experiments, what is the sampling time for your method vs. baselines? The Top-K baseline uses 6x sampling time, but your method's evaluation time is not reported.\",\n    \"The replay buffer stores accepted samples from previous iterations. How are importance weights computed for these off-policy samples? Are they recomputed with the current h, or are they stale? Does this affect the theoretical guarantee?\",\n    \"The acceptance probability \\\\(\\\\alpha\\\\) depends on the hyperparameter \\\\(c\\\\), which is adaptively chosen. How sensitive are the results to this choice, and how is \\\\(c\\\\) updated across iterations?\"\n  ],\n  \"Limitations\": [\n    \"The method relies on the pre-trained model having support over high-reward regions; it may struggle when the tilted distribution is far from the prior support. This is acknowledged but not experimentally addressed (e.g., out-of-distribution rewards).\",\n    \"The method is only evaluated on a simple super-resolution task and a small MNIST dataset; more complex inverse problems (e.g., inpainting, deblurring) are not tested.\",\n    \"The societal impact statement is generic and does not discuss specific risks of fine-tuning on human preference rewards, such as bias amplification or misuse in deepfake generation.\",\n    \"The paper does not provide a thorough analysis of the computational cost of the iterative sampling process, which may be significant for large models.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 49818,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 48026,
+        "completion_tokens": 2563,
+        "reasoning_tokens": 0,
+        "total_tokens": 52381
+      },
+      "attempts": 1,
+      "response_id": "909c568a-0592-487f-8e1a-016b8aeab1e0"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 2,
+      "Reject": 3
+    },
+    "unanimous_decision": false,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          2
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Quality": {
+        "values": [
+          2,
+          3,
+          3,
+          3,
+          2
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          2,
+          2,
+          3,
+          3,
+          2
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          3,
+          2,
+          3,
+          3,
+          2
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          2
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          2,
+          2,
+          3,
+          3,
+          2
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          3,
+          2,
+          3,
+          3,
+          2
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          4,
+          4,
+          6,
+          6,
+          4
+        ],
+        "mean": 4.8,
+        "rounded_mean": 5,
+        "population_sd": 0.98,
+        "min": 4,
+        "max": 6
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "This paper introduces a self-supervised iterative fine-tuning algorithm for diffusion models to sample from tilted distributions (e.g., conditional distributions or reward-weighted priors). The method iteratively: (1) samples trajectories from the current h-transform-guided model, (2) filters these samples using path-based importance weights computed via Radon-Nikodym derivatives and rejection sampling, and (3) updates the h-transform estimate using a supervised score-matching loss on the accepted samples. The authors prove a descent guarantee on a KL-reward objective (Theorem 5). Experiments are conducted on a 2D toy example, MNIST class-conditional sampling, Flowers super-resolution, and Stable Diffusion reward fine-tuning, highlighting memory efficiency compared to online fine-tuning methods.",
+      "Strengths": [
+        "Novel combination of path-based importance weighting with rejection sampling and supervised h-transform learning, enabling self-supervised conditional sampling without labeled data or trajectory backpropagation.",
+        "Theoretical descent guarantee (Theorem 5) provides a principled foundation for the iterative scheme, even if it does not guarantee convergence to the optimum.",
+        "Memory-efficient approach that can fine-tune large models (Stable Diffusion) on a single consumer GPU (e.g., RTX 4090) using LoRA, which is a practical advantage over online fine-tuning methods.",
+        "Broad experimental coverage across toy problems, class-conditional sampling, inverse problems, and text-to-image reward alignment demonstrates versatility.",
+        "The paper is honest about limitations and compares against multiple relevant baselines."
+      ],
+      "Weaknesses": [
+        "Empirical results are mixed: on MNIST, online fine-tuning achieves higher expected reward; on text-to-image, the method underperforms DPOK and Adjoint Matching on reward for most prompts. The main claimed advantage is memory efficiency rather than improved sample quality or reward optimization.",
+        "The theoretical guarantee is limited: it shows monotonic decrease of the objective but not convergence to the global optimum (the h-transform), and relies on idealized assumptions such as exact minimization of the score-matching loss, which is unrealistic in practice.",
+        "The super-resolution experiment lacks quantitative comparison to standard posterior sampling methods (e.g., DPS, reconstruction guidance), weakening the evidence for this application.",
+        "The path-based importance weights are approximations (continuous-time, exact score), and the bias introduced by these approximations or by discrete-time implementation is not analyzed.",
+        "Hyperparameter sensitivity (acceptance threshold c, buffer size, KL regularization weight) is not thoroughly investigated, making the method's robustness unclear.",
+        "The replay buffer introduces off-policy samples without proper importance correction, which may affect the theoretical guarantees.",
+        "Clarity issues: dense notation, repeated theorems/remarks, and an incomplete description of Algorithm 1 in the main text hinder understanding."
+      ],
+      "Originality": 3,
+      "Quality": 2,
+      "Clarity": 2,
+      "Significance": 2,
+      "Questions": [
+        "Can you provide quantitative results (e.g., PSNR, SSIM) for the super-resolution experiment compared to standard methods like DPS or reconstruction guidance? The paper only shows a loss curve.",
+        "In Theorem 5, the descent guarantee holds for the exact minimizer of the score-matching loss. In practice, with finite samples and stochastic optimization, how does the approximation error affect the descent property? Do you observe any cases where the loss increases between iterations?",
+        "How sensitive is the method to the acceptance rate threshold c and the KL regularization parameter? Is there a principled way to set these hyperparameters, and how do they interact?",
+        "In the MNIST experiments, online fine-tuning achieves higher expected reward. Could the proposed method be combined with online fine-tuning to achieve both high reward and diversity? What trade-offs exist between reward and diversity in your method?",
+        "For the text-to-image experiments, the diversity of your method is lower than the base model. Why is this the case, and was the KL regularizer (Eq. 17) used in these experiments?",
+        "The importance weights are computed using the Radon-Nikodym derivative between path measures. In high dimensions (e.g., Stable Diffusion latent space), how does the variance of these weights behave? Have you considered variance reduction techniques beyond rejection sampling?",
+        "The replay buffer stores accepted samples from previous iterations. How are importance weights computed for these off-policy samples? Are they recomputed with the current h, or are they stale? Does this affect the theoretical guarantee?",
+        "How does the method scale with dimensionality? Are there any experiments on higher-dimensional datasets beyond those shown?",
+        "The method relies on the support of the pre-trained model containing high-reward samples. Could you provide a diagnostic or mitigation strategy for cases where this assumption fails?"
+      ],
+      "Limitations": [
+        "The method relies on the existence of high-reward samples within the support of the pre-trained model's distribution. If the target distribution is too far from the pre-trained distribution, importance weights may be extremely small, leading to poor performance or failure.",
+        "The theoretical guarantee is for exact optimization at each step, which is not achievable in practice. The effect of approximation errors on convergence is not analyzed.",
+        "The path-based importance weights may suffer from high variance, especially for long trajectories or in high dimensions, potentially leading to unstable training.",
+        "The method requires careful tuning of the acceptance threshold c and the KL regularization coefficient, which may be task-dependent and difficult to set in practice.",
+        "The empirical evaluation is limited in scope; the super-resolution experiment lacks quantitative comparison to baselines, and only three text prompts are used for Stable Diffusion fine-tuning.",
+        "Potential negative societal impact includes the possibility of generating deepfakes or disinformation, as acknowledged by the authors, but the discussion is generic."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 2,
+      "Presentation": 2,
+      "Contribution": 2,
+      "Overall": 4,
+      "Confidence": 4,
+      "Decision": "Reject"
+    },
+    "raw_response": "THOUGHT:\nThe paper proposes a self-supervised iterative fine-tuning method for diffusion models to sample from tilted distributions. The core idea is to iteratively sample trajectories from the current model, filter them using path-based importance weights via rejection sampling, and then update an h-transform estimate using supervised score matching on accepted samples. The authors provide a theoretical descent guarantee and demonstrate the method on several tasks including toy examples, MNIST, super-resolution, and Stable Diffusion reward fine-tuning.\n\nThe reviews are split: two reviewers recommend Accept (overall 6), two recommend Reject (overall 4), and one is borderline (overall 4 but leaning reject). The main concerns across reviews are:\n1. Mixed empirical results - the method often underperforms baselines on reward metrics, with its main advantage being memory efficiency rather than sample quality or reward maximization.\n2. Theoretical gaps - the descent guarantee does not imply convergence to the global optimum, and the proof relies on idealized assumptions (exact score matching minimization, continuous-time approximations) that are not addressed in practice.\n3. Limited quantitative evaluation, especially for super-resolution where no comparison to standard posterior sampling methods is provided.\n4. Hyperparameter sensitivity (acceptance threshold c, KL weight) not analyzed.\n5. Potential bias from importance weight approximations and off-policy replay buffer samples without proper correction.\n\nThe consensus is that the idea is novel and the theoretical foundation is a positive contribution, but the empirical validation is insufficient to demonstrate practical advantage over existing methods. The main claimed benefit (memory efficiency) is real but not enough to justify acceptance given the mixed performance and lack of detailed analysis of failure modes.\n\nConsidering the overall balance, I lean toward rejection. The paper has merit but falls short of the bar for acceptance at a top venue due to:\n- Incomplete empirical validation (missing quantitative comparisons in key experiments)\n- Theoretical results that are weaker than claimed and not robust to practical approximations\n- Lack of analysis on hyperparameter sensitivity and importance weight variance\n\nThe two accept reviews are somewhat generous given these issues, while the reject reviews are more critical. The strengths (novelty, theoretical framework, memory efficiency) are acknowledged but do not outweigh the weaknesses. I will recommend rejection while acknowledging the potential of the approach and suggesting concrete improvements for a resubmission.REVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper introduces a self-supervised iterative fine-tuning algorithm for diffusion models to sample from tilted distributions (e.g., conditional distributions or reward-weighted priors). The method iteratively: (1) samples trajectories from the current h-transform-guided model, (2) filters these samples using path-based importance weights computed via Radon-Nikodym derivatives and rejection sampling, and (3) updates the h-transform estimate using a supervised score-matching loss on the accepted samples. The authors prove a descent guarantee on a KL-reward objective (Theorem 5). Experiments are conducted on a 2D toy example, MNIST class-conditional sampling, Flowers super-resolution, and Stable Diffusion reward fine-tuning, highlighting memory efficiency compared to online fine-tuning methods.\",\n  \"Strengths\": [\n    \"Novel combination of path-based importance weighting with rejection sampling and supervised h-transform learning, enabling self-supervised conditional sampling without labeled data or trajectory backpropagation.\",\n    \"Theoretical descent guarantee (Theorem 5) provides a principled foundation for the iterative scheme, even if it does not guarantee convergence to the optimum.\",\n    \"Memory-efficient approach that can fine-tune large models (Stable Diffusion) on a single consumer GPU (e.g., RTX 4090) using LoRA, which is a practical advantage over online fine-tuning methods.\",\n    \"Broad experimental coverage across toy problems, class-conditional sampling, inverse problems, and text-to-image reward alignment demonstrates versatility.\",\n    \"The paper is honest about limitations and compares against multiple relevant baselines.\"\n  ],\n  \"Weaknesses\": [\n    \"Empirical results are mixed: on MNIST, online fine-tuning achieves higher expected reward; on text-to-image, the method underperforms DPOK and Adjoint Matching on reward for most prompts. The main claimed advantage is memory efficiency rather than improved sample quality or reward optimization.\",\n    \"The theoretical guarantee is limited: it shows monotonic decrease of the objective but not convergence to the global optimum (the h-transform), and relies on idealized assumptions such as exact minimization of the score-matching loss, which is unrealistic in practice.\",\n    \"The super-resolution experiment lacks quantitative comparison to standard posterior sampling methods (e.g., DPS, reconstruction guidance), weakening the evidence for this application.\",\n    \"The path-based importance weights are approximations (continuous-time, exact score), and the bias introduced by these approximations or by discrete-time implementation is not analyzed.\",\n    \"Hyperparameter sensitivity (acceptance threshold c, buffer size, KL regularization weight) is not thoroughly investigated, making the method's robustness unclear.\",\n    \"The replay buffer introduces off-policy samples without proper importance correction, which may affect the theoretical guarantees.\",\n    \"Clarity issues: dense notation, repeated theorems/remarks, and an incomplete description of Algorithm 1 in the main text hinder understanding.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"Can you provide quantitative results (e.g., PSNR, SSIM) for the super-resolution experiment compared to standard methods like DPS or reconstruction guidance? The paper only shows a loss curve.\",\n    \"In Theorem 5, the descent guarantee holds for the exact minimizer of the score-matching loss. In practice, with finite samples and stochastic optimization, how does the approximation error affect the descent property? Do you observe any cases where the loss increases between iterations?\",\n    \"How sensitive is the method to the acceptance rate threshold c and the KL regularization parameter? Is there a principled way to set these hyperparameters, and how do they interact?\",\n    \"In the MNIST experiments, online fine-tuning achieves higher expected reward. Could the proposed method be combined with online fine-tuning to achieve both high reward and diversity? What trade-offs exist between reward and diversity in your method?\",\n    \"For the text-to-image experiments, the diversity of your method is lower than the base model. Why is this the case, and was the KL regularizer (Eq. 17) used in these experiments?\",\n    \"The importance weights are computed using the Radon-Nikodym derivative between path measures. In high dimensions (e.g., Stable Diffusion latent space), how does the variance of these weights behave? Have you considered variance reduction techniques beyond rejection sampling?\",\n    \"The replay buffer stores accepted samples from previous iterations. How are importance weights computed for these off-policy samples? Are they recomputed with the current h, or are they stale? Does this affect the theoretical guarantee?\",\n    \"How does the method scale with dimensionality? Are there any experiments on higher-dimensional datasets beyond those shown?\",\n    \"The method relies on the support of the pre-trained model containing high-reward samples. Could you provide a diagnostic or mitigation strategy for cases where this assumption fails?\"\n  ],\n  \"Limitations\": [\n    \"The method relies on the existence of high-reward samples within the support of the pre-trained model's distribution. If the target distribution is too far from the pre-trained distribution, importance weights may be extremely small, leading to poor performance or failure.\",\n    \"The theoretical guarantee is for exact optimization at each step, which is not achievable in practice. The effect of approximation errors on convergence is not analyzed.\",\n    \"The path-based importance weights may suffer from high variance, especially for long trajectories or in high dimensions, potentially leading to unstable training.\",\n    \"The method requires careful tuning of the acceptance threshold c and the KL regularization coefficient, which may be task-dependent and difficult to set in practice.\",\n    \"The empirical evaluation is limited in scope; the super-resolution experiment lacks quantitative comparison to baselines, and only three text prompts are used for Stable Diffusion fine-tuning.\",\n    \"Potential negative societal impact includes the possibility of generating deepfakes or disinformation, as acknowledged by the authors, but the discussion is generic.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 7064,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 7064,
+      "completion_tokens": 1743,
+      "reasoning_tokens": 0,
+      "total_tokens": 8807
+    },
+    "attempts": 1,
+    "response_id": "1067cdd7-22d9-4d07-a04d-5e8c97543539"
+  },
+  "final_review": {
+    "Summary": "This paper introduces a self-supervised iterative fine-tuning algorithm for diffusion models to sample from tilted distributions (e.g., conditional distributions or reward-weighted priors). The method iteratively: (1) samples trajectories from the current h-transform-guided model, (2) filters these samples using path-based importance weights computed via Radon-Nikodym derivatives and rejection sampling, and (3) updates the h-transform estimate using a supervised score-matching loss on the accepted samples. The authors prove a descent guarantee on a KL-reward objective (Theorem 5). Experiments are conducted on a 2D toy example, MNIST class-conditional sampling, Flowers super-resolution, and Stable Diffusion reward fine-tuning, highlighting memory efficiency compared to online fine-tuning methods.",
+    "Strengths": [
+      "Novel combination of path-based importance weighting with rejection sampling and supervised h-transform learning, enabling self-supervised conditional sampling without labeled data or trajectory backpropagation.",
+      "Theoretical descent guarantee (Theorem 5) provides a principled foundation for the iterative scheme, even if it does not guarantee convergence to the optimum.",
+      "Memory-efficient approach that can fine-tune large models (Stable Diffusion) on a single consumer GPU (e.g., RTX 4090) using LoRA, which is a practical advantage over online fine-tuning methods.",
+      "Broad experimental coverage across toy problems, class-conditional sampling, inverse problems, and text-to-image reward alignment demonstrates versatility.",
+      "The paper is honest about limitations and compares against multiple relevant baselines."
+    ],
+    "Weaknesses": [
+      "Empirical results are mixed: on MNIST, online fine-tuning achieves higher expected reward; on text-to-image, the method underperforms DPOK and Adjoint Matching on reward for most prompts. The main claimed advantage is memory efficiency rather than improved sample quality or reward optimization.",
+      "The theoretical guarantee is limited: it shows monotonic decrease of the objective but not convergence to the global optimum (the h-transform), and relies on idealized assumptions such as exact minimization of the score-matching loss, which is unrealistic in practice.",
+      "The super-resolution experiment lacks quantitative comparison to standard posterior sampling methods (e.g., DPS, reconstruction guidance), weakening the evidence for this application.",
+      "The path-based importance weights are approximations (continuous-time, exact score), and the bias introduced by these approximations or by discrete-time implementation is not analyzed.",
+      "Hyperparameter sensitivity (acceptance threshold c, buffer size, KL regularization weight) is not thoroughly investigated, making the method's robustness unclear.",
+      "The replay buffer introduces off-policy samples without proper importance correction, which may affect the theoretical guarantees.",
+      "Clarity issues: dense notation, repeated theorems/remarks, and an incomplete description of Algorithm 1 in the main text hinder understanding."
+    ],
+    "Originality": 3,
+    "Quality": 3,
+    "Clarity": 2,
+    "Significance": 3,
+    "Questions": [
+      "Can you provide quantitative results (e.g., PSNR, SSIM) for the super-resolution experiment compared to standard methods like DPS or reconstruction guidance? The paper only shows a loss curve.",
+      "In Theorem 5, the descent guarantee holds for the exact minimizer of the score-matching loss. In practice, with finite samples and stochastic optimization, how does the approximation error affect the descent property? Do you observe any cases where the loss increases between iterations?",
+      "How sensitive is the method to the acceptance rate threshold c and the KL regularization parameter? Is there a principled way to set these hyperparameters, and how do they interact?",
+      "In the MNIST experiments, online fine-tuning achieves higher expected reward. Could the proposed method be combined with online fine-tuning to achieve both high reward and diversity? What trade-offs exist between reward and diversity in your method?",
+      "For the text-to-image experiments, the diversity of your method is lower than the base model. Why is this the case, and was the KL regularizer (Eq. 17) used in these experiments?",
+      "The importance weights are computed using the Radon-Nikodym derivative between path measures. In high dimensions (e.g., Stable Diffusion latent space), how does the variance of these weights behave? Have you considered variance reduction techniques beyond rejection sampling?",
+      "The replay buffer stores accepted samples from previous iterations. How are importance weights computed for these off-policy samples? Are they recomputed with the current h, or are they stale? Does this affect the theoretical guarantee?",
+      "How does the method scale with dimensionality? Are there any experiments on higher-dimensional datasets beyond those shown?",
+      "The method relies on the support of the pre-trained model containing high-reward samples. Could you provide a diagnostic or mitigation strategy for cases where this assumption fails?"
+    ],
+    "Limitations": [
+      "The method relies on the existence of high-reward samples within the support of the pre-trained model's distribution. If the target distribution is too far from the pre-trained distribution, importance weights may be extremely small, leading to poor performance or failure.",
+      "The theoretical guarantee is for exact optimization at each step, which is not achievable in practice. The effect of approximation errors on convergence is not analyzed.",
+      "The path-based importance weights may suffer from high variance, especially for long trajectories or in high dimensions, potentially leading to unstable training.",
+      "The method requires careful tuning of the acceptance threshold c and the KL regularization coefficient, which may be task-dependent and difficult to set in practice.",
+      "The empirical evaluation is limited in scope; the super-resolution experiment lacks quantitative comparison to baselines, and only three text prompts are used for Stable Diffusion fine-tuning.",
+      "Potential negative societal impact includes the possibility of generating deepfakes or disinformation, as acknowledged by the authors, but the discussion is generic."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 2,
+    "Contribution": 3,
+    "Overall": 5,
+    "Confidence": 4,
+    "Decision": "Reject"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 256154,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 247194,
+    "completion_tokens": 11666,
+    "reasoning_tokens": 0,
+    "total_tokens": 267820,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.03460716,
+    "output_usd": 0.00326648,
+    "total_usd": 0.03789873
+  },
+  "elapsed_seconds": 38.136,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Reject",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B028",
+    "filename": "B028.txt",
+    "blind_text_sha256": "f3b3518bd099a39c935a59590a6855241ed34b9f555b792a2b2445b7faf4308c",
+    "characters": 131114,
+    "full_text_saved": false
+  }
+}

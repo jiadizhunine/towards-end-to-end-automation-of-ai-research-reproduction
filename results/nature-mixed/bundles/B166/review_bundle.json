@@ -1,0 +1,704 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:50:33.156080+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper proposes a post-training adaptive optimization framework for time series forecasting that applies interpretable transformations (scaling, shifting, trend adjustments, quantile-based modifications) to model outputs without retraining or architectural changes. The framework supports multiple optimization strategies (random search, bandits/SH-HPO, PPO, genetic algorithms) to select and tune transformations, and optionally incorporates human-in-the-loop feedback via LLM-based parsing of natural language instructions into executable actions. The theoretical contribution is a proof that optimal affine corrections always reduce MSE. Experiments across multiple benchmarks (ETTh1/2, ETTm1/2, Dominick, Nature, Human, KDD, NASDAQ, Pedestrian, Tourism, Vehicle trips) and models (Autoformer, Crossformer, iTransformer, PatchTST, DLinear, SegRNN, Informer) show consistent MSE improvements with minimal computational overhead, and an interactive demo is provided.",
+        "Strengths": [
+          "The framework is model-agnostic and lightweight, requiring no retraining or architectural changes, making it practical for real-world deployment.",
+          "The theoretical motivation (affine correction reduces MSE) is mathematically sound and clearly derived with full derivation in the appendix.",
+          "Extensive experimental evaluation across 12 datasets and 7 forecasting models, with computational efficiency analysis showing minimal overhead.",
+          "The human-in-the-loop component using LLM parsing of natural language feedback is a novel and interesting direction for incorporating domain expertise.",
+          "Code, API documentation, and an interactive Streamlit demo are provided for reproducibility."
+        ],
+        "Weaknesses": [
+          "The theoretical contribution is trivial and well-known: optimal affine correction (linear regression of true values on predictions) is a standard statistical technique dating back decades. The theorem is a simple derivation that adds little new insight.",
+          "The optimization framework is essentially hyperparameter tuning over a small set of predefined transformations. Framing this as 'adaptive optimization via RL, bandits, or GA' is over-engineered for what is a simple search problem, and the paper's own results show random search is nearly as good as more complex methods.",
+          "Lack of comparison with simple baselines such as directly fitting a linear regression on validation predictions, which would achieve the optimal affine correction. This makes it unclear whether the additional complexity provides real benefits.",
+          "The main results table (Table 2) contains suspicious entries: multiple different models show identical MSE values for the same dataset (e.g., ETTh2 shows 0.60→0.57 for iTransformer, PatchTST, DLinear, SegRNN, and Informer), suggesting copy-paste errors or reporting issues that undermine confidence in the results.",
+          "The human-in-the-loop evaluation is anecdotal with only 3 case studies and no systematic evaluation (e.g., no user study, no measure of feedback quality or robustness to ambiguous instructions).",
+          "The action space is ad-hoc with no clear justification for why these specific transformations were chosen over others, and no analysis of action selection behavior (e.g., which actions are most frequently selected).",
+          "The theoretical guarantee only holds on the validation set under stationarity, which is a strong assumption for time series. The paper acknowledges this but does not evaluate performance under distribution shift.",
+          "Some results show negative improvements (e.g., PatchTST on ETTh1) but these failures are not analyzed or discussed in detail."
+        ],
+        "Originality": 2,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 2,
+        "Questions": [
+          "1. How does the proposed framework compare against a simple baseline of fitting a linear regression (affine correction) directly on the validation set predictions? This would establish the optimal affine correction and show whether the more complex search over transformations provides meaningful gains beyond this baseline.\n2. Table 2 shows identical MSE values for different models on the same dataset (e.g., ETTh2 shows 0.60→0.57 for 5 different models). Can the authors clarify whether these are copy-paste errors or actual results? If actual, why do different models produce identical post-correction MSE?\n3. For the optimization, is a single global action selected for the entire test set, or are actions selected per-series/per-time-step? This significantly affects the interpretation of the results.\n4. How sensitive are the results to the choice of validation set size and the number of random search iterations? Is there a risk of overfitting to the validation set?\n5. For the human-in-the-loop experiments, how was the feedback collected? Were the case studies conducted by the authors themselves? What is the variability across different users providing feedback?\n6. The paper mentions 'consistency is checked on the training set to ensure generalizable gains' - what specific consistency check was performed and how did it affect action selection?\n7. Why were PPO and GA found to be inferior? The paper suggests discretization issues, but could this be due to poor hyperparameter tuning rather than fundamental limitations? Were hyperparameters optimized for each method?\n8. The paper reports improvements averaged over multiple horizons (96, 192, 336, 792). Are the improvements consistent across horizons, or do they vary significantly? Are there horizons where the method degrades performance?"
+        ],
+        "Limitations": [
+          "The authors acknowledge that the method's effectiveness depends on base model quality and validation set representativeness, and that LLM translation precision can vary. However, additional limitations should be considered: (1) The method may overfit to the validation set, especially with many actions and parameters; (2) The framework assumes access to ground truth on a validation set, which may not be available in truly online settings; (3) The action space is limited to simple transformations and may not capture complex systematic errors; (4) The paper does not analyze failure cases where the method degrades performance; (5) Potential negative societal impact: in high-stakes domains (energy, finance, healthcare), automated post-hoc corrections could introduce systematic biases if the validation set is not representative, and the human-in-the-loop component could propagate expert biases. The authors should discuss these risks more explicitly."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces a post-training optimization framework for time series forecasting that applies interpretable transformations (scaling, shifting, trend adjustments, etc.) to model outputs without retraining. The framework supports multiple optimization strategies (random search, bandits, RL, genetic algorithms) and optional human-in-the-loop feedback via LLM parsing. The theoretical contribution is a simple affine correction theorem showing MSE reduction.\n\nStrengths:\n1. The framework is model-agnostic and lightweight, requiring no architectural changes\n2. The theoretical motivation (affine correction reduces MSE) is sound and clearly derived\n3. Extensive experiments across multiple datasets (ETTh1, ETTh2, ETTm1, ETTm2, Dominick, Human, KDD, Nature, NASDAQ, Pedestrian, Tourism, Vehicle trips) and models (Autoformer, Crossformer, iTransformer, PatchTST, DLinear, SegRNN, Informer)\n4. The human-in-the-loop component is novel and practical, with LLM-based parsing of natural language feedback\n5. Computational efficiency is well-documented, showing minimal overhead\n6. Code and interactive demo provided for reproducibility\n\nWeaknesses:\n1. The theoretical contribution is trivial - affine correction is a well-known statistical technique (essentially linear regression of true values on predictions). The theorem is a simple derivation of optimal linear correction parameters, which has been known for decades in statistics/forecasting literature\n2. The \"adaptive optimization\" is essentially hyperparameter tuning over a small set of predefined transformations. The RL/bandit/GA framing seems over-engineered for what is fundamentally a simple search problem\n3. The improvements, while consistent, are often small (1-5% MSE reduction) and the paper doesn't compare against simpler baselines like directly fitting a linear regression on the validation set (which would be the optimal affine correction)\n4. The action space is quite limited and ad-hoc - no clear justification for why these specific transformations were chosen\n5. The human-in-the-loop evaluation is anecdotal (3 case studies) without systematic evaluation\n6. The paper lacks comparison with other post-hoc correction methods (e.g., quantile regression, isotonic regression, simple bias correction)\n7. The experimental setup is unclear regarding how actions are selected per dataset - is one global action selected or per-series/per-time-step?\n8. The paper doesn't discuss when the method fails - some results show negative improvements (e.g., PatchTST on ETTh1) but this is not analyzed\n9. The theoretical guarantee only holds for the validation set under stationarity, which is a strong assumption for time series\n\nOriginality: The combination of post-training correction with optimization algorithms and LLM-based human feedback is somewhat novel, but the core idea (post-hoc correction) is well-established. The specific contribution is limited.\n\nQuality: The experiments are extensive but lack proper baselines and statistical rigor. The theoretical contribution is mathematically correct but trivial. The paper overclaims by calling simple search over a small action space \"adaptive optimization via RL/bandits/GA.\"\n\nClarity: The paper is generally well-written but has some issues: duplicate Theorem 1, inconsistent table formatting (many rows show identical values for different models/datasets, suggesting copy-paste errors), and the main results table (Table 2) has suspicious entries where different methods show identical MSE values.\n\nSignificance: The framework could be useful in practice as a lightweight post-processing step, but the contribution is incremental. The human-in-the-loop aspect is interesting but not thoroughly evaluated.\n\nMajor concerns:\n1. The main Table 2 shows many identical values across different models (e.g., all ETTh2 entries show 0.60→0.57 for 5 different models), which raises concerns about data integrity\n2. No comparison with simple baselines like direct linear regression correction\n3. The evaluation metric (relative MSE improvement) can be misleading when improvements are small\n4. The theoretical result is presented as novel but is a standard result in statistics\n\nOverall assessment: This is a borderline paper. The framework is practical and the experiments are extensive, but the technical contribution is limited and there are data quality concerns. The paper would benefit from stronger baselines and a more careful analysis of when the method works or fails. I lean toward rejection due to the incremental contribution and potential data integrity issues.\n\nDecision: Reject (borderline, with main issues being trivial theory, weak baselines, and suspicious experimental results)REVIEW JSON:\n```json\n{\n\"Summary\": \"The paper proposes a post-training adaptive optimization framework for time series forecasting that applies interpretable transformations (scaling, shifting, trend adjustments, quantile-based modifications) to model outputs without retraining or architectural changes. The framework supports multiple optimization strategies (random search, bandits/SH-HPO, PPO, genetic algorithms) to select and tune transformations, and optionally incorporates human-in-the-loop feedback via LLM-based parsing of natural language instructions into executable actions. The theoretical contribution is a proof that optimal affine corrections always reduce MSE. Experiments across multiple benchmarks (ETTh1/2, ETTm1/2, Dominick, Nature, Human, KDD, NASDAQ, Pedestrian, Tourism, Vehicle trips) and models (Autoformer, Crossformer, iTransformer, PatchTST, DLinear, SegRNN, Informer) show consistent MSE improvements with minimal computational overhead, and an interactive demo is provided.\",\n\"Strengths\": [\n\"The framework is model-agnostic and lightweight, requiring no retraining or architectural changes, making it practical for real-world deployment.\",\n\"The theoretical motivation (affine correction reduces MSE) is mathematically sound and clearly derived with full derivation in the appendix.\",\n\"Extensive experimental evaluation across 12 datasets and 7 forecasting models, with computational efficiency analysis showing minimal overhead.\",\n\"The human-in-the-loop component using LLM parsing of natural language feedback is a novel and interesting direction for incorporating domain expertise.\",\n\"Code, API documentation, and an interactive Streamlit demo are provided for reproducibility.\"\n],\n\"Weaknesses\": [\n\"The theoretical contribution is trivial and well-known: optimal affine correction (linear regression of true values on predictions) is a standard statistical technique dating back decades. The theorem is a simple derivation that adds little new insight.\",\n\"The optimization framework is essentially hyperparameter tuning over a small set of predefined transformations. Framing this as 'adaptive optimization via RL, bandits, or GA' is over-engineered for what is a simple search problem, and the paper's own results show random search is nearly as good as more complex methods.\",\n\"Lack of comparison with simple baselines such as directly fitting a linear regression on validation predictions, which would achieve the optimal affine correction. This makes it unclear whether the additional complexity provides real benefits.\",\n\"The main results table (Table 2) contains suspicious entries: multiple different models show identical MSE values for the same dataset (e.g., ETTh2 shows 0.60→0.57 for iTransformer, PatchTST, DLinear, SegRNN, and Informer), suggesting copy-paste errors or reporting issues that undermine confidence in the results.\",\n\"The human-in-the-loop evaluation is anecdotal with only 3 case studies and no systematic evaluation (e.g., no user study, no measure of feedback quality or robustness to ambiguous instructions).\",\n\"The action space is ad-hoc with no clear justification for why these specific transformations were chosen over others, and no analysis of action selection behavior (e.g., which actions are most frequently selected).\",\n\"The theoretical guarantee only holds on the validation set under stationarity, which is a strong assumption for time series. The paper acknowledges this but does not evaluate performance under distribution shift.\",\n\"Some results show negative improvements (e.g., PatchTST on ETTh1) but these failures are not analyzed or discussed in detail.\"\n],\n\"Originality\": 2,\n\"Quality\": 2,\n\"Clarity\": 3,\n\"Significance\": 2,\n\"Questions\": [\n\"1. How does the proposed framework compare against a simple baseline of fitting a linear regression (affine correction) directly on the validation set predictions? This would establish the optimal affine correction and show whether the more complex search over transformations provides meaningful gains beyond this baseline.\\n2. Table 2 shows identical MSE values for different models on the same dataset (e.g., ETTh2 shows 0.60→0.57 for 5 different models). Can the authors clarify whether these are copy-paste errors or actual results? If actual, why do different models produce identical post-correction MSE?\\n3. For the optimization, is a single global action selected for the entire test set, or are actions selected per-series/per-time-step? This significantly affects the interpretation of the results.\\n4. How sensitive are the results to the choice of validation set size and the number of random search iterations? Is there a risk of overfitting to the validation set?\\n5. For the human-in-the-loop experiments, how was the feedback collected? Were the case studies conducted by the authors themselves? What is the variability across different users providing feedback?\\n6. The paper mentions 'consistency is checked on the training set to ensure generalizable gains' - what specific consistency check was performed and how did it affect action selection?\\n7. Why were PPO and GA found to be inferior? The paper suggests discretization issues, but could this be due to poor hyperparameter tuning rather than fundamental limitations? Were hyperparameters optimized for each method?\\n8. The paper reports improvements averaged over multiple horizons (96, 192, 336, 792). Are the improvements consistent across horizons, or do they vary significantly? Are there horizons where the method degrades performance?\"\n],\n\"Limitations\": [\n\"The authors acknowledge that the method's effectiveness depends on base model quality and validation set representativeness, and that LLM translation precision can vary. However, additional limitations should be considered: (1) The method may overfit to the validation set, especially with many actions and parameters; (2) The framework assumes access to ground truth on a validation set, which may not be available in truly online settings; (3) The action space is limited to simple transformations and may not capture complex systematic errors; (4) The paper does not analyze failure cases where the method degrades performance; (5) Potential negative societal impact: in high-stakes domains (energy, finance, healthcare), automated post-hoc corrections could introduce systematic biases if the validation set is not representative, and the human-in-the-loop component could propagate expert biases. The authors should discuss these risks more explicitly.\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 2,\n\"Presentation\": 3,\n\"Contribution\": 2,\n\"Overall\": 4,\n\"Confidence\": 4,\n\"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 35777,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 33985,
+        "completion_tokens": 2224,
+        "reasoning_tokens": 0,
+        "total_tokens": 38001
+      },
+      "attempts": 1,
+      "response_id": "78c7115c-2da0-4ba2-bc53-f3ed85118a93"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper introduces a post-training optimization framework for time series forecasting that applies interpretable transformations (scaling, shifting, trend adjustments, etc.) to model outputs to improve accuracy without retraining. The framework supports multiple optimization strategies (random search, bandits, RL, genetic algorithms) and an optional human-in-the-loop component where natural language feedback is parsed by an LLM into executable transformations. The authors provide a theoretical result showing affine corrections reduce MSE, and evaluate their framework across multiple datasets (ETT, Dominick, Human, KDD, Nature, NASDAQ, Pedestrian, Tourism, Vehicle Trips) and models (Autoformer, Crossformer, iTransformer, PatchTST, DLinear, SegRNN, Informer).",
+        "Strengths": [
+          "The core idea of post-training correction is practically useful and the framework is model-agnostic and lightweight",
+          "The paper provides extensive experimental evaluation across many datasets and models",
+          "The human-in-the-loop component using LLMs to parse natural language feedback is timely and interesting",
+          "Good reproducibility efforts with code, demo, and detailed appendix",
+          "The affine correction theorem, while basic, provides theoretical justification for the approach"
+        ],
+        "Weaknesses": [
+          "The theoretical contribution is trivial - the affine correction result is standard statistics (essentially optimal linear correction)",
+          "The action space is ad-hoc and lacks clear design principles or justification",
+          "The main results table (Table 2) contains apparent copy-paste errors where identical values appear across different models (e.g., ETTh2 rows show 0.60→0.57 with same percentages across all models)",
+          "The claim of 'consistent accuracy gains' is contradicted by negative results (e.g., PatchTST on ETTh1: -2.25%)",
+          "The comparison of optimization methods is inconsistent - SH-HPO is claimed best but Random Search is used for main experiments without clear criteria",
+          "The human-in-the-loop evaluation is only qualitative case studies without systematic quantitative assessment",
+          "Missing comparison to simple baselines like linear regression on predictions or standard post-processing methods",
+          "The paper does not adequately discuss when the approach fails or how to choose appropriate actions for different scenarios"
+        ],
+        "Originality": 2,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 2,
+        "Questions": [
+          "Can you explain the apparent copy-paste errors in Table 2 where ETTh2, ETTm1, and ETTm2 show identical values across different models? The same MSE values (0.60→0.57) and improvement percentages (3.7%, 4.0%, etc.) appear for all models, which seems implausible.",
+          "Why was Random Search chosen for the main experiments when SH-HPO showed better average performance (5.65% vs 4.83%)? What criteria were used for this decision?",
+          "How does the framework compare to simply fitting a linear regression on validation predictions? This seems like a natural baseline that should be included.",
+          "The PatchTST results on ETTh1 show negative improvement (-2.25%). Can you explain why the framework degrades performance for this model and how users should handle such cases?",
+          "For the human-in-the-loop experiments, what is the quantitative improvement over the automated optimization alone? The paper only shows qualitative case studies.",
+          "How were the specific actions chosen? Is there any principled way to determine which transformations should be in the action pool for a given dataset or model?",
+          "Can you provide more details on how the LLM parses natural language into actions? What is the success rate of parsing and how robust is it to ambiguous instructions?"
+        ],
+        "Limitations": [
+          "The paper's theoretical contribution is minimal and the affine correction result is well-known",
+          "The action space is limited and ad-hoc, without clear guidelines for extending it to new domains",
+          "The evaluation has quality issues (potential errors in main table) and the claims of 'consistent improvements' are not fully supported",
+          "The human-in-the-loop component lacks rigorous evaluation",
+          "The framework assumes access to a validation set that reflects deployment distribution, which may not hold in practice",
+          "The approach may not work well when the base model is highly inaccurate or when errors are not systematic"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThis paper presents a post-training optimization framework for time series forecasting that applies interpretable transformations to model outputs. The core idea is simple: after a model produces forecasts, apply corrections (scaling, shifting, trend adjustments) optimized via various search methods (random search, bandits, RL, genetic algorithms). The paper also includes a human-in-the-loop component where natural language feedback is converted to actions via an LLM.\n\nStrengths:\n- The core theoretical result (affine correction reduces MSE) is correct and well-known, providing a solid foundation\n- The framework is model-agnostic and lightweight, which is practically useful\n- Extensive experiments across many datasets and models\n- Human-in-the-loop component is interesting and timely\n- Good reproducibility efforts (code, demo, detailed appendix)\n\nWeaknesses:\n- The theoretical contribution is trivial - affine correction is a standard result (essentially linear regression on predictions). The theorem is just a restatement of the Gauss-Markov theorem or basic statistics\n- The action space is very limited and ad-hoc. The actions seem arbitrarily chosen (scale, shift, trend, noise, etc.) without clear justification\n- The comparison of optimization methods is confusing. The main paper claims SH-HPO is best but then uses Random Search for all main experiments without clear justification for this inconsistency\n- Some results look suspicious. For example, in Table 2, ETTh2 shows identical improvements (3.7%, 4.0%, 4.2%, etc.) across different models, which suggests something is wrong with the reporting or the experiments were not properly conducted\n- The improvements for some models are negative (PatchTST on ETTh1: -2.25%), which contradicts the claim of \"consistent accuracy gains\"\n- The human-in-the-loop evaluation is very limited - only qualitative case studies without systematic evaluation\n- The paper lacks comparison to simpler baselines like just using a linear regression on validation predictions, or standard post-processing methods like quantile regression\n- The writing is quite poor in places with duplicate theorem statements, broken references, and unclear tables\n\nMajor concerns:\n1. The main table (Table 2) appears to have errors. The ETTh2, ETTm1, ETTm2 rows show identical values across different models (0.60→0.57, 3.7%, 4.0%, etc.), which is clearly a copy-paste error\n2. The \"consistent improvements\" claim is contradicted by negative results in PatchTST\n3. The theoretical contribution is minimal - the affine correction theorem is basic statistics\n4. The optimization comparison is not properly integrated - they test multiple methods but then just pick one without clear criteria\n\nThe paper has some practical value but the technical novelty is limited. The framework is essentially: (1) apply simple transformations to predictions, (2) search for good parameters. This is not particularly novel. The human-in-the-loop aspect is interesting but not well evaluated.\n\nI would rate this as borderline reject. The paper has some useful practical insights but the technical depth is shallow, the evaluation has issues, and the novelty is limited.\n\nREVIEW JSON:\n```json\n{\n\"Summary\": \"The paper introduces a post-training optimization framework for time series forecasting that applies interpretable transformations (scaling, shifting, trend adjustments, etc.) to model outputs to improve accuracy without retraining. The framework supports multiple optimization strategies (random search, bandits, RL, genetic algorithms) and an optional human-in-the-loop component where natural language feedback is parsed by an LLM into executable transformations. The authors provide a theoretical result showing affine corrections reduce MSE, and evaluate their framework across multiple datasets (ETT, Dominick, Human, KDD, Nature, NASDAQ, Pedestrian, Tourism, Vehicle Trips) and models (Autoformer, Crossformer, iTransformer, PatchTST, DLinear, SegRNN, Informer).\",\n\"Strengths\": [\n\"The core idea of post-training correction is practically useful and the framework is model-agnostic and lightweight\",\n\"The paper provides extensive experimental evaluation across many datasets and models\",\n\"The human-in-the-loop component using LLMs to parse natural language feedback is timely and interesting\",\n\"Good reproducibility efforts with code, demo, and detailed appendix\",\n\"The affine correction theorem, while basic, provides theoretical justification for the approach\"\n],\n\"Weaknesses\": [\n\"The theoretical contribution is trivial - the affine correction result is standard statistics (essentially optimal linear correction)\",\n\"The action space is ad-hoc and lacks clear design principles or justification\",\n\"The main results table (Table 2) contains apparent copy-paste errors where identical values appear across different models (e.g., ETTh2 rows show 0.60→0.57 with same percentages across all models)\",\n\"The claim of 'consistent accuracy gains' is contradicted by negative results (e.g., PatchTST on ETTh1: -2.25%)\",\n\"The comparison of optimization methods is inconsistent - SH-HPO is claimed best but Random Search is used for main experiments without clear criteria\",\n\"The human-in-the-loop evaluation is only qualitative case studies without systematic quantitative assessment\",\n\"Missing comparison to simple baselines like linear regression on predictions or standard post-processing methods\",\n\"The paper does not adequately discuss when the approach fails or how to choose appropriate actions for different scenarios\"\n],\n\"Originality\": 2,\n\"Quality\": 2,\n\"Clarity\": 2,\n\"Significance\": 2,\n\"Questions\": [\n\"Can you explain the apparent copy-paste errors in Table 2 where ETTh2, ETTm1, and ETTm2 show identical values across different models? The same MSE values (0.60→0.57) and improvement percentages (3.7%, 4.0%, etc.) appear for all models, which seems implausible.\",\n\"Why was Random Search chosen for the main experiments when SH-HPO showed better average performance (5.65% vs 4.83%)? What criteria were used for this decision?\",\n\"How does the framework compare to simply fitting a linear regression on validation predictions? This seems like a natural baseline that should be included.\",\n\"The PatchTST results on ETTh1 show negative improvement (-2.25%). Can you explain why the framework degrades performance for this model and how users should handle such cases?\",\n\"For the human-in-the-loop experiments, what is the quantitative improvement over the automated optimization alone? The paper only shows qualitative case studies.\",\n\"How were the specific actions chosen? Is there any principled way to determine which transformations should be in the action pool for a given dataset or model?\",\n\"Can you provide more details on how the LLM parses natural language into actions? What is the success rate of parsing and how robust is it to ambiguous instructions?\"\n],\n\"Limitations\": [\n\"The paper's theoretical contribution is minimal and the affine correction result is well-known\",\n\"The action space is limited and ad-hoc, without clear guidelines for extending it to new domains\",\n\"The evaluation has quality issues (potential errors in main table) and the claims of 'consistent improvements' are not fully supported\",\n\"The human-in-the-loop component lacks rigorous evaluation\",\n\"The framework assumes access to a validation set that reflects deployment distribution, which may not hold in practice\",\n\"The approach may not work well when the base model is highly inaccurate or when errors are not systematic\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 2,\n\"Presentation\": 2,\n\"Contribution\": 2,\n\"Overall\": 4,\n\"Confidence\": 4,\n\"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 35777,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 33985,
+        "completion_tokens": 1555,
+        "reasoning_tokens": 0,
+        "total_tokens": 37332
+      },
+      "attempts": 1,
+      "response_id": "e7530af5-c130-4e41-9b8f-630ef616ca71"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper proposes a post-training optimization framework for time series forecasting that applies interpretable transformations (scaling, shifting, trend adjustments) to model outputs to reduce prediction error. The framework supports multiple optimization strategies (random search, contextual bandits, RL, genetic algorithms) and an optional human-in-the-loop component where natural language feedback is parsed into actions via an LLM. The theoretical motivation is based on a proof that affine corrections reduce MSE. Experiments across multiple benchmarks (ETT, OpenTS datasets) claim consistent improvements across various forecasting models (Autoformer, Crossformer, iTransformer, PatchTST, DLinear, SegRNN, Informer) with minimal computational overhead.",
+        "Strengths": [
+          "The idea of model-agnostic post-hoc correction is practically relevant and could be useful in real deployment scenarios.",
+          "The action space of interpretable transformations (scale, shift, trend) is sensible and user-friendly.",
+          "The human-in-the-loop component with LLM-based parsing of natural language feedback is an interesting direction.",
+          "The paper provides code and an interactive demo, which supports reproducibility efforts."
+        ],
+        "Weaknesses": [
+          "The theoretical contribution is not novel: the affine correction theorem is a standard statistical result (optimal linear calibration) that has been known for decades. Presenting it as a new theorem is misleading.",
+          "The experimental results appear unreliable. Multiple rows in Table 2 show identical values across different models and datasets (e.g., ETTh2, ETTm1, ETTm2 rows all show 0.60→0.57 across all models), suggesting copy-paste errors or data fabrication. All standard deviations are uniformly ±0.01, which is suspicious.",
+          "The methodology selects the best action on the validation set, which is essentially hyperparameter tuning. No proper statistical significance testing is performed, and the risk of validation set overfitting is not adequately addressed.",
+          "The comparison to existing post-hoc calibration methods (e.g., simple linear regression, isotonic regression) is missing. The claimed improvements may be largely explainable by simple mean/variance correction.",
+          "The human-in-the-loop evaluation is qualitative only, with no quantitative comparison to automated optimization alone. The LLM parsing is not rigorously evaluated.",
+          "The paper is poorly organized: duplicated theorem statements, broken internal references, confusing table formatting, and unclear figure descriptions.",
+          "The optimization strategies comparison (Section 3.4) is only on a single dataset (ETTh1) and the paper then adopts random search for all other experiments without strong justification.",
+          "The improvements reported are inconsistent across models and datasets (ranging from -3% to +50%), with no clear explanation of when the method helps or hurts."
+        ],
+        "Originality": 2,
+        "Quality": 1,
+        "Clarity": 2,
+        "Significance": 2,
+        "Questions": [
+          "Can the authors explain why multiple rows in Table 2 show identical values across different models and datasets (e.g., ETTh2, ETTm1, ETTm2)? This appears to be an error.",
+          "How does the proposed framework compare to simple linear regression calibration on the validation set (i.e., fitting a*Y_pred + b)? The theorem suggests this is the optimal affine correction, so what additional benefit do the more complex optimization strategies provide?",
+          "Were statistical significance tests (e.g., paired t-tests or confidence intervals) performed across the 10 trials? The uniform ±0.01 standard deviations suggest minimal variance, which is surprising.",
+          "How was overfitting of the action selection to the validation set addressed? With random search over many actions, the best action on validation will likely overfit, especially with small validation sets.",
+          "For the human-in-the-loop experiments, what is the quantitative improvement compared to automated optimization alone? The current case studies are qualitative only.",
+          "Can the authors provide results comparing to standard post-hoc calibration baselines such as isotonic regression or quantile mapping?",
+          "The theorem assumes the validation and test distributions match. Did the authors test performance under distribution shift? The limitations section mentions this but no experiments are provided.",
+          "Could the authors clarify the experimental setup for Table 3? What exactly is being measured, and how are the 'min' and 'max' training times defined?"
+        ],
+        "Limitations": [
+          "The paper acknowledges that the method depends on the quality of the base model and that distribution shift can degrade performance, but no experiments are provided to quantify these limitations.",
+          "The potential for validation set overfitting when selecting among many actions is not adequately discussed or tested.",
+          "The human-in-the-loop component's reliability and robustness to ambiguous feedback is not evaluated quantitatively.",
+          "The paper does not discuss potential negative societal impacts, such as over-reliance on automated corrections in critical domains (energy, healthcare) or the risk of human feedback introducing bias."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 1,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 3,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThis paper presents a post-training optimization framework for time series forecasting that applies transformations to model outputs to reduce error. The theoretical contribution is a simple affine correction theorem (which is well-known in statistics as optimal linear regression/calibration). The practical contribution is an action space of interpretable transformations (scaling, shifting, trend adjustments) optimized via random search, bandits, RL, or genetic algorithms, plus a human-in-the-loop component using LLMs.\n\nThe paper has several significant issues:\n\n1. **Theoretical novelty is very limited**: The affine correction theorem is standard statistical calibration (optimal linear predictor). This has been known for decades. The paper presents it as a novel \"Theorem 1\" but it's essentially the Gauss-Markov theorem / optimal linear correction result.\n\n2. **Experimental issues**: The main results table (Table 2) appears to have serious problems. Many rows show identical values across different models and datasets (e.g., ETTh2, ETTm1, ETTm2 rows all show the same numbers 0.60→0.57 across all models). This suggests data fabrication or copy-paste errors. The standard deviations are all ±0.01, which is suspiciously uniform. Some improvements are implausibly large (e.g., 50-80% reductions on Human dataset).\n\n3. **Methodology concerns**: The paper selects the best action based on validation set performance, which is essentially hyperparameter tuning on the validation set. The claim that this \"always reduces MSE\" only holds for the affine correction on the same distribution. The general framework with random search selecting best of many actions is prone to overfitting the validation set, and no proper statistical testing is done (e.g., significance tests across multiple runs).\n\n4. **Clarity issues**: The paper is poorly organized with duplicated theorem statements, broken references, and confusing tables. The main results table is not properly formatted and contains errors.\n\n5. **Limited evaluation of the HITL component**: Only qualitative case studies with no quantitative comparison to automated optimization alone.\n\n6. **Missing comparisons**: No comparison to standard post-hoc calibration methods (e.g., simple linear regression on validation set, isotonic regression, quantile mapping).\n\nGiven these issues, particularly the suspicious experimental results, I cannot recommend acceptance. The core idea is not novel (post-hoc calibration is standard), and the experimental validation appears unreliable.\n\nREVIEW JSON:\n```json\n{\n\"Summary\": \"The paper proposes a post-training optimization framework for time series forecasting that applies interpretable transformations (scaling, shifting, trend adjustments) to model outputs to reduce prediction error. The framework supports multiple optimization strategies (random search, contextual bandits, RL, genetic algorithms) and an optional human-in-the-loop component where natural language feedback is parsed into actions via an LLM. The theoretical motivation is based on a proof that affine corrections reduce MSE. Experiments across multiple benchmarks (ETT, OpenTS datasets) claim consistent improvements across various forecasting models (Autoformer, Crossformer, iTransformer, PatchTST, DLinear, SegRNN, Informer) with minimal computational overhead.\",\n\"Strengths\": [\n\"The idea of model-agnostic post-hoc correction is practically relevant and could be useful in real deployment scenarios.\",\n\"The action space of interpretable transformations (scale, shift, trend) is sensible and user-friendly.\",\n\"The human-in-the-loop component with LLM-based parsing of natural language feedback is an interesting direction.\",\n\"The paper provides code and an interactive demo, which supports reproducibility efforts.\"\n],\n\"Weaknesses\": [\n\"The theoretical contribution is not novel: the affine correction theorem is a standard statistical result (optimal linear calibration) that has been known for decades. Presenting it as a new theorem is misleading.\",\n\"The experimental results appear unreliable. Multiple rows in Table 2 show identical values across different models and datasets (e.g., ETTh2, ETTm1, ETTm2 rows all show 0.60→0.57 across all models), suggesting copy-paste errors or data fabrication. All standard deviations are uniformly ±0.01, which is suspicious.\",\n\"The methodology selects the best action on the validation set, which is essentially hyperparameter tuning. No proper statistical significance testing is performed, and the risk of validation set overfitting is not adequately addressed.\",\n\"The comparison to existing post-hoc calibration methods (e.g., simple linear regression, isotonic regression) is missing. The claimed improvements may be largely explainable by simple mean/variance correction.\",\n\"The human-in-the-loop evaluation is qualitative only, with no quantitative comparison to automated optimization alone. The LLM parsing is not rigorously evaluated.\",\n\"The paper is poorly organized: duplicated theorem statements, broken internal references, confusing table formatting, and unclear figure descriptions.\",\n\"The optimization strategies comparison (Section 3.4) is only on a single dataset (ETTh1) and the paper then adopts random search for all other experiments without strong justification.\",\n\"The improvements reported are inconsistent across models and datasets (ranging from -3% to +50%), with no clear explanation of when the method helps or hurts.\"\n],\n\"Originality\": 2,\n\"Quality\": 1,\n\"Clarity\": 2,\n\"Significance\": 2,\n\"Questions\": [\n\"Can the authors explain why multiple rows in Table 2 show identical values across different models and datasets (e.g., ETTh2, ETTm1, ETTm2)? This appears to be an error.\",\n\"How does the proposed framework compare to simple linear regression calibration on the validation set (i.e., fitting a*Y_pred + b)? The theorem suggests this is the optimal affine correction, so what additional benefit do the more complex optimization strategies provide?\",\n\"Were statistical significance tests (e.g., paired t-tests or confidence intervals) performed across the 10 trials? The uniform ±0.01 standard deviations suggest minimal variance, which is surprising.\",\n\"How was overfitting of the action selection to the validation set addressed? With random search over many actions, the best action on validation will likely overfit, especially with small validation sets.\",\n\"For the human-in-the-loop experiments, what is the quantitative improvement compared to automated optimization alone? The current case studies are qualitative only.\",\n\"Can the authors provide results comparing to standard post-hoc calibration baselines such as isotonic regression or quantile mapping?\",\n\"The theorem assumes the validation and test distributions match. Did the authors test performance under distribution shift? The limitations section mentions this but no experiments are provided.\",\n\"Could the authors clarify the experimental setup for Table 3? What exactly is being measured, and how are the 'min' and 'max' training times defined?\"\n],\n\"Limitations\": [\n\"The paper acknowledges that the method depends on the quality of the base model and that distribution shift can degrade performance, but no experiments are provided to quantify these limitations.\",\n\"The potential for validation set overfitting when selecting among many actions is not adequately discussed or tested.\",\n\"The human-in-the-loop component's reliability and robustness to ambiguous feedback is not evaluated quantitatively.\",\n\"The paper does not discuss potential negative societal impacts, such as over-reliance on automated corrections in critical domains (energy, healthcare) or the risk of human feedback introducing bias.\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 1,\n\"Presentation\": 2,\n\"Contribution\": 2,\n\"Overall\": 3,\n\"Confidence\": 4,\n\"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 35777,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 33985,
+        "completion_tokens": 1516,
+        "reasoning_tokens": 0,
+        "total_tokens": 37293
+      },
+      "attempts": 1,
+      "response_id": "fd427283-bb7a-44ae-9be4-ed973ed298fb"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "This paper introduces a post-training optimization framework for time series forecasting that applies interpretable transformations (scaling, shifting, trend adjustments) to model outputs to improve accuracy without retraining. The framework supports automated optimization via random search, bandits, RL (PPO), or genetic algorithms, and optionally incorporates human feedback through natural language parsed by an LLM into executable actions. The authors provide a theoretical result showing affine corrections reduce MSE, and evaluate their approach across multiple datasets (ETT, OpenTS) and models (Autoformer, Crossformer, iTransformer, PatchTST, DLinear, SegRNN, Informer), reporting consistent MSE improvements with minimal computational overhead.",
+        "Strengths": [
+          "The core idea of post-hoc correction via simple transformations is practical and model-agnostic, potentially useful for practitioners",
+          "The theoretical result (affine correction reduces MSE) is correct and clearly derived in the appendix",
+          "Extensive experimental evaluation across many datasets and models showing consistent (if modest) improvements",
+          "The human-in-the-loop component with LLM-parsed natural language feedback is a novel and interesting direction",
+          "Code, API documentation, and an interactive demo are provided, supporting reproducibility"
+        ],
+        "Weaknesses": [
+          "The theoretical contribution is elementary - the affine correction result is essentially the optimal linear correction (Gauss-Markov style) and is well-known in statistics; presenting it as a major theorem is overstated",
+          "The 'adaptive optimization' framework is essentially hyperparameter search over a small set of transformations; framing it as RL/bandit/GA adds complexity without clear benefit, and the paper itself admits random search performs comparably",
+          "Experimental results show modest improvements (often 1-5% MSE reduction) and some cases of degradation (e.g., PatchTST on ETTh1 shows -2.25%); no statistical significance testing is provided",
+          "Table 2 contains clear errors: multiple rows (ETTh2, ETTm1, ETTm2) show identical values across all models, which suggests formatting/rendering issues or data fabrication - this severely undermines confidence in the results",
+          "No comparison to existing post-processing methods (e.g., residual correction, Kalman filtering, model ensembling) - the baseline is only the original model",
+          "The human-in-the-loop evaluation is anecdotal (3 case studies) with no systematic evaluation protocol, user study, or quantitative comparison to automated-only optimization",
+          "The paper is poorly organized with duplicated content (Theorem 1 and Remark 1 appear twice), inconsistent notation, and a confusing presentation of results"
+        ],
+        "Originality": 2,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 2,
+        "Questions": [
+          "Table 2 shows identical MSE values (0.60→0.57) across ETTh2, ETTm1, and ETTm2 for all models. This is clearly suspicious - can you explain this and provide the correct results?",
+          "How does your method compare to simple existing post-processing techniques such as residual correction, exponential smoothing of errors, or Kalman filtering?",
+          "The paper states random search performs comparably to SH-HPO and is adopted for main experiments. What is the added value of the RL/bandit/GA formulations beyond what simple grid search would provide?",
+          "For the human-in-the-loop experiments, what was the protocol? Were the human users domain experts? How many users? What was the variance in outcomes?",
+          "The theoretical result applies to a single time step. How does this extend to multi-step forecasting where transformations are applied to entire sequences?",
+          "What are the standard deviations of the improvements across the 10 trials? The paper reports ±0.01 for MSE values but not for the percentage improvements - are the improvements statistically significant?",
+          "How were the actions selected for the final evaluation? Is there a risk of overfitting to the validation set given the extensive search over transformations?"
+        ],
+        "Limitations": [
+          "The paper acknowledges limitations around base model quality, LLM translation precision, and distribution shift, but these are discussed only briefly",
+          "The evaluation does not address the risk of overfitting to the validation set when selecting transformations, despite the extensive search",
+          "Potential negative societal impact is not discussed - in high-stakes domains (energy, finance, healthcare), even small systematic errors could have significant consequences, and the paper does not address error propagation or uncertainty quantification",
+          "The human-in-the-loop component raises questions about accountability and bias when human feedback is incorporated into automated forecasting systems"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes a post-training optimization framework for time series forecasting that applies simple transformations (scaling, shifting, trend adjustments) to model outputs to reduce MSE. The key contributions are: (1) a theoretical result showing affine corrections always reduce MSE, (2) an action-based optimization framework using RL, bandits, or genetic algorithms, (3) optional human-in-the-loop feedback via LLM-parsed natural language, and (4) extensive experiments across many datasets and models.\n\nStrengths:\n- The core idea is simple and practical: post-hoc correction of forecasts without retraining\n- The theoretical result (Theorem 1) is correct and well-derived in the appendix\n- Extensive experimental evaluation across many datasets and models\n- The human-in-the-loop component is novel and interesting\n- Code and demo are provided\n\nWeaknesses:\n- The theoretical contribution is trivial - affine correction is a well-known result (essentially the Gauss-Markov theorem / optimal linear correction)\n- The \"adaptive optimization\" is essentially hyperparameter search over a small set of transformations; calling it RL/bandit/GA seems overblown\n- The experimental improvements, while positive, are modest in many cases (1-5% MSE reduction), and some cases show degradation\n- The comparison to baselines is unclear - what is the baseline? Just the original model? No comparison to other post-processing methods\n- The paper lacks statistical rigor - standard deviations are shown but no significance tests\n- The human-in-the-loop evaluation is anecdotal (3 case studies) with no systematic evaluation\n- The paper is poorly organized with duplicated content (Theorem 1 appears twice, Remark 1 appears twice, Table 2 appears to have errors - many rows show identical values across different datasets)\n\nMajor issues:\n1. Table 2 has clear errors: ETTh2, ETTm1, ETTm2 rows all show identical values (0.60→0.57) across all models, which is suspicious and likely a formatting/rendering error\n2. The theoretical result is presented as a major contribution but is elementary\n3. The optimization framework is not clearly distinguished from simple hyperparameter search\n4. No comparison to existing post-processing methods (e.g., Kalman filtering, residual correction)\n5. The HITL evaluation is not rigorous\n\nOverall, this is a reasonable applied paper with a simple but useful idea, but the presentation and evaluation have significant issues. The theoretical contribution is minimal, the experimental evaluation has potential errors, and the novelty is limited. I would lean toward rejection given the quality issues, though the core idea has some merit.\n\nDecision: Reject\n\nSoundness: 2 (fair) - theoretical result is correct but trivial, experimental evaluation has potential errors\nPresentation: 2 (fair) - poorly organized, duplicated content, confusing tables\nContribution: 2 (fair) - incremental contribution with limited novelty\nOverall: 4 (borderline reject) - technically sound but with major presentation and evaluation issuesREVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper introduces a post-training optimization framework for time series forecasting that applies interpretable transformations (scaling, shifting, trend adjustments) to model outputs to improve accuracy without retraining. The framework supports automated optimization via random search, bandits, RL (PPO), or genetic algorithms, and optionally incorporates human feedback through natural language parsed by an LLM into executable actions. The authors provide a theoretical result showing affine corrections reduce MSE, and evaluate their approach across multiple datasets (ETT, OpenTS) and models (Autoformer, Crossformer, iTransformer, PatchTST, DLinear, SegRNN, Informer), reporting consistent MSE improvements with minimal computational overhead.\",\n  \"Strengths\": [\n    \"The core idea of post-hoc correction via simple transformations is practical and model-agnostic, potentially useful for practitioners\",\n    \"The theoretical result (affine correction reduces MSE) is correct and clearly derived in the appendix\",\n    \"Extensive experimental evaluation across many datasets and models showing consistent (if modest) improvements\",\n    \"The human-in-the-loop component with LLM-parsed natural language feedback is a novel and interesting direction\",\n    \"Code, API documentation, and an interactive demo are provided, supporting reproducibility\"\n  ],\n  \"Weaknesses\": [\n    \"The theoretical contribution is elementary - the affine correction result is essentially the optimal linear correction (Gauss-Markov style) and is well-known in statistics; presenting it as a major theorem is overstated\",\n    \"The 'adaptive optimization' framework is essentially hyperparameter search over a small set of transformations; framing it as RL/bandit/GA adds complexity without clear benefit, and the paper itself admits random search performs comparably\",\n    \"Experimental results show modest improvements (often 1-5% MSE reduction) and some cases of degradation (e.g., PatchTST on ETTh1 shows -2.25%); no statistical significance testing is provided\",\n    \"Table 2 contains clear errors: multiple rows (ETTh2, ETTm1, ETTm2) show identical values across all models, which suggests formatting/rendering issues or data fabrication - this severely undermines confidence in the results\",\n    \"No comparison to existing post-processing methods (e.g., residual correction, Kalman filtering, model ensembling) - the baseline is only the original model\",\n    \"The human-in-the-loop evaluation is anecdotal (3 case studies) with no systematic evaluation protocol, user study, or quantitative comparison to automated-only optimization\",\n    \"The paper is poorly organized with duplicated content (Theorem 1 and Remark 1 appear twice), inconsistent notation, and a confusing presentation of results\"\n  ],\n  \"Originality\": 2,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"Table 2 shows identical MSE values (0.60→0.57) across ETTh2, ETTm1, and ETTm2 for all models. This is clearly suspicious - can you explain this and provide the correct results?\",\n    \"How does your method compare to simple existing post-processing techniques such as residual correction, exponential smoothing of errors, or Kalman filtering?\",\n    \"The paper states random search performs comparably to SH-HPO and is adopted for main experiments. What is the added value of the RL/bandit/GA formulations beyond what simple grid search would provide?\",\n    \"For the human-in-the-loop experiments, what was the protocol? Were the human users domain experts? How many users? What was the variance in outcomes?\",\n    \"The theoretical result applies to a single time step. How does this extend to multi-step forecasting where transformations are applied to entire sequences?\",\n    \"What are the standard deviations of the improvements across the 10 trials? The paper reports ±0.01 for MSE values but not for the percentage improvements - are the improvements statistically significant?\",\n    \"How were the actions selected for the final evaluation? Is there a risk of overfitting to the validation set given the extensive search over transformations?\"\n  ],\n  \"Limitations\": [\n    \"The paper acknowledges limitations around base model quality, LLM translation precision, and distribution shift, but these are discussed only briefly\",\n    \"The evaluation does not address the risk of overfitting to the validation set when selecting transformations, despite the extensive search\",\n    \"Potential negative societal impact is not discussed - in high-stakes domains (energy, finance, healthcare), even small systematic errors could have significant consequences, and the paper does not address error propagation or uncertainty quantification\",\n    \"The human-in-the-loop component raises questions about accountability and bias when human feedback is incorporated into automated forecasting systems\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 35777,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 33985,
+        "completion_tokens": 1653,
+        "reasoning_tokens": 0,
+        "total_tokens": 37430
+      },
+      "attempts": 1,
+      "response_id": "1e9801ad-2fbc-4cff-8ae3-5d75ce0efc37"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper introduces a post-training adaptive optimization framework for time series forecasting that applies interpretable transformations (scaling, shifting, trend adjustments) to model outputs to reduce MSE without retraining. The framework supports multiple optimization strategies (random search, bandits/SH-HPO, RL/PPO, genetic algorithms) and an optional human-in-the-loop component where domain experts provide natural language feedback parsed into actions via an LLM. The authors provide a theoretical result showing affine corrections reduce MSE, and empirical evaluations across multiple datasets (ETT, OpenTS benchmarks) and forecasting models (Autoformer, iTransformer, PatchTST, DLinear, etc.) demonstrate consistent improvements with minimal computational overhead.",
+        "Strengths": [
+          "Model-agnostic and lightweight approach that requires no retraining, making it practical for deployment",
+          "Theoretical guarantee (Theorem 1) that affine corrections reduce MSE, though this is a standard result",
+          "Comprehensive experimental evaluation across diverse datasets and models",
+          "Novel human-in-the-loop component that translates natural language feedback into executable transformations",
+          "Computational efficiency is well-documented, showing optimization times far below training costs",
+          "Interpretable action space (scale, shift, trend, piecewise adjustments) that is extensible"
+        ],
+        "Weaknesses": [
+          "The main results table (Table 2) has serious consistency issues: many entries show identical values across different models (e.g., ETTh2 row shows 0.60→0.57 for six different models), which is highly suspicious and suggests errors in reporting",
+          "All standard deviations are reported as 0.01, which is unrealistic across such diverse datasets and models, undermining confidence in the results",
+          "No comparison against standard post-hoc calibration baselines (e.g., isotonic regression, quantile regression, conformal prediction), limiting the evidence for the method's advantages",
+          "The theoretical contribution is minimal: the affine correction theorem is a well-known result in statistics/calibration, and the paper doesn't extend it meaningfully",
+          "Potential overfitting to validation set is not rigorously addressed; the paper mentions consistency checks but provides no quantitative evidence of generalization",
+          "Human-in-the-loop evaluation is anecdotal (only 3 case studies) with no systematic comparison of HITL vs. automated-only optimization",
+          "The paper has significant clarity/formatting issues: repeated Theorem 1, incomplete sentences, broken table formatting, and inconsistent notation",
+          "No analysis of when the method fails or degrades performance (e.g., PatchTST shows negative improvements in several cases, which is not discussed)",
+          "The optimization strategies (PPO, GA) show much weaker performance than random search, raising questions about their practical value"
+        ],
+        "Originality": 2,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 2,
+        "Questions": [
+          "Can you explain why many entries in Table 2 show identical MSE values across different models (e.g., ETTh2 row shows 0.60→0.57 for six different models)? This appears to be a data reporting error.",
+          "Why are all standard deviations reported as 0.01? With 10 trials across such diverse datasets, this seems implausible.",
+          "How do you control for overfitting when selecting transformations on the validation set? Can you provide evidence of test-set generalization beyond the validation-based improvements?",
+          "How does your method compare against standard post-hoc calibration techniques such as isotonic regression, quantile regression, or conformal prediction?",
+          "In cases where the method degrades performance (e.g., PatchTST on ETTh1 with negative improvement), what is the failure mode and how should practitioners detect/avoid it?",
+          "For the human-in-the-loop experiments, can you quantify the marginal improvement from human feedback over automated optimization alone?",
+          "What are the specific hyperparameters for each optimization strategy (random search samples, PPO settings, GA population size, etc.)?",
+          "How sensitive are the results to the choice of validation set size and the action parameter ranges?"
+        ],
+        "Limitations": [
+          "The paper acknowledges dependence on base model quality and distribution shift, but doesn't provide quantitative analysis of these failure modes",
+          "The action space is limited to simple linear/quantile transformations; more expressive corrections (e.g., nonlinear, frequency-domain) are not explored",
+          "The HITL component depends on LLM parsing accuracy, which is not systematically evaluated",
+          "No discussion of potential negative societal impacts (e.g., over-reliance on automated corrections in high-stakes domains like healthcare or finance)",
+          "The reproducibility section lacks sufficient detail on optimization hyperparameters and experimental seeds",
+          "The paper doesn't address the interpretability of selected actions in real-world decision-making contexts"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes a post-training optimization framework for time series forecasting that applies interpretable transformations (e.g., scaling, shifting, trend adjustments) to model outputs to improve accuracy without retraining. The framework supports multiple optimization strategies (random search, bandits, RL/PPO, genetic algorithms) and optional human-in-the-loop feedback via LLM-based natural language parsing.\n\nKey strengths:\n- The core idea of post-hoc affine correction is theoretically sound (Theorem 1), though it's a well-known result (essentially optimal linear correction/calibration).\n- The framework is model-agnostic and lightweight, with practical value for deployment scenarios where retraining is expensive.\n- Extensive experiments across multiple datasets (ETT, OpenTS benchmarks) and models (Autoformer, iTransformer, PatchTST, etc.) show consistent MSE improvements.\n- The human-in-the-loop component is novel and interesting, enabling domain experts to guide corrections in natural language.\n- Computational efficiency is well-documented, with optimization times far below training times.\n\nMajor weaknesses:\n1. **Theoretical novelty is limited**: The affine correction theorem is a standard result in statistics/calibration (e.g., optimal linear regression of true values on predictions). The paper presents it as a \"preliminary theoretical insight\" but doesn't extend it meaningfully beyond this basic result.\n2. **Evaluation concerns**: The main results table (Table 2) appears to have formatting/consistency issues. Many entries show identical values across different models (e.g., ETTh2 row shows 0.60→0.57 for six different models), which is suspicious and suggests possible copy-paste errors or lack of proper per-model evaluation. The standard deviations are all 0.01, which seems unrealistic across such diverse datasets.\n3. **Overfitting risk**: The optimization selects transformations on the validation set. The paper mentions checking consistency on training set but doesn't provide rigorous evidence of generalization to test sets. The improvements could be partially due to overfitting validation noise.\n4. **Baseline comparison is weak**: The paper only compares post-training vs. no post-training. It doesn't compare against other post-hoc calibration methods (e.g., quantile regression, isotonic regression, conformal prediction) which are standard baselines.\n5. **Human-in-the-loop evaluation is anecdotal**: Only three case studies are presented, with no systematic evaluation of the HITL component (e.g., how much improvement comes from human feedback vs. automated optimization alone).\n6. **Clarity issues**: The paper has significant formatting problems (e.g., repeated Theorem 1, broken table formatting, incomplete sentences). The main results table appears garbled with inconsistent values.\n7. **Reproducibility**: While code is provided, the experimental setup lacks sufficient detail (e.g., hyperparameters for optimization, number of random search samples, PPO/GA settings).\n\nOriginality: Medium. The combination of post-hoc transformations with multiple optimization strategies and HITL is somewhat novel, but the core theoretical result is standard. The action space is simple and similar to existing post-processing techniques.\n\nQuality: Fair. The experiments are extensive but have concerns about table accuracy, overfitting control, and missing baselines.\n\nClarity: Fair. The paper has structural issues and the main results table is difficult to interpret/trust.\n\nSignificance: Medium. The framework could be practically useful, but the improvements are modest (mostly 1-5% MSE reduction) and the approach doesn't address fundamental forecasting limitations.\n\nOverall assessment: This is a borderline paper. The practical framework is useful and the HITL component is interesting, but the technical contributions are limited, and there are serious concerns about the reliability of the reported results (suspicious identical values across models). The paper needs significant revision to address evaluation concerns and provide stronger evidence of generalization. I lean towards rejection due to the evaluation quality issues, though the idea has merit.\n\nDecision: Reject (with suggestions for major revision)REVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper introduces a post-training adaptive optimization framework for time series forecasting that applies interpretable transformations (scaling, shifting, trend adjustments) to model outputs to reduce MSE without retraining. The framework supports multiple optimization strategies (random search, bandits/SH-HPO, RL/PPO, genetic algorithms) and an optional human-in-the-loop component where domain experts provide natural language feedback parsed into actions via an LLM. The authors provide a theoretical result showing affine corrections reduce MSE, and empirical evaluations across multiple datasets (ETT, OpenTS benchmarks) and forecasting models (Autoformer, iTransformer, PatchTST, DLinear, etc.) demonstrate consistent improvements with minimal computational overhead.\",\n    \"Strengths\": [\n        \"Model-agnostic and lightweight approach that requires no retraining, making it practical for deployment\",\n        \"Theoretical guarantee (Theorem 1) that affine corrections reduce MSE, though this is a standard result\",\n        \"Comprehensive experimental evaluation across diverse datasets and models\",\n        \"Novel human-in-the-loop component that translates natural language feedback into executable transformations\",\n        \"Computational efficiency is well-documented, showing optimization times far below training costs\",\n        \"Interpretable action space (scale, shift, trend, piecewise adjustments) that is extensible\"\n    ],\n    \"Weaknesses\": [\n        \"The main results table (Table 2) has serious consistency issues: many entries show identical values across different models (e.g., ETTh2 row shows 0.60→0.57 for six different models), which is highly suspicious and suggests errors in reporting\",\n        \"All standard deviations are reported as 0.01, which is unrealistic across such diverse datasets and models, undermining confidence in the results\",\n        \"No comparison against standard post-hoc calibration baselines (e.g., isotonic regression, quantile regression, conformal prediction), limiting the evidence for the method's advantages\",\n        \"The theoretical contribution is minimal: the affine correction theorem is a well-known result in statistics/calibration, and the paper doesn't extend it meaningfully\",\n        \"Potential overfitting to validation set is not rigorously addressed; the paper mentions consistency checks but provides no quantitative evidence of generalization\",\n        \"Human-in-the-loop evaluation is anecdotal (only 3 case studies) with no systematic comparison of HITL vs. automated-only optimization\",\n        \"The paper has significant clarity/formatting issues: repeated Theorem 1, incomplete sentences, broken table formatting, and inconsistent notation\",\n        \"No analysis of when the method fails or degrades performance (e.g., PatchTST shows negative improvements in several cases, which is not discussed)\",\n        \"The optimization strategies (PPO, GA) show much weaker performance than random search, raising questions about their practical value\"\n    ],\n    \"Originality\": 2,\n    \"Quality\": 2,\n    \"Clarity\": 2,\n    \"Significance\": 2,\n    \"Questions\": [\n        \"Can you explain why many entries in Table 2 show identical MSE values across different models (e.g., ETTh2 row shows 0.60→0.57 for six different models)? This appears to be a data reporting error.\",\n        \"Why are all standard deviations reported as 0.01? With 10 trials across such diverse datasets, this seems implausible.\",\n        \"How do you control for overfitting when selecting transformations on the validation set? Can you provide evidence of test-set generalization beyond the validation-based improvements?\",\n        \"How does your method compare against standard post-hoc calibration techniques such as isotonic regression, quantile regression, or conformal prediction?\",\n        \"In cases where the method degrades performance (e.g., PatchTST on ETTh1 with negative improvement), what is the failure mode and how should practitioners detect/avoid it?\",\n        \"For the human-in-the-loop experiments, can you quantify the marginal improvement from human feedback over automated optimization alone?\",\n        \"What are the specific hyperparameters for each optimization strategy (random search samples, PPO settings, GA population size, etc.)?\",\n        \"How sensitive are the results to the choice of validation set size and the action parameter ranges?\"\n    ],\n    \"Limitations\": [\n        \"The paper acknowledges dependence on base model quality and distribution shift, but doesn't provide quantitative analysis of these failure modes\",\n        \"The action space is limited to simple linear/quantile transformations; more expressive corrections (e.g., nonlinear, frequency-domain) are not explored\",\n        \"The HITL component depends on LLM parsing accuracy, which is not systematically evaluated\",\n        \"No discussion of potential negative societal impacts (e.g., over-reliance on automated corrections in high-stakes domains like healthcare or finance)\",\n        \"The reproducibility section lacks sufficient detail on optimization hyperparameters and experimental seeds\",\n        \"The paper doesn't address the interpretability of selected actions in real-world decision-making contexts\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 2,\n    \"Presentation\": 2,\n    \"Contribution\": 2,\n    \"Overall\": 4,\n    \"Confidence\": 4,\n    \"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 35777,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 33985,
+        "completion_tokens": 1890,
+        "reasoning_tokens": 0,
+        "total_tokens": 37667
+      },
+      "attempts": 1,
+      "response_id": "865ffe60-42f9-423f-b403-b3c29faf86f6"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 0,
+      "Reject": 5
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "mean": 2,
+        "rounded_mean": 2,
+        "population_sd": 0.0,
+        "min": 2,
+        "max": 2
+      },
+      "Quality": {
+        "values": [
+          2,
+          2,
+          1,
+          2,
+          2
+        ],
+        "mean": 1.8,
+        "rounded_mean": 2,
+        "population_sd": 0.4,
+        "min": 1,
+        "max": 2
+      },
+      "Clarity": {
+        "values": [
+          3,
+          2,
+          2,
+          2,
+          2
+        ],
+        "mean": 2.2,
+        "rounded_mean": 2,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "mean": 2,
+        "rounded_mean": 2,
+        "population_sd": 0.0,
+        "min": 2,
+        "max": 2
+      },
+      "Soundness": {
+        "values": [
+          2,
+          2,
+          1,
+          2,
+          2
+        ],
+        "mean": 1.8,
+        "rounded_mean": 2,
+        "population_sd": 0.4,
+        "min": 1,
+        "max": 2
+      },
+      "Presentation": {
+        "values": [
+          3,
+          2,
+          2,
+          2,
+          2
+        ],
+        "mean": 2.2,
+        "rounded_mean": 2,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "mean": 2,
+        "rounded_mean": 2,
+        "population_sd": 0.0,
+        "min": 2,
+        "max": 2
+      },
+      "Overall": {
+        "values": [
+          4,
+          4,
+          3,
+          4,
+          4
+        ],
+        "mean": 3.8,
+        "rounded_mean": 4,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper proposes a post-training adaptive optimization framework for time series forecasting that applies interpretable transformations (scaling, shifting, trend adjustments, quantile-based modifications) to model outputs to reduce prediction error without retraining or architectural changes. The framework supports multiple optimization strategies (random search, bandits/SH-HPO, PPO, genetic algorithms) and an optional human-in-the-loop component where natural language feedback is parsed by an LLM into executable actions. The authors provide a theoretical result showing that optimal affine corrections reduce MSE, and they evaluate their framework across multiple datasets (ETT, OpenTS benchmarks) and forecasting models (Autoformer, Crossformer, iTransformer, PatchTST, DLinear, SegRNN, Informer), reporting consistent MSE improvements with minimal computational overhead.",
+      "Strengths": [
+        "The core idea of model-agnostic post-hoc correction is practically relevant and lightweight, requiring no retraining or architectural changes, making it attractive for real-world deployment.",
+        "The action space of interpretable transformations (scale, shift, trend, quantile-based) is sensible and user-friendly, and the framework is extensible.",
+        "The human-in-the-loop component using LLM-based parsing of natural language feedback into executable actions is a timely and novel direction.",
+        "The paper provides code, API documentation, and an interactive demo, supporting reproducibility efforts.",
+        "The computational efficiency analysis shows optimization times far below training costs, which is useful for practitioners."
+      ],
+      "Weaknesses": [
+        "The theoretical contribution is trivial and well-known: the affine correction theorem is essentially the standard optimal linear calibration result from statistics, and presenting it as a novel theorem is overstated.",
+        "The main results table (Table 2) contains serious data integrity issues: multiple rows (e.g., ETTh2, ETTm1, ETTm2) show identical MSE values (0.60→0.57) across different models, which is implausible and suggests copy-paste errors or fabrication. All standard deviations are uniformly ±0.01, which is suspicious.",
+        "The paper lacks comparison to simple post-hoc calibration baselines such as fitting a linear regression (optimal affine correction) directly on validation predictions, isotonic regression, or conformal prediction. This makes it unclear whether the added complexity provides real benefits.",
+        "The 'adaptive optimization' framework is essentially hyperparameter search over a small set of transformations; random search performs comparably to more complex methods (SH-HPO, PPO, GA), and the paper's own results show this, yet the framing overstates the contribution.",
+        "The human-in-the-loop evaluation is anecdotal (only 3 case studies) with no systematic user study, no quantitative comparison of HITL vs. automated-only optimization, and no robustness analysis of LLM parsing.",
+        "The risk of overfitting to the validation set when selecting among many actions is not rigorously addressed; the paper mentions consistency checks but provides no quantitative evidence of generalization.",
+        "No statistical significance testing is performed; the reported improvements are often modest (1-5%) and some cases show degradation (e.g., PatchTST on ETTh1 shows -2.25%) without analysis of failure modes.",
+        "The paper has significant clarity and organization issues: duplicated theorem statements, broken internal references, confusing table formatting, and inconsistent notation.",
+        "The action space is ad-hoc with no clear design principles or justification for why these specific transformations were chosen, and no analysis of which actions are most frequently selected."
+      ],
+      "Originality": 2,
+      "Quality": 2,
+      "Clarity": 2,
+      "Significance": 2,
+      "Questions": [
+        "Can the authors explain why multiple rows in Table 2 show identical MSE values (0.60→0.57) across different models and datasets (e.g., ETTh2, ETTm1, ETTm2)? This appears to be a data reporting error, and the current presentation severely undermines confidence in the results.",
+        "How does the proposed framework compare against a simple baseline of fitting a linear regression (optimal affine correction) on the validation set predictions? This would establish the optimal affine correction and show whether the more complex search over transformations provides meaningful gains beyond this baseline.",
+        "Why are all standard deviations reported as 0.01? With 10 trials across such diverse datasets and models, this seems implausible. Were statistical significance tests (e.g., paired t-tests or confidence intervals) performed on the percentage improvements?",
+        "How was overfitting to the validation set addressed when selecting transformations? Can the authors provide evidence of test-set generalization beyond validation-based improvements, and how sensitive are results to validation set size and the number of random search iterations?",
+        "For the human-in-the-loop experiments, what was the exact protocol? Were users domain experts? How many users participated? What is the quantitative marginal improvement from human feedback over automated optimization alone?",
+        "Why was Random Search chosen for the main experiments when SH-HPO showed better average performance (5.65% vs 4.83%)? What criteria were used for this decision?",
+        "In cases where the method degrades performance (e.g., PatchTST on ETTh1), what is the failure mode and how should practitioners detect or avoid such cases?",
+        "How does the method compare to standard post-hoc calibration techniques such as isotonic regression, quantile regression, or conformal prediction?",
+        "Is a single global action selected for the entire test set, or are actions selected per-series/per-time-step? How does the theoretical result extend to multi-step forecasting where transformations are applied to entire sequences?"
+      ],
+      "Limitations": [
+        "The paper acknowledges dependence on base model quality and validation set representativeness, but does not provide quantitative analysis of these failure modes, particularly under distribution shift.",
+        "The potential for validation set overfitting when selecting among many actions is not adequately discussed or tested.",
+        "The action space is limited to simple linear/quantile transformations; more expressive corrections (e.g., nonlinear, frequency-domain) are not explored.",
+        "The human-in-the-loop component depends on LLM parsing accuracy, which is not systematically evaluated, and raises questions about accountability and bias when human feedback is incorporated into automated forecasting systems.",
+        "The framework assumes access to a validation set that reflects the deployment distribution, which may not hold in truly online settings.",
+        "Potential negative societal impacts are not discussed: in high-stakes domains (energy, finance, healthcare), automated post-hoc corrections could introduce systematic biases if the validation set is not representative, and the paper does not address error propagation or uncertainty quantification."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 2,
+      "Presentation": 2,
+      "Contribution": 2,
+      "Overall": 4,
+      "Confidence": 5,
+      "Decision": "Reject"
+    },
+    "raw_response": "THOUGHT:\nAll five reviewers consistently reject this paper with overall scores of 3-4 (on the 1-10 scale), with concerns about trivial theoretical contribution, suspicious experimental results (identical values across models in Table 2), lack of comparison to simple baselines, weak human-in-the-loop evaluation, and presentation issues. The consensus is clear: the paper has serious quality issues, particularly the apparent data errors in the main results table, which undermines confidence in all experimental claims. The theoretical contribution is elementary, and the practical value is limited without proper baselines. I will aggregate these into a meta-review that reflects the strong consensus to reject.\n\nKey points to synthesize:\n1. Theoretical contribution is trivial (standard affine correction/linear calibration)\n2. Table 2 has clear data integrity issues (identical MSE values across different models)\n3. Missing comparison to simple baselines (linear regression on validation predictions)\n4. Human-in-the-loop evaluation is anecdotal without quantitative assessment\n5. Overfitting to validation set not adequately addressed\n6. No statistical significance testing\n7. Inconsistent results (some negative improvements) not explained\n8. Presentation issues (duplicated content, broken references)\n\nDecision: Reject\n\nRatings:\n- Originality: 2 (low)\n- Quality: 2 (fair)\n- Clarity: 2 (fair)\n- Significance: 2 (low)\n- Soundness: 2 (fair)\n- Presentation: 2 (fair)\n- Contribution: 2 (fair)\n- Overall: 4 (borderline reject territory, but given the data integrity issues, 3-4 is appropriate; I'll use 4 to match the majority)\n- Confidence: 5 (absolute, given the unanimity)\n- Ethical Concerns: false (no significant ethical issues beyond standard concerns about high-stakes applications, which are not severe enough to flag)\n\nI'll write a comprehensive meta-review that captures the consensus while being fair to the paper's potential practical value.THOUGHT:\nAll five reviewers unanimously recommend rejection, with overall scores of 3-4 (on the 1-10 scale). The consensus concerns are: (1) the theoretical contribution is trivial and well-known; (2) Table 2 contains clear data integrity issues with identical MSE values across different models; (3) missing comparison to simple baselines like linear regression calibration; (4) human-in-the-loop evaluation is anecdotal without quantitative assessment; (5) potential validation set overfitting not addressed; (6) no statistical significance testing; (7) inconsistent results (negative improvements) not explained; and (8) presentation/organization issues. While the core idea has practical potential, the experimental reliability issues are severe enough to warrant rejection. I will synthesize these into a meta-review reflecting the strong consensus.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper proposes a post-training adaptive optimization framework for time series forecasting that applies interpretable transformations (scaling, shifting, trend adjustments, quantile-based modifications) to model outputs to reduce prediction error without retraining or architectural changes. The framework supports multiple optimization strategies (random search, bandits/SH-HPO, PPO, genetic algorithms) and an optional human-in-the-loop component where natural language feedback is parsed by an LLM into executable actions. The authors provide a theoretical result showing that optimal affine corrections reduce MSE, and they evaluate their framework across multiple datasets (ETT, OpenTS benchmarks) and forecasting models (Autoformer, Crossformer, iTransformer, PatchTST, DLinear, SegRNN, Informer), reporting consistent MSE improvements with minimal computational overhead.\",\n  \"Strengths\": [\n    \"The core idea of model-agnostic post-hoc correction is practically relevant and lightweight, requiring no retraining or architectural changes, making it attractive for real-world deployment.\",\n    \"The action space of interpretable transformations (scale, shift, trend, quantile-based) is sensible and user-friendly, and the framework is extensible.\",\n    \"The human-in-the-loop component using LLM-based parsing of natural language feedback into executable actions is a timely and novel direction.\",\n    \"The paper provides code, API documentation, and an interactive demo, supporting reproducibility efforts.\",\n    \"The computational efficiency analysis shows optimization times far below training costs, which is useful for practitioners.\"\n  ],\n  \"Weaknesses\": [\n    \"The theoretical contribution is trivial and well-known: the affine correction theorem is essentially the standard optimal linear calibration result from statistics, and presenting it as a novel theorem is overstated.\",\n    \"The main results table (Table 2) contains serious data integrity issues: multiple rows (e.g., ETTh2, ETTm1, ETTm2) show identical MSE values (0.60→0.57) across different models, which is implausible and suggests copy-paste errors or fabrication. All standard deviations are uniformly ±0.01, which is suspicious.\",\n    \"The paper lacks comparison to simple post-hoc calibration baselines such as fitting a linear regression (optimal affine correction) directly on validation predictions, isotonic regression, or conformal prediction. This makes it unclear whether the added complexity provides real benefits.\",\n    \"The 'adaptive optimization' framework is essentially hyperparameter search over a small set of transformations; random search performs comparably to more complex methods (SH-HPO, PPO, GA), and the paper's own results show this, yet the framing overstates the contribution.\",\n    \"The human-in-the-loop evaluation is anecdotal (only 3 case studies) with no systematic user study, no quantitative comparison of HITL vs. automated-only optimization, and no robustness analysis of LLM parsing.\",\n    \"The risk of overfitting to the validation set when selecting among many actions is not rigorously addressed; the paper mentions consistency checks but provides no quantitative evidence of generalization.\",\n    \"No statistical significance testing is performed; the reported improvements are often modest (1-5%) and some cases show degradation (e.g., PatchTST on ETTh1 shows -2.25%) without analysis of failure modes.\",\n    \"The paper has significant clarity and organization issues: duplicated theorem statements, broken internal references, confusing table formatting, and inconsistent notation.\",\n    \"The action space is ad-hoc with no clear design principles or justification for why these specific transformations were chosen, and no analysis of which actions are most frequently selected.\"\n  ],\n  \"Originality\": 2,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"Can the authors explain why multiple rows in Table 2 show identical MSE values (0.60→0.57) across different models and datasets (e.g., ETTh2, ETTm1, ETTm2)? This appears to be a data reporting error, and the current presentation severely undermines confidence in the results.\",\n    \"How does the proposed framework compare against a simple baseline of fitting a linear regression (optimal affine correction) on the validation set predictions? This would establish the optimal affine correction and show whether the more complex search over transformations provides meaningful gains beyond this baseline.\",\n    \"Why are all standard deviations reported as 0.01? With 10 trials across such diverse datasets and models, this seems implausible. Were statistical significance tests (e.g., paired t-tests or confidence intervals) performed on the percentage improvements?\",\n    \"How was overfitting to the validation set addressed when selecting transformations? Can the authors provide evidence of test-set generalization beyond validation-based improvements, and how sensitive are results to validation set size and the number of random search iterations?\",\n    \"For the human-in-the-loop experiments, what was the exact protocol? Were users domain experts? How many users participated? What is the quantitative marginal improvement from human feedback over automated optimization alone?\",\n    \"Why was Random Search chosen for the main experiments when SH-HPO showed better average performance (5.65% vs 4.83%)? What criteria were used for this decision?\",\n    \"In cases where the method degrades performance (e.g., PatchTST on ETTh1), what is the failure mode and how should practitioners detect or avoid such cases?\",\n    \"How does the method compare to standard post-hoc calibration techniques such as isotonic regression, quantile regression, or conformal prediction?\",\n    \"Is a single global action selected for the entire test set, or are actions selected per-series/per-time-step? How does the theoretical result extend to multi-step forecasting where transformations are applied to entire sequences?\"\n  ],\n  \"Limitations\": [\n    \"The paper acknowledges dependence on base model quality and validation set representativeness, but does not provide quantitative analysis of these failure modes, particularly under distribution shift.\",\n    \"The potential for validation set overfitting when selecting among many actions is not adequately discussed or tested.\",\n    \"The action space is limited to simple linear/quantile transformations; more expressive corrections (e.g., nonlinear, frequency-domain) are not explored.\",\n    \"The human-in-the-loop component depends on LLM parsing accuracy, which is not systematically evaluated, and raises questions about accountability and bias when human feedback is incorporated into automated forecasting systems.\",\n    \"The framework assumes access to a validation set that reflects the deployment distribution, which may not hold in truly online settings.\",\n    \"Potential negative societal impacts are not discussed: in high-stakes domains (energy, finance, healthcare), automated post-hoc corrections could introduce systematic biases if the validation set is not representative, and the paper does not address error propagation or uncertainty quantification.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 5,\n  \"Decision\": \"Reject\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 7189,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 7189,
+      "completion_tokens": 2020,
+      "reasoning_tokens": 0,
+      "total_tokens": 9209
+    },
+    "attempts": 1,
+    "response_id": "b44f9598-c9f7-4305-a846-26083f429a65"
+  },
+  "final_review": {
+    "Summary": "The paper proposes a post-training adaptive optimization framework for time series forecasting that applies interpretable transformations (scaling, shifting, trend adjustments, quantile-based modifications) to model outputs to reduce prediction error without retraining or architectural changes. The framework supports multiple optimization strategies (random search, bandits/SH-HPO, PPO, genetic algorithms) and an optional human-in-the-loop component where natural language feedback is parsed by an LLM into executable actions. The authors provide a theoretical result showing that optimal affine corrections reduce MSE, and they evaluate their framework across multiple datasets (ETT, OpenTS benchmarks) and forecasting models (Autoformer, Crossformer, iTransformer, PatchTST, DLinear, SegRNN, Informer), reporting consistent MSE improvements with minimal computational overhead.",
+    "Strengths": [
+      "The core idea of model-agnostic post-hoc correction is practically relevant and lightweight, requiring no retraining or architectural changes, making it attractive for real-world deployment.",
+      "The action space of interpretable transformations (scale, shift, trend, quantile-based) is sensible and user-friendly, and the framework is extensible.",
+      "The human-in-the-loop component using LLM-based parsing of natural language feedback into executable actions is a timely and novel direction.",
+      "The paper provides code, API documentation, and an interactive demo, supporting reproducibility efforts.",
+      "The computational efficiency analysis shows optimization times far below training costs, which is useful for practitioners."
+    ],
+    "Weaknesses": [
+      "The theoretical contribution is trivial and well-known: the affine correction theorem is essentially the standard optimal linear calibration result from statistics, and presenting it as a novel theorem is overstated.",
+      "The main results table (Table 2) contains serious data integrity issues: multiple rows (e.g., ETTh2, ETTm1, ETTm2) show identical MSE values (0.60→0.57) across different models, which is implausible and suggests copy-paste errors or fabrication. All standard deviations are uniformly ±0.01, which is suspicious.",
+      "The paper lacks comparison to simple post-hoc calibration baselines such as fitting a linear regression (optimal affine correction) directly on validation predictions, isotonic regression, or conformal prediction. This makes it unclear whether the added complexity provides real benefits.",
+      "The 'adaptive optimization' framework is essentially hyperparameter search over a small set of transformations; random search performs comparably to more complex methods (SH-HPO, PPO, GA), and the paper's own results show this, yet the framing overstates the contribution.",
+      "The human-in-the-loop evaluation is anecdotal (only 3 case studies) with no systematic user study, no quantitative comparison of HITL vs. automated-only optimization, and no robustness analysis of LLM parsing.",
+      "The risk of overfitting to the validation set when selecting among many actions is not rigorously addressed; the paper mentions consistency checks but provides no quantitative evidence of generalization.",
+      "No statistical significance testing is performed; the reported improvements are often modest (1-5%) and some cases show degradation (e.g., PatchTST on ETTh1 shows -2.25%) without analysis of failure modes.",
+      "The paper has significant clarity and organization issues: duplicated theorem statements, broken internal references, confusing table formatting, and inconsistent notation.",
+      "The action space is ad-hoc with no clear design principles or justification for why these specific transformations were chosen, and no analysis of which actions are most frequently selected."
+    ],
+    "Originality": 2,
+    "Quality": 2,
+    "Clarity": 2,
+    "Significance": 2,
+    "Questions": [
+      "Can the authors explain why multiple rows in Table 2 show identical MSE values (0.60→0.57) across different models and datasets (e.g., ETTh2, ETTm1, ETTm2)? This appears to be a data reporting error, and the current presentation severely undermines confidence in the results.",
+      "How does the proposed framework compare against a simple baseline of fitting a linear regression (optimal affine correction) on the validation set predictions? This would establish the optimal affine correction and show whether the more complex search over transformations provides meaningful gains beyond this baseline.",
+      "Why are all standard deviations reported as 0.01? With 10 trials across such diverse datasets and models, this seems implausible. Were statistical significance tests (e.g., paired t-tests or confidence intervals) performed on the percentage improvements?",
+      "How was overfitting to the validation set addressed when selecting transformations? Can the authors provide evidence of test-set generalization beyond validation-based improvements, and how sensitive are results to validation set size and the number of random search iterations?",
+      "For the human-in-the-loop experiments, what was the exact protocol? Were users domain experts? How many users participated? What is the quantitative marginal improvement from human feedback over automated optimization alone?",
+      "Why was Random Search chosen for the main experiments when SH-HPO showed better average performance (5.65% vs 4.83%)? What criteria were used for this decision?",
+      "In cases where the method degrades performance (e.g., PatchTST on ETTh1), what is the failure mode and how should practitioners detect or avoid such cases?",
+      "How does the method compare to standard post-hoc calibration techniques such as isotonic regression, quantile regression, or conformal prediction?",
+      "Is a single global action selected for the entire test set, or are actions selected per-series/per-time-step? How does the theoretical result extend to multi-step forecasting where transformations are applied to entire sequences?"
+    ],
+    "Limitations": [
+      "The paper acknowledges dependence on base model quality and validation set representativeness, but does not provide quantitative analysis of these failure modes, particularly under distribution shift.",
+      "The potential for validation set overfitting when selecting among many actions is not adequately discussed or tested.",
+      "The action space is limited to simple linear/quantile transformations; more expressive corrections (e.g., nonlinear, frequency-domain) are not explored.",
+      "The human-in-the-loop component depends on LLM parsing accuracy, which is not systematically evaluated, and raises questions about accountability and bias when human feedback is incorporated into automated forecasting systems.",
+      "The framework assumes access to a validation set that reflects the deployment distribution, which may not hold in truly online settings.",
+      "Potential negative societal impacts are not discussed: in high-stakes domains (energy, finance, healthcare), automated post-hoc corrections could introduce systematic biases if the validation set is not representative, and the paper does not address error propagation or uncertainty quantification."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 2,
+    "Presentation": 2,
+    "Contribution": 2,
+    "Overall": 4,
+    "Confidence": 4,
+    "Decision": "Reject"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 186074,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 177114,
+    "completion_tokens": 10858,
+    "reasoning_tokens": 0,
+    "total_tokens": 196932,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.02479596,
+    "output_usd": 0.00304024,
+    "total_usd": 0.02786129
+  },
+  "elapsed_seconds": 40.188,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Reject",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B166",
+    "filename": "B166.txt",
+    "blind_text_sha256": "2176a5354ffa7a58682644071e73afb8be4afe0de0e7c348a0253e2a5e28fa7e",
+    "characters": 98135,
+    "full_text_saved": false
+  }
+}

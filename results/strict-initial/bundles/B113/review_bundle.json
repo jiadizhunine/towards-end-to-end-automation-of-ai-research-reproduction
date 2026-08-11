@@ -1,0 +1,594 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T09:31:06.341866+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "max",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "meta",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper proposes ANSE (Active Noise Selection for Generation), a framework for selecting high-quality initial noise seeds in text-to-video (T2V) diffusion models. The core contribution is BANSA, a Bayesian active-learning-inspired acquisition function that measures entropy disagreement across stochastic attention maps to quantify model confidence and consistency. To make this efficient at inference time, the authors introduce a Bernoulli-masked approximation of BANSA and a correlation-based layer truncation strategy. Experiments on CogVideoX-2B and CogVideoX-5B report improved VBench quality and semantic scores with only 8–13% inference-time overhead.",
+        "Strengths": [
+          "The idea of using internal attention uncertainty for noise seed selection is novel and model-aware, unlike external frequency or smoothing priors.",
+          "The proposed method is training-free and can be integrated into existing diffusion pipelines without modifying the generation model.",
+          "The Bernoulli-masked approximation and layer-selection strategy are practical attempts to reduce the computational cost of uncertainty estimation.",
+          "The paper includes useful ablations, including comparing BANSA to entropy and dropout-based alternatives, varying ensemble size and pool size, and a reversed-criterion control experiment.",
+          "The work connects active learning principles (BALD) to generative inference-time selection, which could inspire further research."
+        ],
+        "Weaknesses": [
+          "There is a critical sign inconsistency in the definition of BANSA. Equation (4) defines BANSA as (1/K)Σ H(A_k) − H(mean A), which is non-positive by Jensen's inequality and is maximized (at 0) when all attention maps are identical. Minimizing this score would favor disagreement, not confidence. The appendix states that the implementation actually uses the opposite sign, but then claims 'relative ordering remains unchanged'; since the two definitions are negatives, minimizing one is equivalent to maximizing the other. This invalidates the theoretical justification and the stated selection rule.",
+          "The paper does not provide quantitative comparisons with prior noise-prior methods such as FreeInit or FreqPrior, claiming they are not officially supported on CogVideoX. As a result, the claim that ANSE achieves comparable or superior quality with lower inference cost is unsubstantiated.",
+          "Reported improvements are small (e.g., +0.17 quality score on CogVideoX-5B) and no error bars, confidence intervals, or significance tests are provided, despite generating 4,730 videos per configuration. The gains may be within run-to-run variability.",
+          "The layer-selection procedure is described inconsistently: Section 3.3 says correlation is computed between cumulative BANSA and full-layer average, while Appendix E says it is computed against 'official quality scores.' The choice of target is critical for reproducibility.",
+          "Evaluations are limited to two CogVideoX models; the claim of generalizability to 'various text-to-video architectures' is not supported by experiments.",
+          "The Bernoulli masking operation in Eq. (7) multiplies attention logits by 0/1 masks, which sets masked entries to 0 before softmax rather than to −∞. This is not a proper masking operation (it replaces logits with 0, equivalent to a constant), and the paper does not justify why this produces meaningful stochastic perturbations.",
+          "The term 'Bayesian' is used loosely; BANSA-E is a heuristic perturbation of attention maps and is not derived from a Bayesian posterior, and the appendix acknowledges this but still uses the Bayesian terminology.",
+          "Several cross-references are broken or inconsistent: the ablation section refers to Table 3 but only Table 2 is presented in the main text; 'Table 3' is mentioned for the effect of K, but the table is missing."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 2,
+        "Questions": [
+          "Under Eq. (4), BANSA = (1/K)Σ H(A_k) − H(mean A). Since entropy is concave, this quantity is ≤ 0 and equals 0 only when all A_k are identical. Minimizing this would select high-disagreement seeds. The appendix says the implementation uses the opposite sign. Which objective is actually minimized in the experiments, and why is the ordering 'strictly preserved' when the two definitions are negatives?",
+          "What exact set of attention layers and heads is used to compute BANSA? Are cross-attention, self-attention, and temporal attention all included, and how are multiple heads aggregated into a single attention map?",
+          "How were the 4,730 videos per configuration generated? Were the same random seeds used for baseline and ANSE? Can the authors report the variance across seeds and provide statistical significance tests (e.g., paired t-test or bootstrap CI) for the VBench score differences?",
+          "The paper omits direct comparison with FreeInit and FreqPrior due to lack of official support on CogVideoX. What evidence supports the claim that ANSE achieves 'comparable or superior generation quality' and 'reduces inference cost by approximately 64%' relative to those methods?",
+          "In Eq. (7), masked entries are set to 0 in the attention logits before softmax, not to −∞. Why is this a valid way to generate stochastic attention samples? Does it behave differently from standard dropout on attention scores?",
+          "The layer-selection criterion in Section 3.3 uses correlation with the full-layer average BANSA, while Appendix E says correlation with 'official quality scores.' Which target is actually used to pick d*, and how sensitive are the results to the threshold τ=0.7?"
+        ],
+        "Limitations": [
+          "The sign inconsistency in the BANSA definition creates ambiguity about what the method actually optimizes, undermining the theoretical correctness of the paper.",
+          "The experiments cover only CogVideoX-2B and CogVideoX-5B; the claimed generalizability across T2V architectures is not demonstrated.",
+          "No comparison with prior noise-selection or noise-prior methods is performed, so the relative advantage of ANSE is not established.",
+          "The evaluation lacks statistical confidence intervals; the observed improvements are small and may not be significant.",
+          "The paper acknowledges that BANSA does not alter the generation process and that low-BANSA seeds can still lead to unnatural outputs.",
+          "The 'Bayesian' framing is heuristic and not based on a rigorous posterior distribution, which limits the theoretical contribution.",
+          "The Bernoulli masking and layer-truncation approximations are not analyzed for bias or failure modes that could affect selection quality.",
+          "No discussion of potential negative societal impacts or ethical considerations of improved video generation is provided."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 3,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes ANSE (Active Noise Selection for Generation), a framework for selecting high-quality initial noise seeds in text-to-video (T2V) diffusion models. The core contribution is BANSA, a Bayesian active-learning-inspired acquisition function that measures entropy disagreement across stochastic attention maps to quantify model confidence and consistency. To make this efficient at inference time, the authors introduce a Bernoulli-masked approximation of BANSA and a correlation-based layer truncation strategy. Experiments on CogVideoX-2B and CogVideoX-5B report improved VBench quality and semantic scores with only 8–13% inference-time overhead.\",\n  \"Strengths\": [\n    \"The idea of using internal attention uncertainty for noise seed selection is novel and model-aware, unlike external frequency or smoothing priors.\",\n    \"The proposed method is training-free and can be integrated into existing diffusion pipelines without modifying the generation model.\",\n    \"The Bernoulli-masked approximation and layer-selection strategy are practical attempts to reduce the computational cost of uncertainty estimation.\",\n    \"The paper includes useful ablations, including comparing BANSA to entropy and dropout-based alternatives, varying ensemble size and pool size, and a reversed-criterion control experiment.\",\n    \"The work connects active learning principles (BALD) to generative inference-time selection, which could inspire further research.\"\n  ],\n  \"Weaknesses\": [\n    \"There is a critical sign inconsistency in the definition of BANSA. Equation (4) defines BANSA as (1/K)Σ H(A_k) − H(mean A), which is non-positive by Jensen's inequality and is maximized (at 0) when all attention maps are identical. Minimizing this score would favor disagreement, not confidence. The appendix states that the implementation actually uses the opposite sign, but then claims 'relative ordering remains unchanged'; since the two definitions are negatives, minimizing one is equivalent to maximizing the other. This invalidates the theoretical justification and the stated selection rule.\",\n    \"The paper does not provide quantitative comparisons with prior noise-prior methods such as FreeInit or FreqPrior, claiming they are not officially supported on CogVideoX. As a result, the claim that ANSE achieves comparable or superior quality with lower inference cost is unsubstantiated.\",\n    \"Reported improvements are small (e.g., +0.17 quality score on CogVideoX-5B) and no error bars, confidence intervals, or significance tests are provided, despite generating 4,730 videos per configuration. The gains may be within run-to-run variability.\",\n    \"The layer-selection procedure is described inconsistently: Section 3.3 says correlation is computed between cumulative BANSA and full-layer average, while Appendix E says it is computed against 'official quality scores.' The choice of target is critical for reproducibility.\",\n    \"Evaluations are limited to two CogVideoX models; the claim of generalizability to 'various text-to-video architectures' is not supported by experiments.\",\n    \"The Bernoulli masking operation in Eq. (7) multiplies attention logits by 0/1 masks, which sets masked entries to 0 before softmax rather than to −∞. This is not a proper masking operation (it replaces logits with 0, equivalent to a constant), and the paper does not justify why this produces meaningful stochastic perturbations.\",\n    \"The term 'Bayesian' is used loosely; BANSA-E is a heuristic perturbation of attention maps and is not derived from a Bayesian posterior, and the appendix acknowledges this but still uses the Bayesian terminology.\",\n    \"Several cross-references are broken or inconsistent: the ablation section refers to Table 3 but only Table 2 is presented in the main text; 'Table 3' is mentioned for the effect of K, but the table is missing.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"Under Eq. (4), BANSA = (1/K)Σ H(A_k) − H(mean A). Since entropy is concave, this quantity is ≤ 0 and equals 0 only when all A_k are identical. Minimizing this would select high-disagreement seeds. The appendix says the implementation uses the opposite sign. Which objective is actually minimized in the experiments, and why is the ordering 'strictly preserved' when the two definitions are negatives?\",\n    \"What exact set of attention layers and heads is used to compute BANSA? Are cross-attention, self-attention, and temporal attention all included, and how are multiple heads aggregated into a single attention map?\",\n    \"How were the 4,730 videos per configuration generated? Were the same random seeds used for baseline and ANSE? Can the authors report the variance across seeds and provide statistical significance tests (e.g., paired t-test or bootstrap CI) for the VBench score differences?\",\n    \"The paper omits direct comparison with FreeInit and FreqPrior due to lack of official support on CogVideoX. What evidence supports the claim that ANSE achieves 'comparable or superior generation quality' and 'reduces inference cost by approximately 64%' relative to those methods?\",\n    \"In Eq. (7), masked entries are set to 0 in the attention logits before softmax, not to −∞. Why is this a valid way to generate stochastic attention samples? Does it behave differently from standard dropout on attention scores?\",\n    \"The layer-selection criterion in Section 3.3 uses correlation with the full-layer average BANSA, while Appendix E says correlation with 'official quality scores.' Which target is actually used to pick d*, and how sensitive are the results to the threshold τ=0.7?\"\n  ],\n  \"Limitations\": [\n    \"The sign inconsistency in the BANSA definition creates ambiguity about what the method actually optimizes, undermining the theoretical correctness of the paper.\",\n    \"The experiments cover only CogVideoX-2B and CogVideoX-5B; the claimed generalizability across T2V architectures is not demonstrated.\",\n    \"No comparison with prior noise-selection or noise-prior methods is performed, so the relative advantage of ANSE is not established.\",\n    \"The evaluation lacks statistical confidence intervals; the observed improvements are small and may not be significant.\",\n    \"The paper acknowledges that BANSA does not alter the generation process and that low-BANSA seeds can still lead to unnatural outputs.\",\n    \"The 'Bayesian' framing is heuristic and not based on a rigorous posterior distribution, which limits the theoretical contribution.\",\n    \"The Bernoulli masking and layer-truncation approximations are not analyzed for bias or failure modes that could affect selection quality.\",\n    \"No discussion of potential negative societal impacts or ethical considerations of improved video generation is provided.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 3,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 14034,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 13266,
+        "completion_tokens": 4025,
+        "reasoning_tokens": 2560,
+        "total_tokens": 18059
+      },
+      "attempts": 1,
+      "response_id": "737955d6-72b8-4f59-b057-46823e0b28ee"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper proposes ANSE, an inference-time framework for selecting noise seeds in text-to-video diffusion models. It introduces BANSA, an acquisition function that measures disagreement among stochastic attention maps (via Bernoulli-masked attention) to rank noise seeds, with a layer-truncation heuristic. Experiments on CogVideoX-2B/5B show small VBench improvements with roughly 8-13% inference overhead.",
+        "Strengths": [
+          "Addresses an important and underexplored problem: inference-time noise seed selection for video diffusion using internal model signals.",
+          "The Bernoulli-masked approximation and layer truncation make the method computationally practical.",
+          "The paper includes multiple ablations (acquisition functions, ensemble size, pool size, reversed scoring, truncated vs full layers, temporal scope) and shows consistent, albeit modest, gains on two model scales.",
+          "The approach is orthogonal to prior noise-prior methods and could be combined with them."
+        ],
+        "Weaknesses": [
+          "There is a serious sign inconsistency in the BANSA definition: the main text defines BANSA as mean entropy minus entropy of the mean, which is non-positive and contradicts the 'minimize BANSA' criterion and Proposition 1; the appendix later reverses the definition to the BALD-style form. This undermines reproducibility.",
+          "The term 'Bayesian' is used loosely: Bernoulli-masked attention is not a posterior over model parameters, and the paper itself disclaims this; the connection to BALD is at best analogical.",
+          "No direct or approximate comparison with FreeInit/FreqPrior is provided; the claim of 'comparable or superior generation quality' is unsupported.",
+          "Improvements are very small (total VBench +0.25 to +0.63) and no error bars, statistical significance tests, or per-seed variance are reported.",
+          "The experimental presentation is incomplete: the text refers to Table 3 (ablation of acquisition functions and ensemble size) but no such table appears in the provided manuscript; layer selection description also differs between main text (correlation with full-layer score) and Appendix E (correlation with quality scores).",
+          "The layer selection threshold (tau=0.7) and masking probability p=0.2 are arbitrary; no sensitivity analysis is provided."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 2,
+        "Questions": [
+          "What is the exact definition of BANSA used in the experiments? The main text and appendix give opposite signs; which one was used?",
+          "How were the missing Table 3 results computed? Can the authors provide the acquisition-function comparison and the K-ablation table?",
+          "Why were FreeInit and FreqPrior not evaluated on CogVideoX at least on a subset, and what would the overhead/gains be?",
+          "Are the reported VBench improvements statistically significant given the large number of videos (4730) and small deltas?",
+          "How sensitive are the results to p (masking probability), tau (correlation threshold), and the choice of early timestep?"
+        ],
+        "Limitations": [
+          "BANSA estimates attention uncertainty but does not directly improve generation; low-BANSA seeds can still produce unnatural videos (Figure 7).",
+          "The method requires generating a pool of M candidate seeds and evaluating them, adding inference cost; gains are modest relative to overhead.",
+          "The correlation-based layer selection is heuristic and validated on a limited set of 100 prompts.",
+          "No evaluation on other T2V architectures or on longer videos beyond the VBench-long setting.",
+          "Potential negative societal impact is not discussed, though generative video misuse is possible."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 3,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes ANSE, an inference-time framework for selecting noise seeds in text-to-video diffusion models. It introduces BANSA, an acquisition function that measures disagreement among stochastic attention maps (via Bernoulli-masked attention) to rank noise seeds, with a layer-truncation heuristic. Experiments on CogVideoX-2B/5B show small VBench improvements with roughly 8-13% inference overhead.\",\n  \"Strengths\": [\n    \"Addresses an important and underexplored problem: inference-time noise seed selection for video diffusion using internal model signals.\",\n    \"The Bernoulli-masked approximation and layer truncation make the method computationally practical.\",\n    \"The paper includes multiple ablations (acquisition functions, ensemble size, pool size, reversed scoring, truncated vs full layers, temporal scope) and shows consistent, albeit modest, gains on two model scales.\",\n    \"The approach is orthogonal to prior noise-prior methods and could be combined with them.\"\n  ],\n  \"Weaknesses\": [\n    \"There is a serious sign inconsistency in the BANSA definition: the main text defines BANSA as mean entropy minus entropy of the mean, which is non-positive and contradicts the 'minimize BANSA' criterion and Proposition 1; the appendix later reverses the definition to the BALD-style form. This undermines reproducibility.\",\n    \"The term 'Bayesian' is used loosely: Bernoulli-masked attention is not a posterior over model parameters, and the paper itself disclaims this; the connection to BALD is at best analogical.\",\n    \"No direct or approximate comparison with FreeInit/FreqPrior is provided; the claim of 'comparable or superior generation quality' is unsupported.\",\n    \"Improvements are very small (total VBench +0.25 to +0.63) and no error bars, statistical significance tests, or per-seed variance are reported.\",\n    \"The experimental presentation is incomplete: the text refers to Table 3 (ablation of acquisition functions and ensemble size) but no such table appears in the provided manuscript; layer selection description also differs between main text (correlation with full-layer score) and Appendix E (correlation with quality scores).\",\n    \"The layer selection threshold (tau=0.7) and masking probability p=0.2 are arbitrary; no sensitivity analysis is provided.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"What is the exact definition of BANSA used in the experiments? The main text and appendix give opposite signs; which one was used?\",\n    \"How were the missing Table 3 results computed? Can the authors provide the acquisition-function comparison and the K-ablation table?\",\n    \"Why were FreeInit and FreqPrior not evaluated on CogVideoX at least on a subset, and what would the overhead/gains be?\",\n    \"Are the reported VBench improvements statistically significant given the large number of videos (4730) and small deltas?\",\n    \"How sensitive are the results to p (masking probability), tau (correlation threshold), and the choice of early timestep?\"\n  ],\n  \"Limitations\": [\n    \"BANSA estimates attention uncertainty but does not directly improve generation; low-BANSA seeds can still produce unnatural videos (Figure 7).\",\n    \"The method requires generating a pool of M candidate seeds and evaluating them, adding inference cost; gains are modest relative to overhead.\",\n    \"The correlation-based layer selection is heuristic and validated on a limited set of 100 prompts.\",\n    \"No evaluation on other T2V architectures or on longer videos beyond the VBench-long setting.\",\n    \"Potential negative societal impact is not discussed, though generative video misuse is possible.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 3,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 14034,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 13266,
+        "completion_tokens": 2714,
+        "reasoning_tokens": 1864,
+        "total_tokens": 16748
+      },
+      "attempts": 1,
+      "response_id": "9e3827d8-b39e-45f9-9fc4-fb5b55a89a81"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper introduces ANSE, a framework for selecting initial noise seeds in text-to-video diffusion models. It defines BANSA, an acquisition function that estimates attention-map entropy disagreement across stochastic Bernoulli-masked attention samples, and chooses the seed minimizing BANSA to prefer confident, consistent attention. To limit overhead, BANSA is evaluated at the first denoising step using a subset of attention layers selected by correlation. On CogVideoX-2B/5B, the method improves VBench scores by small margins with ~8–13% inference-time overhead.",
+        "Strengths": [
+          "The application of active-learning-style uncertainty to inference-time noise selection in video diffusion is a novel and interesting direction.",
+          "The Bernoulli-masked approximation and layer/timestep truncation are practical and keep the overhead low (8–13% vs. >200% for prior full-pass methods).",
+          "The paper includes useful ablations: comparing acquisition functions, varying K and M, reversing the criterion, and full vs. truncated layers.",
+          "The method is orthogonal to existing noise-prior methods and can be combined with them."
+        ],
+        "Weaknesses": [
+          "The definition of BANSA in Eq. (4) (mean entropy minus entropy of mean) is non-positive by Jensen's inequality; minimizing it would select the most disagreeing attention maps, contradicting the paper's goal. The Appendix switches to the opposite sign but incorrectly claims the relative ordering is unchanged, so the central acquisition function is not well-defined.",
+          "Improvements on VBench are very small (e.g., +0.63 total on 2B and +0.25 on 5B) and no significance tests, confidence intervals, or repeated-run variability are provided, so the gains may be within evaluation noise.",
+          "No direct comparison to prior noise-selection or noise-prior methods on the same models; FreeInit/FreqPrior are omitted, and the only model-aware baselines are entropy and dropout on CogVideoX-2B.",
+          "The 'Bayesian' characterization is questionable: Bernoulli-masked attention is a heuristic perturbation rather than a posterior over parameters, and the paper does not establish a rigorous link to epistemic uncertainty or BALD.",
+          "Evaluation relies solely on VBench; there is no human study or external temporal-coherence metric, and qualitative benefits are shown on selected examples."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 2,
+        "Questions": [
+          "Please resolve the sign inconsistency: if the implemented score is H(mean)-mean H, how does minimizing it correspond to Eq. (4)? Does minimizing the two formulations not select opposite seeds?",
+          "What is the run-to-run variance of VBench scores for the vanilla baseline and ANSE? Are the reported differences statistically significant?",
+          "How does ANSE compare to a simple best-of-M baseline, e.g., generating M videos and selecting by CLIP or VBench on a small subset?",
+          "Can you provide at least a small-scale quantitative comparison with FreeInit or FreqPrior on a supported model to support the claim of comparable quality at lower cost?",
+          "How are Bernoulli masks applied to attention logits before softmax? Does setting entries to zero correspond to dropping those logits, and does this introduce bias in the entropy estimate?"
+        ],
+        "Limitations": [
+          "The method only selects seeds; it cannot correct failures in the generation process, as acknowledged.",
+          "BANSA is computed at a single early denoising step, which may ignore uncertainty that emerges later (the paper's own appendix shows only marginal gains from multi-step averaging).",
+          "Layer selection was tuned on a limited set of 100 prompts and may not generalize to other prompts or model architectures.",
+          "Requires a pool of candidate seeds and K stochastic samples, adding computational cost; memory use is claimed unchanged but attention maps may need to be stored.",
+          "No discussion of potential negative societal impacts of improved video generation, such as misuse for deepfakes."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 3,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper introduces ANSE, a framework for selecting initial noise seeds in text-to-video diffusion models. It defines BANSA, an acquisition function that estimates attention-map entropy disagreement across stochastic Bernoulli-masked attention samples, and chooses the seed minimizing BANSA to prefer confident, consistent attention. To limit overhead, BANSA is evaluated at the first denoising step using a subset of attention layers selected by correlation. On CogVideoX-2B/5B, the method improves VBench scores by small margins with ~8–13% inference-time overhead.\",\n  \"Strengths\": [\n    \"The application of active-learning-style uncertainty to inference-time noise selection in video diffusion is a novel and interesting direction.\",\n    \"The Bernoulli-masked approximation and layer/timestep truncation are practical and keep the overhead low (8–13% vs. >200% for prior full-pass methods).\",\n    \"The paper includes useful ablations: comparing acquisition functions, varying K and M, reversing the criterion, and full vs. truncated layers.\",\n    \"The method is orthogonal to existing noise-prior methods and can be combined with them.\"\n  ],\n  \"Weaknesses\": [\n    \"The definition of BANSA in Eq. (4) (mean entropy minus entropy of mean) is non-positive by Jensen's inequality; minimizing it would select the most disagreeing attention maps, contradicting the paper's goal. The Appendix switches to the opposite sign but incorrectly claims the relative ordering is unchanged, so the central acquisition function is not well-defined.\",\n    \"Improvements on VBench are very small (e.g., +0.63 total on 2B and +0.25 on 5B) and no significance tests, confidence intervals, or repeated-run variability are provided, so the gains may be within evaluation noise.\",\n    \"No direct comparison to prior noise-selection or noise-prior methods on the same models; FreeInit/FreqPrior are omitted, and the only model-aware baselines are entropy and dropout on CogVideoX-2B.\",\n    \"The 'Bayesian' characterization is questionable: Bernoulli-masked attention is a heuristic perturbation rather than a posterior over parameters, and the paper does not establish a rigorous link to epistemic uncertainty or BALD.\",\n    \"Evaluation relies solely on VBench; there is no human study or external temporal-coherence metric, and qualitative benefits are shown on selected examples.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"Please resolve the sign inconsistency: if the implemented score is H(mean)-mean H, how does minimizing it correspond to Eq. (4)? Does minimizing the two formulations not select opposite seeds?\",\n    \"What is the run-to-run variance of VBench scores for the vanilla baseline and ANSE? Are the reported differences statistically significant?\",\n    \"How does ANSE compare to a simple best-of-M baseline, e.g., generating M videos and selecting by CLIP or VBench on a small subset?\",\n    \"Can you provide at least a small-scale quantitative comparison with FreeInit or FreqPrior on a supported model to support the claim of comparable quality at lower cost?\",\n    \"How are Bernoulli masks applied to attention logits before softmax? Does setting entries to zero correspond to dropping those logits, and does this introduce bias in the entropy estimate?\"\n  ],\n  \"Limitations\": [\n    \"The method only selects seeds; it cannot correct failures in the generation process, as acknowledged.\",\n    \"BANSA is computed at a single early denoising step, which may ignore uncertainty that emerges later (the paper's own appendix shows only marginal gains from multi-step averaging).\",\n    \"Layer selection was tuned on a limited set of 100 prompts and may not generalize to other prompts or model architectures.\",\n    \"Requires a pool of candidate seeds and K stochastic samples, adding computational cost; memory use is claimed unchanged but attention maps may need to be stored.\",\n    \"No discussion of potential negative societal impacts of improved video generation, such as misuse for deepfakes.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 3,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 14034,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 13266,
+        "completion_tokens": 5213,
+        "reasoning_tokens": 4296,
+        "total_tokens": 19247
+      },
+      "attempts": 1,
+      "response_id": "34037d6e-c37e-43c4-bafa-60166f01107d"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper proposes ANSE, a framework for selecting noise seeds in text-to-video diffusion models by estimating attention-based uncertainty. The core acquisition function, BANSA, adapts BALD to the attention space, and an efficient approximation uses Bernoulli-masked attention and layer truncation. Experiments on CogVideoX-2B and -5B report small VBench improvements with modest inference overhead.",
+        "Strengths": [
+          "The idea of using internal attention uncertainty for noise seed selection is novel and well-motivated, extending active learning concepts to inference-time generation.",
+          "The Bernoulli-masked attention approximation and layer truncation are practical techniques that keep computational overhead low (8-13% inference time increase).",
+          "Evaluation on two model scales (CogVideoX-2B/5B) with 4,730 videos per configuration and multiple ablations provides a reasonably thorough empirical study."
+        ],
+        "Weaknesses": [
+          "The BANSA definition in Eq. (4) is mathematically inconsistent with the stated goal: Eq. (4) equals average entropy minus entropy of the mean, which is the negative of BALD. Minimizing this score selects seeds with high disagreement, not low uncertainty as claimed. The appendix changes the sign to BALD-style, but the main text and Proposition 1 are not corrected, making the core formulation contradictory.",
+          "The reported improvements are very small (e.g., total score +0.25 on CogVideoX-5B, quality +0.17), and no confidence intervals, error bars, or significance tests are provided, raising concerns about statistical reliability.",
+          "No direct comparison with existing noise-prior methods (FreeInit, FreqPrior) is provided on the same backbone; the claim of orthogonality is not empirically demonstrated.",
+          "The layer selection criterion in Eq. (10) correlates cumulative truncated BANSA with full-layer BANSA, not with actual quality, despite the appendix claiming correlation with quality scores. This weakens the justification for the chosen truncation depth.",
+          "The paper is poorly organized and contains multiple presentation errors: duplicated Definition 1 and Proposition 1, missing Table 3 (referenced in ablations), inconsistent notation, and incomplete method details (e.g., how dropout is applied in BANSA-D).",
+          "The claimed 'Bayesian' nature is not formally justified; the footnote acknowledges this, but the terminology may mislead readers."
+        ],
+        "Originality": 2,
+        "Quality": 1,
+        "Clarity": 1,
+        "Significance": 2,
+        "Questions": [
+          "What is the exact sign convention used in the experiments? If the implementation is BALD-style (H(mean)-avg H), why does the main text define BANSA as its negative and still claim argmin selects confident seeds?",
+          "Can the authors report standard deviations or confidence intervals for the VBench score differences to establish significance?",
+          "Why were FreeInit and FreqPrior not included as baselines? Could they be implemented on CogVideoX, and what would be the cost/benefit comparison?",
+          "How does attention consistency at the first denoising step correlate with final video quality? Is there a theoretical or empirical justification for using t=1 only?",
+          "What is the exact architecture of the considered attention layers? Does BANSA use cross-attention, self-attention, temporal attention, or a mix?",
+          "How is the dropout in BANSA (D) applied? Is it MC-dropout on the network or dropout on attention maps?"
+        ],
+        "Limitations": [
+          "The method selects seeds but does not improve the generation process itself; low-BANSA seeds can still produce unnatural videos, as acknowledged in the paper.",
+          "The Bernoulli-masked approximation is biased and lacks theoretical guarantees; the paper only provides empirical validation.",
+          "The evaluation is limited to CogVideoX models, and generalizability to other video diffusion architectures is not demonstrated.",
+          "The layer selection procedure is based on a heuristic correlation threshold and may require re-calibration for new models."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 1,
+        "Presentation": 1,
+        "Contribution": 2,
+        "Overall": 3,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes ANSE, a framework for selecting noise seeds in text-to-video diffusion models by estimating attention-based uncertainty. The core acquisition function, BANSA, adapts BALD to the attention space, and an efficient approximation uses Bernoulli-masked attention and layer truncation. Experiments on CogVideoX-2B and -5B report small VBench improvements with modest inference overhead.\",\n  \"Strengths\": [\n    \"The idea of using internal attention uncertainty for noise seed selection is novel and well-motivated, extending active learning concepts to inference-time generation.\",\n    \"The Bernoulli-masked attention approximation and layer truncation are practical techniques that keep computational overhead low (8-13% inference time increase).\",\n    \"Evaluation on two model scales (CogVideoX-2B/5B) with 4,730 videos per configuration and multiple ablations provides a reasonably thorough empirical study.\"\n  ],\n  \"Weaknesses\": [\n    \"The BANSA definition in Eq. (4) is mathematically inconsistent with the stated goal: Eq. (4) equals average entropy minus entropy of the mean, which is the negative of BALD. Minimizing this score selects seeds with high disagreement, not low uncertainty as claimed. The appendix changes the sign to BALD-style, but the main text and Proposition 1 are not corrected, making the core formulation contradictory.\",\n    \"The reported improvements are very small (e.g., total score +0.25 on CogVideoX-5B, quality +0.17), and no confidence intervals, error bars, or significance tests are provided, raising concerns about statistical reliability.\",\n    \"No direct comparison with existing noise-prior methods (FreeInit, FreqPrior) is provided on the same backbone; the claim of orthogonality is not empirically demonstrated.\",\n    \"The layer selection criterion in Eq. (10) correlates cumulative truncated BANSA with full-layer BANSA, not with actual quality, despite the appendix claiming correlation with quality scores. This weakens the justification for the chosen truncation depth.\",\n    \"The paper is poorly organized and contains multiple presentation errors: duplicated Definition 1 and Proposition 1, missing Table 3 (referenced in ablations), inconsistent notation, and incomplete method details (e.g., how dropout is applied in BANSA-D).\",\n    \"The claimed 'Bayesian' nature is not formally justified; the footnote acknowledges this, but the terminology may mislead readers.\"\n  ],\n  \"Originality\": 2,\n  \"Quality\": 1,\n  \"Clarity\": 1,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"What is the exact sign convention used in the experiments? If the implementation is BALD-style (H(mean)-avg H), why does the main text define BANSA as its negative and still claim argmin selects confident seeds?\",\n    \"Can the authors report standard deviations or confidence intervals for the VBench score differences to establish significance?\",\n    \"Why were FreeInit and FreqPrior not included as baselines? Could they be implemented on CogVideoX, and what would be the cost/benefit comparison?\",\n    \"How does attention consistency at the first denoising step correlate with final video quality? Is there a theoretical or empirical justification for using t=1 only?\",\n    \"What is the exact architecture of the considered attention layers? Does BANSA use cross-attention, self-attention, temporal attention, or a mix?\",\n    \"How is the dropout in BANSA (D) applied? Is it MC-dropout on the network or dropout on attention maps?\"\n  ],\n  \"Limitations\": [\n    \"The method selects seeds but does not improve the generation process itself; low-BANSA seeds can still produce unnatural videos, as acknowledged in the paper.\",\n    \"The Bernoulli-masked approximation is biased and lacks theoretical guarantees; the paper only provides empirical validation.\",\n    \"The evaluation is limited to CogVideoX models, and generalizability to other video diffusion architectures is not demonstrated.\",\n    \"The layer selection procedure is based on a heuristic correlation threshold and may require re-calibration for new models.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 1,\n  \"Presentation\": 1,\n  \"Contribution\": 2,\n  \"Overall\": 3,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 14034,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 13266,
+        "completion_tokens": 2928,
+        "reasoning_tokens": 2012,
+        "total_tokens": 16962
+      },
+      "attempts": 1,
+      "response_id": "6df64123-920d-42c7-86ac-cb269e4b9722"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper proposes ANSE, a training-free inference-time framework for selecting initial noise seeds in text-to-video diffusion models. The core is BANSA, an acquisition function that measures disagreement across stochastic attention maps (obtained via Bernoulli masks) to estimate model confidence. To reduce overhead, BANSA is computed using a single diffusion step and only a subset of attention layers selected by correlation analysis. Experiments on CogVideoX-2B and 5B show small improvements on VBench quality and semantic scores with 8-13% added inference time.",
+        "Strengths": [
+          "The idea of applying active-learning-style uncertainty to noise seed selection in video diffusion is novel and timely.",
+          "The method is training-free and requires no external priors or modifications to the generation process.",
+          "The authors provide an efficient approximation using Bernoulli-masked attention and layer truncation, making the approach practical.",
+          "Ablation studies, including a reversal test, suggest the proposed score is meaningful for selecting better seeds.",
+          "The paper is honest about limitations, including failure cases and the gap between estimated uncertainty and perceptual quality."
+        ],
+        "Weaknesses": [
+          "The reported gains are very small (total VBench score +0.63 on 2B and +0.25 on 5B) and no statistical significance tests or confidence intervals are provided, so these improvements may be within noise.",
+          "The theoretical justification for BANSA is weak: Proposition 1 only shows that identical attention maps give zero score, but does not establish that lower BANSA correlates with better generation quality; the connection is only empirical and the reversal experiment is limited to one model.",
+          "The use of the term 'Bayesian' is misleading, as the score does not arise from a formal posterior; it is essentially a variance heuristic on attention maps.",
+          "The method is evaluated only on CogVideoX models; generalizability to other video diffusion backbones is claimed but not demonstrated.",
+          "The paper omits direct comparisons with existing noise prior methods (FreeInit, FreqPrior) despite claiming superiority in computational cost; without empirical comparison, the relative effectiveness is unclear.",
+          "Several technical details are unclear or inconsistent: the sign convention for BANSA differs between the main text (Eq. 4) and Appendix B; the layer selection procedure describes correlation with the full-layer score in Section 3.3 but with 'official quality scores' in Appendix E; and the Bernoulli masking implementation is not fully specified.",
+          "The paper contains duplicated sections (Definition 1 and Proposition 1 appear twice in the main text), indicating sloppy presentation."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 2,
+        "Questions": [
+          "Are the VBench score improvements statistically significant across multiple runs or seeds? What are the variance/confidence intervals?",
+          "Why are no comparisons with FreeInit or FreqPrior attempted on a common backbone, even if not officially supported? Could a simple re-implementation or adaptation on CogVideoX be done?",
+          "In the Bernoulli-masked attention approximation, exactly how are the K masks applied in a single forward pass? Are they parallelized, and does this truly simulate stochastic forward passes?",
+          "What is the theoretical or empirical justification that attention uncertainty at the first denoising step is sufficient for predicting final video quality? The ablation on temporal scope shows marginal gains, but why does early-step uncertainty carry the signal?",
+          "What is the effect of the masking probability p? Is the result sensitive to p, and how was p=0.2 chosen?"
+        ],
+        "Limitations": [
+          "The improvements are small and may not be perceivable in practice.",
+          "The method is tested on a single model family (CogVideoX), limiting claims of generalizability.",
+          "The BANSA score may not capture semantic or aesthetic aspects adequately, as acknowledged by the authors.",
+          "The noise selection stage itself adds complexity and requires tuning of M, K, and p.",
+          "Potential negative societal impacts of improved video generation (e.g., generating deceptive content) are not discussed."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes ANSE, a training-free inference-time framework for selecting initial noise seeds in text-to-video diffusion models. The core is BANSA, an acquisition function that measures disagreement across stochastic attention maps (obtained via Bernoulli masks) to estimate model confidence. To reduce overhead, BANSA is computed using a single diffusion step and only a subset of attention layers selected by correlation analysis. Experiments on CogVideoX-2B and 5B show small improvements on VBench quality and semantic scores with 8-13% added inference time.\",\n  \"Strengths\": [\n    \"The idea of applying active-learning-style uncertainty to noise seed selection in video diffusion is novel and timely.\",\n    \"The method is training-free and requires no external priors or modifications to the generation process.\",\n    \"The authors provide an efficient approximation using Bernoulli-masked attention and layer truncation, making the approach practical.\",\n    \"Ablation studies, including a reversal test, suggest the proposed score is meaningful for selecting better seeds.\",\n    \"The paper is honest about limitations, including failure cases and the gap between estimated uncertainty and perceptual quality.\"\n  ],\n  \"Weaknesses\": [\n    \"The reported gains are very small (total VBench score +0.63 on 2B and +0.25 on 5B) and no statistical significance tests or confidence intervals are provided, so these improvements may be within noise.\",\n    \"The theoretical justification for BANSA is weak: Proposition 1 only shows that identical attention maps give zero score, but does not establish that lower BANSA correlates with better generation quality; the connection is only empirical and the reversal experiment is limited to one model.\",\n    \"The use of the term 'Bayesian' is misleading, as the score does not arise from a formal posterior; it is essentially a variance heuristic on attention maps.\",\n    \"The method is evaluated only on CogVideoX models; generalizability to other video diffusion backbones is claimed but not demonstrated.\",\n    \"The paper omits direct comparisons with existing noise prior methods (FreeInit, FreqPrior) despite claiming superiority in computational cost; without empirical comparison, the relative effectiveness is unclear.\",\n    \"Several technical details are unclear or inconsistent: the sign convention for BANSA differs between the main text (Eq. 4) and Appendix B; the layer selection procedure describes correlation with the full-layer score in Section 3.3 but with 'official quality scores' in Appendix E; and the Bernoulli masking implementation is not fully specified.\",\n    \"The paper contains duplicated sections (Definition 1 and Proposition 1 appear twice in the main text), indicating sloppy presentation.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"Are the VBench score improvements statistically significant across multiple runs or seeds? What are the variance/confidence intervals?\",\n    \"Why are no comparisons with FreeInit or FreqPrior attempted on a common backbone, even if not officially supported? Could a simple re-implementation or adaptation on CogVideoX be done?\",\n    \"In the Bernoulli-masked attention approximation, exactly how are the K masks applied in a single forward pass? Are they parallelized, and does this truly simulate stochastic forward passes?\",\n    \"What is the theoretical or empirical justification that attention uncertainty at the first denoising step is sufficient for predicting final video quality? The ablation on temporal scope shows marginal gains, but why does early-step uncertainty carry the signal?\",\n    \"What is the effect of the masking probability p? Is the result sensitive to p, and how was p=0.2 chosen?\"\n  ],\n  \"Limitations\": [\n    \"The improvements are small and may not be perceivable in practice.\",\n    \"The method is tested on a single model family (CogVideoX), limiting claims of generalizability.\",\n    \"The BANSA score may not capture semantic or aesthetic aspects adequately, as acknowledged by the authors.\",\n    \"The noise selection stage itself adds complexity and requires tuning of M, K, and p.\",\n    \"Potential negative societal impacts of improved video generation (e.g., generating deceptive content) are not discussed.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 14034,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 13266,
+        "completion_tokens": 3514,
+        "reasoning_tokens": 2583,
+        "total_tokens": 17548
+      },
+      "attempts": 1,
+      "response_id": "6d03513d-b5d7-4b49-8627-ae0a29bb584a"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 0,
+      "Reject": 5
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          3,
+          3,
+          3,
+          2,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Quality": {
+        "values": [
+          2,
+          2,
+          2,
+          1,
+          2
+        ],
+        "mean": 1.8,
+        "rounded_mean": 2,
+        "population_sd": 0.4,
+        "min": 1,
+        "max": 2
+      },
+      "Clarity": {
+        "values": [
+          2,
+          2,
+          2,
+          1,
+          2
+        ],
+        "mean": 1.8,
+        "rounded_mean": 2,
+        "population_sd": 0.4,
+        "min": 1,
+        "max": 2
+      },
+      "Significance": {
+        "values": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "mean": 2,
+        "rounded_mean": 2,
+        "population_sd": 0.0,
+        "min": 2,
+        "max": 2
+      },
+      "Soundness": {
+        "values": [
+          2,
+          2,
+          2,
+          1,
+          2
+        ],
+        "mean": 1.8,
+        "rounded_mean": 2,
+        "population_sd": 0.4,
+        "min": 1,
+        "max": 2
+      },
+      "Presentation": {
+        "values": [
+          2,
+          2,
+          2,
+          1,
+          2
+        ],
+        "mean": 1.8,
+        "rounded_mean": 2,
+        "population_sd": 0.4,
+        "min": 1,
+        "max": 2
+      },
+      "Contribution": {
+        "values": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "mean": 2,
+        "rounded_mean": 2,
+        "population_sd": 0.0,
+        "min": 2,
+        "max": 2
+      },
+      "Overall": {
+        "values": [
+          3,
+          4,
+          3,
+          3,
+          4
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Confidence": {
+        "values": [
+          4,
+          3,
+          4,
+          4,
+          4
+        ],
+        "mean": 3.8,
+        "rounded_mean": 4,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper proposes ANSE (Active Noise Selection for Generation), an inference-time framework for selecting initial noise seeds in text-to-video diffusion models. The central component is BANSA, an acquisition function inspired by Bayesian active learning that measures disagreement across stochastic attention maps (generated via Bernoulli-masked attention) to estimate model confidence. To reduce overhead, BANSA is computed on a single early denoising step and on a subset of attention layers selected by correlation analysis. Experiments on CogVideoX-2B and CogVideoX-5B report small VBench quality/semantic improvements with an 8-13% inference-time overhead. All five reviewers recommend rejection due to fundamental theoretical inconsistency, questionable empirical significance, and incomplete comparisons and presentation.",
+      "Strengths": [
+        "The idea of leveraging internal attention uncertainty for noise seed selection is novel and interesting, extending active learning principles to inference-time generation.",
+        "The method is training-free and can be integrated into existing text-to-video diffusion pipelines without modifying the generation model.",
+        "The Bernoulli-masked approximation and layer/timestep truncation are practical approaches that keep the computational overhead relatively low (8-13%).",
+        "The paper includes multiple ablations (acquisition functions, ensemble size, pool size, reversed criterion, full vs. truncated layers) that provide useful insights.",
+        "The approach is orthogonal to prior noise-prior methods and could potentially be combined with them."
+      ],
+      "Weaknesses": [
+        "There is a serious sign inconsistency in the definition of BANSA: Eq. (4) defines it as (1/K)Σ H(A_k) − H(mean A), which is non-positive by Jensen's inequality, contradicting the stated goal of minimizing BANSA to prefer confident, consistent attention. The appendix uses the opposite sign but claims the relative ordering is unchanged, which is mathematically incorrect since the two are negatives.",
+        "The theoretical justification is weak: Proposition 1 only shows that identical attention maps give zero score, but does not establish that lower BANSA correlates with better generation quality; the connection is purely empirical.",
+        "The reported improvements on VBench are very small (e.g., total score +0.63 on 2B and +0.25 on 5B) and no error bars, confidence intervals, or significance tests are provided, despite generating 4,730 videos per configuration; the gains may be within run-to-run variability.",
+        "No direct comparison is made with prior noise-prior methods such as FreeInit or FreqPrior, despite claims of comparable or superior quality and lower inference cost; the relative effectiveness is unsubstantiated.",
+        "The evaluation is limited to CogVideoX-2B and CogVideoX-5B; the claimed generalizability to 'various text-to-video architectures' is not supported.",
+        "The use of the term 'Bayesian' is misleading: Bernoulli-masked attention is a heuristic perturbation, not a posterior over model parameters, and the paper acknowledges this but still uses the terminology.",
+        "Several technical details are inconsistent or unclear: the layer-selection procedure in Section 3.3 correlates with the full-layer average BANSA while Appendix E says 'official quality scores'; the Bernoulli masking in Eq. (7) sets masked logits to 0 instead of −∞ before softmax, which is not a proper masked-dropout operation and lacks justification.",
+        "Presentation is poor: duplicated Definition 1 and Proposition 1, references to a missing Table 3 in the ablation section, inconsistent notation, and incomplete method details that hinder reproducibility."
+      ],
+      "Originality": 3,
+      "Quality": 2,
+      "Clarity": 2,
+      "Significance": 2,
+      "Questions": [
+        "What is the exact objective minimized in the experiments? The main text and appendix give opposite signs for BANSA; which one was used, and why is the relative ordering claimed to be unchanged when the two definitions are negatives?",
+        "Are the VBench score differences statistically significant across multiple runs or seeds? Can the authors report standard deviations, confidence intervals, or paired significance tests?",
+        "Why were no comparisons with FreeInit or FreqPrior performed on CogVideoX even on a subset? What evidence supports the claim of 'comparable or superior generation quality' and 'reduces inference cost by approximately 64%' relative to those methods?",
+        "How exactly are the Bernoulli masks applied to attention logits in Eq. (7)? Does setting masked entries to 0 rather than −∞ produce valid stochastic perturbations, and how does this differ from standard dropout on attention scores?",
+        "What is the exact set of attention layers and heads used to compute BANSA? How are cross-attention, self-attention, and temporal attention aggregated?",
+        "How sensitive are the results to the masking probability p, the correlation threshold τ=0.7, and the choice of the early denoising step?",
+        "Could a simple best-of-M baseline (e.g., generating M videos and selecting by CLIP or VBench on a small subset) outperform ANSE?",
+        "How does attention consistency at the first denoising step correlate with final video quality? Is there a theoretical or empirical justification for using t=1 only?"
+      ],
+      "Limitations": [
+        "The sign inconsistency in the BANSA definition undermines the theoretical correctness and reproducibility of the core acquisition function.",
+        "The method only selects seeds; it cannot correct failures in the generation process, and low-BANSA seeds can still produce unnatural videos (as acknowledged).",
+        "The improvements are small and may not be perceptible in practice; no statistical significance is established.",
+        "The evaluation is restricted to a single model family (CogVideoX), limiting claims of generalizability.",
+        "The 'Bayesian' framing is heuristic and not based on a rigorous posterior distribution, limiting the theoretical contribution.",
+        "The Bernoulli-masked approximation and layer-truncation heuristic lack bias/variance analysis and could affect selection quality in unknown ways.",
+        "The layer selection was tuned on a limited set of 100 prompts and may require re-calibration for other models or domains.",
+        "No discussion of potential negative societal impacts of improved video generation (e.g., deepfakes) is provided."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 2,
+      "Presentation": 2,
+      "Contribution": 2,
+      "Overall": 3,
+      "Confidence": 4,
+      "Decision": "Reject"
+    },
+    "raw_response": "{\n  \"Summary\": \"The paper proposes ANSE (Active Noise Selection for Generation), an inference-time framework for selecting initial noise seeds in text-to-video diffusion models. The central component is BANSA, an acquisition function inspired by Bayesian active learning that measures disagreement across stochastic attention maps (generated via Bernoulli-masked attention) to estimate model confidence. To reduce overhead, BANSA is computed on a single early denoising step and on a subset of attention layers selected by correlation analysis. Experiments on CogVideoX-2B and CogVideoX-5B report small VBench quality/semantic improvements with an 8-13% inference-time overhead. All five reviewers recommend rejection due to fundamental theoretical inconsistency, questionable empirical significance, and incomplete comparisons and presentation.\",\n  \"Strengths\": [\n    \"The idea of leveraging internal attention uncertainty for noise seed selection is novel and interesting, extending active learning principles to inference-time generation.\",\n    \"The method is training-free and can be integrated into existing text-to-video diffusion pipelines without modifying the generation model.\",\n    \"The Bernoulli-masked approximation and layer/timestep truncation are practical approaches that keep the computational overhead relatively low (8-13%).\",\n    \"The paper includes multiple ablations (acquisition functions, ensemble size, pool size, reversed criterion, full vs. truncated layers) that provide useful insights.\",\n    \"The approach is orthogonal to prior noise-prior methods and could potentially be combined with them.\"\n  ],\n  \"Weaknesses\": [\n    \"There is a serious sign inconsistency in the definition of BANSA: Eq. (4) defines it as (1/K)Σ H(A_k) − H(mean A), which is non-positive by Jensen's inequality, contradicting the stated goal of minimizing BANSA to prefer confident, consistent attention. The appendix uses the opposite sign but claims the relative ordering is unchanged, which is mathematically incorrect since the two are negatives.\",\n    \"The theoretical justification is weak: Proposition 1 only shows that identical attention maps give zero score, but does not establish that lower BANSA correlates with better generation quality; the connection is purely empirical.\",\n    \"The reported improvements on VBench are very small (e.g., total score +0.63 on 2B and +0.25 on 5B) and no error bars, confidence intervals, or significance tests are provided, despite generating 4,730 videos per configuration; the gains may be within run-to-run variability.\",\n    \"No direct comparison is made with prior noise-prior methods such as FreeInit or FreqPrior, despite claims of comparable or superior quality and lower inference cost; the relative effectiveness is unsubstantiated.\",\n    \"The evaluation is limited to CogVideoX-2B and CogVideoX-5B; the claimed generalizability to 'various text-to-video architectures' is not supported.\",\n    \"The use of the term 'Bayesian' is misleading: Bernoulli-masked attention is a heuristic perturbation, not a posterior over model parameters, and the paper acknowledges this but still uses the terminology.\",\n    \"Several technical details are inconsistent or unclear: the layer-selection procedure in Section 3.3 correlates with the full-layer average BANSA while Appendix E says 'official quality scores'; the Bernoulli masking in Eq. (7) sets masked logits to 0 instead of −∞ before softmax, which is not a proper masked-dropout operation and lacks justification.\",\n    \"Presentation is poor: duplicated Definition 1 and Proposition 1, references to a missing Table 3 in the ablation section, inconsistent notation, and incomplete method details that hinder reproducibility.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"What is the exact objective minimized in the experiments? The main text and appendix give opposite signs for BANSA; which one was used, and why is the relative ordering claimed to be unchanged when the two definitions are negatives?\",\n    \"Are the VBench score differences statistically significant across multiple runs or seeds? Can the authors report standard deviations, confidence intervals, or paired significance tests?\",\n    \"Why were no comparisons with FreeInit or FreqPrior performed on CogVideoX even on a subset? What evidence supports the claim of 'comparable or superior generation quality' and 'reduces inference cost by approximately 64%' relative to those methods?\",\n    \"How exactly are the Bernoulli masks applied to attention logits in Eq. (7)? Does setting masked entries to 0 rather than −∞ produce valid stochastic perturbations, and how does this differ from standard dropout on attention scores?\",\n    \"What is the exact set of attention layers and heads used to compute BANSA? How are cross-attention, self-attention, and temporal attention aggregated?\",\n    \"How sensitive are the results to the masking probability p, the correlation threshold τ=0.7, and the choice of the early denoising step?\",\n    \"Could a simple best-of-M baseline (e.g., generating M videos and selecting by CLIP or VBench on a small subset) outperform ANSE?\",\n    \"How does attention consistency at the first denoising step correlate with final video quality? Is there a theoretical or empirical justification for using t=1 only?\"\n  ],\n  \"Limitations\": [\n    \"The sign inconsistency in the BANSA definition undermines the theoretical correctness and reproducibility of the core acquisition function.\",\n    \"The method only selects seeds; it cannot correct failures in the generation process, and low-BANSA seeds can still produce unnatural videos (as acknowledged).\",\n    \"The improvements are small and may not be perceptible in practice; no statistical significance is established.\",\n    \"The evaluation is restricted to a single model family (CogVideoX), limiting claims of generalizability.\",\n    \"The 'Bayesian' framing is heuristic and not based on a rigorous posterior distribution, limiting the theoretical contribution.\",\n    \"The Bernoulli-masked approximation and layer-truncation heuristic lack bias/variance analysis and could affect selection quality in unknown ways.\",\n    \"The layer selection was tuned on a limited set of 100 prompts and may require re-calibration for other models or domains.\",\n    \"No discussion of potential negative societal impacts of improved video generation (e.g., deepfakes) is provided.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 3,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+    "usage": {
+      "prompt_tokens": 5894,
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 5638,
+      "completion_tokens": 1672,
+      "reasoning_tokens": 301,
+      "total_tokens": 7566
+    },
+    "attempts": 1,
+    "response_id": "30ade544-a4e9-4593-9730-d74e4d6d9c07"
+  },
+  "final_review": {
+    "Summary": "The paper proposes ANSE (Active Noise Selection for Generation), an inference-time framework for selecting initial noise seeds in text-to-video diffusion models. The central component is BANSA, an acquisition function inspired by Bayesian active learning that measures disagreement across stochastic attention maps (generated via Bernoulli-masked attention) to estimate model confidence. To reduce overhead, BANSA is computed on a single early denoising step and on a subset of attention layers selected by correlation analysis. Experiments on CogVideoX-2B and CogVideoX-5B report small VBench quality/semantic improvements with an 8-13% inference-time overhead. All five reviewers recommend rejection due to fundamental theoretical inconsistency, questionable empirical significance, and incomplete comparisons and presentation.",
+    "Strengths": [
+      "The idea of leveraging internal attention uncertainty for noise seed selection is novel and interesting, extending active learning principles to inference-time generation.",
+      "The method is training-free and can be integrated into existing text-to-video diffusion pipelines without modifying the generation model.",
+      "The Bernoulli-masked approximation and layer/timestep truncation are practical approaches that keep the computational overhead relatively low (8-13%).",
+      "The paper includes multiple ablations (acquisition functions, ensemble size, pool size, reversed criterion, full vs. truncated layers) that provide useful insights.",
+      "The approach is orthogonal to prior noise-prior methods and could potentially be combined with them."
+    ],
+    "Weaknesses": [
+      "There is a serious sign inconsistency in the definition of BANSA: Eq. (4) defines it as (1/K)Σ H(A_k) − H(mean A), which is non-positive by Jensen's inequality, contradicting the stated goal of minimizing BANSA to prefer confident, consistent attention. The appendix uses the opposite sign but claims the relative ordering is unchanged, which is mathematically incorrect since the two are negatives.",
+      "The theoretical justification is weak: Proposition 1 only shows that identical attention maps give zero score, but does not establish that lower BANSA correlates with better generation quality; the connection is purely empirical.",
+      "The reported improvements on VBench are very small (e.g., total score +0.63 on 2B and +0.25 on 5B) and no error bars, confidence intervals, or significance tests are provided, despite generating 4,730 videos per configuration; the gains may be within run-to-run variability.",
+      "No direct comparison is made with prior noise-prior methods such as FreeInit or FreqPrior, despite claims of comparable or superior quality and lower inference cost; the relative effectiveness is unsubstantiated.",
+      "The evaluation is limited to CogVideoX-2B and CogVideoX-5B; the claimed generalizability to 'various text-to-video architectures' is not supported.",
+      "The use of the term 'Bayesian' is misleading: Bernoulli-masked attention is a heuristic perturbation, not a posterior over model parameters, and the paper acknowledges this but still uses the terminology.",
+      "Several technical details are inconsistent or unclear: the layer-selection procedure in Section 3.3 correlates with the full-layer average BANSA while Appendix E says 'official quality scores'; the Bernoulli masking in Eq. (7) sets masked logits to 0 instead of −∞ before softmax, which is not a proper masked-dropout operation and lacks justification.",
+      "Presentation is poor: duplicated Definition 1 and Proposition 1, references to a missing Table 3 in the ablation section, inconsistent notation, and incomplete method details that hinder reproducibility."
+    ],
+    "Originality": 3,
+    "Quality": 2,
+    "Clarity": 2,
+    "Significance": 2,
+    "Questions": [
+      "What is the exact objective minimized in the experiments? The main text and appendix give opposite signs for BANSA; which one was used, and why is the relative ordering claimed to be unchanged when the two definitions are negatives?",
+      "Are the VBench score differences statistically significant across multiple runs or seeds? Can the authors report standard deviations, confidence intervals, or paired significance tests?",
+      "Why were no comparisons with FreeInit or FreqPrior performed on CogVideoX even on a subset? What evidence supports the claim of 'comparable or superior generation quality' and 'reduces inference cost by approximately 64%' relative to those methods?",
+      "How exactly are the Bernoulli masks applied to attention logits in Eq. (7)? Does setting masked entries to 0 rather than −∞ produce valid stochastic perturbations, and how does this differ from standard dropout on attention scores?",
+      "What is the exact set of attention layers and heads used to compute BANSA? How are cross-attention, self-attention, and temporal attention aggregated?",
+      "How sensitive are the results to the masking probability p, the correlation threshold τ=0.7, and the choice of the early denoising step?",
+      "Could a simple best-of-M baseline (e.g., generating M videos and selecting by CLIP or VBench on a small subset) outperform ANSE?",
+      "How does attention consistency at the first denoising step correlate with final video quality? Is there a theoretical or empirical justification for using t=1 only?"
+    ],
+    "Limitations": [
+      "The sign inconsistency in the BANSA definition undermines the theoretical correctness and reproducibility of the core acquisition function.",
+      "The method only selects seeds; it cannot correct failures in the generation process, and low-BANSA seeds can still produce unnatural videos (as acknowledged).",
+      "The improvements are small and may not be perceptible in practice; no statistical significance is established.",
+      "The evaluation is restricted to a single model family (CogVideoX), limiting claims of generalizability.",
+      "The 'Bayesian' framing is heuristic and not based on a rigorous posterior distribution, limiting the theoretical contribution.",
+      "The Bernoulli-masked approximation and layer-truncation heuristic lack bias/variance analysis and could affect selection quality in unknown ways.",
+      "The layer selection was tuned on a limited set of 100 prompts and may require re-calibration for other models or domains.",
+      "No discussion of potential negative societal impacts of improved video generation (e.g., deepfakes) is provided."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 2,
+    "Presentation": 2,
+    "Contribution": 2,
+    "Overall": 3,
+    "Confidence": 4,
+    "Decision": "Reject"
+  },
+  "final_review_source": "Area Chair model output",
+  "usage": {
+    "prompt_tokens": 76064,
+    "prompt_cache_hit_tokens": 4096,
+    "prompt_cache_miss_tokens": 71968,
+    "completion_tokens": 20066,
+    "reasoning_tokens": 13616,
+    "total_tokens": 96130,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 1.147e-05,
+    "cache_miss_input_usd": 0.01007552,
+    "output_usd": 0.00561848,
+    "total_usd": 0.01570547
+  },
+  "elapsed_seconds": 61.275,
+  "input": {
+    "blind_id": "B113",
+    "filename": "B113.txt",
+    "blind_text_sha256": "014a9cebaa58dbcae66b3b61d177fe1f1b75232f464f0156dad39eabff61b5d0",
+    "characters": 54342,
+    "full_text_saved": false
+  }
+}

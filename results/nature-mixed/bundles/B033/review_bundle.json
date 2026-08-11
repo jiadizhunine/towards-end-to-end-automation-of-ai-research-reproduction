@@ -1,0 +1,705 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:42:44.364829+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper introduces SEAL (Substructure Explanation via Attribution Learning), an interpretable graph neural network for molecular property prediction. SEAL decomposes molecular graphs into chemically meaningful fragments (using a BRICS variant), computes per-fragment contributions via an MLP on pooled fragment representations, and sums these contributions (plus a bias) to make predictions. To improve interpretability, the authors propose SEAL-GCN, a new graph convolutional layer with separate weights for intra-fragment and inter-fragment edges, regularized by an L1 penalty on inter-fragment weights to control information leakage. The model is evaluated on the B-XAIC synthetic benchmark (with ground-truth explanations) and three real-world datasets (hERG, CYP2C9, AqSol), comparing against standard GNN explainers (GNNExplainer, Integrated Gradients, Saliency, etc.) using subgraph explanation (SE) and fidelity metrics. A user study with chemistry experts shows SEAL explanations are preferred most frequently for solubility prediction. The paper also provides ablations on the regularization parameter λ and masking strategies.",
+        "Strengths": [
+          "Clear motivation: addresses the mismatch between atom-level explanations and chemical intuition by providing fragment-level attributions.",
+          "Novel architecture: SEAL-GCN with separate intra/inter-fragment weights and L1 regularization is a clean, well-motivated design that directly targets information leakage.",
+          "Comprehensive evaluation: includes synthetic benchmarks with ground truth, real-world fidelity metrics, ablation studies on λ, and a user study with domain experts.",
+          "Honest discussion of limitations: acknowledges failures (e.g., boron task) and the out-of-distribution issue with fidelity metrics.",
+          "Code is provided, enhancing reproducibility."
+        ],
+        "Weaknesses": [
+          "Predictive performance is competitive but not superior to GIN on real-world datasets (e.g., slightly lower AUROC on hERG and CYP2C9), so the main contribution is interpretability rather than accuracy.",
+          "Synthetic benchmark results are mixed: SEAL performs poorly on rings-max (SE=0.34) and only moderately on boron (SE=0.88), with limited analysis of the rings-max failure.",
+          "The fidelity comparison may be unfair: SEAL masks fragment contributions directly, while baselines mask input nodes, which are different operations. The paper acknowledges this but does not provide a fully matched comparison.",
+          "The user study is small (19 questions, one property) and lacks statistical significance testing; it is suggestive but not conclusive.",
+          "No comparison against other fragment-based interpretable models (e.g., FragFormer, Cao et al.'s Group Graph) that are cited in related work.",
+          "The fragmentation choice (BRICS variant) is not systematically varied; the impact of alternative fragment definitions on interpretability is unexplored."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "Why were FragFormer and Cao et al.'s Group Graph not included as baselines? How does SEAL compare to them in terms of predictive performance and interpretability?",
+          "The fidelity evaluation masks contributions for SEAL but input nodes for baselines. Could you also evaluate SEAL by masking input nodes (rather than contributions) to provide a fairer comparison?",
+          "What causes the poor performance on the rings-max task? Is it a fundamental limitation of the BRICS fragment decomposition, or could it be addressed with different fragmentation or regularization?",
+          "How sensitive are the results to the choice of fragmentation algorithm? Have you tested other fragment definitions (e.g., functional group-based, RECAP)?",
+          "The user study only covers aqueous solubility. Would the preference for SEAL explanations generalize to other properties like hERG or CYP inhibition?",
+          "How was the number of highlighted atoms (approximately half) determined in the user study? Could this choice bias the results toward methods that highlight larger substructures?",
+          "The regularization parameter λ is selected via a Wilcoxon test on validation performance. How stable is this selection across different random seeds or dataset splits?"
+        ],
+        "Limitations": [
+          "The model assumes fragment-level additivity, which may not hold for molecular properties involving long-range or cooperative interactions between fragments.",
+          "The BRICS decomposition may not align with the 'true' important substructures for all tasks, as demonstrated by the boron task failure.",
+          "The regularization parameter λ requires per-task tuning, which may be impractical for new applications without validation data with ground-truth explanations.",
+          "Fidelity metrics are computed on out-of-distribution inputs (masked graphs), which the paper acknowledges as a limitation.",
+          "The user study is limited in scope (19 questions, one property, no statistical testing) and may not reflect real-world usage patterns.",
+          "No analysis of computational overhead compared to standard GNNs or explainers."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThe paper introduces SEAL, an interpretable GNN for molecular property prediction that decomposes molecules into fragments (using BRICS) and computes per-fragment contributions that sum to the final prediction. The key novelty is a new GCN layer (SEAL-GCN) that separates intra-fragment and inter-fragment message passing weights, plus an L1 regularization on inter-fragment weights to control information leakage. The model is evaluated on synthetic benchmarks (B-XAIC) and real-world datasets (hERG, CYP2C9, AqSol) against standard GNN explainers, plus a user study.\n\nStrengths:\n1. Clear motivation: addresses the gap between atom-level explanations and chemical intuition (fragment-level reasoning).\n2. Novel architecture: SEAL-GCN with separate intra/inter-fragment weights is a clean, well-motivated design.\n3. Comprehensive evaluation: synthetic benchmarks with ground truth, real-world fidelity metrics, and a user study with chemistry experts.\n4. Good ablation on the regularization parameter λ, showing its effect on interpretability-performance trade-off.\n5. Code is provided.\n\nWeaknesses:\n1. The model's predictive performance is not state-of-the-art; it is competitive but not superior to GIN (e.g., on hERG and CYP2C9, SEAL is slightly worse). The paper's claim of \"maintaining competitive predictive performance\" is honest but the contribution is primarily interpretability, not accuracy.\n2. The synthetic benchmark results are mixed: SEAL performs poorly on rings-max (SE=0.34) and B (SE=0.88) tasks, with the paper acknowledging the boron failure but not deeply analyzing the rings-max failure.\n3. The fidelity evaluation on real-world data is arguably favorable to SEAL because masking fragment contributions directly (rather than input nodes) is a different operation than what baselines do. The paper acknowledges this but the comparison may still be unfair.\n4. The user study is small (19 questions) and only covers solubility; it would be stronger with more tasks and participants.\n5. The paper does not compare against other fragment-based interpretable models (e.g., FragFormer, Cao et al.'s fragment GNN) in the experiments, which are cited in related work but not benchmarked.\n6. The choice of BRICS decomposition is somewhat arbitrary; the paper does not explore alternative fragment definitions or their impact on interpretability.\n7. The regularization selection procedure (Wilcoxon test) is reasonable but the paper does not provide analysis of how sensitive the results are to this choice.\n\nOriginality: The combination of fragment-level decomposition with a dedicated architecture that controls inter-fragment information flow is novel. The idea of making the model inherently interpretable by design (rather than post-hoc explanation) is valuable. However, fragment-based molecular representations are not new, and the contribution is more of an engineering/architectural improvement than a fundamental new concept. Rating: 3 (high-medium).\n\nQuality: The experiments are thorough and the paper is honest about limitations (e.g., boron failure, fidelity OOD issues). However, the real-world fidelity comparison is potentially biased in SEAL's favor, and the user study is limited in scope. The code availability is a plus. Rating: 3 (good).\n\nClarity: The paper is well-written and organized. The method is clearly explained with equations and a figure. The appendices provide extensive details. The main text is accessible. Rating: 4 (excellent).\n\nSignificance: The work addresses an important problem (interpretability in molecular property prediction) and provides a practical solution that improves human-aligned explanations. The user study is a strong point. However, the predictive performance is not superior, and the approach is limited to fragment-based reasoning, which may not capture all relevant interactions. The impact is moderate: it will be useful for researchers in cheminformatics but may not be broadly influential in the ML community. Rating: 3 (high).\n\nQuestions for authors:\n1. How does SEAL compare to FragFormer and Cao et al.'s fragment GNN in terms of both performance and interpretability? Why were these not included as baselines?\n2. The fidelity comparison masks contributions for SEAL versus input nodes for baselines. Is this a fair comparison? Could you also evaluate SEAL by masking input nodes to match the baselines?\n3. Why does SEAL perform so poorly on the rings-max task? Is this a fundamental limitation of the fragment decomposition?\n4. How sensitive are the results to the BRICS fragmentation? Have you tried other fragment definitions?\n5. The user study only covers solubility. Would the results generalize to other properties like hERG or CYP inhibition?\n\nLimitations:\n- The approach assumes fragment-level additivity, which may not hold for properties involving long-range or cooperative interactions.\n- The BRICS decomposition may not align with the \"true\" important substructures for all tasks, as evidenced by the boron failure.\n- The regularization parameter λ requires tuning per task/dataset, which may be impractical.\n- The fidelity metrics are computed on out-of-distribution inputs (masked graphs), which the paper acknowledges.\n- The user study is limited in scope and size.\n\nEthical concerns: None identified. The work is about interpretability, which generally has positive societal impact.\n\nSoundness: The methodology is generally sound, but the fairness of the fidelity comparison and the limited scope of the user study slightly reduce confidence. Rating: 3 (good).\n\nPresentation: Excellent clarity and organization. Rating: 4 (excellent).\n\nContribution: The work provides a useful, practical tool for interpretable molecular property prediction with a novel architectural contribution. The user study adds value. However, the limited performance gains and the niche applicability (fragment-based reasoning) make it a moderate contribution. Rating: 3 (good).\n\nOverall: I lean towards acceptance because the paper is technically solid, clearly written, and addresses a real need. The novelty in architecture and the comprehensive evaluation (including user study) outweigh the concerns about performance and comparison fairness. The paper would be improved by addressing the questions above, but these are not fatal flaws. Rating: 6 (Weak Accept).\n\nDecision: Accept (since the rating is 6, which maps to Weak Accept, and the instruction says to use only Accept or Reject; I'll choose Accept given the positive lean).\n\nConfidence: 4 (I am confident but not absolutely certain, as I did not check all math details and the user study details are not fully described).REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper introduces SEAL (Substructure Explanation via Attribution Learning), an interpretable graph neural network for molecular property prediction. SEAL decomposes molecular graphs into chemically meaningful fragments (using a BRICS variant), computes per-fragment contributions via an MLP on pooled fragment representations, and sums these contributions (plus a bias) to make predictions. To improve interpretability, the authors propose SEAL-GCN, a new graph convolutional layer with separate weights for intra-fragment and inter-fragment edges, regularized by an L1 penalty on inter-fragment weights to control information leakage. The model is evaluated on the B-XAIC synthetic benchmark (with ground-truth explanations) and three real-world datasets (hERG, CYP2C9, AqSol), comparing against standard GNN explainers (GNNExplainer, Integrated Gradients, Saliency, etc.) using subgraph explanation (SE) and fidelity metrics. A user study with chemistry experts shows SEAL explanations are preferred most frequently for solubility prediction. The paper also provides ablations on the regularization parameter λ and masking strategies.\",\n  \"Strengths\": [\n    \"Clear motivation: addresses the mismatch between atom-level explanations and chemical intuition by providing fragment-level attributions.\",\n    \"Novel architecture: SEAL-GCN with separate intra/inter-fragment weights and L1 regularization is a clean, well-motivated design that directly targets information leakage.\",\n    \"Comprehensive evaluation: includes synthetic benchmarks with ground truth, real-world fidelity metrics, ablation studies on λ, and a user study with domain experts.\",\n    \"Honest discussion of limitations: acknowledges failures (e.g., boron task) and the out-of-distribution issue with fidelity metrics.\",\n    \"Code is provided, enhancing reproducibility.\"\n  ],\n  \"Weaknesses\": [\n    \"Predictive performance is competitive but not superior to GIN on real-world datasets (e.g., slightly lower AUROC on hERG and CYP2C9), so the main contribution is interpretability rather than accuracy.\",\n    \"Synthetic benchmark results are mixed: SEAL performs poorly on rings-max (SE=0.34) and only moderately on boron (SE=0.88), with limited analysis of the rings-max failure.\",\n    \"The fidelity comparison may be unfair: SEAL masks fragment contributions directly, while baselines mask input nodes, which are different operations. The paper acknowledges this but does not provide a fully matched comparison.\",\n    \"The user study is small (19 questions, one property) and lacks statistical significance testing; it is suggestive but not conclusive.\",\n    \"No comparison against other fragment-based interpretable models (e.g., FragFormer, Cao et al.'s Group Graph) that are cited in related work.\",\n    \"The fragmentation choice (BRICS variant) is not systematically varied; the impact of alternative fragment definitions on interpretability is unexplored.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 4,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"Why were FragFormer and Cao et al.'s Group Graph not included as baselines? How does SEAL compare to them in terms of predictive performance and interpretability?\",\n    \"The fidelity evaluation masks contributions for SEAL but input nodes for baselines. Could you also evaluate SEAL by masking input nodes (rather than contributions) to provide a fairer comparison?\",\n    \"What causes the poor performance on the rings-max task? Is it a fundamental limitation of the BRICS fragment decomposition, or could it be addressed with different fragmentation or regularization?\",\n    \"How sensitive are the results to the choice of fragmentation algorithm? Have you tested other fragment definitions (e.g., functional group-based, RECAP)?\",\n    \"The user study only covers aqueous solubility. Would the preference for SEAL explanations generalize to other properties like hERG or CYP inhibition?\",\n    \"How was the number of highlighted atoms (approximately half) determined in the user study? Could this choice bias the results toward methods that highlight larger substructures?\",\n    \"The regularization parameter λ is selected via a Wilcoxon test on validation performance. How stable is this selection across different random seeds or dataset splits?\"\n  ],\n  \"Limitations\": [\n    \"The model assumes fragment-level additivity, which may not hold for molecular properties involving long-range or cooperative interactions between fragments.\",\n    \"The BRICS decomposition may not align with the 'true' important substructures for all tasks, as demonstrated by the boron task failure.\",\n    \"The regularization parameter λ requires per-task tuning, which may be impractical for new applications without validation data with ground-truth explanations.\",\n    \"Fidelity metrics are computed on out-of-distribution inputs (masked graphs), which the paper acknowledges as a limitation.\",\n    \"The user study is limited in scope (19 questions, one property, no statistical testing) and may not reflect real-world usage patterns.\",\n    \"No analysis of computational overhead compared to standard GNNs or explainers.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 4,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 37920,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 36128,
+        "completion_tokens": 2416,
+        "reasoning_tokens": 0,
+        "total_tokens": 40336
+      },
+      "attempts": 1,
+      "response_id": "b9f2e6c9-a449-4a89-882c-4c01bc4dd878"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper introduces SEAL (Substructure Explanation via Attribution Learning), an interpretable graph neural network for molecular property prediction. SEAL decomposes molecular graphs into chemically meaningful fragments (via a modified BRICS algorithm), computes per-fragment contributions using an MLP on fragment-level representations, and sums these contributions (plus a bias) to form the final prediction. To improve interpretability, the authors propose SEAL-GCN, a graph convolutional layer with separate weights for intra-fragment and inter-fragment message passing, regularized by an L1 penalty on inter-fragment weights (controlled by λ). The model is evaluated on the B-XAIC synthetic benchmark (with ground-truth explanations) and three real-world TDC datasets (hERG, CYP2C9, AqSol), using SE/NE metrics on synthetic data and fidelity metrics on real data. A user study with chemistry experts (19 questions) shows SEAL explanations are preferred over seven baseline explainers. The paper demonstrates that SEAL achieves competitive predictive performance while providing more human-aligned, fragment-level explanations.",
+        "Strengths": [
+          "Novel and well-motivated approach: making predictions additive over chemically meaningful fragments naturally yields interpretable explanations aligned with chemical intuition, unlike post-hoc explainers.",
+          "Elegant architecture: SEAL-GCN with separate intra/inter-fragment weights and L1 regularization is a simple yet effective mechanism to control information flow and improve explanation localization.",
+          "Comprehensive evaluation: includes synthetic benchmarks with ground-truth explanations, real-world datasets with fidelity metrics, and a user study with domain experts – a rare and valuable combination.",
+          "Honest discussion of limitations: the paper acknowledges the boron task failure, the caveats of fidelity metrics, and the trade-off between performance and interpretability via λ selection.",
+          "Code is publicly available, enhancing reproducibility.",
+          "The λ selection procedure via Wilcoxon signed-rank test is principled and well-described."
+        ],
+        "Weaknesses": [
+          "Predictive performance is not superior to baselines; SEAL is competitive but often slightly worse than GIN (e.g., MAE 0.47 vs 0.41 on AqSol, AUROC 0.81 vs 0.86 on CYP2C9). The paper does not deeply analyze these trade-offs.",
+          "The SE score on the rings-max task is notably poor (0.34 vs 0.67 for GuidedBackprop), and the explanation provided (imbalanced dataset, large substructures) is plausible but under-analyzed – more ablation or analysis would strengthen the work.",
+          "Negative fidelity values for SEAL are near zero (e.g., 0.04–0.09 on hERG). This suggests the model's predictions are extremely sensitive to any masking, which may indicate the additive contribution assumption is fragile or that the masking strategy is not well-calibrated. This deserves more discussion.",
+          "The user study is limited: only 19 questions, only covers aqueous solubility, and the number of participants is not clearly stated. Statistical significance of SEAL's preference is not reported.",
+          "The comparison to GNNExplainer and other post-hoc explainers is somewhat unfair since SEAL is inherently interpretable; a comparison to other inherently interpretable fragment-based models (e.g., FragFormer, Group Graph) would be more informative.",
+          "The paper's core assumption that fragment-level contributions are sufficient for many molecular properties is stated but not rigorously tested; for tasks requiring long-range interactions (e.g., PAINS), the model needs λ=0, which undermines the interpretability benefit."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "Why are the negative fidelity values for SEAL so low (near zero)? Does this indicate that the model's predictions are overly sensitive to any node masking, or that the masking strategy is not well-matched to the additive contribution structure? Please provide more analysis.",
+          "Can you provide a more detailed analysis of the rings-max failure? The SE score of 0.34 is significantly worse than baselines. What specific aspects of the extended BRICS decomposition or the model architecture cause this?",
+          "How many participants were in the user study, and was a statistical test (e.g., binomial test or Friedman test) performed to confirm that SEAL's preference is significant?",
+          "How does SEAL compare experimentally to other fragment-based interpretable models such as FragFormer or Group Graph, which are cited in related work?",
+          "The paper claims 'strong alignment between fragment contributions and model predictions.' Beyond fidelity and SE metrics, is there any direct evidence (e.g., correlation between contributions and predicted values) supporting this claim?",
+          "For tasks that require long-range interactions (e.g., PAINS), λ=0 is optimal, meaning no regularization on inter-fragment message passing. In such cases, how does SEAL's interpretability compare to post-hoc explainers?",
+          "The λ selection procedure uses 'not significantly worse' based on Wilcoxon test. What significance level was used, and how sensitive are the final explanations to this choice?"
+        ],
+        "Limitations": [
+          "The additive fragment contribution assumption may not hold for all molecular properties, especially those involving complex long-range interactions or cooperative effects between distant fragments.",
+          "Predictive performance is competitive but not state-of-the-art; the interpretability benefit comes at some cost in accuracy.",
+          "The user study is limited in scope (only solubility, 19 questions, unclear participant count) and may not generalize to other properties or expert populations.",
+          "The paper does not explicitly discuss potential negative societal impacts, such as over-reliance on model explanations in drug discovery or the risk of misleading interpretations being used in high-stakes decisions.",
+          "The fragment decomposition via modified BRICS may not be optimal for all tasks; the paper does not explore alternative fragmentation strategies."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThe paper introduces SEAL, an interpretable GNN for molecular property prediction that decomposes molecules into fragments and computes fragment-level contributions. The key contributions are: (1) a fragment-based interpretability approach where predictions are sums of fragment contributions, (2) a novel GCN variant (SEAL-GCN) with separate intra/inter-fragment weights and L1 regularization on inter-fragment weights, and (3) extensive evaluation including synthetic benchmarks, real-world datasets, and a user study.\n\nStrengths:\n- The core idea is novel and well-motivated: aligning explanations with chemical intuition via fragment-based decomposition\n- The architecture is elegant - making predictions additive over fragments naturally yields interpretable contributions\n- Comprehensive evaluation across synthetic (B-XAIC) and real-world (TDC) benchmarks\n- User study with domain experts adds valuable human-centered validation\n- Good discussion of limitations (e.g., boron task failure, fidelity metric caveats)\n- Code is available\n\nWeaknesses:\n- Predictive performance is not superior to baselines; SEAL is competitive but not better (often slightly worse than GIN)\n- The SE metric on rings-max is notably poor (0.34 vs 0.67 for GuidedBackprop), and the paper's explanation is somewhat thin\n- The negative fidelity values for SEAL are near zero, which might indicate the model is too confident or the masking strategy is problematic - this deserves more discussion\n- The user study is small (19 questions) and only covers solubility; the number of participants isn't clearly stated\n- The comparison to GNNExplainer seems unfair since GNNExplainer is designed for explaining any model, while SEAL is inherently interpretable - a fairer comparison would be against other inherently interpretable methods\n- The paper's claim that \"fragment-level contributions offer sufficient explanatory power\" is a strong assumption that may not hold for all tasks\n- The lambda selection procedure (Wilcoxon test) is reasonable but the choice of \"not significantly worse\" threshold isn't specified\n- The related work section mentions FragFormer and Group Graph but doesn't deeply compare with them experimentally\n\nOriginality: High - the fragment-based additive prediction architecture is a fresh approach to interpretability, distinct from post-hoc explainers and existing fragment-based models.\n\nQuality: Good - solid experimental methodology, but some metrics (negative fidelity) are not fully explained and the poor rings-max performance is under-analyzed.\n\nClarity: Good - well-written and organized, with clear figures and tables. The appendix is comprehensive.\n\nSignificance: Moderate-to-high - the approach could be useful for practitioners needing interpretable models, and the user study is a nice contribution. However, the performance trade-offs might limit adoption.\n\nQuestions for authors:\n1. Why is negative fidelity so low for SEAL? Does this indicate the model's predictions are too sensitive to any masking?\n2. The rings-max SE score is poor (0.34). Can you provide more analysis of why this task fails?\n3. How many participants were in the user study? Was there a statistical test for significance?\n4. How does SEAL compare to FragFormer or Group Graph experimentally?\n5. The paper claims \"strong alignment between fragment contributions and model predictions\" - what is the quantitative evidence for this beyond fidelity?\n6. What happens when fragments are large (e.g., PAINS)? Could the additive assumption break down?\n\nLimitations:\n- The additive fragment assumption may not hold for all molecular properties\n- Performance is competitive but not state-of-the-art\n- The user study is limited in scope (only solubility, 19 questions)\n- The paper doesn't discuss potential negative societal impacts (e.g., over-reliance on model explanations in drug discovery)\n\nEthical concerns: None apparent beyond the general need for careful use of ML in scientific domains.\n\nSoundness: 3 (good) - technically sound with appropriate experiments, but some metrics and failure cases need deeper analysis.\n\nPresentation: 3 (good) - well-written but could improve comparison with other fragment-based interpretable models.\n\nContribution: 3 (good) - novel approach with practical value, but impact is moderate given performance trade-offs.\n\nOverall: 6 (Weak Accept) - solid work with a novel idea and decent evaluation, but the performance trade-offs and limited user study prevent a stronger recommendation.\n\nConfidence: 4 - I'm confident in my assessment, though I haven't checked all implementation details.\n\nDecision: Accept (with reservations, but the work is technically sound and contributes a useful new direction)REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper introduces SEAL (Substructure Explanation via Attribution Learning), an interpretable graph neural network for molecular property prediction. SEAL decomposes molecular graphs into chemically meaningful fragments (via a modified BRICS algorithm), computes per-fragment contributions using an MLP on fragment-level representations, and sums these contributions (plus a bias) to form the final prediction. To improve interpretability, the authors propose SEAL-GCN, a graph convolutional layer with separate weights for intra-fragment and inter-fragment message passing, regularized by an L1 penalty on inter-fragment weights (controlled by λ). The model is evaluated on the B-XAIC synthetic benchmark (with ground-truth explanations) and three real-world TDC datasets (hERG, CYP2C9, AqSol), using SE/NE metrics on synthetic data and fidelity metrics on real data. A user study with chemistry experts (19 questions) shows SEAL explanations are preferred over seven baseline explainers. The paper demonstrates that SEAL achieves competitive predictive performance while providing more human-aligned, fragment-level explanations.\",\n  \"Strengths\": [\n    \"Novel and well-motivated approach: making predictions additive over chemically meaningful fragments naturally yields interpretable explanations aligned with chemical intuition, unlike post-hoc explainers.\",\n    \"Elegant architecture: SEAL-GCN with separate intra/inter-fragment weights and L1 regularization is a simple yet effective mechanism to control information flow and improve explanation localization.\",\n    \"Comprehensive evaluation: includes synthetic benchmarks with ground-truth explanations, real-world datasets with fidelity metrics, and a user study with domain experts – a rare and valuable combination.\",\n    \"Honest discussion of limitations: the paper acknowledges the boron task failure, the caveats of fidelity metrics, and the trade-off between performance and interpretability via λ selection.\",\n    \"Code is publicly available, enhancing reproducibility.\",\n    \"The λ selection procedure via Wilcoxon signed-rank test is principled and well-described.\"\n  ],\n  \"Weaknesses\": [\n    \"Predictive performance is not superior to baselines; SEAL is competitive but often slightly worse than GIN (e.g., MAE 0.47 vs 0.41 on AqSol, AUROC 0.81 vs 0.86 on CYP2C9). The paper does not deeply analyze these trade-offs.\",\n    \"The SE score on the rings-max task is notably poor (0.34 vs 0.67 for GuidedBackprop), and the explanation provided (imbalanced dataset, large substructures) is plausible but under-analyzed – more ablation or analysis would strengthen the work.\",\n    \"Negative fidelity values for SEAL are near zero (e.g., 0.04–0.09 on hERG). This suggests the model's predictions are extremely sensitive to any masking, which may indicate the additive contribution assumption is fragile or that the masking strategy is not well-calibrated. This deserves more discussion.\",\n    \"The user study is limited: only 19 questions, only covers aqueous solubility, and the number of participants is not clearly stated. Statistical significance of SEAL's preference is not reported.\",\n    \"The comparison to GNNExplainer and other post-hoc explainers is somewhat unfair since SEAL is inherently interpretable; a comparison to other inherently interpretable fragment-based models (e.g., FragFormer, Group Graph) would be more informative.\",\n    \"The paper's core assumption that fragment-level contributions are sufficient for many molecular properties is stated but not rigorously tested; for tasks requiring long-range interactions (e.g., PAINS), the model needs λ=0, which undermines the interpretability benefit.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"Why are the negative fidelity values for SEAL so low (near zero)? Does this indicate that the model's predictions are overly sensitive to any node masking, or that the masking strategy is not well-matched to the additive contribution structure? Please provide more analysis.\",\n    \"Can you provide a more detailed analysis of the rings-max failure? The SE score of 0.34 is significantly worse than baselines. What specific aspects of the extended BRICS decomposition or the model architecture cause this?\",\n    \"How many participants were in the user study, and was a statistical test (e.g., binomial test or Friedman test) performed to confirm that SEAL's preference is significant?\",\n    \"How does SEAL compare experimentally to other fragment-based interpretable models such as FragFormer or Group Graph, which are cited in related work?\",\n    \"The paper claims 'strong alignment between fragment contributions and model predictions.' Beyond fidelity and SE metrics, is there any direct evidence (e.g., correlation between contributions and predicted values) supporting this claim?\",\n    \"For tasks that require long-range interactions (e.g., PAINS), λ=0 is optimal, meaning no regularization on inter-fragment message passing. In such cases, how does SEAL's interpretability compare to post-hoc explainers?\",\n    \"The λ selection procedure uses 'not significantly worse' based on Wilcoxon test. What significance level was used, and how sensitive are the final explanations to this choice?\"\n  ],\n  \"Limitations\": [\n    \"The additive fragment contribution assumption may not hold for all molecular properties, especially those involving complex long-range interactions or cooperative effects between distant fragments.\",\n    \"Predictive performance is competitive but not state-of-the-art; the interpretability benefit comes at some cost in accuracy.\",\n    \"The user study is limited in scope (only solubility, 19 questions, unclear participant count) and may not generalize to other properties or expert populations.\",\n    \"The paper does not explicitly discuss potential negative societal impacts, such as over-reliance on model explanations in drug discovery or the risk of misleading interpretations being used in high-stakes decisions.\",\n    \"The fragment decomposition via modified BRICS may not be optimal for all tasks; the paper does not explore alternative fragmentation strategies.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 37920,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 36128,
+        "completion_tokens": 2227,
+        "reasoning_tokens": 0,
+        "total_tokens": 40147
+      },
+      "attempts": 1,
+      "response_id": "e66db653-4324-4cfb-bbf8-794917a33dd3"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper introduces SEAL (Substructure Explanation via Attribution Learning), an interpretable graph neural network for molecular property prediction. SEAL decomposes input molecular graphs into chemically meaningful fragments using a modified BRICS algorithm, computes fragment-level representations via sum pooling, and generates predictions as a sum of individual fragment contributions (computed by an MLP) plus a bias term. To enhance interpretability, the authors propose SEAL-GCN, a new graph convolutional layer with separate weights for intra-fragment and inter-fragment edges, regularized by an L1 penalty on inter-fragment weights to control information leakage between fragments. The model is evaluated on a synthetic benchmark (B-XAIC) with ground-truth explanations, real-world datasets (AqSol, hERG, CYP2C9) using fidelity metrics, and a user study with chemistry experts. Results show SEAL achieves competitive predictive performance while producing more human-aligned and faithful explanations compared to existing post-hoc explainability methods (GNNExplainer, Integrated Gradients, Saliency, etc.).",
+        "Strengths": [
+          "Novel inherently interpretable architecture: fragment-based prediction head with additive contributions is a clean and effective design that directly provides explanations without post-hoc analysis.",
+          "The SEAL-GCN layer with separate intra/inter-fragment weights and L1 regularization is a thoughtful architectural contribution that directly addresses the interpretability-performance trade-off.",
+          "Comprehensive evaluation across synthetic benchmarks (with ground truth), real-world datasets (with fidelity metrics), and a user study with domain experts. This multi-faceted evaluation is a significant strength.",
+          "The user study is particularly valuable as it directly validates human-aligned interpretability, which is often claimed but rarely empirically tested.",
+          "Honest discussion of limitations (e.g., boron task failure, fidelity metric caveats, out-of-distribution masking issues).",
+          "Good reproducibility: code is provided, hyperparameters are detailed, and the appendix contains extensive additional results and visualizations."
+        ],
+        "Weaknesses": [
+          "Predictive performance is competitive but not superior to strong baselines (e.g., GIN achieves higher AUROC on CYP2C9: 0.86 vs SEAL's 0.81). The paper does not fully justify whether the interpretability gain outweighs this performance gap.",
+          "The fidelity evaluation for SEAL uses contribution masking directly, which is fundamentally different from input masking used for other methods. This creates a potential unfair comparison, though the authors partially address this with ablation studies.",
+          "Fragment-based explainers from related work (e.g., Wu et al. 2023, FragFormer) are mentioned but not included as experimental baselines, missing an important comparison.",
+          "The user study is limited to a single property (solubility) with only 19 questions, and the number of participants is not specified. This limits the generalizability of the human-aligned interpretability claim.",
+          "The negative fidelity values for SEAL on classification tasks are extremely low (e.g., 0.09 on hERG), which is counterintuitive and not adequately explained. This may indicate a systematic issue with the masking strategy.",
+          "The lambda selection procedure using Wilcoxon test is not fully specified (e.g., what constitutes 'not significantly worse').",
+          "The boron task failure is acknowledged but not deeply analyzed; the paper could benefit from a more detailed investigation of why the fragment decomposition fails in this case."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "What was the exact threshold for 'not significantly worse' in the Wilcoxon signed-rank test used for lambda selection? How sensitive are the results to this threshold?",
+          "How many participants took part in the user study, and what was the variance in their responses across the 19 questions? Was inter-rater agreement measured?",
+          "Why were other fragment-based explainers (e.g., Wu et al. 2023, FragFormer) not included as baselines in the experiments? Adding these would strengthen the comparison.",
+          "Can you explain the very low negative fidelity values for SEAL on classification tasks (hERG and CYP2C9)? Does this indicate that retaining important contributions leads to near-zero class change, and is this expected behavior?",
+          "How does SEAL's performance scale with molecule size and dataset complexity? Have you tested on larger datasets (e.g., ZINC-250k) or molecules with more complex long-range interactions?",
+          "In the user study, were participants given any training or examples before the questions? How were the 19 compounds selected, and were they representative of diverse chemical space?",
+          "What is the computational overhead of SEAL compared to standard GNNs, particularly in terms of inference time for generating explanations?"
+        ],
+        "Limitations": [
+          "The paper acknowledges the boron task failure and the limitations of fidelity metrics (out-of-distribution masking). However, it does not discuss potential negative societal impacts, which is acceptable given the drug discovery context but could be briefly mentioned.",
+          "The user study is limited to solubility and a small number of questions, so the generalizability of human-aligned interpretability to other properties is not established.",
+          "The approach relies on the BRICS decomposition, which may not be optimal for all chemical tasks (as evidenced by the boron task). The paper does not explore alternative fragment definitions.",
+          "The interpretability-performance trade-off is not systematically quantified (e.g., Pareto frontier analysis). The paper only shows that SEAL is competitive, but not how much performance is sacrificed for interpretability."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces SEAL, an interpretable GNN for molecular property prediction that decomposes molecules into fragments and learns fragment-level contributions. The key contributions are: (1) a fragment-based prediction head where the output is a sum of fragment contributions, (2) a new GCN variant (SEAL-GCN) with separate intra/inter-fragment weights and L1 regularization on inter-fragment weights, and (3) extensive evaluation including synthetic benchmarks, real-world datasets, and a user study.\n\nStrengths:\n- The approach is novel in its combination of fragment-based decomposition with inherently interpretable architecture (sum of contributions), rather than post-hoc explanation.\n- The SEAL-GCN layer with separate intra/inter-fragment weights and regularization is a thoughtful design choice that directly addresses the interpretability-performance trade-off.\n- The evaluation is comprehensive: synthetic benchmark with ground truth, real-world datasets with fidelity metrics, and a user study with domain experts. This multi-faceted evaluation is commendable.\n- The user study is a significant strength, as it directly validates human-aligned interpretability, which is often claimed but rarely tested.\n- The paper is well-written and clearly organized, with sufficient details in the appendix for reproducibility.\n- The authors are honest about limitations (e.g., boron task failure, fidelity metric limitations).\n\nWeaknesses:\n- The predictive performance of SEAL is competitive but not superior to GIN on real-world datasets (e.g., CYP2C9 AUROC 0.81 vs GIN 0.86). This raises the question of whether the interpretability gain justifies any performance trade-off.\n- The selection of λ via cross-validation with Wilcoxon test is reasonable but the procedure is not fully detailed (e.g., what threshold for \"not significantly worse\").\n- The user study has a relatively small number of questions (19) and the details on the number of participants are not specified. Also, the study only covers solubility, which may limit generalizability.\n- The comparison with existing fragment-based explainers (e.g., Wu et al. 2023, FragFormer) is mentioned in related work but not included in the experimental comparison, which is a missed opportunity.\n- The fidelity evaluation for SEAL uses contribution masking directly, which is inherently different from input masking used for other methods. This could create an unfair comparison, though the authors discuss this and provide ablation studies.\n- The negative fidelity values for SEAL on classification tasks are very low (e.g., 0.09 on hERG), which seems counterintuitive. The authors should explain why retaining important nodes leads to such low negative fidelity.\n\nQuestions for authors:\n1. How was the \"not significantly worse\" threshold defined in the Wilcoxon signed-rank test for λ selection?\n2. How many participants were in the user study, and what was the variance in their responses?\n3. Why were fragment-based explainers (e.g., Wu et al. 2023) not included as baselines in the experiments?\n4. Can you explain the low negative fidelity values for SEAL on classification tasks? Is this due to the contribution masking strategy?\n5. Does SEAL's performance degrade on larger molecules or datasets with more complex long-range interactions?\n\nLimitations:\n- The paper acknowledges the boron task failure and fidelity metric limitations. However, it does not discuss potential negative societal impacts, which is acceptable given the domain (drug discovery) but could be mentioned briefly.\n- The user study is limited to solubility, and the generalizability to other properties is not established.\n\nEthical concerns: None identified.\n\nSoundness: 3 (good) - The methodology is sound, but the unfair comparison in fidelity evaluation and the lack of comparison with other fragment-based explainers are concerns.\n\nPresentation: 3 (good) - The paper is well-written and organized, but some details (e.g., λ selection procedure) could be clearer.\n\nContribution: 3 (good) - The novel architecture and comprehensive evaluation are valuable contributions, but the predictive performance is not state-of-the-art and the practical impact may be limited.\n\nOverall: 6 (Weak Accept) - The paper presents a solid and novel approach with thorough evaluation, but there are some concerns about the comparison fairness and performance trade-offs that prevent a stronger recommendation.\n\nConfidence: 4 (confident) - I am familiar with the related work and have carefully assessed the methodology and results.\n\nDecision: Accept (borderline, but leaning towards acceptance given the novelty and thorough evaluation)REVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper introduces SEAL (Substructure Explanation via Attribution Learning), an interpretable graph neural network for molecular property prediction. SEAL decomposes input molecular graphs into chemically meaningful fragments using a modified BRICS algorithm, computes fragment-level representations via sum pooling, and generates predictions as a sum of individual fragment contributions (computed by an MLP) plus a bias term. To enhance interpretability, the authors propose SEAL-GCN, a new graph convolutional layer with separate weights for intra-fragment and inter-fragment edges, regularized by an L1 penalty on inter-fragment weights to control information leakage between fragments. The model is evaluated on a synthetic benchmark (B-XAIC) with ground-truth explanations, real-world datasets (AqSol, hERG, CYP2C9) using fidelity metrics, and a user study with chemistry experts. Results show SEAL achieves competitive predictive performance while producing more human-aligned and faithful explanations compared to existing post-hoc explainability methods (GNNExplainer, Integrated Gradients, Saliency, etc.).\",\n    \"Strengths\": [\n        \"Novel inherently interpretable architecture: fragment-based prediction head with additive contributions is a clean and effective design that directly provides explanations without post-hoc analysis.\",\n        \"The SEAL-GCN layer with separate intra/inter-fragment weights and L1 regularization is a thoughtful architectural contribution that directly addresses the interpretability-performance trade-off.\",\n        \"Comprehensive evaluation across synthetic benchmarks (with ground truth), real-world datasets (with fidelity metrics), and a user study with domain experts. This multi-faceted evaluation is a significant strength.\",\n        \"The user study is particularly valuable as it directly validates human-aligned interpretability, which is often claimed but rarely empirically tested.\",\n        \"Honest discussion of limitations (e.g., boron task failure, fidelity metric caveats, out-of-distribution masking issues).\",\n        \"Good reproducibility: code is provided, hyperparameters are detailed, and the appendix contains extensive additional results and visualizations.\"\n    ],\n    \"Weaknesses\": [\n        \"Predictive performance is competitive but not superior to strong baselines (e.g., GIN achieves higher AUROC on CYP2C9: 0.86 vs SEAL's 0.81). The paper does not fully justify whether the interpretability gain outweighs this performance gap.\",\n        \"The fidelity evaluation for SEAL uses contribution masking directly, which is fundamentally different from input masking used for other methods. This creates a potential unfair comparison, though the authors partially address this with ablation studies.\",\n        \"Fragment-based explainers from related work (e.g., Wu et al. 2023, FragFormer) are mentioned but not included as experimental baselines, missing an important comparison.\",\n        \"The user study is limited to a single property (solubility) with only 19 questions, and the number of participants is not specified. This limits the generalizability of the human-aligned interpretability claim.\",\n        \"The negative fidelity values for SEAL on classification tasks are extremely low (e.g., 0.09 on hERG), which is counterintuitive and not adequately explained. This may indicate a systematic issue with the masking strategy.\",\n        \"The lambda selection procedure using Wilcoxon test is not fully specified (e.g., what constitutes 'not significantly worse').\",\n        \"The boron task failure is acknowledged but not deeply analyzed; the paper could benefit from a more detailed investigation of why the fragment decomposition fails in this case.\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"What was the exact threshold for 'not significantly worse' in the Wilcoxon signed-rank test used for lambda selection? How sensitive are the results to this threshold?\",\n        \"How many participants took part in the user study, and what was the variance in their responses across the 19 questions? Was inter-rater agreement measured?\",\n        \"Why were other fragment-based explainers (e.g., Wu et al. 2023, FragFormer) not included as baselines in the experiments? Adding these would strengthen the comparison.\",\n        \"Can you explain the very low negative fidelity values for SEAL on classification tasks (hERG and CYP2C9)? Does this indicate that retaining important contributions leads to near-zero class change, and is this expected behavior?\",\n        \"How does SEAL's performance scale with molecule size and dataset complexity? Have you tested on larger datasets (e.g., ZINC-250k) or molecules with more complex long-range interactions?\",\n        \"In the user study, were participants given any training or examples before the questions? How were the 19 compounds selected, and were they representative of diverse chemical space?\",\n        \"What is the computational overhead of SEAL compared to standard GNNs, particularly in terms of inference time for generating explanations?\"\n    ],\n    \"Limitations\": [\n        \"The paper acknowledges the boron task failure and the limitations of fidelity metrics (out-of-distribution masking). However, it does not discuss potential negative societal impacts, which is acceptable given the drug discovery context but could be briefly mentioned.\",\n        \"The user study is limited to solubility and a small number of questions, so the generalizability of human-aligned interpretability to other properties is not established.\",\n        \"The approach relies on the BRICS decomposition, which may not be optimal for all chemical tasks (as evidenced by the boron task). The paper does not explore alternative fragment definitions.\",\n        \"The interpretability-performance trade-off is not systematically quantified (e.g., Pareto frontier analysis). The paper only shows that SEAL is competitive, but not how much performance is sacrificed for interpretability.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 37920,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 36128,
+        "completion_tokens": 2152,
+        "reasoning_tokens": 0,
+        "total_tokens": 40072
+      },
+      "attempts": 1,
+      "response_id": "ed59db08-715a-49dc-b1df-8c41e62efcea"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper introduces SEAL (Substructure Explanation via Attribution Learning), an interpretable graph neural network for molecular property prediction. SEAL decomposes molecular graphs into chemically meaningful fragments using BRICS, computes per-fragment representations via sum pooling, and produces fragment contributions through an MLP. The final prediction is the sum of fragment contributions plus a bias term, making the model inherently interpretable. The paper also proposes SEAL-GCN, a graph convolutional layer with separate weights for intra-fragment and inter-fragment message passing, along with L1 regularization on inter-fragment weights to control information leakage. The model is evaluated on synthetic benchmarks (B-XAIC) with ground-truth explanations, real-world datasets (hERG, CYP2C9, AqSol), and through a user study with chemistry experts. Results show SEAL achieves competitive predictive performance while providing more human-aligned explanations than existing explainability methods.",
+        "Strengths": [
+          "Novel approach combining fragment-based decomposition with inherent interpretability, avoiding the need for post-hoc explanation methods",
+          "Well-motivated by chemical intuition - chemists reason about molecules in terms of functional groups and fragments",
+          "Technically sound architecture with clear mathematical formulation of fragment contributions",
+          "Comprehensive evaluation including synthetic benchmarks with ground truth, real-world datasets with fidelity metrics, and a user study with domain experts",
+          "The L1 regularization on inter-fragment weights provides a principled way to control the interpretability-performance trade-off",
+          "Ablation studies on λ and masking strategies provide good insight into model behavior",
+          "Code is open-sourced"
+        ],
+        "Weaknesses": [
+          "Missing comparison with other fragment-based explainability methods (e.g., FragFormer, substructure masking approaches)",
+          "Fidelity metrics on real-world datasets are somewhat problematic since masking creates out-of-distribution inputs; the authors acknowledge this but still use it as primary evidence",
+          "The user study is limited to solubility prediction only, which may not generalize to other property types",
+          "The λ parameter requires per-task tuning via cross-validation, which may limit practical applicability",
+          "The paper doesn't deeply discuss the trade-off between fragment granularity and interpretability - BRICS may not be optimal for all chemical tasks",
+          "The boron (B) task shows significantly lower performance, which is attributed to fragment decomposition limitations - this suggests the method's dependence on fragment quality"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How does SEAL compare to other fragment-based explainers like FragFormer or substructure masking approaches (Wu et al. 2023)? The paper mentions these in related work but doesn't include them in experiments.",
+          "The user study only evaluates solubility explanations. Would the results hold for other properties like hERG inhibition or CYP metabolism? Could the authors expand the user study or discuss why solubility is representative?",
+          "How sensitive is SEAL to the choice of fragment decomposition algorithm? Have the authors experimented with other methods beyond BRICS?",
+          "The paper mentions that fragment contributions can be negative. How should practitioners interpret negative contributions, especially in regression tasks?",
+          "What is the computational overhead of SEAL compared to standard GNNs? The fragment-based architecture may add complexity.",
+          "The paper uses sum pooling for fragment representations. How does this choice affect interpretability compared to other pooling methods like attention-based pooling?"
+        ],
+        "Limitations": [
+          "The method's interpretability depends heavily on the quality of fragment decomposition - BRICS may not capture all chemically relevant substructures",
+          "Fidelity evaluation on real-world datasets is limited by the out-of-distribution issue of masked inputs",
+          "The user study is limited to a single property (solubility) and a relatively small number of questions (19)",
+          "The λ parameter requires careful per-task tuning, which may be computationally expensive",
+          "Potential negative societal impact: improved interpretability could be used to design molecules with harmful properties (e.g., more potent toxins) more efficiently",
+          "The paper doesn't discuss the computational cost of the fragment decomposition step"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces SEAL, an interpretable GNN for molecular property prediction that decomposes molecules into fragments and computes per-fragment contributions as the sum of MLP outputs. The key novelty is threefold: (1) a fragment-based prediction head where the final prediction is a sum of fragment contributions, (2) SEAL-GCN layer with separate intra/inter-fragment weights, and (3) L1 regularization on inter-fragment weights to control information leakage.\n\nThe paper has several strengths: the approach is well-motivated by chemical intuition, the method is technically sound with clear mathematical formulation, and the evaluation is thorough including synthetic benchmarks with ground truth, real-world datasets with fidelity metrics, and a user study with chemistry experts. The results show SEAL outperforms baselines on explanation quality while maintaining competitive predictive performance.\n\nHowever, there are some weaknesses. The evaluation on real-world datasets uses fidelity metrics that are somewhat problematic since masking atoms creates out-of-distribution inputs, though the authors acknowledge this. The user study focuses only on solubility, which is a narrow evaluation. The regularization parameter λ requires per-task tuning, which may limit practical applicability. The comparison with other fragment-based explainers (e.g., FragFormer, substructure masking) is missing. The paper also doesn't deeply discuss the trade-off between fragment granularity and interpretability.\n\nI would rate this as a solid paper with good contributions to the interpretable GNN literature. The work is original in combining fragment-based architectures with explicit contribution attribution. The quality is good with extensive experiments. The clarity is decent but could be improved. The significance is moderate-high for the molecular modeling community.\n\nMy ratings: Originality 4 (novel approach), Quality 3 (good but some evaluation concerns), Clarity 3 (decent but some technical details could be clearer), Significance 3 (important for molecular modeling but somewhat niche). Soundness 3, Presentation 3, Contribution 3. Overall 7 (Accept). Confidence 4.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper introduces SEAL (Substructure Explanation via Attribution Learning), an interpretable graph neural network for molecular property prediction. SEAL decomposes molecular graphs into chemically meaningful fragments using BRICS, computes per-fragment representations via sum pooling, and produces fragment contributions through an MLP. The final prediction is the sum of fragment contributions plus a bias term, making the model inherently interpretable. The paper also proposes SEAL-GCN, a graph convolutional layer with separate weights for intra-fragment and inter-fragment message passing, along with L1 regularization on inter-fragment weights to control information leakage. The model is evaluated on synthetic benchmarks (B-XAIC) with ground-truth explanations, real-world datasets (hERG, CYP2C9, AqSol), and through a user study with chemistry experts. Results show SEAL achieves competitive predictive performance while providing more human-aligned explanations than existing explainability methods.\",\n    \"Strengths\": [\n        \"Novel approach combining fragment-based decomposition with inherent interpretability, avoiding the need for post-hoc explanation methods\",\n        \"Well-motivated by chemical intuition - chemists reason about molecules in terms of functional groups and fragments\",\n        \"Technically sound architecture with clear mathematical formulation of fragment contributions\",\n        \"Comprehensive evaluation including synthetic benchmarks with ground truth, real-world datasets with fidelity metrics, and a user study with domain experts\",\n        \"The L1 regularization on inter-fragment weights provides a principled way to control the interpretability-performance trade-off\",\n        \"Ablation studies on λ and masking strategies provide good insight into model behavior\",\n        \"Code is open-sourced\"\n    ],\n    \"Weaknesses\": [\n        \"Missing comparison with other fragment-based explainability methods (e.g., FragFormer, substructure masking approaches)\",\n        \"Fidelity metrics on real-world datasets are somewhat problematic since masking creates out-of-distribution inputs; the authors acknowledge this but still use it as primary evidence\",\n        \"The user study is limited to solubility prediction only, which may not generalize to other property types\",\n        \"The λ parameter requires per-task tuning via cross-validation, which may limit practical applicability\",\n        \"The paper doesn't deeply discuss the trade-off between fragment granularity and interpretability - BRICS may not be optimal for all chemical tasks\",\n        \"The boron (B) task shows significantly lower performance, which is attributed to fragment decomposition limitations - this suggests the method's dependence on fragment quality\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"How does SEAL compare to other fragment-based explainers like FragFormer or substructure masking approaches (Wu et al. 2023)? The paper mentions these in related work but doesn't include them in experiments.\",\n        \"The user study only evaluates solubility explanations. Would the results hold for other properties like hERG inhibition or CYP metabolism? Could the authors expand the user study or discuss why solubility is representative?\",\n        \"How sensitive is SEAL to the choice of fragment decomposition algorithm? Have the authors experimented with other methods beyond BRICS?\",\n        \"The paper mentions that fragment contributions can be negative. How should practitioners interpret negative contributions, especially in regression tasks?\",\n        \"What is the computational overhead of SEAL compared to standard GNNs? The fragment-based architecture may add complexity.\",\n        \"The paper uses sum pooling for fragment representations. How does this choice affect interpretability compared to other pooling methods like attention-based pooling?\"\n    ],\n    \"Limitations\": [\n        \"The method's interpretability depends heavily on the quality of fragment decomposition - BRICS may not capture all chemically relevant substructures\",\n        \"Fidelity evaluation on real-world datasets is limited by the out-of-distribution issue of masked inputs\",\n        \"The user study is limited to a single property (solubility) and a relatively small number of questions (19)\",\n        \"The λ parameter requires careful per-task tuning, which may be computationally expensive\",\n        \"Potential negative societal impact: improved interpretability could be used to design molecules with harmful properties (e.g., more potent toxins) more efficiently\",\n        \"The paper doesn't discuss the computational cost of the fragment decomposition step\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 7,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 37920,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 36128,
+        "completion_tokens": 1345,
+        "reasoning_tokens": 0,
+        "total_tokens": 39265
+      },
+      "attempts": 1,
+      "response_id": "f14eb719-f86e-456b-a704-62104fd45dea"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper introduces SEAL (Substructure Explanation via Attribution Learning), an interpretable graph neural network for molecular property prediction. SEAL decomposes molecular graphs into chemically meaningful fragments (using BRICS) and computes fragment-level contributions that sum to the final prediction, making the model inherently interpretable. The paper proposes SEAL-GCN, a new graph convolutional layer with separate weights for intra-fragment and inter-fragment message passing, along with an L1 regularization term on inter-fragment weights to control information leakage. The method is evaluated on synthetic benchmarks (B-XAIC) with ground-truth explanations, three real-world datasets (hERG, CYP2C9, AqSolDB), and a user study with chemistry experts. Results show SEAL achieves competitive predictive performance while providing more interpretable and human-aligned explanations compared to existing XAI methods.",
+        "Strengths": [
+          "The core idea of inherently interpretable fragment-based predictions is well-motivated and aligns with chemical intuition.",
+          "The SEAL-GCN architecture with separate intra/inter-fragment weights and L1 regularization is a novel and clean contribution.",
+          "The evaluation is comprehensive, including synthetic benchmarks with ground-truth explanations, real-world datasets, multiple baselines, fidelity metrics, and a user study.",
+          "The user study with chemistry experts adds strong evidence for human-aligned interpretability.",
+          "The paper is honest about limitations (e.g., boron task, fidelity metric caveats) and provides code.",
+          "The regularization analysis (Figure 3) provides useful insights into the interpretability-performance trade-off."
+        ],
+        "Weaknesses": [
+          "Predictive performance is generally competitive but not superior to GIN baseline (e.g., CYP2C9 AUROC 0.81 vs 0.86 for GIN), raising questions about the cost of interpretability.",
+          "The fidelity metric results for SEAL appear suspiciously strong (negative fidelity near 0), suggesting the direct contribution masking strategy may not be directly comparable to input-level masking used for other methods. This needs clearer discussion in the main text.",
+          "The paper does not compare against other fragment-based explainability methods, such as substructure masking (Wu et al. 2023) or FragFormer's CAM-based approach, which are mentioned in the related work.",
+          "The user study is limited to a single property (solubility) and 19 questions, with no statistical significance testing reported.",
+          "The choice of BRICS decomposition is fixed and not ablated; sensitivity to the fragmentation algorithm is unexplored.",
+          "The poor performance on the rings-max task (SE=0.34 vs 0.67 for GuidedBackprop) is acknowledged but not deeply analyzed."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "Can you clarify the fairness of the fidelity comparison? For SEAL, you mask contributions directly (setting c_i=0), while for other methods you mask input node features. How does this difference affect the comparability of fidelity scores, and could this explain the near-zero negative fidelity for SEAL?",
+          "Why did you not compare against other fragment-based explainability methods like substructure masking (Wu et al. 2023) or FragFormer? These seem like the most relevant baselines for your approach.",
+          "How sensitive are the results to the choice of BRICS decomposition? Have you experimented with other fragmentation algorithms (e.g., RECAP, functional group detection)?",
+          "Can you provide more details on the user study, such as the number of participants, how they were recruited, and whether the differences in preference are statistically significant?",
+          "For the rings-max task, SEAL's SE is significantly lower than several baselines. What are the specific challenges, and could the fragmentation strategy be improved for this task?",
+          "The λ selection procedure uses the Wilcoxon signed-rank test. How does this choice affect reproducibility across different dataset splits?",
+          "Could you discuss the computational overhead of SEAL compared to standard GNNs, particularly regarding the regularization term and fragment decomposition?"
+        ],
+        "Limitations": [
+          "The paper acknowledges the performance trade-off on some datasets (e.g., CYP2C9) and the poor performance on the boron and rings-max tasks.",
+          "The fidelity metric caveats (out-of-distribution masking) are discussed, but the main text could be more explicit about the potential unfairness in comparing SEAL's direct contribution masking to input-level masking.",
+          "The user study is limited to one property and a small number of questions, limiting generalizability.",
+          "The method relies on a fixed fragmentation algorithm, which may not be optimal for all molecule types or tasks.",
+          "The paper does not discuss potential negative societal impacts of the work, though the application area (drug discovery) suggests minimal direct risk.",
+          "The choice of hyperparameter λ requires task-specific tuning, which may be a barrier to adoption."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces SEAL, an interpretable GNN for molecular property prediction that decomposes molecules into fragments (using BRICS) and computes fragment-level contributions that sum to the final prediction. The key contributions are: (1) a fragment-based attribution architecture, (2) a new GCN layer (SEAL-GCN) with separate weights for intra/inter-fragment message passing plus an L1 regularization term on inter-fragment weights, and (3) extensive evaluation including synthetic benchmarks, real-world datasets, and a user study.\n\nStrengths:\n- The core idea of making the model inherently interpretable at the fragment level is well-motivated and aligns with how chemists think about molecules.\n- The SEAL-GCN architecture with separate intra/inter-fragment weights and L1 regularization is a clean, novel contribution.\n- The evaluation is quite thorough: synthetic benchmark with ground-truth explanations, three real-world datasets, multiple explainability baselines, fidelity metrics, and a user study with chemistry experts.\n- The user study is a strong addition that directly addresses human-aligned interpretability.\n- Code is provided.\n\nWeaknesses:\n- The predictive performance of SEAL is generally competitive but not superior to the GIN baseline. For instance, on hERG, SEAL achieves 0.85 AUROC vs GIN's 0.86; on CYP2C9, SEAL achieves 0.81 vs GIN's 0.86. The paper acknowledges this but frames it as \"competitive without significant loss.\" This is a concern because the model's interpretability advantage needs to be weighed against any performance degradation.\n- The fidelity metric results for SEAL are suspiciously good, especially negative fidelity values near 0.0. This suggests the masking strategy may be exploiting the model's architecture (e.g., zeroing contributions directly) in a way that isn't directly comparable to input-level masking used for other methods. The paper discusses this in Appendix C but the main text presentation could be misleading.\n- The synthetic benchmark results show SEAL performs poorly on the rings-max task (SE=0.34, worse than GuidedBackprop's 0.67) and the boron task (SE=0.88 vs 1.00 for several baselines). These weaknesses are acknowledged but not deeply analyzed.\n- The user study is limited to one property (solubility) and uses only 19 questions. The number of participants isn't specified, and statistical significance testing isn't reported. The claim that SEAL was \"chosen most frequently in 14 out of 19 questions\" needs more rigorous analysis.\n- The paper doesn't compare against other fragment-based explainability methods, such as the substructure masking approach of Wu et al. (2023) or FragFormer's CAM-based explanations. This is a significant omission given the related work section mentions these.\n- The method relies on a fixed BRICS decomposition. The choice of fragmentation algorithm is not ablated, and it's unclear how sensitive results are to this choice.\n- The λ selection procedure (Wilcoxon test) is described but the practical implications of this hyperparameter tuning are not fully discussed.\n\nOriginality: The idea of summing fragment contributions for inherently interpretable predictions is not entirely new (e.g., attention-based models, prototype methods), but the combination with a dedicated GCN layer that explicitly controls inter-fragment information flow and the L1 regularization is novel. The paper is a good combination of existing ideas with a new twist. Rating: 3 (high).\n\nQuality: The technical execution is generally sound. The experiments are well-designed, and the user study adds value. However, the fidelity metric concerns and the lack of comparison to other fragment-based explainers are notable weaknesses. The paper is honest about limitations (e.g., boron task, fidelity issues). Rating: 3 (good).\n\nClarity: The paper is well-written and organized. The method is clearly explained with equations and a figure. The appendices are comprehensive. The main text could be improved by more clearly discussing the fidelity metric caveats and the comparison to other fragment-based methods. Rating: 3 (good).\n\nSignificance: The work addresses an important problem (interpretability in molecular property prediction) and provides a practical solution that is validated with a user study. The fragment-based approach is likely to be useful to researchers in cheminformatics and drug discovery. However, the performance trade-offs and lack of comparison to state-of-the-art fragment-based explainers limit its immediate impact. Rating: 3 (high).\n\nOverall: This is a solid paper with a novel contribution and thorough evaluation. The main concerns are the fidelity metric fairness, the lack of comparison to other fragment-based explainability methods, and the user study's limited scope. I would lean towards acceptance but with reservations. The paper is technically sound and addresses an important problem. The user study, while limited, is a valuable addition. Overall score: 6 (Weak Accept).\n\nDecision: Accept (leaning towards acceptance, as the technical contributions and evaluation are solid despite the noted weaknesses).REVIEW JSON:\n```json\n{\n\"Summary\": \"The paper introduces SEAL (Substructure Explanation via Attribution Learning), an interpretable graph neural network for molecular property prediction. SEAL decomposes molecular graphs into chemically meaningful fragments (using BRICS) and computes fragment-level contributions that sum to the final prediction, making the model inherently interpretable. The paper proposes SEAL-GCN, a new graph convolutional layer with separate weights for intra-fragment and inter-fragment message passing, along with an L1 regularization term on inter-fragment weights to control information leakage. The method is evaluated on synthetic benchmarks (B-XAIC) with ground-truth explanations, three real-world datasets (hERG, CYP2C9, AqSolDB), and a user study with chemistry experts. Results show SEAL achieves competitive predictive performance while providing more interpretable and human-aligned explanations compared to existing XAI methods.\",\n\"Strengths\": [\n\"The core idea of inherently interpretable fragment-based predictions is well-motivated and aligns with chemical intuition.\",\n\"The SEAL-GCN architecture with separate intra/inter-fragment weights and L1 regularization is a novel and clean contribution.\",\n\"The evaluation is comprehensive, including synthetic benchmarks with ground-truth explanations, real-world datasets, multiple baselines, fidelity metrics, and a user study.\",\n\"The user study with chemistry experts adds strong evidence for human-aligned interpretability.\",\n\"The paper is honest about limitations (e.g., boron task, fidelity metric caveats) and provides code.\",\n\"The regularization analysis (Figure 3) provides useful insights into the interpretability-performance trade-off.\"\n],\n\"Weaknesses\": [\n\"Predictive performance is generally competitive but not superior to GIN baseline (e.g., CYP2C9 AUROC 0.81 vs 0.86 for GIN), raising questions about the cost of interpretability.\",\n\"The fidelity metric results for SEAL appear suspiciously strong (negative fidelity near 0), suggesting the direct contribution masking strategy may not be directly comparable to input-level masking used for other methods. This needs clearer discussion in the main text.\",\n\"The paper does not compare against other fragment-based explainability methods, such as substructure masking (Wu et al. 2023) or FragFormer's CAM-based approach, which are mentioned in the related work.\",\n\"The user study is limited to a single property (solubility) and 19 questions, with no statistical significance testing reported.\",\n\"The choice of BRICS decomposition is fixed and not ablated; sensitivity to the fragmentation algorithm is unexplored.\",\n\"The poor performance on the rings-max task (SE=0.34 vs 0.67 for GuidedBackprop) is acknowledged but not deeply analyzed.\"\n],\n\"Originality\": 3,\n\"Quality\": 3,\n\"Clarity\": 3,\n\"Significance\": 3,\n\"Questions\": [\n\"Can you clarify the fairness of the fidelity comparison? For SEAL, you mask contributions directly (setting c_i=0), while for other methods you mask input node features. How does this difference affect the comparability of fidelity scores, and could this explain the near-zero negative fidelity for SEAL?\",\n\"Why did you not compare against other fragment-based explainability methods like substructure masking (Wu et al. 2023) or FragFormer? These seem like the most relevant baselines for your approach.\",\n\"How sensitive are the results to the choice of BRICS decomposition? Have you experimented with other fragmentation algorithms (e.g., RECAP, functional group detection)?\",\n\"Can you provide more details on the user study, such as the number of participants, how they were recruited, and whether the differences in preference are statistically significant?\",\n\"For the rings-max task, SEAL's SE is significantly lower than several baselines. What are the specific challenges, and could the fragmentation strategy be improved for this task?\",\n\"The λ selection procedure uses the Wilcoxon signed-rank test. How does this choice affect reproducibility across different dataset splits?\",\n\"Could you discuss the computational overhead of SEAL compared to standard GNNs, particularly regarding the regularization term and fragment decomposition?\"\n],\n\"Limitations\": [\n\"The paper acknowledges the performance trade-off on some datasets (e.g., CYP2C9) and the poor performance on the boron and rings-max tasks.\",\n\"The fidelity metric caveats (out-of-distribution masking) are discussed, but the main text could be more explicit about the potential unfairness in comparing SEAL's direct contribution masking to input-level masking.\",\n\"The user study is limited to one property and a small number of questions, limiting generalizability.\",\n\"The method relies on a fixed fragmentation algorithm, which may not be optimal for all molecule types or tasks.\",\n\"The paper does not discuss potential negative societal impacts of the work, though the application area (drug discovery) suggests minimal direct risk.\",\n\"The choice of hyperparameter λ requires task-specific tuning, which may be a barrier to adoption.\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 3,\n\"Contribution\": 3,\n\"Overall\": 6,\n\"Confidence\": 4,\n\"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 37920,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 36128,
+        "completion_tokens": 2072,
+        "reasoning_tokens": 0,
+        "total_tokens": 39992
+      },
+      "attempts": 1,
+      "response_id": "c04d2ea9-d77d-41b6-983a-d7cbaf312237"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 5,
+      "Reject": 0
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          3,
+          4,
+          4,
+          4,
+          3
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          4,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Significance": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          4,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Contribution": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          6,
+          6,
+          6,
+          7,
+          6
+        ],
+        "mean": 6.2,
+        "rounded_mean": 6,
+        "population_sd": 0.4,
+        "min": 6,
+        "max": 7
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper introduces SEAL (Substructure Explanation via Attribution Learning), an interpretable graph neural network for molecular property prediction. SEAL decomposes molecular graphs into chemically meaningful fragments using a modified BRICS algorithm, computes per-fragment contributions via an MLP on pooled fragment representations, and sums these contributions (plus a bias) to make predictions. To enhance interpretability, the authors propose SEAL-GCN, a graph convolutional layer with separate weights for intra-fragment and inter-fragment edges, regularized by an L1 penalty on inter-fragment weights to control information leakage. The model is evaluated on the B-XAIC synthetic benchmark (with ground-truth explanations) and three real-world datasets (hERG, CYP2C9, AqSol), comparing against standard GNN explainers using subgraph explanation (SE) and fidelity metrics. A user study with chemistry experts shows SEAL explanations are preferred most frequently for solubility prediction. The paper also provides ablations on the regularization parameter λ and masking strategies.",
+      "Strengths": [
+        "Novel and well-motivated approach: making predictions additive over chemically meaningful fragments naturally yields interpretable explanations aligned with chemical intuition, unlike post-hoc explainers.",
+        "Elegant architecture: SEAL-GCN with separate intra/inter-fragment weights and L1 regularization is a simple yet effective mechanism to control information flow and improve explanation localization.",
+        "Comprehensive evaluation: includes synthetic benchmarks with ground-truth explanations, real-world datasets with fidelity metrics, and a user study with domain experts – a rare and valuable combination.",
+        "Honest discussion of limitations: the paper acknowledges the boron task failure, the caveats of fidelity metrics, and the trade-off between performance and interpretability via λ selection.",
+        "Code is publicly available, enhancing reproducibility.",
+        "The λ selection procedure via Wilcoxon signed-rank test is principled and well-described."
+      ],
+      "Weaknesses": [
+        "Predictive performance is competitive but not superior to strong baselines (e.g., GIN achieves higher AUROC on CYP2C9: 0.86 vs SEAL's 0.81). The paper does not fully justify whether the interpretability gain outweighs this performance gap.",
+        "The fidelity evaluation for SEAL uses contribution masking directly, which is fundamentally different from input masking used for other methods. This creates a potential unfair comparison, though the authors partially address this with ablation studies.",
+        "Fragment-based explainers from related work (e.g., Wu et al. 2023, FragFormer) are mentioned but not included as experimental baselines, missing an important comparison.",
+        "The user study is limited to a single property (solubility) with only 19 questions, and the number of participants is not specified. This limits the generalizability of the human-aligned interpretability claim.",
+        "The negative fidelity values for SEAL on classification tasks are extremely low (e.g., 0.09 on hERG), which is counterintuitive and not adequately explained. This may indicate a systematic issue with the masking strategy.",
+        "The lambda selection procedure using Wilcoxon test is not fully specified (e.g., what constitutes 'not significantly worse').",
+        "The boron task failure is acknowledged but not deeply analyzed; the paper could benefit from a more detailed investigation of why the fragment decomposition fails in this case."
+      ],
+      "Originality": 4,
+      "Quality": 3,
+      "Clarity": 3,
+      "Significance": 3,
+      "Questions": [
+        "Why were other fragment-based explainers (e.g., Wu et al. 2023, FragFormer) not included as baselines in the experiments? Adding these would strengthen the comparison.",
+        "Can you clarify the fairness of the fidelity comparison? For SEAL, you mask contributions directly (setting c_i=0), while for other methods you mask input node features. How does this difference affect the comparability of fidelity scores, and could this explain the near-zero negative fidelity for SEAL?",
+        "Can you provide a more detailed analysis of the rings-max failure? The SE score of 0.34 is significantly worse than baselines. What specific aspects of the extended BRICS decomposition or the model architecture cause this?",
+        "How many participants were in the user study, and was a statistical test (e.g., binomial test or Friedman test) performed to confirm that SEAL's preference is significant?",
+        "How sensitive are the results to the choice of BRICS decomposition? Have you experimented with other fragmentation algorithms (e.g., RECAP, functional group detection)?",
+        "What was the exact threshold for 'not significantly worse' in the Wilcoxon signed-rank test used for lambda selection? How sensitive are the results to this threshold?",
+        "The user study only covers aqueous solubility. Would the preference for SEAL explanations generalize to other properties like hERG or CYP inhibition?",
+        "What is the computational overhead of SEAL compared to standard GNNs, particularly regarding the regularization term and fragment decomposition?"
+      ],
+      "Limitations": [
+        "The additive fragment contribution assumption may not hold for all molecular properties, especially those involving complex long-range interactions or cooperative effects between distant fragments.",
+        "Predictive performance is competitive but not state-of-the-art; the interpretability benefit comes at some cost in accuracy.",
+        "The user study is limited in scope (only solubility, 19 questions, unclear participant count) and may not generalize to other properties or expert populations.",
+        "The fragment decomposition via modified BRICS may not be optimal for all tasks; the paper does not explore alternative fragmentation strategies.",
+        "The paper does not explicitly discuss potential negative societal impacts, such as over-reliance on model explanations in drug discovery or the risk of misleading interpretations being used in high-stakes decisions.",
+        "The paper does not discuss the computational cost of the fragment decomposition step."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 3,
+      "Contribution": 3,
+      "Overall": 7,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "THOUGHT:\nThe paper presents a novel fragment-based interpretable GNN (SEAL) with a dedicated architecture (SEAL-GCN) for molecular property prediction. All five reviewers are positive, with overall scores of 6, 6, 6, 7, and 6, and all recommend \"Accept\". The consensus is that the work is technically sound, well-motivated, and provides a valuable contribution to interpretable molecular modeling. The main concerns raised across reviews are: (1) predictive performance is competitive but not superior to GIN; (2) fidelity metric comparison may be unfair due to different masking strategies; (3) lack of comparison with other fragment-based interpretable models; (4) limited user study (single property, small scale, no statistical testing); (5) poor performance on rings-max task needs deeper analysis; (6) sensitivity to fragmentation algorithm unexplored. These are moderate weaknesses but not fatal. The contributions—inherent interpretability, SEAL-GCN architecture, comprehensive evaluation including a user study—are seen as significant. Given the strong consensus for acceptance and the overall solid quality, I will recommend Accept. I will aggregate the strengths and weaknesses into a coherent meta-review, noting the common themes and suggesting that the authors address the most pressing concerns (fairer fidelity comparison, comparison to fragment-based baselines, and deeper analysis of failures) in a revision. Ratings: Originality 4 (novel combination), Quality 3 (solid but with some methodological caveats), Clarity 3 (generally clear), Significance 3 (useful for the community). Overall 7 (Accept).\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper introduces SEAL (Substructure Explanation via Attribution Learning), an interpretable graph neural network for molecular property prediction. SEAL decomposes molecular graphs into chemically meaningful fragments using a modified BRICS algorithm, computes per-fragment contributions via an MLP on pooled fragment representations, and sums these contributions (plus a bias) to make predictions. To enhance interpretability, the authors propose SEAL-GCN, a graph convolutional layer with separate weights for intra-fragment and inter-fragment edges, regularized by an L1 penalty on inter-fragment weights to control information leakage. The model is evaluated on the B-XAIC synthetic benchmark (with ground-truth explanations) and three real-world datasets (hERG, CYP2C9, AqSol), comparing against standard GNN explainers using subgraph explanation (SE) and fidelity metrics. A user study with chemistry experts shows SEAL explanations are preferred most frequently for solubility prediction. The paper also provides ablations on the regularization parameter λ and masking strategies.\",\n    \"Strengths\": [\n        \"Novel and well-motivated approach: making predictions additive over chemically meaningful fragments naturally yields interpretable explanations aligned with chemical intuition, unlike post-hoc explainers.\",\n        \"Elegant architecture: SEAL-GCN with separate intra/inter-fragment weights and L1 regularization is a simple yet effective mechanism to control information flow and improve explanation localization.\",\n        \"Comprehensive evaluation: includes synthetic benchmarks with ground-truth explanations, real-world datasets with fidelity metrics, and a user study with domain experts – a rare and valuable combination.\",\n        \"Honest discussion of limitations: the paper acknowledges the boron task failure, the caveats of fidelity metrics, and the trade-off between performance and interpretability via λ selection.\",\n        \"Code is publicly available, enhancing reproducibility.\",\n        \"The λ selection procedure via Wilcoxon signed-rank test is principled and well-described.\"\n    ],\n    \"Weaknesses\": [\n        \"Predictive performance is competitive but not superior to strong baselines (e.g., GIN achieves higher AUROC on CYP2C9: 0.86 vs SEAL's 0.81). The paper does not fully justify whether the interpretability gain outweighs this performance gap.\",\n        \"The fidelity evaluation for SEAL uses contribution masking directly, which is fundamentally different from input masking used for other methods. This creates a potential unfair comparison, though the authors partially address this with ablation studies.\",\n        \"Fragment-based explainers from related work (e.g., Wu et al. 2023, FragFormer) are mentioned but not included as experimental baselines, missing an important comparison.\",\n        \"The user study is limited to a single property (solubility) with only 19 questions, and the number of participants is not specified. This limits the generalizability of the human-aligned interpretability claim.\",\n        \"The negative fidelity values for SEAL on classification tasks are extremely low (e.g., 0.09 on hERG), which is counterintuitive and not adequately explained. This may indicate a systematic issue with the masking strategy.\",\n        \"The lambda selection procedure using Wilcoxon test is not fully specified (e.g., what constitutes 'not significantly worse').\",\n        \"The boron task failure is acknowledged but not deeply analyzed; the paper could benefit from a more detailed investigation of why the fragment decomposition fails in this case.\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"Why were other fragment-based explainers (e.g., Wu et al. 2023, FragFormer) not included as baselines in the experiments? Adding these would strengthen the comparison.\",\n        \"Can you clarify the fairness of the fidelity comparison? For SEAL, you mask contributions directly (setting c_i=0), while for other methods you mask input node features. How does this difference affect the comparability of fidelity scores, and could this explain the near-zero negative fidelity for SEAL?\",\n        \"Can you provide a more detailed analysis of the rings-max failure? The SE score of 0.34 is significantly worse than baselines. What specific aspects of the extended BRICS decomposition or the model architecture cause this?\",\n        \"How many participants were in the user study, and was a statistical test (e.g., binomial test or Friedman test) performed to confirm that SEAL's preference is significant?\",\n        \"How sensitive are the results to the choice of BRICS decomposition? Have you experimented with other fragmentation algorithms (e.g., RECAP, functional group detection)?\",\n        \"What was the exact threshold for 'not significantly worse' in the Wilcoxon signed-rank test used for lambda selection? How sensitive are the results to this threshold?\",\n        \"The user study only covers aqueous solubility. Would the preference for SEAL explanations generalize to other properties like hERG or CYP inhibition?\",\n        \"What is the computational overhead of SEAL compared to standard GNNs, particularly regarding the regularization term and fragment decomposition?\"\n    ],\n    \"Limitations\": [\n        \"The additive fragment contribution assumption may not hold for all molecular properties, especially those involving complex long-range interactions or cooperative effects between distant fragments.\",\n        \"Predictive performance is competitive but not state-of-the-art; the interpretability benefit comes at some cost in accuracy.\",\n        \"The user study is limited in scope (only solubility, 19 questions, unclear participant count) and may not generalize to other properties or expert populations.\",\n        \"The fragment decomposition via modified BRICS may not be optimal for all tasks; the paper does not explore alternative fragmentation strategies.\",\n        \"The paper does not explicitly discuss potential negative societal impacts, such as over-reliance on model explanations in drug discovery or the risk of misleading interpretations being used in high-stakes decisions.\",\n        \"The paper does not discuss the computational cost of the fragment decomposition step.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 7,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 7320,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 7320,
+      "completion_tokens": 1606,
+      "reasoning_tokens": 0,
+      "total_tokens": 8926
+    },
+    "attempts": 1,
+    "response_id": "1fbb8f02-67f4-46b0-9fb0-d702b55af67d"
+  },
+  "final_review": {
+    "Summary": "The paper introduces SEAL (Substructure Explanation via Attribution Learning), an interpretable graph neural network for molecular property prediction. SEAL decomposes molecular graphs into chemically meaningful fragments using a modified BRICS algorithm, computes per-fragment contributions via an MLP on pooled fragment representations, and sums these contributions (plus a bias) to make predictions. To enhance interpretability, the authors propose SEAL-GCN, a graph convolutional layer with separate weights for intra-fragment and inter-fragment edges, regularized by an L1 penalty on inter-fragment weights to control information leakage. The model is evaluated on the B-XAIC synthetic benchmark (with ground-truth explanations) and three real-world datasets (hERG, CYP2C9, AqSol), comparing against standard GNN explainers using subgraph explanation (SE) and fidelity metrics. A user study with chemistry experts shows SEAL explanations are preferred most frequently for solubility prediction. The paper also provides ablations on the regularization parameter λ and masking strategies.",
+    "Strengths": [
+      "Novel and well-motivated approach: making predictions additive over chemically meaningful fragments naturally yields interpretable explanations aligned with chemical intuition, unlike post-hoc explainers.",
+      "Elegant architecture: SEAL-GCN with separate intra/inter-fragment weights and L1 regularization is a simple yet effective mechanism to control information flow and improve explanation localization.",
+      "Comprehensive evaluation: includes synthetic benchmarks with ground-truth explanations, real-world datasets with fidelity metrics, and a user study with domain experts – a rare and valuable combination.",
+      "Honest discussion of limitations: the paper acknowledges the boron task failure, the caveats of fidelity metrics, and the trade-off between performance and interpretability via λ selection.",
+      "Code is publicly available, enhancing reproducibility.",
+      "The λ selection procedure via Wilcoxon signed-rank test is principled and well-described."
+    ],
+    "Weaknesses": [
+      "Predictive performance is competitive but not superior to strong baselines (e.g., GIN achieves higher AUROC on CYP2C9: 0.86 vs SEAL's 0.81). The paper does not fully justify whether the interpretability gain outweighs this performance gap.",
+      "The fidelity evaluation for SEAL uses contribution masking directly, which is fundamentally different from input masking used for other methods. This creates a potential unfair comparison, though the authors partially address this with ablation studies.",
+      "Fragment-based explainers from related work (e.g., Wu et al. 2023, FragFormer) are mentioned but not included as experimental baselines, missing an important comparison.",
+      "The user study is limited to a single property (solubility) with only 19 questions, and the number of participants is not specified. This limits the generalizability of the human-aligned interpretability claim.",
+      "The negative fidelity values for SEAL on classification tasks are extremely low (e.g., 0.09 on hERG), which is counterintuitive and not adequately explained. This may indicate a systematic issue with the masking strategy.",
+      "The lambda selection procedure using Wilcoxon test is not fully specified (e.g., what constitutes 'not significantly worse').",
+      "The boron task failure is acknowledged but not deeply analyzed; the paper could benefit from a more detailed investigation of why the fragment decomposition fails in this case."
+    ],
+    "Originality": 4,
+    "Quality": 3,
+    "Clarity": 3,
+    "Significance": 3,
+    "Questions": [
+      "Why were other fragment-based explainers (e.g., Wu et al. 2023, FragFormer) not included as baselines in the experiments? Adding these would strengthen the comparison.",
+      "Can you clarify the fairness of the fidelity comparison? For SEAL, you mask contributions directly (setting c_i=0), while for other methods you mask input node features. How does this difference affect the comparability of fidelity scores, and could this explain the near-zero negative fidelity for SEAL?",
+      "Can you provide a more detailed analysis of the rings-max failure? The SE score of 0.34 is significantly worse than baselines. What specific aspects of the extended BRICS decomposition or the model architecture cause this?",
+      "How many participants were in the user study, and was a statistical test (e.g., binomial test or Friedman test) performed to confirm that SEAL's preference is significant?",
+      "How sensitive are the results to the choice of BRICS decomposition? Have you experimented with other fragmentation algorithms (e.g., RECAP, functional group detection)?",
+      "What was the exact threshold for 'not significantly worse' in the Wilcoxon signed-rank test used for lambda selection? How sensitive are the results to this threshold?",
+      "The user study only covers aqueous solubility. Would the preference for SEAL explanations generalize to other properties like hERG or CYP inhibition?",
+      "What is the computational overhead of SEAL compared to standard GNNs, particularly regarding the regularization term and fragment decomposition?"
+    ],
+    "Limitations": [
+      "The additive fragment contribution assumption may not hold for all molecular properties, especially those involving complex long-range interactions or cooperative effects between distant fragments.",
+      "Predictive performance is competitive but not state-of-the-art; the interpretability benefit comes at some cost in accuracy.",
+      "The user study is limited in scope (only solubility, 19 questions, unclear participant count) and may not generalize to other properties or expert populations.",
+      "The fragment decomposition via modified BRICS may not be optimal for all tasks; the paper does not explore alternative fragmentation strategies.",
+      "The paper does not explicitly discuss potential negative societal impacts, such as over-reliance on model explanations in drug discovery or the risk of misleading interpretations being used in high-stakes decisions.",
+      "The paper does not discuss the computational cost of the fragment decomposition step."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 3,
+    "Contribution": 3,
+    "Overall": 6,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 196920,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 187960,
+    "completion_tokens": 11818,
+    "reasoning_tokens": 0,
+    "total_tokens": 208738,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.0263144,
+    "output_usd": 0.00330904,
+    "total_usd": 0.02964853
+  },
+  "elapsed_seconds": 33.682,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Accept",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B033",
+    "filename": "B033.txt",
+    "blind_text_sha256": "e79cb8d642f903c8b15c29ef0258fc38970dc98bbd1a660fedc7e3e80bb94f8f",
+    "characters": 96125,
+    "full_text_saved": false
+  }
+}

@@ -1,0 +1,596 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T09:41:16.557316+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "max",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "meta",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper proposes WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs). WINO enables revokable decoding through a parallel draft-and-verify mechanism: a draft module aggressively unmasks multiple tokens per step using a lenient confidence threshold, while a verification module uses an auxiliary shadow block with redesigned position IDs and attention masks to re-mask previously generated tokens that fail a stricter confidence check. The method is evaluated on LLaDA and MMaDA across language and multimodal benchmarks, reporting large step reductions and TPS speedups while maintaining or improving task accuracy (e.g., +2.58% on GSM8K with a 5.66x TPS speedup; +5.44% on MMMU-val with a 6.00x TPS speedup). The authors also provide ablations on the verification module, generation length, full diffusion setting, threshold sensitivity, and GPU memory overhead.",
+        "Strengths": [
+          "The paper identifies a concrete and important limitation of standard DLLM decoding—irreversibility leading to error accumulation—and proposes a plausible, training-free remedy.",
+          "The shadow-block verification design is novel: using shared position IDs and a carefully constructed attention mask to obtain leave-one-out confidence scores without disturbing the original block distribution is an elegant idea.",
+          "WINO is model-agnostic and training-free, making it easy to integrate into existing open-source DLLMs like LLaDA and MMaDA.",
+          "The empirical evaluation is broad, covering 8 language benchmarks and 6 multimodal benchmarks, and consistently shows large step reductions and TPS improvements with accuracy gains on many tasks.",
+          "The ablation of the verification module and the comparison with naive parallel sampling help demonstrate the contribution of the verify step.",
+          "The paper includes analyses of full-diffusion decoding, different generation lengths, threshold sensitivity, and GPU memory overhead, which strengthen technical understanding."
+        ],
+        "Weaknesses": [
+          "Missing comparisons to existing DLLM acceleration methods, especially those described in the related work (e.g., entropy-bounded sampler by Ben-Hamu et al., Fast-dLLM-parallel by Wu et al.). Without these baselines, it is unclear whether WINO offers a meaningful advantage over the current state of the art in parallel decoding.",
+          "The paper reports TPS and step reductions but does not provide end-to-end wall-clock latencies or FLOPs. Since WINO processes an extra shadow block of the same length as the current block, the per-step compute is larger; TPS alone may not fully capture real-world speedup, especially for long sequences.",
+          "Exact hyperparameter choices are under-specified: the drafting threshold tau1 is said to be tuned from {0.5, 0.6, 0.7}, but the per-task tau1 values are not reported, which hurts reproducibility.",
+          "Several reported improvements are very small (e.g., +0.16 CIDEr on Flickr30k, +0.30 on MathVista, +1.02 on MATH-Vision), and no statistical significance tests or multiple-seed results are provided, making it hard to judge whether these gains are reliable.",
+          "In the full-diffusion setting, WINO on GSM8K reaches 58.22 accuracy, which is much lower than the 73.24 of semi-autoregressive LLaDA standard decoding; the paper does not discuss this gap or qualify when full-diffusion is preferable.",
+          "The paper lacks a clear algorithm pseudocode and has dense, difficult-to-follow equations; the attention-mask design could be explained with a concrete matrix example.",
+          "The claimed 6x speedup in the abstract corresponds to step reduction (6.10x) while the TPS speedup is 5.66x; the presentation is inconsistent about what 'acceleration' means."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 2,
+        "Significance": 3,
+        "Questions": [
+          "How does WINO compare against existing DLLM acceleration methods such as the entropy-bounded sampler and Fast-dLLM-parallel in terms of accuracy, wall-clock latency, and memory usage under the same generation length and hardware?",
+          "Can the authors report actual end-to-end wall-clock times per sample or per token, including the overhead of the shadow block, for both baseline and WINO?",
+          "What are the exact tau1 values used for each benchmark, and how sensitive are the reported results to fixing tau1 at a single value (e.g., 0.6)?",
+          "Are the small improvements on Flickr30k, MathVista, and MATH-Vision statistically significant across multiple random seeds or evaluation runs?",
+          "In the full-diffusion setting, why does WINO still underperform semi-autoregressive LLaDA on GSM8K, and what are the practical recommendations for choosing between semi-autoregressive and full-diffusion decoding with WINO?",
+          "How does the shadow-block overhead scale with longer sequences (e.g., generation length 1024 or 2048) and larger block lengths? Does the TPS speedup hold or diminish?",
+          "Does the modified attention mask and position-ID scheme remain valid for DLLMs that use relative position encodings such as RoPE or ALiBi, or are model-specific adaptations required?"
+        ],
+        "Limitations": [
+          "The paper does not compare with existing sampling-based acceleration baselines, so the claimed quality-speed improvement over the current state of the art is not established.",
+          "The speedup characterization is incomplete: TPS and step reductions do not account for the increased sequence length due to the shadow block, and no wall-clock latency measurements are reported.",
+          "Hyperparameter choices are under-reported; the tau1 threshold appears task-dependent and may require tuning for new applications.",
+          "Evaluations are limited to two model families (LLaDA and MMaDA); generalizability to other DLLMs, especially those with different attention mechanisms, is unverified.",
+          "The method introduces additional GPU memory and compute; the paper shows only a small memory overhead but does not analyze the computational cost in terms of FLOPs or latency for long sequences.",
+          "Potential negative societal impacts are not discussed. While WINO is a general decoding method, any acceleration of large language models could lower the cost of generating harmful or misleading content at scale."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 2,
+        "Contribution": 3,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs). WINO enables revokable decoding through a parallel draft-and-verify mechanism: a draft module aggressively unmasks multiple tokens per step using a lenient confidence threshold, while a verification module uses an auxiliary shadow block with redesigned position IDs and attention masks to re-mask previously generated tokens that fail a stricter confidence check. The method is evaluated on LLaDA and MMaDA across language and multimodal benchmarks, reporting large step reductions and TPS speedups while maintaining or improving task accuracy (e.g., +2.58% on GSM8K with a 5.66x TPS speedup; +5.44% on MMMU-val with a 6.00x TPS speedup). The authors also provide ablations on the verification module, generation length, full diffusion setting, threshold sensitivity, and GPU memory overhead.\",\n  \"Strengths\": [\n    \"The paper identifies a concrete and important limitation of standard DLLM decoding—irreversibility leading to error accumulation—and proposes a plausible, training-free remedy.\",\n    \"The shadow-block verification design is novel: using shared position IDs and a carefully constructed attention mask to obtain leave-one-out confidence scores without disturbing the original block distribution is an elegant idea.\",\n    \"WINO is model-agnostic and training-free, making it easy to integrate into existing open-source DLLMs like LLaDA and MMaDA.\",\n    \"The empirical evaluation is broad, covering 8 language benchmarks and 6 multimodal benchmarks, and consistently shows large step reductions and TPS improvements with accuracy gains on many tasks.\",\n    \"The ablation of the verification module and the comparison with naive parallel sampling help demonstrate the contribution of the verify step.\",\n    \"The paper includes analyses of full-diffusion decoding, different generation lengths, threshold sensitivity, and GPU memory overhead, which strengthen technical understanding.\"\n  ],\n  \"Weaknesses\": [\n    \"Missing comparisons to existing DLLM acceleration methods, especially those described in the related work (e.g., entropy-bounded sampler by Ben-Hamu et al., Fast-dLLM-parallel by Wu et al.). Without these baselines, it is unclear whether WINO offers a meaningful advantage over the current state of the art in parallel decoding.\",\n    \"The paper reports TPS and step reductions but does not provide end-to-end wall-clock latencies or FLOPs. Since WINO processes an extra shadow block of the same length as the current block, the per-step compute is larger; TPS alone may not fully capture real-world speedup, especially for long sequences.\",\n    \"Exact hyperparameter choices are under-specified: the drafting threshold tau1 is said to be tuned from {0.5, 0.6, 0.7}, but the per-task tau1 values are not reported, which hurts reproducibility.\",\n    \"Several reported improvements are very small (e.g., +0.16 CIDEr on Flickr30k, +0.30 on MathVista, +1.02 on MATH-Vision), and no statistical significance tests or multiple-seed results are provided, making it hard to judge whether these gains are reliable.\",\n    \"In the full-diffusion setting, WINO on GSM8K reaches 58.22 accuracy, which is much lower than the 73.24 of semi-autoregressive LLaDA standard decoding; the paper does not discuss this gap or qualify when full-diffusion is preferable.\",\n    \"The paper lacks a clear algorithm pseudocode and has dense, difficult-to-follow equations; the attention-mask design could be explained with a concrete matrix example.\",\n    \"The claimed 6x speedup in the abstract corresponds to step reduction (6.10x) while the TPS speedup is 5.66x; the presentation is inconsistent about what 'acceleration' means.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does WINO compare against existing DLLM acceleration methods such as the entropy-bounded sampler and Fast-dLLM-parallel in terms of accuracy, wall-clock latency, and memory usage under the same generation length and hardware?\",\n    \"Can the authors report actual end-to-end wall-clock times per sample or per token, including the overhead of the shadow block, for both baseline and WINO?\",\n    \"What are the exact tau1 values used for each benchmark, and how sensitive are the reported results to fixing tau1 at a single value (e.g., 0.6)?\",\n    \"Are the small improvements on Flickr30k, MathVista, and MATH-Vision statistically significant across multiple random seeds or evaluation runs?\",\n    \"In the full-diffusion setting, why does WINO still underperform semi-autoregressive LLaDA on GSM8K, and what are the practical recommendations for choosing between semi-autoregressive and full-diffusion decoding with WINO?\",\n    \"How does the shadow-block overhead scale with longer sequences (e.g., generation length 1024 or 2048) and larger block lengths? Does the TPS speedup hold or diminish?\",\n    \"Does the modified attention mask and position-ID scheme remain valid for DLLMs that use relative position encodings such as RoPE or ALiBi, or are model-specific adaptations required?\"\n  ],\n  \"Limitations\": [\n    \"The paper does not compare with existing sampling-based acceleration baselines, so the claimed quality-speed improvement over the current state of the art is not established.\",\n    \"The speedup characterization is incomplete: TPS and step reductions do not account for the increased sequence length due to the shadow block, and no wall-clock latency measurements are reported.\",\n    \"Hyperparameter choices are under-reported; the tau1 threshold appears task-dependent and may require tuning for new applications.\",\n    \"Evaluations are limited to two model families (LLaDA and MMaDA); generalizability to other DLLMs, especially those with different attention mechanisms, is unverified.\",\n    \"The method introduces additional GPU memory and compute; the paper shows only a small memory overhead but does not analyze the computational cost in terms of FLOPs or latency for long sequences.\",\n    \"Potential negative societal impacts are not discussed. While WINO is a general decoding method, any acceleration of large language models could lower the cost of generating harmful or misleading content at scale.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 2,\n  \"Contribution\": 3,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 47389,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 46621,
+        "completion_tokens": 6909,
+        "reasoning_tokens": 5500,
+        "total_tokens": 54298
+      },
+      "attempts": 1,
+      "response_id": "5f3f1518-e213-4369-badb-98f39bda45b3"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper proposes WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that aims to resolve the quality-speed trade-off in parallel decoding. WINO operates with a parallel draft-and-verify mechanism: it aggressively drafts multiple tokens based on a low confidence threshold and simultaneously verifies previously decoded tokens using a specially designed shadow block with adjusted position IDs and attention masks, re-masking tokens that fail a stricter verification threshold. This makes decoding revocable, allowing early errors to be corrected. Experiments on LLaDA and MMaDA show large step reductions and TPS speedups (up to ~10x) with accuracy improvements on many language and multimodal benchmarks, along with ablations on the verification module, threshold sensitivity, generation length, full diffusion decoding, and GPU memory.",
+        "Strengths": [
+          "The paper identifies a clear and relevant problem: the irreversibility of standard DLLM decoding prevents effective parallel generation, and the proposed revokable decoding is a plausible and interesting remedy.",
+          "WINO is training-free and plug-and-play, requiring no modification to model weights, which makes it easy to adopt in existing DLLMs.",
+          "The shadow-block verification design is elegant: it exploits bidirectional context in a single forward pass and prevents information leakage by masking the corresponding position, allowing the model to self-correct earlier predictions.",
+          "Extensive experiments cover multiple language and multimodal benchmarks, with consistently large decoding-step reductions (e.g., 6.10x on GSM8K, 10.05x on Flickr30k) and often improved accuracy.",
+          "Ablation studies demonstrate the necessity of the verification module, show behavior under different thresholds, evaluate full diffusion settings, and measure GPU memory overhead, which strengthens the analysis."
+        ],
+        "Weaknesses": [
+          "The paper does not compare WINO against existing accelerated sampling methods for DLLMs, such as entropy-bounded unmasking (Ben-Hamu et al., 2025) or Fast-dLLM-parallel (Wu et al., 2025), so its advantage over the current state of the art in sampling acceleration is not established.",
+          "Evaluation is limited to two 8B models (LLaDA-8B and MMaDA-8B); there is no evidence that WINO generalizes to other DLLMs, model scales, or different architectures.",
+          "Several reported performance improvements are small (e.g., +0.16 CIDEr on Flickr30k, +0.30 on MathVista) and no statistical significance or variance is reported, so these gains could be within noise.",
+          "The speedup claims rely heavily on step reduction, but wall-clock TPS speedups are consistently lower (e.g., 6.10x step reduction vs. 5.66x TPS), and the paper does not provide a detailed latency/FLOPs breakdown of the shadow block overhead.",
+          "The paper lacks a comparison to naive parallel sampling at matched wall-clock time; the only such comparison is partial and not controlled for total compute.",
+          "The writing and formatting are often unclear or malformed (e.g., garbled equations, missing figure references), making the paper harder to follow than it should be."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 2,
+        "Questions": [
+          "How does WINO compare to entropy-bounded unmasking and Fast-dLLM-parallel in terms of accuracy-speed trade-off on the same benchmarks and models?",
+          "What is the per-step wall-clock latency increase caused by the shadow block, and how does this affect the total end-to-end speedup at different block lengths?",
+          "Are the reported accuracy differences statistically significant when repeated over multiple seeds or sampled subsets?",
+          "Does WINO work on other DLLMs (e.g., Dream 7B, smaller LLaDA variants) or only on models with semi-autoregressive decoding as implemented in LLaDA/MMaDA?",
+          "How sensitive is the final accuracy to the verification threshold tau2, and is tau2=0.9 universally optimal across all tasks?",
+          "Can the verification be performed in the same forward pass without doubling the sequence length, e.g., by using a separate head or a second pass, and what is the cost trade-off?"
+        ],
+        "Limitations": [
+          "The method is only validated on two 8B models, so its generality to other DLLMs and scales is unknown.",
+          "No comparison with prior accelerated decoding methods means the practical advantage over baselines is not fully quantified.",
+          "The shadow block increases sequence length, causing additional memory and per-step computation; the paper only reports memory overhead, not compute/latency overhead.",
+          "The threshold-based draft/verification may require per-task tuning, and the fixed tau2=0.9 may not be optimal across domains.",
+          "The paper does not discuss failure cases where verification may be too aggressive or too permissive, or the potential for infinite loops (though not observed in experiments)."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 5,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that aims to resolve the quality-speed trade-off in parallel decoding. WINO operates with a parallel draft-and-verify mechanism: it aggressively drafts multiple tokens based on a low confidence threshold and simultaneously verifies previously decoded tokens using a specially designed shadow block with adjusted position IDs and attention masks, re-masking tokens that fail a stricter verification threshold. This makes decoding revocable, allowing early errors to be corrected. Experiments on LLaDA and MMaDA show large step reductions and TPS speedups (up to ~10x) with accuracy improvements on many language and multimodal benchmarks, along with ablations on the verification module, threshold sensitivity, generation length, full diffusion decoding, and GPU memory.\",\n  \"Strengths\": [\n    \"The paper identifies a clear and relevant problem: the irreversibility of standard DLLM decoding prevents effective parallel generation, and the proposed revokable decoding is a plausible and interesting remedy.\",\n    \"WINO is training-free and plug-and-play, requiring no modification to model weights, which makes it easy to adopt in existing DLLMs.\",\n    \"The shadow-block verification design is elegant: it exploits bidirectional context in a single forward pass and prevents information leakage by masking the corresponding position, allowing the model to self-correct earlier predictions.\",\n    \"Extensive experiments cover multiple language and multimodal benchmarks, with consistently large decoding-step reductions (e.g., 6.10x on GSM8K, 10.05x on Flickr30k) and often improved accuracy.\",\n    \"Ablation studies demonstrate the necessity of the verification module, show behavior under different thresholds, evaluate full diffusion settings, and measure GPU memory overhead, which strengthens the analysis.\"\n  ],\n  \"Weaknesses\": [\n    \"The paper does not compare WINO against existing accelerated sampling methods for DLLMs, such as entropy-bounded unmasking (Ben-Hamu et al., 2025) or Fast-dLLM-parallel (Wu et al., 2025), so its advantage over the current state of the art in sampling acceleration is not established.\",\n    \"Evaluation is limited to two 8B models (LLaDA-8B and MMaDA-8B); there is no evidence that WINO generalizes to other DLLMs, model scales, or different architectures.\",\n    \"Several reported performance improvements are small (e.g., +0.16 CIDEr on Flickr30k, +0.30 on MathVista) and no statistical significance or variance is reported, so these gains could be within noise.\",\n    \"The speedup claims rely heavily on step reduction, but wall-clock TPS speedups are consistently lower (e.g., 6.10x step reduction vs. 5.66x TPS), and the paper does not provide a detailed latency/FLOPs breakdown of the shadow block overhead.\",\n    \"The paper lacks a comparison to naive parallel sampling at matched wall-clock time; the only such comparison is partial and not controlled for total compute.\",\n    \"The writing and formatting are often unclear or malformed (e.g., garbled equations, missing figure references), making the paper harder to follow than it should be.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"How does WINO compare to entropy-bounded unmasking and Fast-dLLM-parallel in terms of accuracy-speed trade-off on the same benchmarks and models?\",\n    \"What is the per-step wall-clock latency increase caused by the shadow block, and how does this affect the total end-to-end speedup at different block lengths?\",\n    \"Are the reported accuracy differences statistically significant when repeated over multiple seeds or sampled subsets?\",\n    \"Does WINO work on other DLLMs (e.g., Dream 7B, smaller LLaDA variants) or only on models with semi-autoregressive decoding as implemented in LLaDA/MMaDA?\",\n    \"How sensitive is the final accuracy to the verification threshold tau2, and is tau2=0.9 universally optimal across all tasks?\",\n    \"Can the verification be performed in the same forward pass without doubling the sequence length, e.g., by using a separate head or a second pass, and what is the cost trade-off?\"\n  ],\n  \"Limitations\": [\n    \"The method is only validated on two 8B models, so its generality to other DLLMs and scales is unknown.\",\n    \"No comparison with prior accelerated decoding methods means the practical advantage over baselines is not fully quantified.\",\n    \"The shadow block increases sequence length, causing additional memory and per-step computation; the paper only reports memory overhead, not compute/latency overhead.\",\n    \"The threshold-based draft/verification may require per-task tuning, and the fixed tau2=0.9 may not be optimal across domains.\",\n    \"The paper does not discuss failure cases where verification may be too aggressive or too permissive, or the potential for infinite loops (though not observed in experiments).\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 5,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 47389,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 46621,
+        "completion_tokens": 4501,
+        "reasoning_tokens": 3375,
+        "total_tokens": 51890
+      },
+      "attempts": 1,
+      "response_id": "0eb02cf6-424e-4d81-b35a-31f1b7c1dcdc"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper proposes WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that enables revokable decoding. WINO uses a parallel draft-and-verify mechanism: it aggressively unmasks multiple tokens based on a low confidence threshold, then verifies all previously unmasked tokens using an auxiliary shadow block with carefully designed attention masks, re-masking low-confidence tokens for refinement. Experiments on LLaDA and MMaDA across language and multimodal benchmarks show substantial speedups (up to ~10x in steps) with accuracy improvements or comparable performance compared to standard decoding.",
+        "Strengths": [
+          "The idea of making DLLM decoding revokable via a draft-and-verify mechanism is novel and well-motivated; it directly addresses the irreversibility of standard DLLM decoding and the resulting quality-speed trade-off.",
+          "WINO is training-free and model-agnostic, requiring only modifications to attention masks and position IDs; it performs drafting and verification in a single forward pass.",
+          "The empirical evaluation covers diverse tasks (math, code, reasoning, captioning, multimodal) and two open-source DLLMs (LLaDA and MMaDA), showing consistent gains in accuracy and inference speed.",
+          "Ablation studies show the verification module is necessary, and analyses of task difficulty, generation length, and full diffusion settings provide useful insights.",
+          "The reported GPU memory overhead is small (e.g., 2.4% on GSM8K), supporting practical feasibility."
+        ],
+        "Weaknesses": [
+          "The paper does not compare WINO against existing DLLM sampling-acceleration methods such as Fast-dLLM-parallel or entropy-bounded sampling, which also dynamically control parallel unmasking; this omission makes the claimed speedup/quality improvements insufficiently contextualized.",
+          "The proposed shadow block reuses the same position IDs as the current block, which may be out-of-distribution for models with positional encodings like RoPE; the paper provides no analysis or empirical validation of this design choice.",
+          "The hyperparameters, especially the drafting threshold tau1, are tuned from {0.5, 0.6, 0.7} per benchmark with no clear selection criterion; this risks overfitting and makes it unclear how to set tau1 for new tasks.",
+          "The verification equation (Eq. 3) and overall procedure lack convergence guarantees; a token could be repeatedly re-masked, and there is no discussion of maximum steps or termination conditions.",
+          "TPS measurements are reported without details on hardware, inference framework, batch size, or number of runs, and no error bars/variance are given for accuracy or speed; some accuracy gains (e.g., +22 on ARC) seem unusually large and lack additional analysis.",
+          "The paper's clarity is hurt by garbled equations and typos (e.g., 'LLaMA decoding' instead of 'LLaDA'), and key figures/links are redacted, making reproduction harder."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 3,
+        "Questions": [
+          "How does WINO compare against Fast-dLLM-parallel and entropy-bounded samplers in terms of accuracy and speed on the same benchmarks?",
+          "Is the drafting threshold tau1 selected on a validation set or fixed globally? How sensitive are the reported improvements to the choice of tau1?",
+          "What are the exact TPS measurement conditions (GPU model, batch size, warm-up, number of runs)? Are reported speedups averaged over multiple trials with standard deviation?",
+          "How does the duplicate position ID design interact with the positional encoding used in LLaDA/MMaDA (e.g., RoPE)? Is there any empirical check that this does not degrade the model's predictions?",
+          "Does the algorithm guarantee termination if a token is repeatedly re-masked? What is the maximum number of decoding steps in the worst case?",
+          "Why does WINO achieve a +22-point improvement on ARC-E/ARC-C? Is this due to the baseline's decoding length being too short, or a spurious effect of the verification threshold?"
+        ],
+        "Limitations": [
+          "WINO only applies to masked-diffusion DLLMs using discrete masks, not to continuous diffusion or autoregressive models.",
+          "The shadow block increases sequence length and memory usage, which may be non-negligible for longer blocks or larger models.",
+          "The acceleration and quality gains depend on the base model's confidence; for a weak model, the drafting step may produce many low-quality tokens that require many verification/refinement steps.",
+          "There are no theoretical guarantees on the quality of the final output or on convergence, and the method introduces two thresholds that may require tuning.",
+          "The evaluation is limited to 8B-scale models and does not include closed-source or larger DLLMs, so scalability is unknown."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 3,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that enables revokable decoding. WINO uses a parallel draft-and-verify mechanism: it aggressively unmasks multiple tokens based on a low confidence threshold, then verifies all previously unmasked tokens using an auxiliary shadow block with carefully designed attention masks, re-masking low-confidence tokens for refinement. Experiments on LLaDA and MMaDA across language and multimodal benchmarks show substantial speedups (up to ~10x in steps) with accuracy improvements or comparable performance compared to standard decoding.\",\n  \"Strengths\": [\n    \"The idea of making DLLM decoding revokable via a draft-and-verify mechanism is novel and well-motivated; it directly addresses the irreversibility of standard DLLM decoding and the resulting quality-speed trade-off.\",\n    \"WINO is training-free and model-agnostic, requiring only modifications to attention masks and position IDs; it performs drafting and verification in a single forward pass.\",\n    \"The empirical evaluation covers diverse tasks (math, code, reasoning, captioning, multimodal) and two open-source DLLMs (LLaDA and MMaDA), showing consistent gains in accuracy and inference speed.\",\n    \"Ablation studies show the verification module is necessary, and analyses of task difficulty, generation length, and full diffusion settings provide useful insights.\",\n    \"The reported GPU memory overhead is small (e.g., 2.4% on GSM8K), supporting practical feasibility.\"\n  ],\n  \"Weaknesses\": [\n    \"The paper does not compare WINO against existing DLLM sampling-acceleration methods such as Fast-dLLM-parallel or entropy-bounded sampling, which also dynamically control parallel unmasking; this omission makes the claimed speedup/quality improvements insufficiently contextualized.\",\n    \"The proposed shadow block reuses the same position IDs as the current block, which may be out-of-distribution for models with positional encodings like RoPE; the paper provides no analysis or empirical validation of this design choice.\",\n    \"The hyperparameters, especially the drafting threshold tau1, are tuned from {0.5, 0.6, 0.7} per benchmark with no clear selection criterion; this risks overfitting and makes it unclear how to set tau1 for new tasks.\",\n    \"The verification equation (Eq. 3) and overall procedure lack convergence guarantees; a token could be repeatedly re-masked, and there is no discussion of maximum steps or termination conditions.\",\n    \"TPS measurements are reported without details on hardware, inference framework, batch size, or number of runs, and no error bars/variance are given for accuracy or speed; some accuracy gains (e.g., +22 on ARC) seem unusually large and lack additional analysis.\",\n    \"The paper's clarity is hurt by garbled equations and typos (e.g., 'LLaMA decoding' instead of 'LLaDA'), and key figures/links are redacted, making reproduction harder.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does WINO compare against Fast-dLLM-parallel and entropy-bounded samplers in terms of accuracy and speed on the same benchmarks?\",\n    \"Is the drafting threshold tau1 selected on a validation set or fixed globally? How sensitive are the reported improvements to the choice of tau1?\",\n    \"What are the exact TPS measurement conditions (GPU model, batch size, warm-up, number of runs)? Are reported speedups averaged over multiple trials with standard deviation?\",\n    \"How does the duplicate position ID design interact with the positional encoding used in LLaDA/MMaDA (e.g., RoPE)? Is there any empirical check that this does not degrade the model's predictions?\",\n    \"Does the algorithm guarantee termination if a token is repeatedly re-masked? What is the maximum number of decoding steps in the worst case?\",\n    \"Why does WINO achieve a +22-point improvement on ARC-E/ARC-C? Is this due to the baseline's decoding length being too short, or a spurious effect of the verification threshold?\"\n  ],\n  \"Limitations\": [\n    \"WINO only applies to masked-diffusion DLLMs using discrete masks, not to continuous diffusion or autoregressive models.\",\n    \"The shadow block increases sequence length and memory usage, which may be non-negligible for longer blocks or larger models.\",\n    \"The acceleration and quality gains depend on the base model's confidence; for a weak model, the drafting step may produce many low-quality tokens that require many verification/refinement steps.\",\n    \"There are no theoretical guarantees on the quality of the final output or on convergence, and the method introduces two thresholds that may require tuning.\",\n    \"The evaluation is limited to 8B-scale models and does not include closed-source or larger DLLMs, so scalability is unknown.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 3,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 47389,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 46621,
+        "completion_tokens": 4251,
+        "reasoning_tokens": 3154,
+        "total_tokens": 51640
+      },
+      "attempts": 1,
+      "response_id": "74ff637e-8f78-48c9-9852-98a7650d658f"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper introduces WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that enables revokable decoding via a parallel draft-and-verify mechanism. At each decoding step, WINO aggressively drafts multiple tokens using a low confidence threshold and simultaneously verifies previously unmasked tokens using a specially designed shadow block with position IDs and attention masks, re-masking those with low verification confidence. This allows early errors to be corrected and supports more aggressive parallel generation. Experiments on LLaDA and MMaDA across language and multimodal benchmarks show consistent accuracy improvements and significant speedups (up to 10x) compared to standard decoding, with ablation studies validating the verification module and memory overhead analysis.",
+        "Strengths": [
+          "Novel and clear formulation of the quality-speed trade-off in DLLMs as caused by the irreversibility of standard decoding, motivating the concept of revokable decoding.",
+          "The proposed shadow block design with position IDs and attention masks is elegant: it enables verification in a single forward pass without altering the model's original output distribution, and prevents information leakage during verification.",
+          "Training-free and plug-and-play, making it directly applicable to existing open-source DLLMs like LLaDA and MMaDA.",
+          "Comprehensive experiments across 14 benchmarks (language and multimodal) demonstrating that WINO improves or maintains accuracy while providing large speedups over standard decoding.",
+          "Ablation studies confirm the importance of the verification module and show that threshold tuning provides a reasonable accuracy-speed trade-off.",
+          "Analysis of GPU memory overhead shows that the additional cost is marginal (e.g., 2.4% on GSM8K), addressing a potential practical concern."
+        ],
+        "Weaknesses": [
+          "Missing empirical comparisons against other state-of-the-art DLLM acceleration samplers mentioned in related work, such as Fast-dLLM-parallel (Wu et al., 2025) and entropy-bounded sampler (Ben-Hamu et al., 2025). This weakens the claim that WINO decisively improves the quality-speed trade-off relative to existing methods.",
+          "The verification criterion is heuristic: using p(y_shad_l = y_cur_l) < tau2 to re-mask tokens lacks theoretical justification or analysis of when this probability faithfully indicates correctness. It is unclear why the shadow block's estimate is more reliable than the original token confidence used during drafting.",
+          "The duplication of position IDs between the shadow block and current block may interfere with positional encodings (e.g., RoPE) in some architectures; the paper does not discuss whether this is a concern or how it is handled.",
+          "The speedup numbers differ between step reduction and TPS speedup (e.g., 6.10x vs 5.66x on GSM8K), indicating per-step overhead from the longer sequence. The paper does not break down this overhead or compare per-step latency with baselines.",
+          "In the full diffusion setting, the baseline LLaDA accuracy drops dramatically (e.g., 34.34% on GSM8K vs 73.24% in semi-AR), and WINO's large gains may partly stem from mitigating this known weakness rather than broadly improving DLLM decoding. The paper does not analyze this interaction.",
+          "The method introduces two hyperparameters (tau1 and tau2) that need tuning; the paper provides some robustness analysis but does not give clear guidance on choosing them across different tasks or models."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How does WINO compare empirically against other DLLM acceleration methods, particularly the entropy-bounded sampler and Fast-dLLM-parallel, on the same benchmarks?",
+          "Can you provide a theoretical or empirical analysis of why the shadow block's probability p(y_shad_l = y_cur_l) is a reliable indicator for verification? How does it relate to the token-level confidence used in drafting?",
+          "Does the duplication of position IDs for the shadow block cause any issues with positional encoding or attention patterns? Have you tested with models using different positional encodings (e.g., RoPE, ALiBi)?",
+          "What is the per-step latency overhead of WINO compared to standard decoding, and how does it scale with block length?",
+          "In the full diffusion setting, does WINO effectively act as a semi-autoregressive decoder by re-masking early tokens? Could this explain the large gains over the full-diffusion baseline?",
+          "How sensitive are the results to the choice of tau1 and tau2 across different tasks? Is there a principled way to set these thresholds automatically?"
+        ],
+        "Limitations": [
+          "The degree of acceleration depends heavily on the base model's capability; easier tasks and more proficient models yield larger speedups, limiting worst-case gains on difficult reasoning tasks.",
+          "No comparison to other acceleration methods, making it difficult to position WINO against state-of-the-art DLLM inference optimizations.",
+          "The verification module adds memory and computational overhead due to the extended sequence length, even though the reported memory increase is small.",
+          "The method is heuristic and lacks theoretical guarantees on convergence or quality improvement.",
+          "Experiments are limited to two model families (LLaDA and MMaDA); performance on other DLLMs, especially those with different architectures or training procedures, is unknown."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper introduces WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that enables revokable decoding via a parallel draft-and-verify mechanism. At each decoding step, WINO aggressively drafts multiple tokens using a low confidence threshold and simultaneously verifies previously unmasked tokens using a specially designed shadow block with position IDs and attention masks, re-masking those with low verification confidence. This allows early errors to be corrected and supports more aggressive parallel generation. Experiments on LLaDA and MMaDA across language and multimodal benchmarks show consistent accuracy improvements and significant speedups (up to 10x) compared to standard decoding, with ablation studies validating the verification module and memory overhead analysis.\",\n  \"Strengths\": [\n    \"Novel and clear formulation of the quality-speed trade-off in DLLMs as caused by the irreversibility of standard decoding, motivating the concept of revokable decoding.\",\n    \"The proposed shadow block design with position IDs and attention masks is elegant: it enables verification in a single forward pass without altering the model's original output distribution, and prevents information leakage during verification.\",\n    \"Training-free and plug-and-play, making it directly applicable to existing open-source DLLMs like LLaDA and MMaDA.\",\n    \"Comprehensive experiments across 14 benchmarks (language and multimodal) demonstrating that WINO improves or maintains accuracy while providing large speedups over standard decoding.\",\n    \"Ablation studies confirm the importance of the verification module and show that threshold tuning provides a reasonable accuracy-speed trade-off.\",\n    \"Analysis of GPU memory overhead shows that the additional cost is marginal (e.g., 2.4% on GSM8K), addressing a potential practical concern.\"\n  ],\n  \"Weaknesses\": [\n    \"Missing empirical comparisons against other state-of-the-art DLLM acceleration samplers mentioned in related work, such as Fast-dLLM-parallel (Wu et al., 2025) and entropy-bounded sampler (Ben-Hamu et al., 2025). This weakens the claim that WINO decisively improves the quality-speed trade-off relative to existing methods.\",\n    \"The verification criterion is heuristic: using p(y_shad_l = y_cur_l) < tau2 to re-mask tokens lacks theoretical justification or analysis of when this probability faithfully indicates correctness. It is unclear why the shadow block's estimate is more reliable than the original token confidence used during drafting.\",\n    \"The duplication of position IDs between the shadow block and current block may interfere with positional encodings (e.g., RoPE) in some architectures; the paper does not discuss whether this is a concern or how it is handled.\",\n    \"The speedup numbers differ between step reduction and TPS speedup (e.g., 6.10x vs 5.66x on GSM8K), indicating per-step overhead from the longer sequence. The paper does not break down this overhead or compare per-step latency with baselines.\",\n    \"In the full diffusion setting, the baseline LLaDA accuracy drops dramatically (e.g., 34.34% on GSM8K vs 73.24% in semi-AR), and WINO's large gains may partly stem from mitigating this known weakness rather than broadly improving DLLM decoding. The paper does not analyze this interaction.\",\n    \"The method introduces two hyperparameters (tau1 and tau2) that need tuning; the paper provides some robustness analysis but does not give clear guidance on choosing them across different tasks or models.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does WINO compare empirically against other DLLM acceleration methods, particularly the entropy-bounded sampler and Fast-dLLM-parallel, on the same benchmarks?\",\n    \"Can you provide a theoretical or empirical analysis of why the shadow block's probability p(y_shad_l = y_cur_l) is a reliable indicator for verification? How does it relate to the token-level confidence used in drafting?\",\n    \"Does the duplication of position IDs for the shadow block cause any issues with positional encoding or attention patterns? Have you tested with models using different positional encodings (e.g., RoPE, ALiBi)?\",\n    \"What is the per-step latency overhead of WINO compared to standard decoding, and how does it scale with block length?\",\n    \"In the full diffusion setting, does WINO effectively act as a semi-autoregressive decoder by re-masking early tokens? Could this explain the large gains over the full-diffusion baseline?\",\n    \"How sensitive are the results to the choice of tau1 and tau2 across different tasks? Is there a principled way to set these thresholds automatically?\"\n  ],\n  \"Limitations\": [\n    \"The degree of acceleration depends heavily on the base model's capability; easier tasks and more proficient models yield larger speedups, limiting worst-case gains on difficult reasoning tasks.\",\n    \"No comparison to other acceleration methods, making it difficult to position WINO against state-of-the-art DLLM inference optimizations.\",\n    \"The verification module adds memory and computational overhead due to the extended sequence length, even though the reported memory increase is small.\",\n    \"The method is heuristic and lacks theoretical guarantees on convergence or quality improvement.\",\n    \"Experiments are limited to two model families (LLaDA and MMaDA); performance on other DLLMs, especially those with different architectures or training procedures, is unknown.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 47389,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 46621,
+        "completion_tokens": 2912,
+        "reasoning_tokens": 1715,
+        "total_tokens": 50301
+      },
+      "attempts": 1,
+      "response_id": "b66aa673-83a5-427c-8bc5-43373bdbf454"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper proposes WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that enables revokable decoding via a parallel draft-and-verify mechanism. WINO aggressively drafts multiple tokens using a lenient confidence threshold, then uses a shadow block with custom position IDs and attention masks to verify previously decoded tokens and re-mask low-confidence ones for refinement. The method is applied to LLaDA and MMaDA, achieving speedups and accuracy improvements on language and multimodal benchmarks.",
+        "Strengths": [
+          "The idea of making DLLM decoding revokable via a shadow-block-based draft-and-verify mechanism is novel and well-motivated by the irreversibility limitation of standard decoding.",
+          "WINO is training-free and plug-and-play, making it easy to apply to existing open-source DLLMs without additional training.",
+          "Extensive experiments on 8 language and 6 multimodal benchmarks demonstrate consistent accuracy improvements and large step reductions, with ablations showing the importance of the verification module.",
+          "The method adapts its speedup based on task difficulty, with larger speedups on easier tasks, which is nicely analyzed in the paper."
+        ],
+        "Weaknesses": [
+          "The paper does not compare WINO against existing training-free acceleration methods for DLLMs, such as the entropy-bounded sampler or Fast-dLLM-parallel, despite citing them; thus the claimed superiority over state-of-the-art acceleration techniques is not established.",
+          "The abstract and main text claim speedups of 6x and 10x based on step reduction, but the reported TPS speedups are lower (5.66x and 8.60x), which may overstate practical gains because each WINO step is computationally heavier due to the shadow block.",
+          "There is no termination guarantee for the draft-and-verify loop; a token could be re-masked, re-drafted to the same value, and re-masked again indefinitely, and no maximum-step or forced-unmask mechanism is described.",
+          "The verification threshold tau2 is fixed at 0.9 and tau1 is tuned from {0.5,0.6,0.7} without reporting the selected values per benchmark; this selection could lead to overfitting and makes reproducibility harder.",
+          "The reported GPU memory overhead (2.4%) seems inconsistent with appending a shadow block whose length equals the block length, and no detailed explanation or measurement setup is given.",
+          "The paper lacks statistical significance tests or multiple-seed runs; some gains are tiny (e.g., MBPP +0.00, Flickr30k +0.16) and may not be meaningful.",
+          "The verification equation only checks the probability of the current token under the shadow distribution, but does not analyze how often the shadow model correctly identifies erroneous tokens, leaving a key mechanism unjustified."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 3,
+        "Questions": [
+          "How does WINO compare to the entropy-bounded sampler and Fast-dLLM-parallel under the same evaluation protocol and hardware?",
+          "What exact tau1 values were used for each benchmark, and were they selected on a held-out validation set? Were multiple seeds run to assess variance?",
+          "Can WINO guarantee termination? If a token is re-masked and then redrafted to the same token, can it oscillate forever? Is there a maximum step count or a rule to force acceptance?",
+          "Can you explain the GPU memory measurement? Adding a shadow block of length L_b should increase the sequence length substantially; why is the memory overhead only 2.4%?",
+          "What is the verification accuracy of the shadow model in detecting erroneous tokens? Does the threshold tau2 reliably separate correct and incorrect drafts?",
+          "What is the actual wall-clock time (not just TPS) for WINO versus baseline, including the overhead of custom attention masks and shadow block computations?",
+          "Does WINO require modifications incompatible with KV-cache-based acceleration or FlashAttention, and would it still be beneficial when combined with those methods?"
+        ],
+        "Limitations": [
+          "Only tested on LLaDA-8B and MMaDA-8B; scalability to larger DLLMs or other architectures is unknown.",
+          "The additional shadow block increases sequence length and computational overhead, even though the reported memory increase is small; this overhead may grow with larger block lengths or longer prompts.",
+          "Speedup depends on model confidence and task difficulty; high-difficulty reasoning tasks show modest acceleration, limiting generality.",
+          "The semi-autoregressive decoding paradigm is assumed throughout; full diffusion mode is only briefly evaluated and shows large gains but the reason is not deeply analyzed.",
+          "No discussion of potential negative societal impacts, such as faster generation of harmful or misleading content, though this is indirect.",
+          "Training-free nature limits the method to improving inference; the paper does not explore training-aware integration despite suggesting it as future work."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 3,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that enables revokable decoding via a parallel draft-and-verify mechanism. WINO aggressively drafts multiple tokens using a lenient confidence threshold, then uses a shadow block with custom position IDs and attention masks to verify previously decoded tokens and re-mask low-confidence ones for refinement. The method is applied to LLaDA and MMaDA, achieving speedups and accuracy improvements on language and multimodal benchmarks.\",\n  \"Strengths\": [\n    \"The idea of making DLLM decoding revokable via a shadow-block-based draft-and-verify mechanism is novel and well-motivated by the irreversibility limitation of standard decoding.\",\n    \"WINO is training-free and plug-and-play, making it easy to apply to existing open-source DLLMs without additional training.\",\n    \"Extensive experiments on 8 language and 6 multimodal benchmarks demonstrate consistent accuracy improvements and large step reductions, with ablations showing the importance of the verification module.\",\n    \"The method adapts its speedup based on task difficulty, with larger speedups on easier tasks, which is nicely analyzed in the paper.\"\n  ],\n  \"Weaknesses\": [\n    \"The paper does not compare WINO against existing training-free acceleration methods for DLLMs, such as the entropy-bounded sampler or Fast-dLLM-parallel, despite citing them; thus the claimed superiority over state-of-the-art acceleration techniques is not established.\",\n    \"The abstract and main text claim speedups of 6x and 10x based on step reduction, but the reported TPS speedups are lower (5.66x and 8.60x), which may overstate practical gains because each WINO step is computationally heavier due to the shadow block.\",\n    \"There is no termination guarantee for the draft-and-verify loop; a token could be re-masked, re-drafted to the same value, and re-masked again indefinitely, and no maximum-step or forced-unmask mechanism is described.\",\n    \"The verification threshold tau2 is fixed at 0.9 and tau1 is tuned from {0.5,0.6,0.7} without reporting the selected values per benchmark; this selection could lead to overfitting and makes reproducibility harder.\",\n    \"The reported GPU memory overhead (2.4%) seems inconsistent with appending a shadow block whose length equals the block length, and no detailed explanation or measurement setup is given.\",\n    \"The paper lacks statistical significance tests or multiple-seed runs; some gains are tiny (e.g., MBPP +0.00, Flickr30k +0.16) and may not be meaningful.\",\n    \"The verification equation only checks the probability of the current token under the shadow distribution, but does not analyze how often the shadow model correctly identifies erroneous tokens, leaving a key mechanism unjustified.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does WINO compare to the entropy-bounded sampler and Fast-dLLM-parallel under the same evaluation protocol and hardware?\",\n    \"What exact tau1 values were used for each benchmark, and were they selected on a held-out validation set? Were multiple seeds run to assess variance?\",\n    \"Can WINO guarantee termination? If a token is re-masked and then redrafted to the same token, can it oscillate forever? Is there a maximum step count or a rule to force acceptance?\",\n    \"Can you explain the GPU memory measurement? Adding a shadow block of length L_b should increase the sequence length substantially; why is the memory overhead only 2.4%?\",\n    \"What is the verification accuracy of the shadow model in detecting erroneous tokens? Does the threshold tau2 reliably separate correct and incorrect drafts?\",\n    \"What is the actual wall-clock time (not just TPS) for WINO versus baseline, including the overhead of custom attention masks and shadow block computations?\",\n    \"Does WINO require modifications incompatible with KV-cache-based acceleration or FlashAttention, and would it still be beneficial when combined with those methods?\"\n  ],\n  \"Limitations\": [\n    \"Only tested on LLaDA-8B and MMaDA-8B; scalability to larger DLLMs or other architectures is unknown.\",\n    \"The additional shadow block increases sequence length and computational overhead, even though the reported memory increase is small; this overhead may grow with larger block lengths or longer prompts.\",\n    \"Speedup depends on model confidence and task difficulty; high-difficulty reasoning tasks show modest acceleration, limiting generality.\",\n    \"The semi-autoregressive decoding paradigm is assumed throughout; full diffusion mode is only briefly evaluated and shows large gains but the reason is not deeply analyzed.\",\n    \"No discussion of potential negative societal impacts, such as faster generation of harmful or misleading content, though this is indirect.\",\n    \"Training-free nature limits the method to improving inference; the paper does not explore training-aware integration despite suggesting it as future work.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 3,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 47389,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 46621,
+        "completion_tokens": 5252,
+        "reasoning_tokens": 4140,
+        "total_tokens": 52641
+      },
+      "attempts": 1,
+      "response_id": "5688030f-b9ea-4826-919e-250bf0f940e7"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 1,
+      "Reject": 4
+    },
+    "unanimous_decision": false,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Quality": {
+        "values": [
+          3,
+          2,
+          2,
+          3,
+          2
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          2,
+          2,
+          2,
+          3,
+          2
+        ],
+        "mean": 2.2,
+        "rounded_mean": 2,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          3,
+          2,
+          3,
+          3,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Soundness": {
+        "values": [
+          3,
+          2,
+          2,
+          3,
+          2
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          2,
+          2,
+          2,
+          3,
+          2
+        ],
+        "mean": 2.2,
+        "rounded_mean": 2,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          3,
+          2,
+          3,
+          3,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          4,
+          5,
+          4,
+          6,
+          4
+        ],
+        "mean": 4.6,
+        "rounded_mean": 5,
+        "population_sd": 0.8,
+        "min": 4,
+        "max": 6
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper proposes WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that enables revocable decoding via a parallel draft-and-verify mechanism. It aggressively drafts multiple tokens per step using a lenient confidence threshold, then verifies previously unmasked tokens using an auxiliary shadow block with redesigned position IDs and attention masks, re-masking low-confidence tokens for refinement. Experiments on LLaDA and MMaDA across language and multimodal benchmarks show significant step reductions and TPS speedups while maintaining or improving accuracy.",
+      "Strengths": [
+        "Novel and well-motivated idea: making DLLM decoding revocable to address the quality-speed trade-off caused by irreversibility of standard decoding.",
+        "Training-free and model-agnostic, requiring only modifications to attention masks and position IDs, making it easy to integrate into existing open-source DLLMs.",
+        "Elegant shadow-block verification design that enables verification in a single forward pass without modifying the original model distribution.",
+        "Comprehensive empirical evaluation across 8 language and 6 multimodal benchmarks, showing consistent step reductions (up to ~10x) and often improved accuracy.",
+        "Ablation studies validate the necessity of the verification module, and analyses of threshold sensitivity, generation length, full diffusion settings, and GPU memory overhead provide useful insights."
+      ],
+      "Weaknesses": [
+        "Missing empirical comparisons to existing DLLM acceleration methods (e.g., entropy-bounded sampler, Fast-dLLM-parallel) despite citing them, so the claimed improvement over state-of-the-art acceleration techniques is not established.",
+        "Speedup claims are based primarily on step reduction; TPS speedups are consistently lower (e.g., 6.10x vs 5.66x on GSM8K), and no end-to-end wall-clock latency or FLOPs measurements are provided, making real-world speedup unclear.",
+        "The method introduces two hyperparameters (tau1 and tau2) that require tuning; exact per-benchmark tau1 values are not reported, and no principled selection criterion is given, raising reproducibility and possible overfitting concerns.",
+        "Several reported accuracy improvements are small (e.g., +0.16 CIDEr on Flickr30k, +0.30 on MathVista) and no statistical significance tests or multiple-seed results are provided, so these gains may be within noise.",
+        "The paper does not discuss termination guarantees: tokens may be repeatedly re-masked, and there is no described maximum-step or forced-unmask mechanism.",
+        "The shadow block duplicates position IDs, which may be problematic for models with positional encodings like RoPE or ALiBi; no analysis or empirical validation of this design choice is provided.",
+        "Clarity is hurt by garbled equations, typos, and redacted figures, making the paper harder to follow and reproduce."
+      ],
+      "Originality": 3,
+      "Quality": 2,
+      "Clarity": 2,
+      "Significance": 3,
+      "Questions": [
+        "How does WINO compare against Fast-dLLM-parallel and entropy-bounded samplers on the same benchmarks and models in terms of accuracy, wall-clock latency, and memory usage?",
+        "What are the exact tau1 values used for each benchmark, and how sensitive are results to fixing tau1 at a single value across tasks?",
+        "Are the reported accuracy differences statistically significant when evaluated over multiple random seeds or with variance estimates?",
+        "What is the per-step wall-clock latency overhead of the shadow block, and how does it scale with block length and sequence length?",
+        "Does WINO guarantee termination if a token is repeatedly re-masked and redrafted to the same value? Is there a maximum step count?",
+        "How does the duplication of position IDs interact with relative positional encodings (e.g., RoPE), and does it degrade model predictions in any way?",
+        "In the full diffusion setting, why does WINO still underperform semi-autoregressive LLaDA on GSM8K, and what are the practical recommendations for choosing between full-diffusion and semi-autoregressive decoding with WINO?"
+      ],
+      "Limitations": [
+        "The method is validated only on LLaDA-8B and MMaDA-8B; generality to other DLLMs, model scales, or architectures with different attention mechanisms is unknown.",
+        "No theoretical guarantees on convergence or output quality; the draft-and-verify loop may oscillate, and the verification heuristic lacks justification.",
+        "The shadow block increases sequence length, causing additional memory and per-step compute; only a small memory overhead is reported, but no detailed latency/FLOPs analysis is given.",
+        "The acceleration gain depends on the base model's confidence and task difficulty; difficult reasoning tasks show modest speedups, limiting worst-case gains.",
+        "Hyperparameter tuning (tau1, tau2) may be required per task or model, and the absence of a clear selection method reduces practical applicability.",
+        "Potential negative societal impacts are not discussed; faster generation of LLMs could lower the cost of producing harmful or misleading content at scale."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 2,
+      "Presentation": 2,
+      "Contribution": 3,
+      "Overall": 4,
+      "Confidence": 4,
+      "Decision": "Reject"
+    },
+    "raw_response": "{\n  \"Summary\": \"The paper proposes WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that enables revocable decoding via a parallel draft-and-verify mechanism. It aggressively drafts multiple tokens per step using a lenient confidence threshold, then verifies previously unmasked tokens using an auxiliary shadow block with redesigned position IDs and attention masks, re-masking low-confidence tokens for refinement. Experiments on LLaDA and MMaDA across language and multimodal benchmarks show significant step reductions and TPS speedups while maintaining or improving accuracy.\",\n  \"Strengths\": [\n    \"Novel and well-motivated idea: making DLLM decoding revocable to address the quality-speed trade-off caused by irreversibility of standard decoding.\",\n    \"Training-free and model-agnostic, requiring only modifications to attention masks and position IDs, making it easy to integrate into existing open-source DLLMs.\",\n    \"Elegant shadow-block verification design that enables verification in a single forward pass without modifying the original model distribution.\",\n    \"Comprehensive empirical evaluation across 8 language and 6 multimodal benchmarks, showing consistent step reductions (up to ~10x) and often improved accuracy.\",\n    \"Ablation studies validate the necessity of the verification module, and analyses of threshold sensitivity, generation length, full diffusion settings, and GPU memory overhead provide useful insights.\"\n  ],\n  \"Weaknesses\": [\n    \"Missing empirical comparisons to existing DLLM acceleration methods (e.g., entropy-bounded sampler, Fast-dLLM-parallel) despite citing them, so the claimed improvement over state-of-the-art acceleration techniques is not established.\",\n    \"Speedup claims are based primarily on step reduction; TPS speedups are consistently lower (e.g., 6.10x vs 5.66x on GSM8K), and no end-to-end wall-clock latency or FLOPs measurements are provided, making real-world speedup unclear.\",\n    \"The method introduces two hyperparameters (tau1 and tau2) that require tuning; exact per-benchmark tau1 values are not reported, and no principled selection criterion is given, raising reproducibility and possible overfitting concerns.\",\n    \"Several reported accuracy improvements are small (e.g., +0.16 CIDEr on Flickr30k, +0.30 on MathVista) and no statistical significance tests or multiple-seed results are provided, so these gains may be within noise.\",\n    \"The paper does not discuss termination guarantees: tokens may be repeatedly re-masked, and there is no described maximum-step or forced-unmask mechanism.\",\n    \"The shadow block duplicates position IDs, which may be problematic for models with positional encodings like RoPE or ALiBi; no analysis or empirical validation of this design choice is provided.\",\n    \"Clarity is hurt by garbled equations, typos, and redacted figures, making the paper harder to follow and reproduce.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does WINO compare against Fast-dLLM-parallel and entropy-bounded samplers on the same benchmarks and models in terms of accuracy, wall-clock latency, and memory usage?\",\n    \"What are the exact tau1 values used for each benchmark, and how sensitive are results to fixing tau1 at a single value across tasks?\",\n    \"Are the reported accuracy differences statistically significant when evaluated over multiple random seeds or with variance estimates?\",\n    \"What is the per-step wall-clock latency overhead of the shadow block, and how does it scale with block length and sequence length?\",\n    \"Does WINO guarantee termination if a token is repeatedly re-masked and redrafted to the same value? Is there a maximum step count?\",\n    \"How does the duplication of position IDs interact with relative positional encodings (e.g., RoPE), and does it degrade model predictions in any way?\",\n    \"In the full diffusion setting, why does WINO still underperform semi-autoregressive LLaDA on GSM8K, and what are the practical recommendations for choosing between full-diffusion and semi-autoregressive decoding with WINO?\"\n  ],\n  \"Limitations\": [\n    \"The method is validated only on LLaDA-8B and MMaDA-8B; generality to other DLLMs, model scales, or architectures with different attention mechanisms is unknown.\",\n    \"No theoretical guarantees on convergence or output quality; the draft-and-verify loop may oscillate, and the verification heuristic lacks justification.\",\n    \"The shadow block increases sequence length, causing additional memory and per-step compute; only a small memory overhead is reported, but no detailed latency/FLOPs analysis is given.\",\n    \"The acceleration gain depends on the base model's confidence and task difficulty; difficult reasoning tasks show modest speedups, limiting worst-case gains.\",\n    \"Hyperparameter tuning (tau1, tau2) may be required per task or model, and the absence of a clear selection method reduces practical applicability.\",\n    \"Potential negative societal impacts are not discussed; faster generation of LLMs could lower the cost of producing harmful or misleading content at scale.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 3,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+    "usage": {
+      "prompt_tokens": 6756,
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 6500,
+      "completion_tokens": 1700,
+      "reasoning_tokens": 563,
+      "total_tokens": 8456
+    },
+    "attempts": 1,
+    "response_id": "3e07a9bf-ea26-47f3-b99b-ad1b6dccb91d"
+  },
+  "final_review": {
+    "Summary": "The paper proposes WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that enables revocable decoding via a parallel draft-and-verify mechanism. It aggressively drafts multiple tokens per step using a lenient confidence threshold, then verifies previously unmasked tokens using an auxiliary shadow block with redesigned position IDs and attention masks, re-masking low-confidence tokens for refinement. Experiments on LLaDA and MMaDA across language and multimodal benchmarks show significant step reductions and TPS speedups while maintaining or improving accuracy.",
+    "Strengths": [
+      "Novel and well-motivated idea: making DLLM decoding revocable to address the quality-speed trade-off caused by irreversibility of standard decoding.",
+      "Training-free and model-agnostic, requiring only modifications to attention masks and position IDs, making it easy to integrate into existing open-source DLLMs.",
+      "Elegant shadow-block verification design that enables verification in a single forward pass without modifying the original model distribution.",
+      "Comprehensive empirical evaluation across 8 language and 6 multimodal benchmarks, showing consistent step reductions (up to ~10x) and often improved accuracy.",
+      "Ablation studies validate the necessity of the verification module, and analyses of threshold sensitivity, generation length, full diffusion settings, and GPU memory overhead provide useful insights."
+    ],
+    "Weaknesses": [
+      "Missing empirical comparisons to existing DLLM acceleration methods (e.g., entropy-bounded sampler, Fast-dLLM-parallel) despite citing them, so the claimed improvement over state-of-the-art acceleration techniques is not established.",
+      "Speedup claims are based primarily on step reduction; TPS speedups are consistently lower (e.g., 6.10x vs 5.66x on GSM8K), and no end-to-end wall-clock latency or FLOPs measurements are provided, making real-world speedup unclear.",
+      "The method introduces two hyperparameters (tau1 and tau2) that require tuning; exact per-benchmark tau1 values are not reported, and no principled selection criterion is given, raising reproducibility and possible overfitting concerns.",
+      "Several reported accuracy improvements are small (e.g., +0.16 CIDEr on Flickr30k, +0.30 on MathVista) and no statistical significance tests or multiple-seed results are provided, so these gains may be within noise.",
+      "The paper does not discuss termination guarantees: tokens may be repeatedly re-masked, and there is no described maximum-step or forced-unmask mechanism.",
+      "The shadow block duplicates position IDs, which may be problematic for models with positional encodings like RoPE or ALiBi; no analysis or empirical validation of this design choice is provided.",
+      "Clarity is hurt by garbled equations, typos, and redacted figures, making the paper harder to follow and reproduce."
+    ],
+    "Originality": 3,
+    "Quality": 2,
+    "Clarity": 2,
+    "Significance": 3,
+    "Questions": [
+      "How does WINO compare against Fast-dLLM-parallel and entropy-bounded samplers on the same benchmarks and models in terms of accuracy, wall-clock latency, and memory usage?",
+      "What are the exact tau1 values used for each benchmark, and how sensitive are results to fixing tau1 at a single value across tasks?",
+      "Are the reported accuracy differences statistically significant when evaluated over multiple random seeds or with variance estimates?",
+      "What is the per-step wall-clock latency overhead of the shadow block, and how does it scale with block length and sequence length?",
+      "Does WINO guarantee termination if a token is repeatedly re-masked and redrafted to the same value? Is there a maximum step count?",
+      "How does the duplication of position IDs interact with relative positional encodings (e.g., RoPE), and does it degrade model predictions in any way?",
+      "In the full diffusion setting, why does WINO still underperform semi-autoregressive LLaDA on GSM8K, and what are the practical recommendations for choosing between full-diffusion and semi-autoregressive decoding with WINO?"
+    ],
+    "Limitations": [
+      "The method is validated only on LLaDA-8B and MMaDA-8B; generality to other DLLMs, model scales, or architectures with different attention mechanisms is unknown.",
+      "No theoretical guarantees on convergence or output quality; the draft-and-verify loop may oscillate, and the verification heuristic lacks justification.",
+      "The shadow block increases sequence length, causing additional memory and per-step compute; only a small memory overhead is reported, but no detailed latency/FLOPs analysis is given.",
+      "The acceleration gain depends on the base model's confidence and task difficulty; difficult reasoning tasks show modest speedups, limiting worst-case gains.",
+      "Hyperparameter tuning (tau1, tau2) may be required per task or model, and the absence of a clear selection method reduces practical applicability.",
+      "Potential negative societal impacts are not discussed; faster generation of LLMs could lower the cost of producing harmful or misleading content at scale."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 2,
+    "Presentation": 2,
+    "Contribution": 3,
+    "Overall": 4,
+    "Confidence": 4,
+    "Decision": "Reject"
+  },
+  "final_review_source": "Area Chair model output",
+  "usage": {
+    "prompt_tokens": 243701,
+    "prompt_cache_hit_tokens": 4096,
+    "prompt_cache_miss_tokens": 239605,
+    "completion_tokens": 25525,
+    "reasoning_tokens": 18447,
+    "total_tokens": 269226,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 1.147e-05,
+    "cache_miss_input_usd": 0.0335447,
+    "output_usd": 0.007147,
+    "total_usd": 0.04070317
+  },
+  "elapsed_seconds": 75.413,
+  "input": {
+    "blind_id": "B150",
+    "filename": "B150.txt",
+    "blind_text_sha256": "e8e570965c62720d6c276c65fcea3829dc9a9462e2e264e0801ad3d0e67d28a2",
+    "characters": 123556,
+    "full_text_saved": false
+  }
+}

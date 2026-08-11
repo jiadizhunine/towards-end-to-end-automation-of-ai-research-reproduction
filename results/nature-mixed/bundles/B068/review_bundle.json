@@ -1,0 +1,728 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:44:50.015902+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper introduces Bidirectional Spike-based Distillation (BSD), a biologically plausible learning algorithm that jointly trains a feedforward spiking network (stimuli-to-decision) and a backward spiking network (concept-to-stimuli) via mutual distillation of spiking feature representations. The method is inspired by the brain's perception-recall bidirectional architecture. The authors extend existing biological plausibility criteria (asymmetric weights, local errors, non-two-stage training) with two new ones: spiking neuron models and unsigned error signals. BSD uses a Relaxed Contrastive (ReCo) loss to align basal and apical voltages within pyramidal neurons, satisfying all five criteria. Extensive experiments on image classification (MNIST, FashionMNIST, SVHN, CIFAR-10/100), sequential regression (text prediction, time-series forecasting), and image generation (autoencoders) demonstrate performance comparable to backpropagation while maintaining biological plausibility. The paper also provides ablation studies on loss functions, batch size, timesteps, and firing thresholds.",
+        "Strengths": [
+          "The bidirectional distillation framework is novel and well-motivated by neuroscience (perception-recall architecture).",
+          "The algorithm satisfies all five stated biological plausibility criteria, a stronger claim than most prior work.",
+          "Extensive experiments across diverse tasks (classification, time-series, text prediction, generation) and architectures (MLP, CNN, RNN, autoencoder) provide solid empirical support.",
+          "Thorough ablation studies (loss functions, batch size, timesteps, threshold, batch norm) are informative and well-executed.",
+          "Clear writing with well-structured sections and helpful figures illustrating the framework and results."
+        ],
+        "Weaknesses": [
+          "The biological plausibility claims are somewhat overstated. While spike-based communication is used between layers, the loss computation and gradient derivation (Eq. 8) still rely on continuous voltage values and signed gradient terms, which weakens the C5 (unsigned error) claim.",
+          "Performance is not always 'comparable to backpropagation' - on CIFAR-100 there's a ~4% gap (53.48% vs 57.75%), and the paper's definition of 'comparable' is not precisely defined.",
+          "Lack of theoretical analysis on convergence properties or why the bidirectional distillation works, beyond empirical observation.",
+          "Training computational cost is higher than BP (dual network, O(B²) affinity matrix), which is acknowledged but not prominently discussed in the main text.",
+          "Some implementation details are buried in appendices, making reproduction harder than ideal (e.g., exact RNN architecture, hyperparameter tuning).",
+          "Scalability to larger models (e.g., transformers, residual networks) and datasets (e.g., ImageNet) is not demonstrated."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "The gradient in Eq. 8 contains signed terms (e.g., -2(1-[C]kk)). How do you reconcile this with the claim of 'unsigned error signals' (C5)? Does the unsigned requirement apply only to the loss function and not the gradient computation?",
+          "What is the precise definition of 'comparable to backpropagation'? On CIFAR-100, BSD is 4.27% lower than BP. Is this within an acceptable threshold?",
+          "How does BSD scale to larger models (e.g., ResNet-scale) and datasets (e.g., ImageNet)? The Tiny-ImageNet results show a 5.7% gap from BP, which suggests scalability challenges.",
+          "The ReCo loss requires a B×B affinity matrix, which is O(B²) memory. What are the practical limits on batch size for larger datasets?",
+          "Can you provide theoretical justification for why the bidirectional distillation converges? The paper only provides empirical convergence curves.",
+          "In the RNN experiments, the architecture differs from the MLP/CNN settings. Could you clarify how the temporal dimension interacts with the bidirectional distillation process?",
+          "For the image generation tasks, FID scores are notably worse than BP (e.g., 168.12 vs 127.34 on CIFAR-10). Why is the gap larger for generation compared to classification?"
+        ],
+        "Limitations": [
+          "The paper acknowledges limited architecture scope (no transformers or residual networks), which is a significant limitation given the current trend in deep learning.",
+          "Training memory and time overhead are higher than BP due to the dual-network design and O(B²) affinity matrix computation, which is not fully addressed.",
+          "The biological plausibility claims could be tempered - the use of continuous voltages for loss computation and signed gradient terms weaken the C5 (unsigned error) claim.",
+          "The paper does not discuss potential negative societal impacts beyond a generic ethics statement, though the algorithm itself appears benign."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThe paper introduces a biologically plausible learning algorithm called Bidirectional Spike-based Distillation (BSD) that jointly trains feedforward and backward spiking networks using a contrastive-like loss (ReCo). The key contributions are: (1) framing learning as bidirectional distillation between stimulus and concept encodings, (2) proposing two new biological plausibility criteria (spiking neurons and unsigned error signals) on top of three existing ones, and (3) demonstrating competitive performance across classification, sequential regression, and generation tasks.\n\nStrengths:\n- The core idea of bidirectional distillation is novel and well-motivated by neuroscience (perception-recall architecture).\n- The algorithm satisfies all five stated biological plausibility criteria, which is a stronger claim than most prior work.\n- Extensive experiments across diverse tasks (classification, time-series, text prediction, generation) and architectures (MLP, CNN, RNN, autoencoder) provide good empirical support.\n- The ablation studies (loss functions, batch size, timesteps, threshold) are thorough and informative.\n- Clear writing with well-structured sections and helpful figures.\n\nWeaknesses:\n- The biological plausibility claims are somewhat overstated. For instance, using cosine similarity and ReCo loss still relies on continuous voltage values for computing losses and gradients, even if spike-based communication is used between layers. The \"unsigned\" error criterion is satisfied only by the loss function choice, but the gradient computation still requires signed values internally.\n- The performance gains over baselines like DLL are modest on some datasets (e.g., CIFAR-100 CNN: 53.48% vs 38.60% for DLL, but still well below BP's 57.75%). The claim of \"comparable to backpropagation\" is only partially true - on some tasks BSD is within 3%, but on others (e.g., CIFAR-100) there's a ~4% gap.\n- The paper lacks a detailed theoretical analysis of why BSD works or its convergence properties. The justification for the ReCo loss over InfoNCE is empirical rather than theoretical.\n- The computational cost analysis shows BSD has higher training memory and time complexity than BP, which is not fully addressed in the main text.\n- Some implementation details are buried in appendices (e.g., exact architecture for RNNs, hyperparameter tuning), making reproduction harder than ideal.\n- The \"unsigned error\" criterion (C5) is questionable - while the loss itself is unsigned, the gradient computation in Eq. 8 involves signed terms (e.g., -2(1-[C]kk)), which contradicts the spirit of unsigned signaling.\n\nOriginality: High - the bidirectional distillation framework and the two new criteria are novel.\nQuality: Good - solid empirical work but with some theoretical gaps and overstated claims.\nClarity: Good - well-written but some details are in appendices.\nSignificance: Moderate - the work advances biologically plausible learning but the performance gap with BP and limited scalability (no experiments on very large models) temper its impact.\n\nQuestions for authors:\n1. The gradient in Eq. 8 contains signed terms. How do you reconcile this with the claim of \"unsigned error signals\" (C5)?\n2. The paper claims \"comparable to backpropagation\" but on CIFAR-100 there's a 4% gap. What is your definition of \"comparable\"?\n3. How does BSD scale to larger models (e.g., ResNet-scale) and datasets (e.g., ImageNet)?\n4. The ReCo loss requires a B×B affinity matrix, which is O(B²) memory. What are the practical limits on batch size?\n5. Can you provide theoretical justification for why the bidirectional distillation converges, beyond empirical observation?\n\nLimitations:\n- The paper acknowledges limited architecture scope (no transformers or residual networks).\n- The computational overhead during training is higher than BP, which is not highlighted prominently.\n- The biological plausibility claims could be tempered - the use of continuous voltages for loss computation and the signed gradient terms weaken the C5 claim.\n\nEthical concerns: None apparent. The paper uses standard datasets and has no obvious negative societal impact.\n\nSoundness: 3 (Good) - The empirical methodology is solid, but the theoretical framing has some inconsistencies (e.g., C5 claim vs. signed gradients).\nPresentation: 3 (Good) - Well-organized but some important details are in appendices.\nContribution: 3 (Good) - Contributes a novel algorithm with broad empirical validation, but the impact is somewhat limited by the performance gap and scalability concerns.\n\nOverall: 6 (Weak Accept) - The paper is technically sound and presents a novel approach with thorough experiments. However, the biological plausibility claims are somewhat overstated, and the performance gains over existing biologically plausible methods are not always dramatic. The work is valuable to the community but not groundbreaking.\n\nConfidence: 4 (Confident) - I have good familiarity with the related work and checked the math details.\n\nDecision: Accept (given the overall score is 6, which is Weak Accept, the binary decision should be Accept, as it's above the borderline reject threshold)REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper introduces Bidirectional Spike-based Distillation (BSD), a biologically plausible learning algorithm that jointly trains a feedforward spiking network (stimuli-to-decision) and a backward spiking network (concept-to-stimuli) via mutual distillation of spiking feature representations. The method is inspired by the brain's perception-recall bidirectional architecture. The authors extend existing biological plausibility criteria (asymmetric weights, local errors, non-two-stage training) with two new ones: spiking neuron models and unsigned error signals. BSD uses a Relaxed Contrastive (ReCo) loss to align basal and apical voltages within pyramidal neurons, satisfying all five criteria. Extensive experiments on image classification (MNIST, FashionMNIST, SVHN, CIFAR-10/100), sequential regression (text prediction, time-series forecasting), and image generation (autoencoders) demonstrate performance comparable to backpropagation while maintaining biological plausibility. The paper also provides ablation studies on loss functions, batch size, timesteps, and firing thresholds.\",\n  \"Strengths\": [\n    \"The bidirectional distillation framework is novel and well-motivated by neuroscience (perception-recall architecture).\",\n    \"The algorithm satisfies all five stated biological plausibility criteria, a stronger claim than most prior work.\",\n    \"Extensive experiments across diverse tasks (classification, time-series, text prediction, generation) and architectures (MLP, CNN, RNN, autoencoder) provide solid empirical support.\",\n    \"Thorough ablation studies (loss functions, batch size, timesteps, threshold, batch norm) are informative and well-executed.\",\n    \"Clear writing with well-structured sections and helpful figures illustrating the framework and results.\"\n  ],\n  \"Weaknesses\": [\n    \"The biological plausibility claims are somewhat overstated. While spike-based communication is used between layers, the loss computation and gradient derivation (Eq. 8) still rely on continuous voltage values and signed gradient terms, which weakens the C5 (unsigned error) claim.\",\n    \"Performance is not always 'comparable to backpropagation' - on CIFAR-100 there's a ~4% gap (53.48% vs 57.75%), and the paper's definition of 'comparable' is not precisely defined.\",\n    \"Lack of theoretical analysis on convergence properties or why the bidirectional distillation works, beyond empirical observation.\",\n    \"Training computational cost is higher than BP (dual network, O(B²) affinity matrix), which is acknowledged but not prominently discussed in the main text.\",\n    \"Some implementation details are buried in appendices, making reproduction harder than ideal (e.g., exact RNN architecture, hyperparameter tuning).\",\n    \"Scalability to larger models (e.g., transformers, residual networks) and datasets (e.g., ImageNet) is not demonstrated.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"The gradient in Eq. 8 contains signed terms (e.g., -2(1-[C]kk)). How do you reconcile this with the claim of 'unsigned error signals' (C5)? Does the unsigned requirement apply only to the loss function and not the gradient computation?\",\n    \"What is the precise definition of 'comparable to backpropagation'? On CIFAR-100, BSD is 4.27% lower than BP. Is this within an acceptable threshold?\",\n    \"How does BSD scale to larger models (e.g., ResNet-scale) and datasets (e.g., ImageNet)? The Tiny-ImageNet results show a 5.7% gap from BP, which suggests scalability challenges.\",\n    \"The ReCo loss requires a B×B affinity matrix, which is O(B²) memory. What are the practical limits on batch size for larger datasets?\",\n    \"Can you provide theoretical justification for why the bidirectional distillation converges? The paper only provides empirical convergence curves.\",\n    \"In the RNN experiments, the architecture differs from the MLP/CNN settings. Could you clarify how the temporal dimension interacts with the bidirectional distillation process?\",\n    \"For the image generation tasks, FID scores are notably worse than BP (e.g., 168.12 vs 127.34 on CIFAR-10). Why is the gap larger for generation compared to classification?\"\n  ],\n  \"Limitations\": [\n    \"The paper acknowledges limited architecture scope (no transformers or residual networks), which is a significant limitation given the current trend in deep learning.\",\n    \"Training memory and time overhead are higher than BP due to the dual-network design and O(B²) affinity matrix computation, which is not fully addressed.\",\n    \"The biological plausibility claims could be tempered - the use of continuous voltages for loss computation and signed gradient terms weaken the C5 (unsigned error) claim.\",\n    \"The paper does not discuss potential negative societal impacts beyond a generic ethics statement, though the algorithm itself appears benign.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 28969,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 27177,
+        "completion_tokens": 2141,
+        "reasoning_tokens": 0,
+        "total_tokens": 31110
+      },
+      "attempts": 1,
+      "response_id": "f2e90954-efdc-4df4-833f-bd550d0c0fc7"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "This paper introduces Bidirectional Spike-based Distillation (BSD), a biologically plausible learning algorithm that jointly trains feedforward and backward spiking neural networks. The feedforward pathway maps stimuli to concepts for perception, while the backward pathway reconstructs stimuli from concepts for memory recall. The two pathways are trained by aligning their internal representations using a Relaxed Contrastive (ReCo) loss, which is unsigned and local to each layer. The authors extend the three biological plausibility criteria from prior work (asymmetric weights, local learning, non-two-stage training) with two additional criteria (spiking neurons and unsigned error signals), and claim BSD satisfies all five. The method is evaluated on image classification (MNIST, FashionMNIST, SVHN, CIFAR-10, CIFAR-100), text character prediction, time-series forecasting, and image generation, using MLPs, CNNs, RNNs, and autoencoders. Results show BSD achieves performance comparable to backpropagation on several tasks while maintaining biological plausibility.",
+        "Strengths": [
+          "Novel framework that frames learning as bidirectional distillation between spiking representations, inspired by the brain's perception-recall architecture.",
+          "Extends biological plausibility criteria with two new principles (spiking neurons, unsigned error signals) and demonstrates a method satisfying all five.",
+          "Extensive evaluation across diverse tasks (classification, sequence prediction, generation) and architectures (MLP, CNN, RNN, autoencoder).",
+          "Thorough ablation studies including loss function comparison (ReCo vs InfoNCE vs MSE), batch size sensitivity, timestep analysis, and batch normalization impact.",
+          "Clear writing and good contextualization of related work in biologically plausible learning.",
+          "Includes analysis of weight alignment dynamics showing forward and backward weights remain asymmetric (C1 satisfied)."
+        ],
+        "Weaknesses": [
+          "Performance gap compared to backpropagation is substantial on several benchmarks, particularly CIFAR-100 (53.48% vs 57.75% for CNNs) and SVHN (90.81% vs 94.36%).",
+          "The biological plausibility claims are somewhat overstated. Components like detach() operations, batch normalization, and surrogate gradient descent are not clearly biologically justified.",
+          "The training process still requires a backward pathway that computes gradients; the distinction from backpropagation is not entirely clear despite local weight updates.",
+          "Generation results show significant degradation (FID 168 vs 127 on CIFAR-10), questioning the scalability to generative tasks.",
+          "Training memory overhead is substantial (5034 MB vs 3324 MB at batch size 128), potentially limiting practical applicability.",
+          "Lacks theoretical analysis of convergence properties or conditions under which the method might fail.",
+          "The two new criteria (C4, C5) are somewhat arbitrary; the paper does not justify why these specific criteria are the right ones to add."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 2,
+        "Questions": [
+          "The detach() operation truncates the computational graph between layers. How is this biologically justified? Does this not break the continuous flow of information that biological neurons experience?",
+          "Batch normalization is used in CNN and RNN architectures. What is the biological interpretation of batch normalization, and does its use contradict the local learning criterion (C2)?",
+          "The ReCo loss uses cosine similarity between voltages from different samples in a batch. How does this align with biological learning, where neurons typically only have access to their own activity and local inputs? The batch-level comparison seems to require global information.",
+          "The performance gap on CIFAR-100 is over 4 percentage points (53.48% vs 57.75%). What are the main reasons for this gap, and what modifications could close it?",
+          "The generation results show FID scores significantly worse than backpropagation (e.g., 168 vs 127 on CIFAR-10). Is this acceptable for a 'comparable' performance claim? How would you address this gap?",
+          "The training memory overhead is about 50% higher than backpropagation. How does this affect the scalability of BSD to larger models and datasets?",
+          "The paper mentions that BSD uses surrogate gradients for spike generation. How does the use of surrogate gradients align with the claim of biological plausibility?",
+          "For the RNN experiments, the backward pathway receives target information at each timestep. Is this biologically plausible, and how does the method handle the case where targets are not available during inference?"
+        ],
+        "Limitations": [
+          "The method has been evaluated only on relatively small-scale datasets and architectures; scalability to modern deep architectures (e.g., ResNet, Transformers) is unclear.",
+          "The biological plausibility claims are partially based on abstract analogies (e.g., three-compartment neurons) rather than direct neurophysiological evidence.",
+          "The computational overhead during training (dual pathways, affinity matrix computation) could be prohibitive for large-scale applications.",
+          "The generation quality is notably inferior to backpropagation, suggesting the method may not be suitable for tasks requiring fine-grained output fidelity.",
+          "The paper does not discuss potential negative societal impacts beyond a brief general statement, though the method itself appears benign."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces a biologically plausible learning algorithm called Bidirectional Spike-based Distillation (BSD). The central idea is to train feedforward and backward spiking neural networks jointly by aligning their internal representations using a contrastive loss, motivated by the brain's bidirectional perception-recall architecture. The authors propose two new biological plausibility criteria (C4: spiking neurons, C5: unsigned error signals) on top of three existing ones (asymmetric weights, local learning, non-two-stage training), and claim their method satisfies all five.\n\nThe paper has several notable strengths:\n1. The core idea of using bidirectional distillation with spike-based communication is novel and interesting.\n2. The experimental evaluation is extensive, covering image classification, sequential regression, and image generation tasks with multiple architectures.\n3. The ablation studies are thorough, particularly the comparison between ReCo, InfoNCE, and MSE losses.\n4. The paper makes a clear contribution to the biologically plausible learning literature by extending the criteria and demonstrating that all five can be satisfied simultaneously.\n\nHowever, there are significant weaknesses:\n1. The performance gap compared to backpropagation is substantial on several datasets, particularly CIFAR-100 (53.48% vs 57.75% for CNNs) and SVHN (90.81% vs 94.36%).\n2. The biological plausibility claims are somewhat overstated. The use of detach() operations, batch normalization, and gradient-based optimization of surrogate gradients are not fully biologically justified.\n3. The training process still requires a backward pathway that computes gradients, even if the weight updates are local. The distinction from backpropagation is not entirely clear.\n4. The paper lacks a theoretical analysis of why the method works or when it might fail.\n5. The generation results show significant degradation (FID 168 vs 127 on CIFAR-10), suggesting the method does not scale well to generative tasks.\n6. The memory overhead during training is substantial (5034 MB vs 3324 MB at batch size 128), which could limit scalability.\n\nThe paper is clearly written and well-organized, with good contextualization of related work. The experimental methodology is sound, with proper ablations and multiple seeds. The main question is whether the contribution is significant enough for a top venue. The method does advance the state of the art in biologically plausible learning, but the performance gap and the somewhat hand-wavy biological justification are concerns.\n\nMy overall assessment: The paper makes a solid contribution to a niche area. It is technically sound and well-evaluated, but the practical impact is limited due to the performance gaps and computational overhead. I would lean toward acceptance given the novelty and thorough evaluation, but with reservations about the significance of the claims.\n\nFor the ratings:\n- Originality: 3 (high) - novel combination of ideas\n- Quality: 3 (good) - solid experiments, but some claims are overstated\n- Clarity: 3 (good) - well-written, but some sections are dense\n- Significance: 2 (medium) - advances the field but with limited practical impact\n- Soundness: 3 (good)\n- Presentation: 3 (good)\n- Contribution: 3 (good)\n- Overall: 6 (Weak Accept)\n\nI have several questions for the authors regarding the biological plausibility of certain components, the scalability of the method, and the interpretation of the results.REVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper introduces Bidirectional Spike-based Distillation (BSD), a biologically plausible learning algorithm that jointly trains feedforward and backward spiking neural networks. The feedforward pathway maps stimuli to concepts for perception, while the backward pathway reconstructs stimuli from concepts for memory recall. The two pathways are trained by aligning their internal representations using a Relaxed Contrastive (ReCo) loss, which is unsigned and local to each layer. The authors extend the three biological plausibility criteria from prior work (asymmetric weights, local learning, non-two-stage training) with two additional criteria (spiking neurons and unsigned error signals), and claim BSD satisfies all five. The method is evaluated on image classification (MNIST, FashionMNIST, SVHN, CIFAR-10, CIFAR-100), text character prediction, time-series forecasting, and image generation, using MLPs, CNNs, RNNs, and autoencoders. Results show BSD achieves performance comparable to backpropagation on several tasks while maintaining biological plausibility.\",\n  \"Strengths\": [\n    \"Novel framework that frames learning as bidirectional distillation between spiking representations, inspired by the brain's perception-recall architecture.\",\n    \"Extends biological plausibility criteria with two new principles (spiking neurons, unsigned error signals) and demonstrates a method satisfying all five.\",\n    \"Extensive evaluation across diverse tasks (classification, sequence prediction, generation) and architectures (MLP, CNN, RNN, autoencoder).\",\n    \"Thorough ablation studies including loss function comparison (ReCo vs InfoNCE vs MSE), batch size sensitivity, timestep analysis, and batch normalization impact.\",\n    \"Clear writing and good contextualization of related work in biologically plausible learning.\",\n    \"Includes analysis of weight alignment dynamics showing forward and backward weights remain asymmetric (C1 satisfied).\"\n  ],\n  \"Weaknesses\": [\n    \"Performance gap compared to backpropagation is substantial on several benchmarks, particularly CIFAR-100 (53.48% vs 57.75% for CNNs) and SVHN (90.81% vs 94.36%).\",\n    \"The biological plausibility claims are somewhat overstated. Components like detach() operations, batch normalization, and surrogate gradient descent are not clearly biologically justified.\",\n    \"The training process still requires a backward pathway that computes gradients; the distinction from backpropagation is not entirely clear despite local weight updates.\",\n    \"Generation results show significant degradation (FID 168 vs 127 on CIFAR-10), questioning the scalability to generative tasks.\",\n    \"Training memory overhead is substantial (5034 MB vs 3324 MB at batch size 128), potentially limiting practical applicability.\",\n    \"Lacks theoretical analysis of convergence properties or conditions under which the method might fail.\",\n    \"The two new criteria (C4, C5) are somewhat arbitrary; the paper does not justify why these specific criteria are the right ones to add.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"The detach() operation truncates the computational graph between layers. How is this biologically justified? Does this not break the continuous flow of information that biological neurons experience?\",\n    \"Batch normalization is used in CNN and RNN architectures. What is the biological interpretation of batch normalization, and does its use contradict the local learning criterion (C2)?\",\n    \"The ReCo loss uses cosine similarity between voltages from different samples in a batch. How does this align with biological learning, where neurons typically only have access to their own activity and local inputs? The batch-level comparison seems to require global information.\",\n    \"The performance gap on CIFAR-100 is over 4 percentage points (53.48% vs 57.75%). What are the main reasons for this gap, and what modifications could close it?\",\n    \"The generation results show FID scores significantly worse than backpropagation (e.g., 168 vs 127 on CIFAR-10). Is this acceptable for a 'comparable' performance claim? How would you address this gap?\",\n    \"The training memory overhead is about 50% higher than backpropagation. How does this affect the scalability of BSD to larger models and datasets?\",\n    \"The paper mentions that BSD uses surrogate gradients for spike generation. How does the use of surrogate gradients align with the claim of biological plausibility?\",\n    \"For the RNN experiments, the backward pathway receives target information at each timestep. Is this biologically plausible, and how does the method handle the case where targets are not available during inference?\"\n  ],\n  \"Limitations\": [\n    \"The method has been evaluated only on relatively small-scale datasets and architectures; scalability to modern deep architectures (e.g., ResNet, Transformers) is unclear.\",\n    \"The biological plausibility claims are partially based on abstract analogies (e.g., three-compartment neurons) rather than direct neurophysiological evidence.\",\n    \"The computational overhead during training (dual pathways, affinity matrix computation) could be prohibitive for large-scale applications.\",\n    \"The generation quality is notably inferior to backpropagation, suggesting the method may not be suitable for tasks requiring fine-grained output fidelity.\",\n    \"The paper does not discuss potential negative societal impacts beyond a brief general statement, though the method itself appears benign.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 28969,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 27177,
+        "completion_tokens": 1869,
+        "reasoning_tokens": 0,
+        "total_tokens": 30838
+      },
+      "attempts": 1,
+      "response_id": "51f2ef92-0b77-4627-bb1f-6f90d6753e48"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "This paper introduces Bidirectional Spike-based Distillation (BSD), a biologically plausible learning algorithm that trains feedforward and backward spiking networks jointly via mutual distillation of spiking feature representations. The feedforward pathway maps stimuli to concepts (perception), while the backward pathway reconstructs stimuli from concepts (recall). The authors propose two additional biological plausibility criteria (C4: spiking neuron models, C5: unsigned error signals) beyond the three from Lv et al. (2025), and demonstrate that BSD satisfies all five criteria. Extensive experiments across image classification, sequential regression (text prediction, time-series forecasting), and image generation tasks show that BSD achieves performance comparable to backpropagation while maintaining biological plausibility.",
+        "Strengths": [
+          "Addresses an important and challenging problem: developing biologically plausible learning algorithms competitive with backpropagation.",
+          "Novel method combining bidirectional networks with spiking neurons and contrastive-style local losses (ReCo) in a coherent framework.",
+          "Satisfies a comprehensive set of five biological plausibility criteria (C1-C5), advancing beyond prior work.",
+          "Extensive experiments across diverse tasks and architectures (MLP, CNN, RNN, autoencoder) demonstrate general applicability.",
+          "Ablation studies (loss functions, batch size, timesteps, batch normalization, firing thresholds) provide useful insights.",
+          "Includes analysis of weight alignment, t-SNE visualizations, robustness to noise, and energy efficiency."
+        ],
+        "Weaknesses": [
+          "Performance gaps on complex datasets (e.g., CIFAR-100: 53.48% vs 57.75% for CNN) weaken the 'comparable performance' claim.",
+          "Biological plausibility criteria are not rigorously justified; the claim that 'unsigned error signals' are more biologically plausible is debatable.",
+          "Method relies on ReCo loss requiring large batch sizes (Appendix J), limiting applicability in memory-constrained settings.",
+          "Comparison set of biologically plausible methods is limited (no comparison to recent methods beyond DLL and CCL).",
+          "Inference procedure for classification (cosine similarity with label spike trains) is not clearly explained.",
+          "Image generation results show BSD significantly worse than BP (FID 168 vs 127 on CIFAR-10), weakening the comparability claim.",
+          "Some implementation details (e.g., FFT decomposition) lack clear biological justification.",
+          "Training computational overhead is higher than BP (Appendix N) but not discussed in the main text."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How do you justify the claim that 'unsigned error signals' are more biologically plausible than signed ones, given that many biological systems do encode directionality? Please provide more neurophysiological evidence.",
+          "The performance gap on CIFAR-100 is about 4 percentage points (53.48% vs 57.75%). How do you reconcile this with the claim of 'comparable performance'? What would be an acceptable threshold for 'comparable'?",
+          "Can you clarify the inference procedure for classification? How is the cosine similarity between output spikes and label spike trains computed, and does this introduce any computational overhead compared to standard softmax?",
+          "The method requires large batch sizes (128) for good performance. How does this affect scalability to larger models or datasets with limited memory? Are there ways to mitigate this?",
+          "Why is the FFT decomposition used in generation tasks biologically plausible? The brain does not appear to perform frequency-domain decomposition explicitly.",
+          "Have you compared BSD against more recent biologically plausible methods beyond DLL and CCL, such as those based on predictive coding or target propagation with spiking neurons?",
+          "What is the sensitivity of the method to the choice of λ in the ReCo loss across different tasks? The ablation shows λ=0.6 is optimal for SVHN, but is this consistent across datasets?",
+          "The training memory consumption is significantly higher than BP (e.g., 5034 MB vs 3324 MB for batch size 128). How does this trade-off affect the practical usability of the method?"
+        ],
+        "Limitations": [
+          "The paper acknowledges limitations in Appendix R, noting that BSD has only been evaluated on conventional architectures (MLP, CNN, RNN, autoencoder) and not on architectures with residual connections or attention mechanisms.",
+          "The biological plausibility criteria are somewhat arbitrary and may not fully capture the complexity of biological learning.",
+          "The method's sensitivity to batch size and memory overhead during training is not thoroughly discussed in the main text.",
+          "The performance on complex datasets (CIFAR-100) and generation tasks (FID scores) shows significant gaps compared to backpropagation, which may limit practical adoption.",
+          "The potential negative societal impact is not discussed beyond a brief statement in the Ethics Statement, which is adequate given the general-purpose nature of the algorithm."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces Bidirectional Spike-based Distillation (BSD), a biologically plausible learning algorithm that trains feedforward and backward spiking networks jointly via mutual distillation of spiking feature representations. The authors propose two additional biological plausibility criteria (C4: spiking neuron models, C5: unsigned error signals) beyond the three from Lv et al. (2025), and demonstrate that BSD satisfies all five criteria while achieving performance comparable to backpropagation on image classification, sequential regression, and image generation tasks.\n\nStrengths:\n- The paper addresses an important and challenging problem: developing biologically plausible learning algorithms that perform competitively with backpropagation.\n- The proposed method is novel, combining bidirectional networks with spiking neurons and contrastive-style local losses (ReCo) in a coherent framework.\n- The paper satisfies a comprehensive set of biological plausibility criteria (C1-C5), which is a significant advancement over prior work.\n- Extensive experiments across diverse tasks (classification, sequence prediction, time-series forecasting, image generation) and architectures (MLP, CNN, RNN, autoencoder) demonstrate the general applicability of the method.\n- The ablation studies (loss functions, batch size, timesteps, batch normalization, firing thresholds) provide useful insights into the method's behavior.\n- The paper includes analysis of weight alignment, t-SNE visualizations, robustness to noise, and energy efficiency, strengthening the claims.\n\nWeaknesses:\n- The performance gap between BSD and backpropagation is notable on complex datasets (e.g., CIFAR-100: 53.48% vs 57.75% for CNN), and the paper claims \"comparable\" performance which may be an overstatement in some cases.\n- The biological plausibility criteria, while well-motivated, are somewhat arbitrary and not rigorously justified. The claim that \"unsigned error signals\" are more biologically plausible than signed ones is debatable and not fully argued.\n- The method relies on ReCo loss, which is a contrastive learning approach requiring large batch sizes (as shown in Appendix J), which may limit its applicability in memory-constrained settings.\n- The paper does not compare against more recent biologically plausible methods beyond DLL and CCL, and the comparison set could be expanded.\n- The inference procedure for classification (cosine similarity with label spike trains) is not clearly explained and may be less efficient than standard softmax.\n- The image generation results show BSD is significantly worse than BP (FID 168 vs 127 on CIFAR-10), which weakens the \"comparable performance\" claim.\n- Some implementation details are complex (e.g., FFT decomposition for generation tasks), and the biological justification for such techniques is not clear.\n- The paper does not discuss the computational overhead of training (which is higher than BP as shown in Appendix N) in the main text, and the significance of this trade-off is not addressed.\n\nThe paper is technically sound overall, with clear methodology and extensive experiments. The originality is high, as the bidirectional distillation approach with spiking neurons is novel. The presentation is generally clear, though the main text is dense and some details are relegated to appendices. The significance is moderate-to-high, as it advances the state of the art in biologically plausible learning, though the performance gaps on complex tasks and the lack of comparison to more recent methods somewhat limit its impact.\n\nI would rate this as a solid paper with some concerns. The main issues are: (1) the \"comparable performance\" claim is somewhat overstated given the gaps on complex datasets; (2) the biological justification for some design choices (e.g., ReCo loss, FFT decomposition) is weak; (3) the method's sensitivity to batch size and memory overhead during training is not thoroughly discussed. However, the novelty and the comprehensive evaluation make it a valuable contribution to the field.\n\nOverall, I lean toward acceptance with reservations, but the weaknesses prevent me from giving a strong recommendation. The decision should be Accept, as the paper has clear contributions and the limitations are acknowledged and discussed.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper introduces Bidirectional Spike-based Distillation (BSD), a biologically plausible learning algorithm that trains feedforward and backward spiking networks jointly via mutual distillation of spiking feature representations. The feedforward pathway maps stimuli to concepts (perception), while the backward pathway reconstructs stimuli from concepts (recall). The authors propose two additional biological plausibility criteria (C4: spiking neuron models, C5: unsigned error signals) beyond the three from Lv et al. (2025), and demonstrate that BSD satisfies all five criteria. Extensive experiments across image classification, sequential regression (text prediction, time-series forecasting), and image generation tasks show that BSD achieves performance comparable to backpropagation while maintaining biological plausibility.\",\n  \"Strengths\": [\n    \"Addresses an important and challenging problem: developing biologically plausible learning algorithms competitive with backpropagation.\",\n    \"Novel method combining bidirectional networks with spiking neurons and contrastive-style local losses (ReCo) in a coherent framework.\",\n    \"Satisfies a comprehensive set of five biological plausibility criteria (C1-C5), advancing beyond prior work.\",\n    \"Extensive experiments across diverse tasks and architectures (MLP, CNN, RNN, autoencoder) demonstrate general applicability.\",\n    \"Ablation studies (loss functions, batch size, timesteps, batch normalization, firing thresholds) provide useful insights.\",\n    \"Includes analysis of weight alignment, t-SNE visualizations, robustness to noise, and energy efficiency.\"\n  ],\n  \"Weaknesses\": [\n    \"Performance gaps on complex datasets (e.g., CIFAR-100: 53.48% vs 57.75% for CNN) weaken the 'comparable performance' claim.\",\n    \"Biological plausibility criteria are not rigorously justified; the claim that 'unsigned error signals' are more biologically plausible is debatable.\",\n    \"Method relies on ReCo loss requiring large batch sizes (Appendix J), limiting applicability in memory-constrained settings.\",\n    \"Comparison set of biologically plausible methods is limited (no comparison to recent methods beyond DLL and CCL).\",\n    \"Inference procedure for classification (cosine similarity with label spike trains) is not clearly explained.\",\n    \"Image generation results show BSD significantly worse than BP (FID 168 vs 127 on CIFAR-10), weakening the comparability claim.\",\n    \"Some implementation details (e.g., FFT decomposition) lack clear biological justification.\",\n    \"Training computational overhead is higher than BP (Appendix N) but not discussed in the main text.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How do you justify the claim that 'unsigned error signals' are more biologically plausible than signed ones, given that many biological systems do encode directionality? Please provide more neurophysiological evidence.\",\n    \"The performance gap on CIFAR-100 is about 4 percentage points (53.48% vs 57.75%). How do you reconcile this with the claim of 'comparable performance'? What would be an acceptable threshold for 'comparable'?\",\n    \"Can you clarify the inference procedure for classification? How is the cosine similarity between output spikes and label spike trains computed, and does this introduce any computational overhead compared to standard softmax?\",\n    \"The method requires large batch sizes (128) for good performance. How does this affect scalability to larger models or datasets with limited memory? Are there ways to mitigate this?\",\n    \"Why is the FFT decomposition used in generation tasks biologically plausible? The brain does not appear to perform frequency-domain decomposition explicitly.\",\n    \"Have you compared BSD against more recent biologically plausible methods beyond DLL and CCL, such as those based on predictive coding or target propagation with spiking neurons?\",\n    \"What is the sensitivity of the method to the choice of λ in the ReCo loss across different tasks? The ablation shows λ=0.6 is optimal for SVHN, but is this consistent across datasets?\",\n    \"The training memory consumption is significantly higher than BP (e.g., 5034 MB vs 3324 MB for batch size 128). How does this trade-off affect the practical usability of the method?\"\n  ],\n  \"Limitations\": [\n    \"The paper acknowledges limitations in Appendix R, noting that BSD has only been evaluated on conventional architectures (MLP, CNN, RNN, autoencoder) and not on architectures with residual connections or attention mechanisms.\",\n    \"The biological plausibility criteria are somewhat arbitrary and may not fully capture the complexity of biological learning.\",\n    \"The method's sensitivity to batch size and memory overhead during training is not thoroughly discussed in the main text.\",\n    \"The performance on complex datasets (CIFAR-100) and generation tasks (FID scores) shows significant gaps compared to backpropagation, which may limit practical adoption.\",\n    \"The potential negative societal impact is not discussed beyond a brief statement in the Ethics Statement, which is adequate given the general-purpose nature of the algorithm.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 28969,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 27177,
+        "completion_tokens": 1929,
+        "reasoning_tokens": 0,
+        "total_tokens": 30898
+      },
+      "attempts": 1,
+      "response_id": "d24c1098-ccb7-46dc-ba81-5a136786ebb0"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "This paper introduces Bidirectional Spike-based Distillation (BSD), a biologically plausible learning algorithm that jointly trains feedforward (stimuli-to-concept) and backward (concept-to-stimuli) spiking neural networks. The learning is formulated as a transformation between two spiking representations, using local contrastive losses (Relaxed Contrastive loss) to align membrane potentials between the two pathways. The authors extend existing biological plausibility criteria from three to five by adding requirements for spiking neuron communication (C4) and unsigned error signals (C5). Through extensive experiments on image classification (MNIST, FashionMNIST, SVHN, CIFAR-10/100), sequential regression (text character prediction, time-series forecasting), and image generation (autoencoders), they demonstrate that BSD achieves performance approaching that of backpropagation while satisfying all five biological plausibility criteria.",
+        "Strengths": [
+          "Novel framework inspired by bidirectional perception-recall brain processes, combining feedforward and backward spiking networks with mutual distillation",
+          "Clear extension of biological plausibility criteria from 3 to 5, with the addition of spike-based communication and unsigned error signals being well-motivated",
+          "Comprehensive experimental evaluation across diverse tasks (classification, sequential regression, generation) and architectures (MLPs, CNNs, RNNs, autoencoders)",
+          "Technically sound mathematical formulation with detailed gradient derivations provided in appendices",
+          "Good ablation studies comparing different loss functions (MSE, InfoNCE, ReCo) and analyzing key hyperparameters",
+          "The use of ReCo loss to satisfy unsigned error signaling is a clever and well-justified choice",
+          "Satisfies all five biological plausibility criteria simultaneously, which is a notable achievement compared to existing methods",
+          "Good analysis of weight alignment dynamics confirming asymmetric weights (C1) are maintained"
+        ],
+        "Weaknesses": [
+          "The claim of 'performance comparable to backpropagation' is somewhat overstated; on complex datasets like CIFAR-100, the gap is significant (53.48% vs 57.75% for CNNs, and 22.10% vs 27.92% for MLPs)",
+          "Image generation results show clear degradation compared to BP (FID 168.12 vs 127.34 on CIFAR-10), with the paper acknowledging loss of high-frequency detail",
+          "Training computational cost is substantially higher than BP (memory nearly doubles at batch size 128), which is only briefly acknowledged",
+          "The method is sensitive to multiple hyperparameters (λ, firing thresholds, batch sizes), requiring careful tuning that may limit practical adoption",
+          "The biological plausibility of C5 (unsigned error signals) is debatable since gradients still implicitly encode direction information through the optimization process",
+          "The detach() operation to enforce local learning seems somewhat artificial and may not have clear biological correspondence",
+          "Limited evaluation on truly large-scale problems; the Tiny-ImageNet result (35.34%) still shows significant gap from BP (41.07%)",
+          "The paper does not provide sufficient discussion of when BSD might fail or its limitations in scaling to very deep networks"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "The paper claims BSD satisfies C5 (unsigned error signals) through the use of ReCo loss. However, the gradients used for weight updates still have signs that indicate direction. Could you clarify how the unsigned nature of the loss translates to unsigned weight updates?",
+          "The performance gap on CIFAR-100 is quite large (53.48% vs 57.75% for CNNs). What are the main sources of this gap, and what modifications might close it?",
+          "The training memory consumption is nearly double that of BP at batch size 128 (5034 MB vs 3324 MB). Given this overhead, what are the practical advantages of BSD over BP for real-world applications?",
+          "How sensitive is BSD to the choice of λ=0.6 across different tasks? The ablation in Figure 3(a) shows significant variation with λ, suggesting this is a critical hyperparameter.",
+          "The detach() operation prevents gradient flow between layers. How does this affect the theoretical convergence guarantees, and could there be issues with vanishing alignment signals in deeper networks?",
+          "For the generation tasks, the FID scores are notably worse than BP. Could you discuss whether this gap is fundamental to spike-based approaches or specific to the BSD formulation?",
+          "How does the choice of T=4 timesteps affect the biological plausibility claim? Biological neurons typically integrate over longer timescales."
+        ],
+        "Limitations": [
+          "Performance gaps on complex datasets (CIFAR-100, Tiny-ImageNet) and generation tasks are more significant than the paper's 'comparable performance' claim suggests",
+          "High sensitivity to hyperparameters (λ, firing thresholds, batch sizes) may limit practical applicability",
+          "Substantial training computational overhead compared to backpropagation",
+          "The biological plausibility of certain design choices (e.g., detach operations, contrastive loss formulation) is not fully justified",
+          "Limited evaluation on very deep architectures or those with residual connections/attention mechanisms",
+          "The paper does not address potential negative societal impacts beyond a brief ethics statement, though the work appears to have minimal risk"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes a biologically plausible learning algorithm called Bidirectional Spike-based Distillation (BSD) that trains feedforward and backward spiking networks jointly via local contrastive losses. The key contributions are: (1) a novel framework inspired by perception-recall bidirectional brain processes, (2) extension of biological plausibility criteria from 3 to 5 (adding spiking neuron communication and unsigned error signals), and (3) extensive experiments showing performance comparable to backpropagation across multiple tasks.\n\nThe paper has significant strengths: it addresses a longstanding challenge in biologically plausible learning, proposes a technically sound method with clear mathematical formulations, and provides comprehensive experimental validation across diverse tasks (classification, sequence prediction, generation). The use of ReCo loss to satisfy unsigned error signaling is clever, and the explicit satisfaction of all five criteria is well-demonstrated.\n\nHowever, there are notable weaknesses. The performance gap compared to backpropagation is still significant on complex datasets (e.g., CIFAR-100: 53.48% vs 57.75% for CNNs), and the paper's claim of \"comparable\" performance is somewhat overstated. The biological plausibility claims, particularly regarding C5 (unsigned error signals), could be questioned since the ReCo loss still uses gradients that implicitly encode direction. The computational cost during training is substantially higher (nearly double memory in some cases), and the paper acknowledges this only briefly. The method requires careful hyperparameter tuning (λ, firing thresholds, batch sizes) which may limit practical adoption. The image generation results show clear degradation compared to BP (FID 168.12 vs 127.34), which weakens the \"comparable performance\" claim.\n\nThe paper is well-written and organized, with clear explanations of the method and thorough experimental evaluation. The ablation studies are informative, particularly the comparison of different loss functions. The authors are honest about some limitations but could be more critical about the performance gaps.\n\nOverall, this is a solid contribution to the biologically plausible learning literature with novel ideas and comprehensive evaluation. However, the claimed parity with backpropagation is not fully supported, and the practical advantages are not entirely clear given the computational overhead. I would lean toward acceptance given the novelty and thoroughness, but with reservations about the strength of the performance claims.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper introduces Bidirectional Spike-based Distillation (BSD), a biologically plausible learning algorithm that jointly trains feedforward (stimuli-to-concept) and backward (concept-to-stimuli) spiking neural networks. The learning is formulated as a transformation between two spiking representations, using local contrastive losses (Relaxed Contrastive loss) to align membrane potentials between the two pathways. The authors extend existing biological plausibility criteria from three to five by adding requirements for spiking neuron communication (C4) and unsigned error signals (C5). Through extensive experiments on image classification (MNIST, FashionMNIST, SVHN, CIFAR-10/100), sequential regression (text character prediction, time-series forecasting), and image generation (autoencoders), they demonstrate that BSD achieves performance approaching that of backpropagation while satisfying all five biological plausibility criteria.\",\n    \"Strengths\": [\n        \"Novel framework inspired by bidirectional perception-recall brain processes, combining feedforward and backward spiking networks with mutual distillation\",\n        \"Clear extension of biological plausibility criteria from 3 to 5, with the addition of spike-based communication and unsigned error signals being well-motivated\",\n        \"Comprehensive experimental evaluation across diverse tasks (classification, sequential regression, generation) and architectures (MLPs, CNNs, RNNs, autoencoders)\",\n        \"Technically sound mathematical formulation with detailed gradient derivations provided in appendices\",\n        \"Good ablation studies comparing different loss functions (MSE, InfoNCE, ReCo) and analyzing key hyperparameters\",\n        \"The use of ReCo loss to satisfy unsigned error signaling is a clever and well-justified choice\",\n        \"Satisfies all five biological plausibility criteria simultaneously, which is a notable achievement compared to existing methods\",\n        \"Good analysis of weight alignment dynamics confirming asymmetric weights (C1) are maintained\"\n    ],\n    \"Weaknesses\": [\n        \"The claim of 'performance comparable to backpropagation' is somewhat overstated; on complex datasets like CIFAR-100, the gap is significant (53.48% vs 57.75% for CNNs, and 22.10% vs 27.92% for MLPs)\",\n        \"Image generation results show clear degradation compared to BP (FID 168.12 vs 127.34 on CIFAR-10), with the paper acknowledging loss of high-frequency detail\",\n        \"Training computational cost is substantially higher than BP (memory nearly doubles at batch size 128), which is only briefly acknowledged\",\n        \"The method is sensitive to multiple hyperparameters (λ, firing thresholds, batch sizes), requiring careful tuning that may limit practical adoption\",\n        \"The biological plausibility of C5 (unsigned error signals) is debatable since gradients still implicitly encode direction information through the optimization process\",\n        \"The detach() operation to enforce local learning seems somewhat artificial and may not have clear biological correspondence\",\n        \"Limited evaluation on truly large-scale problems; the Tiny-ImageNet result (35.34%) still shows significant gap from BP (41.07%)\",\n        \"The paper does not provide sufficient discussion of when BSD might fail or its limitations in scaling to very deep networks\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"The paper claims BSD satisfies C5 (unsigned error signals) through the use of ReCo loss. However, the gradients used for weight updates still have signs that indicate direction. Could you clarify how the unsigned nature of the loss translates to unsigned weight updates?\",\n        \"The performance gap on CIFAR-100 is quite large (53.48% vs 57.75% for CNNs). What are the main sources of this gap, and what modifications might close it?\",\n        \"The training memory consumption is nearly double that of BP at batch size 128 (5034 MB vs 3324 MB). Given this overhead, what are the practical advantages of BSD over BP for real-world applications?\",\n        \"How sensitive is BSD to the choice of λ=0.6 across different tasks? The ablation in Figure 3(a) shows significant variation with λ, suggesting this is a critical hyperparameter.\",\n        \"The detach() operation prevents gradient flow between layers. How does this affect the theoretical convergence guarantees, and could there be issues with vanishing alignment signals in deeper networks?\",\n        \"For the generation tasks, the FID scores are notably worse than BP. Could you discuss whether this gap is fundamental to spike-based approaches or specific to the BSD formulation?\",\n        \"How does the choice of T=4 timesteps affect the biological plausibility claim? Biological neurons typically integrate over longer timescales.\"\n    ],\n    \"Limitations\": [\n        \"Performance gaps on complex datasets (CIFAR-100, Tiny-ImageNet) and generation tasks are more significant than the paper's 'comparable performance' claim suggests\",\n        \"High sensitivity to hyperparameters (λ, firing thresholds, batch sizes) may limit practical applicability\",\n        \"Substantial training computational overhead compared to backpropagation\",\n        \"The biological plausibility of certain design choices (e.g., detach operations, contrastive loss formulation) is not fully justified\",\n        \"Limited evaluation on very deep architectures or those with residual connections/attention mechanisms\",\n        \"The paper does not address potential negative societal impacts beyond a brief ethics statement, though the work appears to have minimal risk\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 28969,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 27177,
+        "completion_tokens": 1666,
+        "reasoning_tokens": 0,
+        "total_tokens": 30635
+      },
+      "attempts": 1,
+      "response_id": "df11952d-60ef-48c2-9419-3ba006afc6fb"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper introduces Bidirectional Spike-based Distillation (BSD), a biologically plausible learning algorithm that jointly trains a feedforward spiking network (stimuli-to-decision) and a backward spiking network (concept-to-stimuli) through mutual distillation of spiking feature representations. The authors extend three existing biological plausibility criteria (asymmetric weights, local error, non-two-stage training) with two new ones (spiking neurons, unsigned error signals) and demonstrate that BSD satisfies all five. Extensive experiments on image classification, sequential regression, and image generation show that BSD achieves performance comparable to backpropagation while maintaining biological plausibility.",
+        "Strengths": [
+          "Novel approach: The bidirectional distillation framework is creative and well-motivated by neuroscience (perception-recall bidirectional processing in the brain).",
+          "Comprehensive evaluation: Tests across multiple benchmarks (MNIST, FashionMNIST, SVHN, CIFAR-10/100, Tiny-ImageNet), architectures (MLP, CNN, RNN, autoencoder), and tasks (classification, forecasting, generation).",
+          "Clear biological plausibility framework: The addition of C4 (spiking neurons) and C5 (unsigned error signals) criteria and systematic evaluation against all five criteria is a useful contribution.",
+          "Thorough ablation studies: The paper investigates loss functions, batch size, timesteps, batch normalization, and firing thresholds, providing good insight into the method's behavior.",
+          "Good writing and organization: The paper is well-structured with detailed appendices covering implementation details and additional experiments."
+        ],
+        "Weaknesses": [
+          "Performance gap: While BSD achieves 'comparable' performance to BP, there is a consistent gap on complex tasks (CIFAR-10: 84.13% vs 87.12%, CIFAR-100: 53.48% vs 57.75%, image generation FID: 168.12 vs 127.34). The claim of 'comparable' is somewhat overstated.",
+          "Limited component novelty: The ReCo loss, LIF neurons, and local loss functions are borrowed from existing work. The main novelty is the bidirectional distillation framework, which is a combination of known techniques.",
+          "Questionable biological plausibility: The training uses surrogate gradients, detach() operations, and a global cross-entropy loss at the top layer, which are not fully biologically grounded. The claim of satisfying C5 (unsigned error signals) is questionable given the top-layer cross-entropy loss.",
+          "Missing comparisons: The paper does not compare against more recent biologically plausible methods (e.g., Forward-Forward algorithm, improved predictive coding variants).",
+          "Scalability concerns: Performance drops significantly with smaller batch sizes (Appendix J), limiting practical applicability.",
+          "Unclear role of backward network: The paper does not clarify how the backward network is used during inference, raising questions about its necessity.",
+          "The paper does not clearly explain how the backward network contributes to learning beyond providing alignment targets, and whether it could be removed after training."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "1. How is the backward network used during inference? The paper states only the feedforward path is used for classification. If so, what is the role of the backward network during deployment?",
+          "2. The paper claims C3 (non-two-stage training) is satisfied, but the algorithm still has a clear forward pass, backward pass, and parameter update phase. Can you clarify how this differs from two-stage training?",
+          "3. How does the cross-entropy loss at the top layer (which uses signed errors) align with the claim of satisfying C5 (unsigned error signals)?",
+          "4. What is the computational overhead of training BSD compared to BP, in terms of both time and memory?",
+          "5. Have you considered comparing against more recent biologically plausible methods like Forward-Forward or improved predictive coding variants?",
+          "6. How sensitive is the method to the choice of λ? The ablation shows significant variation with λ, and the optimal value seems dataset-dependent.",
+          "7. The paper mentions that BSD 'achieves performance comparable to backpropagation.' Given the consistent gaps on complex tasks, could you provide a more nuanced discussion of when BSD is competitive and when it falls short?"
+        ],
+        "Limitations": [
+          "The biological plausibility claims are somewhat overstated. The use of surrogate gradients, detach operations, and global loss at the top layer are not fully biologically grounded.",
+          "The performance gap on complex tasks (CIFAR-100, image generation) suggests the method may not scale well to more challenging problems.",
+          "The paper does not discuss potential negative societal impacts, though this is likely not a major concern for this type of research.",
+          "The energy efficiency analysis is theoretical and assumes specialized neuromorphic hardware that may not be widely available.",
+          "The batch size sensitivity (significant performance drops with smaller batches) limits practical applicability in memory-constrained settings.",
+          "The backward network's role during inference is unclear, and it is not used at deployment time, which raises questions about the necessity of the bidirectional architecture."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 5,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThe paper introduces Bidirectional Spike-based Distillation (BSD), a biologically plausible learning algorithm that trains feedforward and backward spiking networks jointly via contrastive-style local losses. The authors extend three existing biological plausibility criteria (C1-C3) with two new ones (C4: spiking neurons, C5: unsigned error signals) and demonstrate that BSD satisfies all five while achieving performance comparable to backpropagation across image classification, sequential regression, and image generation tasks.\n\nStrengths:\n1. Novel approach: The idea of jointly training forward and backward spiking networks through mutual distillation is creative and well-motivated by neuroscience (perception-recall bidirectional processing).\n2. Comprehensive evaluation: The authors test on multiple benchmarks (MNIST, FashionMNIST, SVHN, CIFAR-10/100, Tiny-ImageNet), architectures (MLP, CNN, RNN, autoencoder), and tasks (classification, forecasting, generation), which is thorough.\n3. Clear biological plausibility framework: The addition of C4 and C5 criteria and the systematic evaluation against them is a useful contribution to the field.\n4. Ablation studies: The paper includes ablation on loss functions (MSE, InfoNCE, ReCo), batch size, timesteps, batch normalization, and firing thresholds, providing good insight into the method's behavior.\n5. The paper is well-written and organized, with detailed appendices.\n\nWeaknesses:\n1. Performance gap: While BSD achieves \"comparable\" performance to BP, there is a consistent gap (e.g., CIFAR-10: 84.13% vs 87.12%, CIFAR-100: 53.48% vs 57.75%). The claim of \"comparable\" is somewhat overstated, especially on complex datasets.\n2. Limited novelty in components: The use of ReCo loss, LIF neurons, and local loss functions are all borrowed from existing work. The main novelty is the bidirectional distillation framework itself, which is a combination of known techniques.\n3. Biological plausibility of the algorithm is debatable: The training procedure still uses gradient descent with surrogate gradients, which is not biologically plausible. The detach() operations and the global cross-entropy loss at the top layer also raise questions about whether C2 and C3 are truly satisfied.\n4. The paper does not compare against more recent biologically plausible methods (e.g., Forward-Forward algorithm, PC alternatives) beyond DLL and CCL.\n5. The image generation results are notably weaker than BP (FID 168.12 vs 127.34 on CIFAR-10), and the authors acknowledge high-frequency detail loss.\n6. The claim about satisfying C5 (unsigned error signals) is questionable - while the ReCo loss is unsigned, the cross-entropy loss at the top layer uses signed errors internally.\n7. Scalability concerns: The batch size sensitivity (Appendix J) shows significant performance drops with smaller batches, which limits practical applicability.\n8. The paper does not clearly explain how the backward network is used during inference (it seems only the forward path is used), which raises questions about the necessity of the backward network.\n\nQuestions for authors:\n1. How is the backward network used during inference? The paper states only the feedforward path is used for classification. If so, what is the role of the backward network during deployment?\n2. The paper claims C3 (non-two-stage training) is satisfied, but the algorithm still has a clear forward pass, backward pass, and update phase. Can you clarify how this differs from two-stage training?\n3. How does the cross-entropy loss at the top layer (which uses signed errors) align with the claim of satisfying C5 (unsigned error signals)?\n4. What is the computational overhead of training BSD compared to BP, especially in terms of time?\n5. Have you considered comparing against more recent biologically plausible methods like Forward-Forward or improved predictive coding variants?\n6. How sensitive is the method to the choice of λ? The ablation shows significant variation with λ.\n\nLimitations and concerns:\n1. The biological plausibility claims are somewhat overstated. The use of surrogate gradients, detach operations, and global loss at the top layer are not fully biologically grounded.\n2. The performance gap on complex tasks (CIFAR-100, image generation) suggests the method may not scale well.\n3. The paper does not discuss potential negative societal impacts, though this is likely not a major concern for this type of research.\n4. The energy efficiency analysis is theoretical and assumes specialized hardware that may not be available.\n\nOverall assessment:\nThe paper presents a novel and interesting approach to biologically plausible learning, with a clear framework and comprehensive experiments. However, the performance gaps, the somewhat overstated biological plausibility claims, and the limited novelty of the components (despite the novel combination) make this a borderline contribution. The paper is technically sound but not groundbreaking. I would rate it as a borderline reject/accept, leaning toward reject due to the performance gaps and overclaimed biological plausibility.\n\nDecision: Reject (borderline)\n\nSoundness: 3 (good) - The experiments are well-designed, but the biological plausibility claims are not fully supported.\nPresentation: 4 (excellent) - Well-written and organized.\nContribution: 3 (good) - Novel combination but with limited impact beyond the specific approach.\nOverall: 5 (borderline accept) - The paper has merit but falls short in several areas.REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper introduces Bidirectional Spike-based Distillation (BSD), a biologically plausible learning algorithm that jointly trains a feedforward spiking network (stimuli-to-decision) and a backward spiking network (concept-to-stimuli) through mutual distillation of spiking feature representations. The authors extend three existing biological plausibility criteria (asymmetric weights, local error, non-two-stage training) with two new ones (spiking neurons, unsigned error signals) and demonstrate that BSD satisfies all five. Extensive experiments on image classification, sequential regression, and image generation show that BSD achieves performance comparable to backpropagation while maintaining biological plausibility.\",\n  \"Strengths\": [\n    \"Novel approach: The bidirectional distillation framework is creative and well-motivated by neuroscience (perception-recall bidirectional processing in the brain).\",\n    \"Comprehensive evaluation: Tests across multiple benchmarks (MNIST, FashionMNIST, SVHN, CIFAR-10/100, Tiny-ImageNet), architectures (MLP, CNN, RNN, autoencoder), and tasks (classification, forecasting, generation).\",\n    \"Clear biological plausibility framework: The addition of C4 (spiking neurons) and C5 (unsigned error signals) criteria and systematic evaluation against all five criteria is a useful contribution.\",\n    \"Thorough ablation studies: The paper investigates loss functions, batch size, timesteps, batch normalization, and firing thresholds, providing good insight into the method's behavior.\",\n    \"Good writing and organization: The paper is well-structured with detailed appendices covering implementation details and additional experiments.\"\n  ],\n  \"Weaknesses\": [\n    \"Performance gap: While BSD achieves 'comparable' performance to BP, there is a consistent gap on complex tasks (CIFAR-10: 84.13% vs 87.12%, CIFAR-100: 53.48% vs 57.75%, image generation FID: 168.12 vs 127.34). The claim of 'comparable' is somewhat overstated.\",\n    \"Limited component novelty: The ReCo loss, LIF neurons, and local loss functions are borrowed from existing work. The main novelty is the bidirectional distillation framework, which is a combination of known techniques.\",\n    \"Questionable biological plausibility: The training uses surrogate gradients, detach() operations, and a global cross-entropy loss at the top layer, which are not fully biologically grounded. The claim of satisfying C5 (unsigned error signals) is questionable given the top-layer cross-entropy loss.\",\n    \"Missing comparisons: The paper does not compare against more recent biologically plausible methods (e.g., Forward-Forward algorithm, improved predictive coding variants).\",\n    \"Scalability concerns: Performance drops significantly with smaller batch sizes (Appendix J), limiting practical applicability.\",\n    \"Unclear role of backward network: The paper does not clarify how the backward network is used during inference, raising questions about its necessity.\",\n    \"The paper does not clearly explain how the backward network contributes to learning beyond providing alignment targets, and whether it could be removed after training.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 4,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"1. How is the backward network used during inference? The paper states only the feedforward path is used for classification. If so, what is the role of the backward network during deployment?\",\n    \"2. The paper claims C3 (non-two-stage training) is satisfied, but the algorithm still has a clear forward pass, backward pass, and parameter update phase. Can you clarify how this differs from two-stage training?\",\n    \"3. How does the cross-entropy loss at the top layer (which uses signed errors) align with the claim of satisfying C5 (unsigned error signals)?\",\n    \"4. What is the computational overhead of training BSD compared to BP, in terms of both time and memory?\",\n    \"5. Have you considered comparing against more recent biologically plausible methods like Forward-Forward or improved predictive coding variants?\",\n    \"6. How sensitive is the method to the choice of λ? The ablation shows significant variation with λ, and the optimal value seems dataset-dependent.\",\n    \"7. The paper mentions that BSD 'achieves performance comparable to backpropagation.' Given the consistent gaps on complex tasks, could you provide a more nuanced discussion of when BSD is competitive and when it falls short?\"\n  ],\n  \"Limitations\": [\n    \"The biological plausibility claims are somewhat overstated. The use of surrogate gradients, detach operations, and global loss at the top layer are not fully biologically grounded.\",\n    \"The performance gap on complex tasks (CIFAR-100, image generation) suggests the method may not scale well to more challenging problems.\",\n    \"The paper does not discuss potential negative societal impacts, though this is likely not a major concern for this type of research.\",\n    \"The energy efficiency analysis is theoretical and assumes specialized neuromorphic hardware that may not be widely available.\",\n    \"The batch size sensitivity (significant performance drops with smaller batches) limits practical applicability in memory-constrained settings.\",\n    \"The backward network's role during inference is unclear, and it is not used at deployment time, which raises questions about the necessity of the bidirectional architecture.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 4,\n  \"Contribution\": 3,\n  \"Overall\": 5,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 28969,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 27177,
+        "completion_tokens": 2278,
+        "reasoning_tokens": 0,
+        "total_tokens": 31247
+      },
+      "attempts": 1,
+      "response_id": "5ae94001-1cba-4423-9307-cc124ed28906"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 4,
+      "Reject": 1
+    },
+    "unanimous_decision": false,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          4,
+          3,
+          4,
+          4,
+          3
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          4
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Significance": {
+        "values": [
+          3,
+          2,
+          3,
+          3,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          4
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Contribution": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          6,
+          6,
+          6,
+          6,
+          5
+        ],
+        "mean": 5.8,
+        "rounded_mean": 6,
+        "population_sd": 0.4,
+        "min": 5,
+        "max": 6
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper introduces Bidirectional Spike-based Distillation (BSD), a biologically plausible learning algorithm that jointly trains feedforward (stimuli-to-concept) and backward (concept-to-stimuli) spiking neural networks through mutual distillation of spiking feature representations. The authors extend three existing biological plausibility criteria (asymmetric weights, local errors, non-two-stage training) with two new ones (spiking neuron models, unsigned error signals) and demonstrate that BSD satisfies all five. The method uses a Relaxed Contrastive (ReCo) loss to align basal and apical voltages within pyramidal neurons. Extensive experiments across image classification (MNIST, FashionMNIST, SVHN, CIFAR-10/100, Tiny-ImageNet), sequential regression (text prediction, time-series forecasting), and image generation (autoencoders) show performance approaching backpropagation while maintaining biological plausibility. The paper includes thorough ablation studies on loss functions, batch size, timesteps, and firing thresholds.",
+      "Strengths": [
+        "Novel bidirectional distillation framework inspired by the brain's perception-recall architecture, combining feedforward and backward spiking networks in a coherent manner.",
+        "Clear extension of biological plausibility criteria from three to five, with the addition of spiking neurons (C4) and unsigned error signals (C5) being well-motivated.",
+        "Comprehensive empirical evaluation across diverse tasks (classification, sequential regression, generation) and architectures (MLP, CNN, RNN, autoencoder), demonstrating general applicability.",
+        "Thorough ablation studies (loss functions, batch size, timesteps, batch normalization, firing thresholds, lambda) provide useful insights into the method's behavior.",
+        "Well-written and organized paper with detailed appendices covering implementation details, gradient derivations, and additional experiments.",
+        "The use of ReCo loss to satisfy unsigned error signals is a clever and well-justified design choice.",
+        "Analysis of weight alignment dynamics confirms that forward and backward weights remain asymmetric (C1 satisfied) throughout training."
+      ],
+      "Weaknesses": [
+        "The claim of 'performance comparable to backpropagation' is somewhat overstated. Consistent performance gaps exist on complex tasks: CIFAR-100 (53.48% vs 57.75% for CNN), Tiny-ImageNet (35.34% vs 41.07%), and image generation FID scores (168.12 vs 127.34 on CIFAR-10).",
+        "Biological plausibility claims are partially weakened by the use of surrogate gradients, detach() operations to enforce local learning, batch normalization, and a global cross-entropy loss at the top layer, which are not fully biologically grounded.",
+        "The C5 (unsigned error signals) criterion is debatable since gradients used for weight updates still carry signed information implicitly through the optimization process, and the top-layer cross-entropy loss uses signed errors.",
+        "Training computational overhead is substantial (memory nearly doubles at batch size 128: 5034 MB vs 3324 MB), which is only briefly acknowledged in the main text.",
+        "The method shows significant sensitivity to batch size (performance drops with smaller batches) and hyperparameters (e.g., lambda), limiting practical applicability in memory-constrained settings.",
+        "Lack of theoretical analysis on convergence properties or conditions under which the method might fail.",
+        "Missing comparisons to more recent biologically plausible methods (e.g., Forward-Forward algorithm, improved predictive coding variants, target propagation with spiking neurons).",
+        "The role of the backward network during inference is unclear; it is not used at deployment time, raising questions about its necessity and the true contribution of the bidirectional architecture.",
+        "Scalability to larger models (e.g., ResNet-scale, transformers) and datasets (e.g., ImageNet) is not demonstrated."
+      ],
+      "Originality": 4,
+      "Quality": 3,
+      "Clarity": 3,
+      "Significance": 3,
+      "Questions": [
+        "The paper claims BSD satisfies C5 (unsigned error signals) through the ReCo loss. However, the gradients used for weight updates still have signs that indicate direction. Could you clarify how the unsigned nature of the loss translates to unsigned weight updates? Does the top-layer cross-entropy loss (which uses signed errors) violate C5?",
+        "What is the precise definition of 'comparable to backpropagation'? On CIFAR-100, BSD is ~4 percentage points lower (53.48% vs 57.75%), and on image generation FID is 40 points worse (168 vs 127). What would be an acceptable threshold for 'comparable'?",
+        "The detach() operation truncates the computational graph between layers. How is this biologically justified? Does this not break the continuous flow of information that biological neurons experience?",
+        "Batch normalization is used in CNN and RNN architectures. What is the biological interpretation of batch normalization, and does its use contradict the local learning criterion (C2)?",
+        "The ReCo loss uses cosine similarity between voltages from different samples in a batch. How does this align with biological learning, where neurons typically only have access to their own activity and local inputs? The batch-level comparison seems to require global information.",
+        "The method requires large batch sizes (128) for good performance. How does this affect scalability to larger models or datasets with limited memory? Are there ways to mitigate this?",
+        "How is the backward network used during inference? The paper states only the feedforward path is used for classification. If so, what is the role of the backward network during deployment, and could it be removed after training?",
+        "Have you compared BSD against more recent biologically plausible methods beyond DLL and CCL, such as Forward-Forward, predictive coding variants, or target propagation with spiking neurons?",
+        "The generation results show FID scores significantly worse than backpropagation (e.g., 168 vs 127 on CIFAR-10). Is this acceptable for a 'comparable' performance claim? Why is the gap larger for generation compared to classification?",
+        "What is the sensitivity of the method to the choice of lambda in the ReCo loss across different tasks? The ablation shows lambda=0.6 is optimal for SVHN, but is this consistent across datasets?",
+        "The training memory consumption is significantly higher than BP (e.g., 5034 MB vs 3324 MB for batch size 128). How does this trade-off affect the practical usability of the method for real-world applications?",
+        "Can you provide theoretical justification for why the bidirectional distillation converges? The paper only provides empirical convergence curves."
+      ],
+      "Limitations": [
+        "The method has been evaluated only on relatively small-scale datasets and conventional architectures (MLP, CNN, RNN, autoencoder); scalability to modern deep architectures (e.g., ResNet, Transformers) and larger datasets (e.g., ImageNet) is unclear.",
+        "Biological plausibility claims are partially based on abstract analogies (e.g., three-compartment neurons) rather than direct neurophysiological evidence. The use of surrogate gradients, detach() operations, batch normalization, and global loss at the top layer are not fully biologically grounded.",
+        "The performance gaps on complex datasets (CIFAR-100, Tiny-ImageNet) and generation tasks (FID scores) are more significant than the paper's 'comparable performance' claim suggests, which may limit practical adoption.",
+        "The training computational overhead (dual pathways, O(B^2) affinity matrix computation) could be prohibitive for large-scale applications.",
+        "The method's sensitivity to batch size and hyperparameters (lambda, firing thresholds) is not thoroughly discussed in the main text and may limit practical applicability.",
+        "The backward network's role during inference is unclear, and it is not used at deployment time, which raises questions about the necessity of the bidirectional architecture.",
+        "The paper does not discuss potential negative societal impacts beyond a brief ethics statement, though the work appears to have minimal risk."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 3,
+      "Contribution": 3,
+      "Overall": 6,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "THOUGHT:\nThe paper presents a novel biologically plausible learning algorithm (BSD) that trains feedforward and backward spiking networks via mutual distillation. The approach is well-motivated, extends existing plausibility criteria, and demonstrates broad empirical evaluation. However, there are consistent concerns across all reviews:\n\n1. The \"comparable to backpropagation\" claim is overstated given consistent performance gaps (CIFAR-100: ~4%, Tiny-ImageNet: ~6%, generation FID: 40+ points worse).\n2. Biological plausibility claims are weakened by use of surrogate gradients, detach() operations, batch normalization, and global cross-entropy loss at the top layer.\n3. The C5 (unsigned error signals) criterion is questionable since gradients and top-layer loss inherently carry signed information.\n4. Computational overhead (nearly double memory) and sensitivity to batch size limit practical applicability.\n5. Lack of theoretical analysis on convergence.\n6. Missing comparisons to recent biologically plausible methods (e.g., Forward-Forward, predictive coding variants).\n7. The backward network's role during inference is unclear.\n\nAll reviewers rate Overall 5-6, with four giving Accept and one giving Reject. The majority lean toward acceptance but with reservations. The weaknesses are significant but not fatal - the method is novel, well-evaluated, and advances the field. The main issue is overclaiming performance and biological plausibility.\n\nAs Area Chair, I need to weigh the consensus. Four reviewers accept (6/10), one rejects (5/10). The common criticism is about overstated claims rather than fundamental flaws. The paper is technically sound, clearly presented, and makes a meaningful contribution to biologically plausible learning. However, the performance gaps and biological plausibility concerns are substantial enough that I should be cautious.\n\nI'll lean toward Accept but with strong caveats in my meta-review, emphasizing the need for the authors to temper their claims and address the noted weaknesses. The work is solid and valuable to the community, even if not flawless. The consensus is that this is a weak-to-moderate accept, so I'll go with Accept.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper introduces Bidirectional Spike-based Distillation (BSD), a biologically plausible learning algorithm that jointly trains feedforward (stimuli-to-concept) and backward (concept-to-stimuli) spiking neural networks through mutual distillation of spiking feature representations. The authors extend three existing biological plausibility criteria (asymmetric weights, local errors, non-two-stage training) with two new ones (spiking neuron models, unsigned error signals) and demonstrate that BSD satisfies all five. The method uses a Relaxed Contrastive (ReCo) loss to align basal and apical voltages within pyramidal neurons. Extensive experiments across image classification (MNIST, FashionMNIST, SVHN, CIFAR-10/100, Tiny-ImageNet), sequential regression (text prediction, time-series forecasting), and image generation (autoencoders) show performance approaching backpropagation while maintaining biological plausibility. The paper includes thorough ablation studies on loss functions, batch size, timesteps, and firing thresholds.\",\n    \"Strengths\": [\n        \"Novel bidirectional distillation framework inspired by the brain's perception-recall architecture, combining feedforward and backward spiking networks in a coherent manner.\",\n        \"Clear extension of biological plausibility criteria from three to five, with the addition of spiking neurons (C4) and unsigned error signals (C5) being well-motivated.\",\n        \"Comprehensive empirical evaluation across diverse tasks (classification, sequential regression, generation) and architectures (MLP, CNN, RNN, autoencoder), demonstrating general applicability.\",\n        \"Thorough ablation studies (loss functions, batch size, timesteps, batch normalization, firing thresholds, lambda) provide useful insights into the method's behavior.\",\n        \"Well-written and organized paper with detailed appendices covering implementation details, gradient derivations, and additional experiments.\",\n        \"The use of ReCo loss to satisfy unsigned error signals is a clever and well-justified design choice.\",\n        \"Analysis of weight alignment dynamics confirms that forward and backward weights remain asymmetric (C1 satisfied) throughout training.\"\n    ],\n    \"Weaknesses\": [\n        \"The claim of 'performance comparable to backpropagation' is somewhat overstated. Consistent performance gaps exist on complex tasks: CIFAR-100 (53.48% vs 57.75% for CNN), Tiny-ImageNet (35.34% vs 41.07%), and image generation FID scores (168.12 vs 127.34 on CIFAR-10).\",\n        \"Biological plausibility claims are partially weakened by the use of surrogate gradients, detach() operations to enforce local learning, batch normalization, and a global cross-entropy loss at the top layer, which are not fully biologically grounded.\",\n        \"The C5 (unsigned error signals) criterion is debatable since gradients used for weight updates still carry signed information implicitly through the optimization process, and the top-layer cross-entropy loss uses signed errors.\",\n        \"Training computational overhead is substantial (memory nearly doubles at batch size 128: 5034 MB vs 3324 MB), which is only briefly acknowledged in the main text.\",\n        \"The method shows significant sensitivity to batch size (performance drops with smaller batches) and hyperparameters (e.g., lambda), limiting practical applicability in memory-constrained settings.\",\n        \"Lack of theoretical analysis on convergence properties or conditions under which the method might fail.\",\n        \"Missing comparisons to more recent biologically plausible methods (e.g., Forward-Forward algorithm, improved predictive coding variants, target propagation with spiking neurons).\",\n        \"The role of the backward network during inference is unclear; it is not used at deployment time, raising questions about its necessity and the true contribution of the bidirectional architecture.\",\n        \"Scalability to larger models (e.g., ResNet-scale, transformers) and datasets (e.g., ImageNet) is not demonstrated.\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"The paper claims BSD satisfies C5 (unsigned error signals) through the ReCo loss. However, the gradients used for weight updates still have signs that indicate direction. Could you clarify how the unsigned nature of the loss translates to unsigned weight updates? Does the top-layer cross-entropy loss (which uses signed errors) violate C5?\",\n        \"What is the precise definition of 'comparable to backpropagation'? On CIFAR-100, BSD is ~4 percentage points lower (53.48% vs 57.75%), and on image generation FID is 40 points worse (168 vs 127). What would be an acceptable threshold for 'comparable'?\",\n        \"The detach() operation truncates the computational graph between layers. How is this biologically justified? Does this not break the continuous flow of information that biological neurons experience?\",\n        \"Batch normalization is used in CNN and RNN architectures. What is the biological interpretation of batch normalization, and does its use contradict the local learning criterion (C2)?\",\n        \"The ReCo loss uses cosine similarity between voltages from different samples in a batch. How does this align with biological learning, where neurons typically only have access to their own activity and local inputs? The batch-level comparison seems to require global information.\",\n        \"The method requires large batch sizes (128) for good performance. How does this affect scalability to larger models or datasets with limited memory? Are there ways to mitigate this?\",\n        \"How is the backward network used during inference? The paper states only the feedforward path is used for classification. If so, what is the role of the backward network during deployment, and could it be removed after training?\",\n        \"Have you compared BSD against more recent biologically plausible methods beyond DLL and CCL, such as Forward-Forward, predictive coding variants, or target propagation with spiking neurons?\",\n        \"The generation results show FID scores significantly worse than backpropagation (e.g., 168 vs 127 on CIFAR-10). Is this acceptable for a 'comparable' performance claim? Why is the gap larger for generation compared to classification?\",\n        \"What is the sensitivity of the method to the choice of lambda in the ReCo loss across different tasks? The ablation shows lambda=0.6 is optimal for SVHN, but is this consistent across datasets?\",\n        \"The training memory consumption is significantly higher than BP (e.g., 5034 MB vs 3324 MB for batch size 128). How does this trade-off affect the practical usability of the method for real-world applications?\",\n        \"Can you provide theoretical justification for why the bidirectional distillation converges? The paper only provides empirical convergence curves.\"\n    ],\n    \"Limitations\": [\n        \"The method has been evaluated only on relatively small-scale datasets and conventional architectures (MLP, CNN, RNN, autoencoder); scalability to modern deep architectures (e.g., ResNet, Transformers) and larger datasets (e.g., ImageNet) is unclear.\",\n        \"Biological plausibility claims are partially based on abstract analogies (e.g., three-compartment neurons) rather than direct neurophysiological evidence. The use of surrogate gradients, detach() operations, batch normalization, and global loss at the top layer are not fully biologically grounded.\",\n        \"The performance gaps on complex datasets (CIFAR-100, Tiny-ImageNet) and generation tasks (FID scores) are more significant than the paper's 'comparable performance' claim suggests, which may limit practical adoption.\",\n        \"The training computational overhead (dual pathways, O(B^2) affinity matrix computation) could be prohibitive for large-scale applications.\",\n        \"The method's sensitivity to batch size and hyperparameters (lambda, firing thresholds) is not thoroughly discussed in the main text and may limit practical applicability.\",\n        \"The backward network's role during inference is unclear, and it is not used at deployment time, which raises questions about the necessity of the bidirectional architecture.\",\n        \"The paper does not discuss potential negative societal impacts beyond a brief ethics statement, though the work appears to have minimal risk.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 7374,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 7374,
+      "completion_tokens": 2162,
+      "reasoning_tokens": 0,
+      "total_tokens": 9536
+    },
+    "attempts": 1,
+    "response_id": "c017889d-e55c-41e7-881e-b6b7fa99dcef"
+  },
+  "final_review": {
+    "Summary": "The paper introduces Bidirectional Spike-based Distillation (BSD), a biologically plausible learning algorithm that jointly trains feedforward (stimuli-to-concept) and backward (concept-to-stimuli) spiking neural networks through mutual distillation of spiking feature representations. The authors extend three existing biological plausibility criteria (asymmetric weights, local errors, non-two-stage training) with two new ones (spiking neuron models, unsigned error signals) and demonstrate that BSD satisfies all five. The method uses a Relaxed Contrastive (ReCo) loss to align basal and apical voltages within pyramidal neurons. Extensive experiments across image classification (MNIST, FashionMNIST, SVHN, CIFAR-10/100, Tiny-ImageNet), sequential regression (text prediction, time-series forecasting), and image generation (autoencoders) show performance approaching backpropagation while maintaining biological plausibility. The paper includes thorough ablation studies on loss functions, batch size, timesteps, and firing thresholds.",
+    "Strengths": [
+      "Novel bidirectional distillation framework inspired by the brain's perception-recall architecture, combining feedforward and backward spiking networks in a coherent manner.",
+      "Clear extension of biological plausibility criteria from three to five, with the addition of spiking neurons (C4) and unsigned error signals (C5) being well-motivated.",
+      "Comprehensive empirical evaluation across diverse tasks (classification, sequential regression, generation) and architectures (MLP, CNN, RNN, autoencoder), demonstrating general applicability.",
+      "Thorough ablation studies (loss functions, batch size, timesteps, batch normalization, firing thresholds, lambda) provide useful insights into the method's behavior.",
+      "Well-written and organized paper with detailed appendices covering implementation details, gradient derivations, and additional experiments.",
+      "The use of ReCo loss to satisfy unsigned error signals is a clever and well-justified design choice.",
+      "Analysis of weight alignment dynamics confirms that forward and backward weights remain asymmetric (C1 satisfied) throughout training."
+    ],
+    "Weaknesses": [
+      "The claim of 'performance comparable to backpropagation' is somewhat overstated. Consistent performance gaps exist on complex tasks: CIFAR-100 (53.48% vs 57.75% for CNN), Tiny-ImageNet (35.34% vs 41.07%), and image generation FID scores (168.12 vs 127.34 on CIFAR-10).",
+      "Biological plausibility claims are partially weakened by the use of surrogate gradients, detach() operations to enforce local learning, batch normalization, and a global cross-entropy loss at the top layer, which are not fully biologically grounded.",
+      "The C5 (unsigned error signals) criterion is debatable since gradients used for weight updates still carry signed information implicitly through the optimization process, and the top-layer cross-entropy loss uses signed errors.",
+      "Training computational overhead is substantial (memory nearly doubles at batch size 128: 5034 MB vs 3324 MB), which is only briefly acknowledged in the main text.",
+      "The method shows significant sensitivity to batch size (performance drops with smaller batches) and hyperparameters (e.g., lambda), limiting practical applicability in memory-constrained settings.",
+      "Lack of theoretical analysis on convergence properties or conditions under which the method might fail.",
+      "Missing comparisons to more recent biologically plausible methods (e.g., Forward-Forward algorithm, improved predictive coding variants, target propagation with spiking neurons).",
+      "The role of the backward network during inference is unclear; it is not used at deployment time, raising questions about its necessity and the true contribution of the bidirectional architecture.",
+      "Scalability to larger models (e.g., ResNet-scale, transformers) and datasets (e.g., ImageNet) is not demonstrated."
+    ],
+    "Originality": 4,
+    "Quality": 3,
+    "Clarity": 3,
+    "Significance": 3,
+    "Questions": [
+      "The paper claims BSD satisfies C5 (unsigned error signals) through the ReCo loss. However, the gradients used for weight updates still have signs that indicate direction. Could you clarify how the unsigned nature of the loss translates to unsigned weight updates? Does the top-layer cross-entropy loss (which uses signed errors) violate C5?",
+      "What is the precise definition of 'comparable to backpropagation'? On CIFAR-100, BSD is ~4 percentage points lower (53.48% vs 57.75%), and on image generation FID is 40 points worse (168 vs 127). What would be an acceptable threshold for 'comparable'?",
+      "The detach() operation truncates the computational graph between layers. How is this biologically justified? Does this not break the continuous flow of information that biological neurons experience?",
+      "Batch normalization is used in CNN and RNN architectures. What is the biological interpretation of batch normalization, and does its use contradict the local learning criterion (C2)?",
+      "The ReCo loss uses cosine similarity between voltages from different samples in a batch. How does this align with biological learning, where neurons typically only have access to their own activity and local inputs? The batch-level comparison seems to require global information.",
+      "The method requires large batch sizes (128) for good performance. How does this affect scalability to larger models or datasets with limited memory? Are there ways to mitigate this?",
+      "How is the backward network used during inference? The paper states only the feedforward path is used for classification. If so, what is the role of the backward network during deployment, and could it be removed after training?",
+      "Have you compared BSD against more recent biologically plausible methods beyond DLL and CCL, such as Forward-Forward, predictive coding variants, or target propagation with spiking neurons?",
+      "The generation results show FID scores significantly worse than backpropagation (e.g., 168 vs 127 on CIFAR-10). Is this acceptable for a 'comparable' performance claim? Why is the gap larger for generation compared to classification?",
+      "What is the sensitivity of the method to the choice of lambda in the ReCo loss across different tasks? The ablation shows lambda=0.6 is optimal for SVHN, but is this consistent across datasets?",
+      "The training memory consumption is significantly higher than BP (e.g., 5034 MB vs 3324 MB for batch size 128). How does this trade-off affect the practical usability of the method for real-world applications?",
+      "Can you provide theoretical justification for why the bidirectional distillation converges? The paper only provides empirical convergence curves."
+    ],
+    "Limitations": [
+      "The method has been evaluated only on relatively small-scale datasets and conventional architectures (MLP, CNN, RNN, autoencoder); scalability to modern deep architectures (e.g., ResNet, Transformers) and larger datasets (e.g., ImageNet) is unclear.",
+      "Biological plausibility claims are partially based on abstract analogies (e.g., three-compartment neurons) rather than direct neurophysiological evidence. The use of surrogate gradients, detach() operations, batch normalization, and global loss at the top layer are not fully biologically grounded.",
+      "The performance gaps on complex datasets (CIFAR-100, Tiny-ImageNet) and generation tasks (FID scores) are more significant than the paper's 'comparable performance' claim suggests, which may limit practical adoption.",
+      "The training computational overhead (dual pathways, O(B^2) affinity matrix computation) could be prohibitive for large-scale applications.",
+      "The method's sensitivity to batch size and hyperparameters (lambda, firing thresholds) is not thoroughly discussed in the main text and may limit practical applicability.",
+      "The backward network's role during inference is unclear, and it is not used at deployment time, which raises questions about the necessity of the bidirectional architecture.",
+      "The paper does not discuss potential negative societal impacts beyond a brief ethics statement, though the work appears to have minimal risk."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 3,
+    "Contribution": 3,
+    "Overall": 6,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 152219,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 143259,
+    "completion_tokens": 12045,
+    "reasoning_tokens": 0,
+    "total_tokens": 164264,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.02005626,
+    "output_usd": 0.0033726,
+    "total_usd": 0.02345395
+  },
+  "elapsed_seconds": 38.505,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Accept",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B068",
+    "filename": "B068.txt",
+    "blind_text_sha256": "84797546155929636dd259210154d81415e2279ac83725dafcfe0e00cf8f81eb",
+    "characters": 106227,
+    "full_text_saved": false
+  }
+}

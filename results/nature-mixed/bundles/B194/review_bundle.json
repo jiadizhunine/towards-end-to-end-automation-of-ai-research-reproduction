@@ -1,0 +1,710 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:52:13.827045+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "This paper introduces the concept of 'spatial supersensing' as a hierarchy of capabilities beyond linguistic understanding, encompassing semantic perception, streaming event cognition, implicit 3D spatial cognition, and predictive world modeling. The authors present VSI-SUPER, a two-part benchmark (VSR for long-horizon visual spatial recall and VSC for continual visual spatial counting) designed to test these capabilities in arbitrarily long videos. They curate VSI-590K, a spatial-focused instruction-tuning dataset, and train Cambrian-S, a family of spatially-grounded video MLLMs that achieves state-of-the-art performance on VSI-Bench (+30% absolute improvement) without sacrificing general capabilities. However, Cambrian-S still struggles on VSI-SUPER, motivating the authors to propose 'predictive sensing' - a proof-of-concept using self-supervised next-latent-frame prediction where prediction error ('surprise') drives memory management and event segmentation. This approach substantially outperforms strong proprietary baselines (e.g., Gemini-2.5) on VSI-SUPER, suggesting that spatial supersensing requires models that anticipate, select, and organize experience rather than passively expand context.",
+        "Strengths": [
+          "Novel conceptual framework: The supersensing hierarchy provides a structured way to think about video understanding capabilities beyond current benchmarks, clearly identifying gaps in existing evaluation methods.",
+          "Well-designed benchmark: VSI-SUPER tasks (VSR and VSC) are cleverly constructed to be resistant to brute-force context expansion, requiring genuine spatial reasoning and memory organization. The tasks are simple for humans but challenging for current models, effectively exposing fundamental limitations.",
+          "Strong empirical results: Cambrian-S achieves impressive +30% absolute improvement on VSI-Bench, demonstrating that carefully curated spatial data can significantly enhance spatial reasoning. The debiased evaluation and held-out route planning subtask provide evidence of genuine generalization rather than shortcut learning.",
+          "Comprehensive analysis: The benchmark diagnostic tests (Fig. 2) provide valuable insights into how existing benchmarks rely on language priors versus genuine visual understanding, informing future benchmark design.",
+          "Promising proof-of-concept: The predictive sensing approach using prediction error as a surprise signal for memory management and event segmentation is intuitive, well-motivated by cognitive science, and demonstrates substantial improvements over strong baselines on VSI-SUPER.",
+          "Thorough ablations: The paper includes extensive ablation studies on data sources, training recipes, model sizes, and surprise measurement methods, providing a solid understanding of what drives performance."
+        ],
+        "Weaknesses": [
+          "Overreach in paradigm claims: The paper frames predictive sensing as a 'new paradigm' and 'path forward' but the demonstrated approach is a relatively simple proof-of-concept built on existing techniques (latent frame prediction + memory management). The evidence, while positive, does not fully support the strong claim that this represents a fundamental shift rather than an incremental improvement.",
+          "Synthetic benchmark limitations: VSI-SUPER is constructed by editing objects into frames and concatenating room-tour videos. While this enables controlled evaluation, it may not fully capture the complexity of real-world streaming scenarios with diverse events, interactions, and long-range dependencies.",
+          "Limited comparison with long-video methods: The comparison with existing long-video memory approaches (MovieChat, Flash-VStream) is limited to a single table (Table 17) without detailed discussion of hyperparameter tuning or implementation fidelity, making it hard to assess the novelty of the surprise-driven mechanisms.",
+          "Lack of theoretical grounding: The 'surprise' signal is operationalized as prediction error in a latent space, but the paper does not provide formal analysis of why this should correspond to meaningful event boundaries or memory importance. The connection to cognitive science is suggestive but not rigorously established.",
+          "Incomplete ablation on predictive sensing: The paper does not fully explore the design space of the LFP head (e.g., prediction horizon, latent space choice) or provide sensitivity analysis on the surprise threshold τ, which appears to be a critical hyperparameter.",
+          "Limited discussion of failure cases: While the paper shows Cambrian-S with predictive sensing outperforms baselines, it does not deeply analyze where the approach still fails or what types of events are missed by the surprise-based segmentation."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "1. How sensitive are the VSI-SUPER results to the surprise threshold τ? Is there a principled way to set this threshold or adapt it dynamically, or does it require per-video tuning?",
+          "2. The paper claims VSI-SUPER is 'resistant to brute-force context expansion.' For the 240-minute VSR videos, how many tokens would this require at 1 FPS with the current model? Could a model with 4M+ context (e.g., Gemini-2.5-Pro) handle this if tokenized efficiently?",
+          "3. In the VSC streaming evaluation (Fig. 11c), what exactly are the 10 timestamps at which questions are asked? Are they uniformly distributed across the video duration? How does performance vary across these timestamps?",
+          "4. For the LFP head, what is the prediction horizon? Is it predicting the very next frame or a future frame several steps ahead? How does this choice affect surprise estimation quality?",
+          "5. The paper mentions that Cambrian-S (w/ Mem.) maintains stable GPU memory usage. What is the actual memory footprint for the 240-minute video, and what is the compression ratio achieved by the surprise-based memory management?",
+          "6. How does the performance of Cambrian-S with surprise-driven segmentation on VSC compare to using ground-truth scene boundaries (GT Seg.)? The paper shows GT Seg. is better, but what is the gap, and what types of errors does the surprise-based approach make?",
+          "7. Could the surprising performance gains on VSI-SUPER be partly due to the model's strong VSI-Bench performance rather than the surprise mechanism itself? Have you tried using Cambrian-S without LFP but with an oracle segmentation (e.g., using scene change detection from a separate model)?",
+          "8. The paper mentions 'predictive sensing' as a new paradigm. How does this relate to existing world model approaches (e.g., V-JEPA, DINO-WM)? What are the key similarities and differences in terms of training objectives and downstream use of prediction errors?"
+        ],
+        "Limitations": [
+          "The VSI-SUPER benchmark is synthetic, built from edited and concatenated room-tour videos. While this provides controlled evaluation, the ecological validity is limited compared to real-world continuous video streams with diverse scene types, camera motions, and events.",
+          "The predictive sensing proof-of-concept is relatively simple and has not been scaled or tested on diverse real-world scenarios. The paper acknowledges this, but the strong claims about 'paradigm shift' may be premature.",
+          "The VSI-590K dataset is primarily focused on indoor room-tour videos, which may limit the model's spatial reasoning generalization to outdoor, egocentric, or dynamic environments.",
+          "Potential negative societal impact: Enhanced spatial reasoning in video MLLMs could be used for surveillance applications, potentially infringing on privacy. The paper does not discuss this possibility or mitigation strategies.",
+          "The evaluation of streaming capabilities is limited to specific synthetic scenarios. Real-world streaming understanding involves handling interruptions, user interactions, and multi-modal inputs (audio, text) that are not addressed.",
+          "The paper does not provide a detailed analysis of the computational cost of the predictive sensing approach during inference, beyond GPU memory usage. The latency of the surprise calculation and memory operations should be reported."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper presents a comprehensive framework for \"spatial supersensing\" in video understanding, introducing a hierarchy of capabilities, a new benchmark (VSI-SUPER), a new dataset (VSI-590K), and a trained model family (Cambrian-S). The paper also proposes a \"predictive sensing\" paradigm using latent frame prediction and surprise signals for memory management and event segmentation.\n\nKey strengths:\n1. Novel conceptual framework (supersensing hierarchy) that goes beyond standard video QA\n2. Well-designed benchmark (VSI-SUPER) that is resistant to brute-force context scaling\n3. Strong empirical results on VSI-Bench with Cambrian-S (30%+ improvement)\n4. Interesting proof-of-concept for predictive sensing using prediction errors\n5. Comprehensive evaluation and ablation studies\n\nKey weaknesses:\n1. The \"supersensing\" framework is somewhat philosophical and hard to operationalize\n2. VSI-SUPER benchmarks are constructed from edited/concatenated videos, which may not reflect real-world streaming scenarios\n3. The predictive sensing approach is presented as a \"proof-of-concept\" with relatively simple mechanisms\n4. Limited comparison with other long-video memory approaches (only MovieChat and Flash-VStream)\n5. The paper tries to cover too much ground (benchmark + dataset + model + new paradigm), which may dilute the depth of each contribution\n\nThe paper is technically sound with thorough experiments. The main contributions are valuable but the significance is somewhat limited by the proof-of-concept nature of the predictive sensing part. The benchmark is useful but synthetic in nature.\n\nI would rate this as a borderline accept. The work is solid but the central claims about \"supersensing\" being a new paradigm are somewhat overstated given the limited demonstrations. The data/model contributions are significant for the spatial reasoning community.\n\nOverall score: 6 (Weak Accept) - technically solid with moderate-to-high impact, but the paradigm shift claim is not fully supported by the proof-of-concept experiments.\n\nLet me write the detailed review now.REVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper introduces the concept of 'spatial supersensing' as a hierarchy of capabilities beyond linguistic understanding, encompassing semantic perception, streaming event cognition, implicit 3D spatial cognition, and predictive world modeling. The authors present VSI-SUPER, a two-part benchmark (VSR for long-horizon visual spatial recall and VSC for continual visual spatial counting) designed to test these capabilities in arbitrarily long videos. They curate VSI-590K, a spatial-focused instruction-tuning dataset, and train Cambrian-S, a family of spatially-grounded video MLLMs that achieves state-of-the-art performance on VSI-Bench (+30% absolute improvement) without sacrificing general capabilities. However, Cambrian-S still struggles on VSI-SUPER, motivating the authors to propose 'predictive sensing' - a proof-of-concept using self-supervised next-latent-frame prediction where prediction error ('surprise') drives memory management and event segmentation. This approach substantially outperforms strong proprietary baselines (e.g., Gemini-2.5) on VSI-SUPER, suggesting that spatial supersensing requires models that anticipate, select, and organize experience rather than passively expand context.\",\n  \"Strengths\": [\n    \"Novel conceptual framework: The supersensing hierarchy provides a structured way to think about video understanding capabilities beyond current benchmarks, clearly identifying gaps in existing evaluation methods.\",\n    \"Well-designed benchmark: VSI-SUPER tasks (VSR and VSC) are cleverly constructed to be resistant to brute-force context expansion, requiring genuine spatial reasoning and memory organization. The tasks are simple for humans but challenging for current models, effectively exposing fundamental limitations.\",\n    \"Strong empirical results: Cambrian-S achieves impressive +30% absolute improvement on VSI-Bench, demonstrating that carefully curated spatial data can significantly enhance spatial reasoning. The debiased evaluation and held-out route planning subtask provide evidence of genuine generalization rather than shortcut learning.\",\n    \"Comprehensive analysis: The benchmark diagnostic tests (Fig. 2) provide valuable insights into how existing benchmarks rely on language priors versus genuine visual understanding, informing future benchmark design.\",\n    \"Promising proof-of-concept: The predictive sensing approach using prediction error as a surprise signal for memory management and event segmentation is intuitive, well-motivated by cognitive science, and demonstrates substantial improvements over strong baselines on VSI-SUPER.\",\n    \"Thorough ablations: The paper includes extensive ablation studies on data sources, training recipes, model sizes, and surprise measurement methods, providing a solid understanding of what drives performance.\"\n  ],\n  \"Weaknesses\": [\n    \"Overreach in paradigm claims: The paper frames predictive sensing as a 'new paradigm' and 'path forward' but the demonstrated approach is a relatively simple proof-of-concept built on existing techniques (latent frame prediction + memory management). The evidence, while positive, does not fully support the strong claim that this represents a fundamental shift rather than an incremental improvement.\",\n    \"Synthetic benchmark limitations: VSI-SUPER is constructed by editing objects into frames and concatenating room-tour videos. While this enables controlled evaluation, it may not fully capture the complexity of real-world streaming scenarios with diverse events, interactions, and long-range dependencies.\",\n    \"Limited comparison with long-video methods: The comparison with existing long-video memory approaches (MovieChat, Flash-VStream) is limited to a single table (Table 17) without detailed discussion of hyperparameter tuning or implementation fidelity, making it hard to assess the novelty of the surprise-driven mechanisms.\",\n    \"Lack of theoretical grounding: The 'surprise' signal is operationalized as prediction error in a latent space, but the paper does not provide formal analysis of why this should correspond to meaningful event boundaries or memory importance. The connection to cognitive science is suggestive but not rigorously established.\",\n    \"Incomplete ablation on predictive sensing: The paper does not fully explore the design space of the LFP head (e.g., prediction horizon, latent space choice) or provide sensitivity analysis on the surprise threshold τ, which appears to be a critical hyperparameter.\",\n    \"Limited discussion of failure cases: While the paper shows Cambrian-S with predictive sensing outperforms baselines, it does not deeply analyze where the approach still fails or what types of events are missed by the surprise-based segmentation.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 4,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"1. How sensitive are the VSI-SUPER results to the surprise threshold τ? Is there a principled way to set this threshold or adapt it dynamically, or does it require per-video tuning?\",\n    \"2. The paper claims VSI-SUPER is 'resistant to brute-force context expansion.' For the 240-minute VSR videos, how many tokens would this require at 1 FPS with the current model? Could a model with 4M+ context (e.g., Gemini-2.5-Pro) handle this if tokenized efficiently?\",\n    \"3. In the VSC streaming evaluation (Fig. 11c), what exactly are the 10 timestamps at which questions are asked? Are they uniformly distributed across the video duration? How does performance vary across these timestamps?\",\n    \"4. For the LFP head, what is the prediction horizon? Is it predicting the very next frame or a future frame several steps ahead? How does this choice affect surprise estimation quality?\",\n    \"5. The paper mentions that Cambrian-S (w/ Mem.) maintains stable GPU memory usage. What is the actual memory footprint for the 240-minute video, and what is the compression ratio achieved by the surprise-based memory management?\",\n    \"6. How does the performance of Cambrian-S with surprise-driven segmentation on VSC compare to using ground-truth scene boundaries (GT Seg.)? The paper shows GT Seg. is better, but what is the gap, and what types of errors does the surprise-based approach make?\",\n    \"7. Could the surprising performance gains on VSI-SUPER be partly due to the model's strong VSI-Bench performance rather than the surprise mechanism itself? Have you tried using Cambrian-S without LFP but with an oracle segmentation (e.g., using scene change detection from a separate model)?\",\n    \"8. The paper mentions 'predictive sensing' as a new paradigm. How does this relate to existing world model approaches (e.g., V-JEPA, DINO-WM)? What are the key similarities and differences in terms of training objectives and downstream use of prediction errors?\"\n  ],\n  \"Limitations\": [\n    \"The VSI-SUPER benchmark is synthetic, built from edited and concatenated room-tour videos. While this provides controlled evaluation, the ecological validity is limited compared to real-world continuous video streams with diverse scene types, camera motions, and events.\",\n    \"The predictive sensing proof-of-concept is relatively simple and has not been scaled or tested on diverse real-world scenarios. The paper acknowledges this, but the strong claims about 'paradigm shift' may be premature.\",\n    \"The VSI-590K dataset is primarily focused on indoor room-tour videos, which may limit the model's spatial reasoning generalization to outdoor, egocentric, or dynamic environments.\",\n    \"Potential negative societal impact: Enhanced spatial reasoning in video MLLMs could be used for surveillance applications, potentially infringing on privacy. The paper does not discuss this possibility or mitigation strategies.\",\n    \"The evaluation of streaming capabilities is limited to specific synthetic scenarios. Real-world streaming understanding involves handling interruptions, user interactions, and multi-modal inputs (audio, text) that are not addressed.\",\n    \"The paper does not provide a detailed analysis of the computational cost of the predictive sensing approach during inference, beyond GPU memory usage. The latency of the surprise calculation and memory operations should be reported.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 4,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 43262,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 41470,
+        "completion_tokens": 2098,
+        "reasoning_tokens": 0,
+        "total_tokens": 45360
+      },
+      "attempts": 1,
+      "response_id": "fe25a0b2-c659-4458-b3a3-4504b76ecf32"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "This paper argues that true multimodal intelligence requires a shift from reactive, task-driven systems toward 'spatial supersensing' — the capacity to construct, update, and predict with an implicit 3D world model from continual sensory experience. The authors propose a four-stage hierarchy (semantic perception, streaming event cognition, implicit 3D spatial cognition, predictive world modeling) and make three main contributions: (1) a diagnostic analysis of existing video benchmarks showing they largely test language priors rather than true spatial sensing; (2) a new benchmark, VSI-SUPER, with two tasks (VSR for long-horizon visual spatial recall and VSC for continual visual spatial counting) that are resistant to brute-force context expansion; and (3) a data curation pipeline (VSI-590K) and model family (Cambrian-S) that achieves state-of-the-art performance on VSI-Bench (>30% absolute improvement) without sacrificing general capabilities. The paper further demonstrates that scaling alone is insufficient for spatial supersensing, and proposes a proof-of-concept 'predictive sensing' approach using self-supervised next-latent-frame prediction, where prediction error ('surprise') drives memory management and event segmentation. This approach substantially outperforms leading proprietary baselines on VSI-SUPER.",
+        "Strengths": [
+          "The benchmark diagnostic analysis (Fig. 2) is insightful and well-executed, demonstrating that many existing video benchmarks can be partially solved with language priors or single frames, highlighting a real gap in evaluation.",
+          "The VSI-SUPER benchmark is well-designed to be resistant to brute-force context expansion, with tasks that require selective attention and structured accumulation of information across arbitrarily long videos.",
+          "The VSI-590K dataset curation pipeline is thorough, leveraging multiple data sources (annotated real videos, simulated data, pseudo-annotated images) with a well-defined taxonomy of 12 spatial question types.",
+          "Cambrian-S achieves impressive results on VSI-Bench (67.5% for 7B model), significantly outperforming both open-source and proprietary models, with robust generalization to unseen spatial question types.",
+          "The predictive sensing proof-of-concept, while simple, provides compelling evidence that surprise-driven memory and segmentation can substantially improve performance on long-horizon spatial tasks compared to passive context expansion.",
+          "The paper is well-written and clearly organized, with extensive supplementary materials providing detailed implementation and ablation results.",
+          "The authors are honest about the limitations of their work, explicitly stating that the predictive sensing approach is a proof-of-concept and that scaling alone cannot achieve supersensing."
+        ],
+        "Weaknesses": [
+          "The VSI-SUPER benchmark is synthetic and narrow, limited to indoor room-tour videos. This limits the generalizability of the conclusions about spatial supersensing to more diverse, real-world scenarios.",
+          "The predictive sensing approach is quite simple (two-layer MLP LFP head with MSE/cosine losses) and the memory/segmentation systems are somewhat ad-hoc, with several hyperparameters (thresholds, budgets) that may require careful tuning.",
+          "The claims about a 'paradigm shift' and 'supersensing' are ambitious given the proof-of-concept nature of the predictive sensing work, which is evaluated only on the synthetic VSI-SUPER benchmark.",
+          "Some comparisons in Table 2 are incomplete — notably, recent strong open-source models (e.g., Qwen2.5-VL-7B, LLaVA-OneVision-7B) are not included, which would provide a more complete picture of the state of the art.",
+          "The VSC task evaluation on streaming setup (Fig. 11c) compares against Gemini-Live and GPT-Realtime, but these models may have different inference constraints (e.g., latency requirements) that make direct comparison unfair.",
+          "The ablation on surprise measurement (Fig. 9c, 11b) only compares against adjacent-frame feature difference, which is a relatively weak baseline. More sophisticated baselines (e.g., temporal difference in latent space, learned novelty detectors) could strengthen the claims.",
+          "The paper does not deeply analyze failure cases of Cambrian-S on VSI-SUPER, which could provide insights into what specific capabilities are missing."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 4,
+        "Questions": [
+          "1. How does Cambrian-S perform on VSI-SUPER when using the surprise-driven memory system with different surprise thresholds? Is performance sensitive to this hyperparameter?",
+          "2. The VSI-SUPER benchmark is limited to indoor room tours. Have the authors considered or tested more diverse environments (e.g., outdoor scenes, egocentric videos) to validate the generalizability of their findings?",
+          "3. In the VSC streaming evaluation (Fig. 11c), how were the queries phrased for Gemini-Live and GPT-Realtime? Were they given the same instructions as Cambrian-S?",
+          "4. What is the computational overhead of the LFP head during inference? Does the surprise estimation add significant latency to the streaming pipeline?",
+          "5. The paper claims that VSI-SUPER is 'resistant to brute-force context expansion.' Could the authors provide more analysis on why simply increasing context length fails, beyond the Gemini-2.5-Flash results?",
+          "6. How does the performance of Cambrian-S with the surprise-driven memory compare to using a simple uniform sampling strategy with the same memory budget?",
+          "7. Are there plans to release the VSI-590K dataset and VSI-SUPER benchmark publicly? What licenses would be used?",
+          "8. The LFP head predicts the next frame's latent features. How does the choice of latent space (SigLIP2 features vs. LLM hidden states) affect the quality of the surprise signal?"
+        ],
+        "Limitations": [
+          "The VSI-SUPER benchmark is synthetic and limited to indoor room-tour scenarios, which may not capture the full complexity of real-world spatial reasoning.",
+          "The predictive sensing approach is a proof-of-concept with a simple architecture, and its generalizability to other tasks and domains is not demonstrated.",
+          "The paper does not explore the scalability of the predictive sensing approach to larger models or more diverse training data.",
+          "Potential negative societal impact: While not directly applicable, the development of models with predictive world modeling capabilities could have implications for surveillance and autonomous systems, where such models might be deployed without adequate safeguards. The authors do not discuss this."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 4,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper presents a comprehensive framework for \"spatial supersensing\" in video understanding, introducing a hierarchy of capabilities from semantic perception to predictive world modeling. The work has three main contributions: (1) a benchmark diagnostic analysis showing existing benchmarks rely heavily on language priors, (2) a new benchmark VSI-SUPER for long-horizon spatial reasoning, and (3) a data curation pipeline (VSI-590K) and model family (Cambrian-S) that achieves SOTA on VSI-Bench, plus a proof-of-concept predictive sensing approach using latent frame prediction and surprise signals.\n\nThe paper is technically strong with extensive experiments and ablations. The VSI-SUPER benchmark is well-designed to be resistant to brute-force context expansion, addressing a real gap. The data curation pipeline is thorough, and the Cambrian-S results are impressive (67.5% on VSI-Bench vs. 51.5% for Gemini-2.5-Pro). The predictive sensing approach, while a proof-of-concept, shows promising results on VSI-SUPER, outperforming proprietary baselines.\n\nHowever, there are several weaknesses:\n1. The VSI-SUPER benchmark is synthetic and narrow (limited to indoor room tours), which limits its generalizability claims.\n2. The predictive sensing approach is quite simple (LFP head with MSE/cosine loss) and the memory/segmentation systems are somewhat ad-hoc.\n3. The paper's claims about \"supersensing\" and \"paradigm shift\" may be overblown given the proof-of-concept nature of the predictive sensing work.\n4. Some comparisons are incomplete (e.g., missing some recent open-source models in Table 2).\n5. The VSI-SUPER tasks, while novel, are quite narrow in scope.\n\nThe paper is well-written and clearly organized, with strong experimental rigor. The benchmark diagnostic analysis (Fig. 2) is particularly insightful. The work makes significant contributions to spatial reasoning evaluation and training.\n\nOverall, this is a strong paper with substantial contributions to the field. The main concerns are about the generalizability of the benchmark and the simplicity of the predictive sensing solution relative to the ambitious claims. I would lean toward acceptance given the quality of the benchmark analysis, data curation, and model improvements, though the predictive sensing part is more of a promising direction than a complete solution.\n\nRating decisions:\n- Originality: 4 (very high) - novel benchmark, hierarchy framework, and predictive sensing approach\n- Quality: 3 (good) - extensive experiments but some gaps in comparison and proof-of-concept nature of predictive sensing\n- Clarity: 4 (very high) - well-written, well-organized, clear figures\n- Significance: 4 (very high) - addresses important gaps in spatial reasoning evaluation and training\n- Soundness: 3 (good) - technically sound but some claims (paradigm shift) may be overstated\n- Presentation: 4 (very high) - excellent writing and organization\n- Contribution: 4 (very high) - substantial contributions to benchmark design, data curation, and model training\n- Overall: 7 (Accept) - technically solid with high impact on spatial reasoning sub-area\n- Confidence: 4 (confident)\n\nThe ethical concerns are minimal - no obvious issues with the synthetic benchmark or data curation. The limitations section is honest about the proof-of-concept nature of the work.\n\nI'll recommend Accept with an overall score of 7.REVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper argues that true multimodal intelligence requires a shift from reactive, task-driven systems toward 'spatial supersensing' — the capacity to construct, update, and predict with an implicit 3D world model from continual sensory experience. The authors propose a four-stage hierarchy (semantic perception, streaming event cognition, implicit 3D spatial cognition, predictive world modeling) and make three main contributions: (1) a diagnostic analysis of existing video benchmarks showing they largely test language priors rather than true spatial sensing; (2) a new benchmark, VSI-SUPER, with two tasks (VSR for long-horizon visual spatial recall and VSC for continual visual spatial counting) that are resistant to brute-force context expansion; and (3) a data curation pipeline (VSI-590K) and model family (Cambrian-S) that achieves state-of-the-art performance on VSI-Bench (>30% absolute improvement) without sacrificing general capabilities. The paper further demonstrates that scaling alone is insufficient for spatial supersensing, and proposes a proof-of-concept 'predictive sensing' approach using self-supervised next-latent-frame prediction, where prediction error ('surprise') drives memory management and event segmentation. This approach substantially outperforms leading proprietary baselines on VSI-SUPER.\",\n    \"Strengths\": [\n        \"The benchmark diagnostic analysis (Fig. 2) is insightful and well-executed, demonstrating that many existing video benchmarks can be partially solved with language priors or single frames, highlighting a real gap in evaluation.\",\n        \"The VSI-SUPER benchmark is well-designed to be resistant to brute-force context expansion, with tasks that require selective attention and structured accumulation of information across arbitrarily long videos.\",\n        \"The VSI-590K dataset curation pipeline is thorough, leveraging multiple data sources (annotated real videos, simulated data, pseudo-annotated images) with a well-defined taxonomy of 12 spatial question types.\",\n        \"Cambrian-S achieves impressive results on VSI-Bench (67.5% for 7B model), significantly outperforming both open-source and proprietary models, with robust generalization to unseen spatial question types.\",\n        \"The predictive sensing proof-of-concept, while simple, provides compelling evidence that surprise-driven memory and segmentation can substantially improve performance on long-horizon spatial tasks compared to passive context expansion.\",\n        \"The paper is well-written and clearly organized, with extensive supplementary materials providing detailed implementation and ablation results.\",\n        \"The authors are honest about the limitations of their work, explicitly stating that the predictive sensing approach is a proof-of-concept and that scaling alone cannot achieve supersensing.\"\n    ],\n    \"Weaknesses\": [\n        \"The VSI-SUPER benchmark is synthetic and narrow, limited to indoor room-tour videos. This limits the generalizability of the conclusions about spatial supersensing to more diverse, real-world scenarios.\",\n        \"The predictive sensing approach is quite simple (two-layer MLP LFP head with MSE/cosine losses) and the memory/segmentation systems are somewhat ad-hoc, with several hyperparameters (thresholds, budgets) that may require careful tuning.\",\n        \"The claims about a 'paradigm shift' and 'supersensing' are ambitious given the proof-of-concept nature of the predictive sensing work, which is evaluated only on the synthetic VSI-SUPER benchmark.\",\n        \"Some comparisons in Table 2 are incomplete — notably, recent strong open-source models (e.g., Qwen2.5-VL-7B, LLaVA-OneVision-7B) are not included, which would provide a more complete picture of the state of the art.\",\n        \"The VSC task evaluation on streaming setup (Fig. 11c) compares against Gemini-Live and GPT-Realtime, but these models may have different inference constraints (e.g., latency requirements) that make direct comparison unfair.\",\n        \"The ablation on surprise measurement (Fig. 9c, 11b) only compares against adjacent-frame feature difference, which is a relatively weak baseline. More sophisticated baselines (e.g., temporal difference in latent space, learned novelty detectors) could strengthen the claims.\",\n        \"The paper does not deeply analyze failure cases of Cambrian-S on VSI-SUPER, which could provide insights into what specific capabilities are missing.\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 4,\n    \"Significance\": 4,\n    \"Questions\": [\n        \"1. How does Cambrian-S perform on VSI-SUPER when using the surprise-driven memory system with different surprise thresholds? Is performance sensitive to this hyperparameter?\",\n        \"2. The VSI-SUPER benchmark is limited to indoor room tours. Have the authors considered or tested more diverse environments (e.g., outdoor scenes, egocentric videos) to validate the generalizability of their findings?\",\n        \"3. In the VSC streaming evaluation (Fig. 11c), how were the queries phrased for Gemini-Live and GPT-Realtime? Were they given the same instructions as Cambrian-S?\",\n        \"4. What is the computational overhead of the LFP head during inference? Does the surprise estimation add significant latency to the streaming pipeline?\",\n        \"5. The paper claims that VSI-SUPER is 'resistant to brute-force context expansion.' Could the authors provide more analysis on why simply increasing context length fails, beyond the Gemini-2.5-Flash results?\",\n        \"6. How does the performance of Cambrian-S with the surprise-driven memory compare to using a simple uniform sampling strategy with the same memory budget?\",\n        \"7. Are there plans to release the VSI-590K dataset and VSI-SUPER benchmark publicly? What licenses would be used?\",\n        \"8. The LFP head predicts the next frame's latent features. How does the choice of latent space (SigLIP2 features vs. LLM hidden states) affect the quality of the surprise signal?\"\n    ],\n    \"Limitations\": [\n        \"The VSI-SUPER benchmark is synthetic and limited to indoor room-tour scenarios, which may not capture the full complexity of real-world spatial reasoning.\",\n        \"The predictive sensing approach is a proof-of-concept with a simple architecture, and its generalizability to other tasks and domains is not demonstrated.\",\n        \"The paper does not explore the scalability of the predictive sensing approach to larger models or more diverse training data.\",\n        \"Potential negative societal impact: While not directly applicable, the development of models with predictive world modeling capabilities could have implications for surveillance and autonomous systems, where such models might be deployed without adequate safeguards. The authors do not discuss this.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 4,\n    \"Contribution\": 4,\n    \"Overall\": 7,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 43262,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 41470,
+        "completion_tokens": 2147,
+        "reasoning_tokens": 0,
+        "total_tokens": 45409
+      },
+      "attempts": 1,
+      "response_id": "66fd26a2-7996-4c14-a4f6-2621addf6ff1"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "This paper argues for a paradigm shift in multimodal AI from reactive, task-driven systems toward 'spatial supersensing' - the capacity to construct, update, and predict with an implicit 3D world model from continuous sensory experience. The authors propose a four-stage hierarchy (semantic perception, streaming event cognition, implicit 3D spatial cognition, predictive world modeling) and introduce VSI-SUPER, a two-part benchmark (VSR for long-horizon spatial recall and VSC for continual spatial counting) designed to be resistant to brute-force context expansion. They curate VSI-590K, a large-scale spatial instruction-tuning dataset, and train Cambrian-S, a family of spatially-grounded MLLMs achieving state-of-the-art on VSI-Bench (+30% absolute improvement). Despite this, Cambrian-S fails on VSI-SUPER, demonstrating that data scaling alone is insufficient. As a path forward, they propose predictive sensing - a self-supervised next-latent-frame prediction approach where prediction error ('surprise') drives memory management and event segmentation. This proof-of-concept substantially outperforms strong proprietary baselines like Gemini-2.5 on VSI-SUPER, suggesting that true spatial supersensing requires models that anticipate, select, and organize experience.",
+        "Strengths": [
+          "Comprehensive benchmark diagnostic analysis revealing that many existing video benchmarks can be largely solved with captions alone, highlighting their language-centric nature",
+          "Novel VSI-SUPER benchmark design that is deliberately resistant to brute-force context expansion, testing genuinely harder spatial reasoning capabilities",
+          "Large-scale VSI-590K dataset with diverse data sources (real annotated, simulated, pseudo-annotated) and systematic question type taxonomy",
+          "Strong empirical results with Cambrian-S achieving state-of-the-art on VSI-Bench across multiple model sizes (0.5B to 7B) without sacrificing general capabilities",
+          "Honest evaluation of limitations - clearly showing that data scaling alone is insufficient for spatial supersensing",
+          "Interesting proof-of-concept for predictive sensing using surprise signals for memory management and event segmentation, with strong results on VSI-SUPER",
+          "Thorough ablations on data sources, training recipes, and surprise measurement approaches"
+        ],
+        "Weaknesses": [
+          "VSI-SUPER benchmark is narrow and synthetic - it tests only two specific capabilities (sequential recall and counting) and may not fully represent the broad concept of 'spatial supersensing'",
+          "The predictive sensing proof-of-concept is relatively simple (2-layer MLP for next-latent-frame prediction) and may not constitute a fundamentally new paradigm",
+          "Comparison with proprietary models is limited to Gemini variants; no comparison with other top models like GPT-4o or Claude on VSI-SUPER",
+          "The claim of a 'paradigm shift' is somewhat overstated given that the evidence comes from two specific tasks",
+          "Streaming evaluation in Section 4.3 could be more thorough - only compared against Gemini-Live and GPT-Realtime on VSC",
+          "The VSR task uses only 60 videos per duration, which may limit statistical significance of results",
+          "Some architectural choices (e.g., simple 2-layer MLP connector instead of SVA) are justified by efficiency but not deeply ablated"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 4,
+        "Questions": [
+          "How does Cambrian-S perform on VSI-SUPER with the surprise-based memory system compared to simply using more frames or higher sampling rates without surprise-based compression? What is the marginal benefit of the surprise signal over uniform compression?",
+          "The paper claims VSI-SUPER tasks are 'resistant to brute-force context expansion.' Could you provide evidence that models with much larger context windows (e.g., Gemini-2.5 with 1M tokens) still fail even when the entire video fits within context? What are the token counts for the longest videos that fit?",
+          "For the predictive sensing approach, how sensitive are the results to the surprise threshold parameter? Is there a principled way to set this threshold, or does it require tuning per task/video?",
+          "The LFP head is trained only on VSI-590K data. How well does the surprise signal generalize to videos outside this distribution (e.g., outdoor scenes, different object types)?",
+          "Could the performance gains on VSC be attributed primarily to the segmentation framework rather than the specific surprise signal? Have you compared against random segmentation or uniform segmentation baselines?",
+          "What is the computational overhead of the memory management system compared to simply processing all frames with a fixed sampling rate? Is the system practical for real-time applications?",
+          "The VSR task uses image editing to insert objects into frames. How does the quality of editing affect the difficulty? Have you validated that the inserted objects are visually consistent enough that humans can reliably detect them?"
+        ],
+        "Limitations": [
+          "The VSI-SUPER benchmark is synthetic and limited to indoor room-tour videos, which may not generalize to diverse real-world scenarios",
+          "The predictive sensing approach is a proof-of-concept and not a complete solution; it has only been validated on two specific tasks",
+          "The paper does not explore the scalability of the predictive sensing approach to larger model sizes or more diverse video types",
+          "Potential negative societal impact: improved spatial reasoning in video models could be used for surveillance applications; however, this is not addressed in the paper",
+          "The benchmark tasks are relatively narrow (recall order and counting), and it's unclear how well performance on these tasks correlates with broader spatial intelligence",
+          "The paper acknowledges limitations in quality, scale, and generalizability of the benchmark/dataset, but the discussion is brief"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 4,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces a comprehensive framework for \"spatial supersensing\" in video understanding, proposing a hierarchy from linguistic-only understanding to predictive world modeling. The contributions include: (1) a new benchmark VSI-SUPER with two tasks (VSR and VSC) designed to be resistant to brute-force context expansion, (2) a large-scale spatial instruction-tuning dataset VSI-590K and the Cambrian-S model family achieving state-of-the-art on VSI-Bench, and (3) a proof-of-concept predictive sensing approach using latent frame prediction and surprise signals for memory management and event segmentation.\n\nThe paper is technically strong with extensive experiments, careful ablations, and honest evaluation of limitations. The benchmark diagnostic analysis is particularly insightful, revealing that many existing benchmarks can be solved with captions alone. The VSI-SUPER benchmark design is clever, creating tasks that are simple for humans but challenging for current models. The Cambrian-S results show impressive gains on VSI-Bench (+30% absolute improvement) without sacrificing general capabilities.\n\nHowever, there are several weaknesses. The VSI-SUPER benchmark is synthetic and somewhat narrow - it tests specific capabilities (sequential recall and counting) but may not fully capture \"spatial supersensing\" as broadly defined. The predictive sensing proof-of-concept, while promising, is relatively simple (next-latent-frame prediction with a 2-layer MLP head) and may not represent a truly new paradigm. The comparison with proprietary models is limited to Gemini variants, and the evaluation of streaming capabilities in Section 4.3 could be more thorough. The paper also makes strong claims about \"supersensing\" being a new paradigm shift, but the evidence is primarily from these two specific tasks.\n\nThe paper is well-written and clearly organized, with good contextualization of prior work. The limitations section is honest about the proof-of-concept nature of the predictive sensing approach. The ethical considerations are minimal (no obvious concerns), and the paper appropriately discusses limitations.\n\nOverall, this is a solid paper with significant contributions to spatial reasoning in video understanding. The benchmark and dataset contributions are valuable, and the predictive sensing direction is interesting even if not fully realized. The main concerns are the narrowness of the new benchmark and the limited scope of the paradigm-shifting claims. I would rate this as a strong paper deserving acceptance, but with some reservations about the generality of the proposed paradigm.\n\nFor ratings: Originality is high (4) - the supersensing hierarchy and benchmark design are novel. Quality is good (3) - extensive experiments but some limitations in benchmark scope and paradigm validation. Clarity is excellent (4) - very well-written and organized. Significance is high (4) - the benchmark and dataset are valuable contributions, and the predictive sensing direction could inspire future work. Soundness is good (3) - technically sound but the paradigm claims are not fully validated. Presentation is excellent (4). Contribution is high (4). Overall I'd lean toward Accept (7-8 range), so I'll give a 7. Confidence is high (4) - I'm familiar with the area but haven't checked all math details.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper argues for a paradigm shift in multimodal AI from reactive, task-driven systems toward 'spatial supersensing' - the capacity to construct, update, and predict with an implicit 3D world model from continuous sensory experience. The authors propose a four-stage hierarchy (semantic perception, streaming event cognition, implicit 3D spatial cognition, predictive world modeling) and introduce VSI-SUPER, a two-part benchmark (VSR for long-horizon spatial recall and VSC for continual spatial counting) designed to be resistant to brute-force context expansion. They curate VSI-590K, a large-scale spatial instruction-tuning dataset, and train Cambrian-S, a family of spatially-grounded MLLMs achieving state-of-the-art on VSI-Bench (+30% absolute improvement). Despite this, Cambrian-S fails on VSI-SUPER, demonstrating that data scaling alone is insufficient. As a path forward, they propose predictive sensing - a self-supervised next-latent-frame prediction approach where prediction error ('surprise') drives memory management and event segmentation. This proof-of-concept substantially outperforms strong proprietary baselines like Gemini-2.5 on VSI-SUPER, suggesting that true spatial supersensing requires models that anticipate, select, and organize experience.\",\n    \"Strengths\": [\n        \"Comprehensive benchmark diagnostic analysis revealing that many existing video benchmarks can be largely solved with captions alone, highlighting their language-centric nature\",\n        \"Novel VSI-SUPER benchmark design that is deliberately resistant to brute-force context expansion, testing genuinely harder spatial reasoning capabilities\",\n        \"Large-scale VSI-590K dataset with diverse data sources (real annotated, simulated, pseudo-annotated) and systematic question type taxonomy\",\n        \"Strong empirical results with Cambrian-S achieving state-of-the-art on VSI-Bench across multiple model sizes (0.5B to 7B) without sacrificing general capabilities\",\n        \"Honest evaluation of limitations - clearly showing that data scaling alone is insufficient for spatial supersensing\",\n        \"Interesting proof-of-concept for predictive sensing using surprise signals for memory management and event segmentation, with strong results on VSI-SUPER\",\n        \"Thorough ablations on data sources, training recipes, and surprise measurement approaches\"\n    ],\n    \"Weaknesses\": [\n        \"VSI-SUPER benchmark is narrow and synthetic - it tests only two specific capabilities (sequential recall and counting) and may not fully represent the broad concept of 'spatial supersensing'\",\n        \"The predictive sensing proof-of-concept is relatively simple (2-layer MLP for next-latent-frame prediction) and may not constitute a fundamentally new paradigm\",\n        \"Comparison with proprietary models is limited to Gemini variants; no comparison with other top models like GPT-4o or Claude on VSI-SUPER\",\n        \"The claim of a 'paradigm shift' is somewhat overstated given that the evidence comes from two specific tasks\",\n        \"Streaming evaluation in Section 4.3 could be more thorough - only compared against Gemini-Live and GPT-Realtime on VSC\",\n        \"The VSR task uses only 60 videos per duration, which may limit statistical significance of results\",\n        \"Some architectural choices (e.g., simple 2-layer MLP connector instead of SVA) are justified by efficiency but not deeply ablated\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 4,\n    \"Significance\": 4,\n    \"Questions\": [\n        \"How does Cambrian-S perform on VSI-SUPER with the surprise-based memory system compared to simply using more frames or higher sampling rates without surprise-based compression? What is the marginal benefit of the surprise signal over uniform compression?\",\n        \"The paper claims VSI-SUPER tasks are 'resistant to brute-force context expansion.' Could you provide evidence that models with much larger context windows (e.g., Gemini-2.5 with 1M tokens) still fail even when the entire video fits within context? What are the token counts for the longest videos that fit?\",\n        \"For the predictive sensing approach, how sensitive are the results to the surprise threshold parameter? Is there a principled way to set this threshold, or does it require tuning per task/video?\",\n        \"The LFP head is trained only on VSI-590K data. How well does the surprise signal generalize to videos outside this distribution (e.g., outdoor scenes, different object types)?\",\n        \"Could the performance gains on VSC be attributed primarily to the segmentation framework rather than the specific surprise signal? Have you compared against random segmentation or uniform segmentation baselines?\",\n        \"What is the computational overhead of the memory management system compared to simply processing all frames with a fixed sampling rate? Is the system practical for real-time applications?\",\n        \"The VSR task uses image editing to insert objects into frames. How does the quality of editing affect the difficulty? Have you validated that the inserted objects are visually consistent enough that humans can reliably detect them?\"\n    ],\n    \"Limitations\": [\n        \"The VSI-SUPER benchmark is synthetic and limited to indoor room-tour videos, which may not generalize to diverse real-world scenarios\",\n        \"The predictive sensing approach is a proof-of-concept and not a complete solution; it has only been validated on two specific tasks\",\n        \"The paper does not explore the scalability of the predictive sensing approach to larger model sizes or more diverse video types\",\n        \"Potential negative societal impact: improved spatial reasoning in video models could be used for surveillance applications; however, this is not addressed in the paper\",\n        \"The benchmark tasks are relatively narrow (recall order and counting), and it's unclear how well performance on these tasks correlates with broader spatial intelligence\",\n        \"The paper acknowledges limitations in quality, scale, and generalizability of the benchmark/dataset, but the discussion is brief\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 4,\n    \"Contribution\": 4,\n    \"Overall\": 7,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 43262,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 41470,
+        "completion_tokens": 1919,
+        "reasoning_tokens": 0,
+        "total_tokens": 45181
+      },
+      "attempts": 1,
+      "response_id": "9402df06-fee6-49de-941b-366ccde67b9e"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper proposes a hierarchy of 'spatial supersensing' capabilities for multimodal intelligence, ranging from linguistic-only understanding to predictive world modeling. It introduces VSI-SUPER, a two-part benchmark (VSR for long-horizon visual spatial recall and VSC for continual visual spatial counting) designed to be resistant to brute-force context expansion. The paper also curates VSI-590K, a large-scale spatial instruction-tuning dataset, and trains Cambrian-S, a family of spatially-grounded video MLLMs that achieve state-of-the-art performance on VSI-Bench. Finally, the paper proposes 'predictive sensing' as a new paradigm, demonstrated through a self-supervised next-latent-frame prediction module that uses prediction error (surprise) for memory management and event segmentation, significantly outperforming strong baselines on VSI-SUPER.",
+        "Strengths": [
+          "Novel VSI-SUPER benchmark that is deliberately resistant to brute-force context expansion and reveals limitations of current MLLMs",
+          "Large-scale VSI-590K dataset with careful curation pipeline and thorough ablation studies showing data effectiveness",
+          "Strong empirical results with Cambrian-S achieving significant improvements on VSI-Bench (30%+ absolute) while maintaining general capabilities",
+          "Insightful diagnostic analysis of existing video benchmarks revealing their varying dependence on visual input vs. language priors",
+          "Innovative predictive sensing approach using prediction error as surprise signal for memory and event segmentation, with compelling results outperforming proprietary models",
+          "Comprehensive evaluation across multiple benchmarks and model scales"
+        ],
+        "Weaknesses": [
+          "The VSR benchmark is synthetic (objects edited into videos), which may limit its ecological validity for real-world spatial reasoning",
+          "The predictive sensing proof-of-concept is relatively simple (two-layer MLP head) and may not fully capture the complexity of the proposed world modeling paradigm",
+          "The claim of a 'paradigm shift' may be somewhat overstated given the incremental nature of the contribution",
+          "Comparisons with streaming baselines (Gemini-Live, GPT-Realtime) may be limited by API constraints and may not be entirely fair",
+          "The paper is dense and covers many topics, which may make it difficult for readers to fully grasp all contributions"
+        ],
+        "Originality": 4,
+        "Quality": 4,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "How does the VSI-SUPER benchmark relate to existing long-video NIAH benchmarks like VideoRope or Nemo? What specific design choices make VSR more challenging than these?",
+          "The predictive sensing approach uses a simple two-layer MLP for latent frame prediction. How does this compare to more sophisticated world models like V-JEPA or DINO-WM? Would stronger prediction models lead to better surprise signals?",
+          "In the memory management system, how are hyperparameters like the surprise threshold and memory budget selected? Are they tuned per video duration or fixed?",
+          "For the VSC streaming evaluation, how were the commercial models (Gemini-Live, GPT-Realtime) queried? Were they given the same frame sampling rate as Cambrian-S?",
+          "The paper mentions that VSI-590K has no overlap with benchmark datasets. Could you elaborate on the potential for data contamination in the general video data used in stage 3 and 4 training?",
+          "How does the performance of Cambrian-S with surprise-based memory compare to simply using a larger context window or more aggressive token compression methods?"
+        ],
+        "Limitations": [
+          "The VSI-SUPER benchmark is synthetic and may not fully capture the complexity of real-world spatial reasoning in unbounded video streams",
+          "The predictive sensing prototype is a proof-of-concept and has not been scaled to the same level as the main Cambrian-S models",
+          "The paper does not address potential negative societal impacts of improved spatial supersensing systems, such as privacy concerns in surveillance applications",
+          "The dataset curation pipeline relies on complex 3D reconstruction and object detection methods that may introduce noise, particularly for the pseudo-annotated data",
+          "The evaluation is primarily focused on indoor scenes (ScanNet, ARKitScenes, ProcTHOR), which may limit generalizability to outdoor or dynamic environments"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 4,
+        "Presentation": 3,
+        "Contribution": 4,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis is a strong paper that makes several contributions: (1) a new benchmark VSI-SUPER for long-horizon spatial reasoning in videos, (2) a large-scale spatial instruction tuning dataset VSI-590K, (3) a family of models Cambrian-S that achieve state-of-the-art spatial cognition on VSI-Bench, and (4) a proof-of-concept \"predictive sensing\" paradigm using latent frame prediction and surprise signals for memory management and event segmentation.\n\nThe paper is technically solid with thorough ablations and evaluations. The benchmark diagnostic analysis (Fig. 2) is insightful and well-executed. The VSI-SUPER benchmark is well-designed to be resistant to brute-force context expansion. The predictive sensing approach is innovative and shows compelling results, significantly outperforming strong baselines like Gemini.\n\nHowever, there are some weaknesses:\n1. The VSI-SUPER benchmark is synthetic (edited objects inserted into videos), which may limit its ecological validity.\n2. The predictive sensing proof-of-concept is relatively simple (two-layer MLP head) and may not fully capture the complexity of world modeling.\n3. The paper's narrative is somewhat ambitious, claiming a \"paradigm shift\" while the actual contribution is more incremental.\n4. The evaluation of streaming baselines (Gemini-Live, GPT-Realtime) may not be fair due to API limitations.\n5. The improvement from VSI-590K is clear, but the dataset curation pipeline relies on complex 3D reconstruction methods that may introduce noise.\n\nOverall, this is a high-quality paper with significant contributions to spatial understanding in video MLLMs. The benchmark and dataset are valuable resources for the community. The predictive sensing direction is promising and well-motivated. I would lean toward acceptance, though the limitations of the proof-of-concept should be acknowledged more clearly.\n\nStrengths:\n- Novel benchmark (VSI-SUPER) that is resistant to brute-force context expansion\n- Large-scale spatial dataset (VSI-590K) with careful curation and ablations\n- Strong empirical results with Cambrian-S achieving SOTA on VSI-Bench\n- Interesting diagnostic analysis of existing benchmarks revealing their reliance on language priors\n- Innovative predictive sensing approach with compelling results\n- Thorough ablation studies and analysis\n\nWeaknesses:\n- Synthetic nature of VSR benchmark may limit generalizability\n- Predictive sensing proof-of-concept is simple and may not fully represent the proposed paradigm\n- Some claims about \"paradigm shift\" may be overstated given the incremental nature of the contribution\n- Limited comparison with other long-video memory methods in the main paper\n- The paper is dense and could benefit from clearer organization\n\nI would rate:\n- Originality: 4 (high) - new benchmark, dataset, and paradigm direction\n- Quality: 4 (excellent) - thorough evaluation and ablations\n- Clarity: 3 (good) - well-written but dense\n- Significance: 4 (high) - important contributions to spatial understanding\n- Soundness: 4 (excellent)\n- Presentation: 3 (good)\n- Contribution: 4 (excellent)\n- Overall: 7 (Accept)\n- Confidence: 4\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper proposes a hierarchy of 'spatial supersensing' capabilities for multimodal intelligence, ranging from linguistic-only understanding to predictive world modeling. It introduces VSI-SUPER, a two-part benchmark (VSR for long-horizon visual spatial recall and VSC for continual visual spatial counting) designed to be resistant to brute-force context expansion. The paper also curates VSI-590K, a large-scale spatial instruction-tuning dataset, and trains Cambrian-S, a family of spatially-grounded video MLLMs that achieve state-of-the-art performance on VSI-Bench. Finally, the paper proposes 'predictive sensing' as a new paradigm, demonstrated through a self-supervised next-latent-frame prediction module that uses prediction error (surprise) for memory management and event segmentation, significantly outperforming strong baselines on VSI-SUPER.\",\n    \"Strengths\": [\n        \"Novel VSI-SUPER benchmark that is deliberately resistant to brute-force context expansion and reveals limitations of current MLLMs\",\n        \"Large-scale VSI-590K dataset with careful curation pipeline and thorough ablation studies showing data effectiveness\",\n        \"Strong empirical results with Cambrian-S achieving significant improvements on VSI-Bench (30%+ absolute) while maintaining general capabilities\",\n        \"Insightful diagnostic analysis of existing video benchmarks revealing their varying dependence on visual input vs. language priors\",\n        \"Innovative predictive sensing approach using prediction error as surprise signal for memory and event segmentation, with compelling results outperforming proprietary models\",\n        \"Comprehensive evaluation across multiple benchmarks and model scales\"\n    ],\n    \"Weaknesses\": [\n        \"The VSR benchmark is synthetic (objects edited into videos), which may limit its ecological validity for real-world spatial reasoning\",\n        \"The predictive sensing proof-of-concept is relatively simple (two-layer MLP head) and may not fully capture the complexity of the proposed world modeling paradigm\",\n        \"The claim of a 'paradigm shift' may be somewhat overstated given the incremental nature of the contribution\",\n        \"Comparisons with streaming baselines (Gemini-Live, GPT-Realtime) may be limited by API constraints and may not be entirely fair\",\n        \"The paper is dense and covers many topics, which may make it difficult for readers to fully grasp all contributions\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 4,\n    \"Clarity\": 3,\n    \"Significance\": 4,\n    \"Questions\": [\n        \"How does the VSI-SUPER benchmark relate to existing long-video NIAH benchmarks like VideoRope or Nemo? What specific design choices make VSR more challenging than these?\",\n        \"The predictive sensing approach uses a simple two-layer MLP for latent frame prediction. How does this compare to more sophisticated world models like V-JEPA or DINO-WM? Would stronger prediction models lead to better surprise signals?\",\n        \"In the memory management system, how are hyperparameters like the surprise threshold and memory budget selected? Are they tuned per video duration or fixed?\",\n        \"For the VSC streaming evaluation, how were the commercial models (Gemini-Live, GPT-Realtime) queried? Were they given the same frame sampling rate as Cambrian-S?\",\n        \"The paper mentions that VSI-590K has no overlap with benchmark datasets. Could you elaborate on the potential for data contamination in the general video data used in stage 3 and 4 training?\",\n        \"How does the performance of Cambrian-S with surprise-based memory compare to simply using a larger context window or more aggressive token compression methods?\"\n    ],\n    \"Limitations\": [\n        \"The VSI-SUPER benchmark is synthetic and may not fully capture the complexity of real-world spatial reasoning in unbounded video streams\",\n        \"The predictive sensing prototype is a proof-of-concept and has not been scaled to the same level as the main Cambrian-S models\",\n        \"The paper does not address potential negative societal impacts of improved spatial supersensing systems, such as privacy concerns in surveillance applications\",\n        \"The dataset curation pipeline relies on complex 3D reconstruction and object detection methods that may introduce noise, particularly for the pseudo-annotated data\",\n        \"The evaluation is primarily focused on indoor scenes (ScanNet, ARKitScenes, ProcTHOR), which may limit generalizability to outdoor or dynamic environments\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 4,\n    \"Presentation\": 3,\n    \"Contribution\": 4,\n    \"Overall\": 7,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 43262,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 41470,
+        "completion_tokens": 1620,
+        "reasoning_tokens": 0,
+        "total_tokens": 44882
+      },
+      "attempts": 1,
+      "response_id": "0f21a415-f378-4645-8a00-d9a696621ee8"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper proposes a framework for 'spatial supersensing' in video understanding, defined as a hierarchy of capabilities from semantic perception to predictive world modeling. It introduces VSI-SUPER, a two-part benchmark (VSR for long-horizon recall and VSC for continual counting) designed to be resistant to brute-force context expansion. The authors also curate VSI-590K, a large-scale spatial instruction-tuning dataset, and train Cambrian-S models that achieve state-of-the-art performance on VSI-Bench. However, Cambrian-S still struggles on VSI-SUPER, demonstrating the limits of data scaling. As a step beyond, the paper proposes 'predictive sensing' using a self-supervised next-latent-frame prediction head to compute 'surprise' signals that drive memory management and event segmentation. This proof-of-concept outperforms proprietary baselines on VSI-SUPER, suggesting a new direction for long-horizon spatial reasoning.",
+        "Strengths": [
+          "The paper provides a clear and compelling conceptual framework (supersensing hierarchy) that organizes different levels of video understanding capabilities, which is valuable for the community.",
+          "The benchmark diagnostic analysis (Fig. 2) is insightful, systematically showing that many existing video benchmarks are solvable via language priors or single frames, highlighting the need for more challenging spatial tasks.",
+          "The VSI-590K dataset and Cambrian-S models represent a significant engineering and data curation effort, achieving impressive performance gains on VSI-Bench (+30%) and demonstrating strong generalization to unseen spatial question types.",
+          "The predictive sensing proof-of-concept is an interesting and novel idea, showing that prediction error can effectively guide memory and segmentation for long videos, outperforming strong commercial baselines.",
+          "The paper is generally well-written and clearly structured, with thorough appendices providing detailed implementation and evaluation details."
+        ],
+        "Weaknesses": [
+          "The proposed 'supersensing' paradigm is framed as a major conceptual shift, but the proof-of-concept predictive sensing system is relatively simple (a two-layer MLP head and heuristic memory management) and is only tested on two synthetic tasks. The claim that it represents a 'path forward' is not fully substantiated with evidence of broader applicability.",
+          "The VSI-SUPER benchmark is synthetic (using edited images and concatenated videos) and limited to indoor room-tour scenes. Its generalizability to real-world, diverse, and unbounded video streams is questionable, and the tasks may be too narrow to fully represent the 'supersensing' concept.",
+          "The comparison with proprietary baselines (Gemini, GPT) on VSI-SUPER is incomplete. While Cambrian-S outperforms them, the proprietary models are not fine-tuned on VSI-590K, creating an unfair comparison that doesn't isolate the benefit of the predictive sensing mechanism.",
+          "The paper's claim that VSI-SUPER is 'resistant to brute-force context expansion' is not fully demonstrated. While Gemini-2.5-Flash fails on longer videos, the reasons may be related to its video tokenization strategy rather than a fundamental limitation of context expansion. A more thorough analysis of why context expansion fails is needed.",
+          "The paper introduces a new paradigm but doesn't provide a detailed theoretical or empirical analysis of why prediction error is a better signal than simpler alternatives (e.g., adjacent-frame feature difference) beyond a single ablation. The robustness and generalizability of the 'surprise' signal are not deeply explored."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "Could the authors provide a more detailed analysis of why Gemini-2.5-Flash fails on VSI-SUPER? Is it due to tokenization, attention mechanisms, or a lack of spatial grounding? Would a model with a truly infinite context window still fail?",
+          "The predictive sensing proof-of-concept uses a simple heuristic for memory management. Could the authors discuss how this approach could be integrated with more sophisticated memory architectures or learned policies?",
+          "The VSI-SUPER benchmark uses synthetic edits and concatenated videos. How well do the results on this benchmark correlate with performance on real-world, continuous video streams? Have the authors considered evaluating on more natural long-video datasets?",
+          "The comparison with Gemini-2.5-Flash on VSC is potentially unfair since Gemini was not fine-tuned on VSI-590K. Could the authors provide a comparison where a proprietary model is fine-tuned on similar data to better isolate the benefit of the predictive sensing mechanism?",
+          "Could the authors provide more evidence on the generalizability of the 'surprise' signal? For example, does it work for other tasks beyond counting and recall, such as anomaly detection or event summarization?",
+          "The paper mentions that VSI-SUPER tasks are 'generally easy for humans.' Could the authors provide human performance baselines on these tasks to better contextualize the model results?"
+        ],
+        "Limitations": [
+          "The benchmark and dataset are confined to indoor room-tour videos, which limits the generalizability of the findings to broader video understanding scenarios (e.g., outdoor, egocentric, dynamic scenes).",
+          "The predictive sensing approach is a proof-of-concept and its performance is demonstrated only on two specific tasks. Its scalability to more complex reasoning and interaction scenarios is not addressed.",
+          "The paper does not thoroughly analyze the potential negative societal impacts of developing more capable spatial sensing models, such as privacy concerns in surveillance applications or potential misuse in robotic systems.",
+          "The authors acknowledge the limitations of their work in the appendix, but the main paper could more prominently discuss the scope and potential overreach of the proposed 'supersensing' framework."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper presents a comprehensive framework for \"spatial supersensing\" in video understanding, introducing a new benchmark (VSI-SUPER), a large-scale training dataset (VSI-590K), a family of models (Cambrian-S), and a proof-of-concept predictive sensing paradigm. The paper is ambitious and well-structured, with strong empirical results on VSI-Bench and a thoughtful analysis of existing benchmarks' limitations. However, the paper's central claims about a \"paradigm shift\" are supported by a relatively simple proof-of-concept, and the new benchmark's synthetic nature and limited diversity raise questions about its generalizability. The paper is technically sound but the significance of the proposed \"predictive sensing\" approach needs more rigorous validation. The writing is clear and the contributions are well-contextualized, though the paper may be over-claiming the novelty of the \"supersensing\" hierarchy. Overall, this is a strong paper with significant contributions, but the proof-of-concept for the proposed new paradigm is preliminary and the benchmark's design may not fully capture real-world complexity.\n\nREVIEW JSON:\n```json\n{\n\"Summary\": \"The paper proposes a framework for 'spatial supersensing' in video understanding, defined as a hierarchy of capabilities from semantic perception to predictive world modeling. It introduces VSI-SUPER, a two-part benchmark (VSR for long-horizon recall and VSC for continual counting) designed to be resistant to brute-force context expansion. The authors also curate VSI-590K, a large-scale spatial instruction-tuning dataset, and train Cambrian-S models that achieve state-of-the-art performance on VSI-Bench. However, Cambrian-S still struggles on VSI-SUPER, demonstrating the limits of data scaling. As a step beyond, the paper proposes 'predictive sensing' using a self-supervised next-latent-frame prediction head to compute 'surprise' signals that drive memory management and event segmentation. This proof-of-concept outperforms proprietary baselines on VSI-SUPER, suggesting a new direction for long-horizon spatial reasoning.\",\n\"Strengths\": [\n\"The paper provides a clear and compelling conceptual framework (supersensing hierarchy) that organizes different levels of video understanding capabilities, which is valuable for the community.\",\n\"The benchmark diagnostic analysis (Fig. 2) is insightful, systematically showing that many existing video benchmarks are solvable via language priors or single frames, highlighting the need for more challenging spatial tasks.\",\n\"The VSI-590K dataset and Cambrian-S models represent a significant engineering and data curation effort, achieving impressive performance gains on VSI-Bench (+30%) and demonstrating strong generalization to unseen spatial question types.\",\n\"The predictive sensing proof-of-concept is an interesting and novel idea, showing that prediction error can effectively guide memory and segmentation for long videos, outperforming strong commercial baselines.\",\n\"The paper is generally well-written and clearly structured, with thorough appendices providing detailed implementation and evaluation details.\"\n],\n\"Weaknesses\": [\n\"The proposed 'supersensing' paradigm is framed as a major conceptual shift, but the proof-of-concept predictive sensing system is relatively simple (a two-layer MLP head and heuristic memory management) and is only tested on two synthetic tasks. The claim that it represents a 'path forward' is not fully substantiated with evidence of broader applicability.\",\n\"The VSI-SUPER benchmark is synthetic (using edited images and concatenated videos) and limited to indoor room-tour scenes. Its generalizability to real-world, diverse, and unbounded video streams is questionable, and the tasks may be too narrow to fully represent the 'supersensing' concept.\",\n\"The comparison with proprietary baselines (Gemini, GPT) on VSI-SUPER is incomplete. While Cambrian-S outperforms them, the proprietary models are not fine-tuned on VSI-590K, creating an unfair comparison that doesn't isolate the benefit of the predictive sensing mechanism.\",\n\"The paper's claim that VSI-SUPER is 'resistant to brute-force context expansion' is not fully demonstrated. While Gemini-2.5-Flash fails on longer videos, the reasons may be related to its video tokenization strategy rather than a fundamental limitation of context expansion. A more thorough analysis of why context expansion fails is needed.\",\n\"The paper introduces a new paradigm but doesn't provide a detailed theoretical or empirical analysis of why prediction error is a better signal than simpler alternatives (e.g., adjacent-frame feature difference) beyond a single ablation. The robustness and generalizability of the 'surprise' signal are not deeply explored.\"\n],\n\"Originality\": 4,\n\"Quality\": 3,\n\"Clarity\": 4,\n\"Significance\": 3,\n\"Questions\": [\n\"Could the authors provide a more detailed analysis of why Gemini-2.5-Flash fails on VSI-SUPER? Is it due to tokenization, attention mechanisms, or a lack of spatial grounding? Would a model with a truly infinite context window still fail?\",\n\"The predictive sensing proof-of-concept uses a simple heuristic for memory management. Could the authors discuss how this approach could be integrated with more sophisticated memory architectures or learned policies?\",\n\"The VSI-SUPER benchmark uses synthetic edits and concatenated videos. How well do the results on this benchmark correlate with performance on real-world, continuous video streams? Have the authors considered evaluating on more natural long-video datasets?\",\n\"The comparison with Gemini-2.5-Flash on VSC is potentially unfair since Gemini was not fine-tuned on VSI-590K. Could the authors provide a comparison where a proprietary model is fine-tuned on similar data to better isolate the benefit of the predictive sensing mechanism?\",\n\"Could the authors provide more evidence on the generalizability of the 'surprise' signal? For example, does it work for other tasks beyond counting and recall, such as anomaly detection or event summarization?\",\n\"The paper mentions that VSI-SUPER tasks are 'generally easy for humans.' Could the authors provide human performance baselines on these tasks to better contextualize the model results?\"\n],\n\"Limitations\": [\n\"The benchmark and dataset are confined to indoor room-tour videos, which limits the generalizability of the findings to broader video understanding scenarios (e.g., outdoor, egocentric, dynamic scenes).\",\n\"The predictive sensing approach is a proof-of-concept and its performance is demonstrated only on two specific tasks. Its scalability to more complex reasoning and interaction scenarios is not addressed.\",\n\"The paper does not thoroughly analyze the potential negative societal impacts of developing more capable spatial sensing models, such as privacy concerns in surveillance applications or potential misuse in robotic systems.\",\n\"The authors acknowledge the limitations of their work in the appendix, but the main paper could more prominently discuss the scope and potential overreach of the proposed 'supersensing' framework.\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 4,\n\"Contribution\": 3,\n\"Overall\": 7,\n\"Confidence\": 4,\n\"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 43262,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 41470,
+        "completion_tokens": 1434,
+        "reasoning_tokens": 0,
+        "total_tokens": 44696
+      },
+      "attempts": 1,
+      "response_id": "39709bc1-ebdb-48a4-9d2b-4496f911d665"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 5,
+      "Reject": 0
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          3,
+          4,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Clarity": {
+        "values": [
+          4,
+          4,
+          4,
+          3,
+          4
+        ],
+        "mean": 3.8,
+        "rounded_mean": 4,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Significance": {
+        "values": [
+          3,
+          4,
+          4,
+          4,
+          3
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          3,
+          4,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Presentation": {
+        "values": [
+          4,
+          4,
+          4,
+          3,
+          4
+        ],
+        "mean": 3.8,
+        "rounded_mean": 4,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Contribution": {
+        "values": [
+          3,
+          4,
+          4,
+          4,
+          3
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Overall": {
+        "values": [
+          6,
+          7,
+          7,
+          7,
+          7
+        ],
+        "mean": 6.8,
+        "rounded_mean": 7,
+        "population_sd": 0.4,
+        "min": 6,
+        "max": 7
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "This paper argues that true multimodal intelligence requires 'spatial supersensing' — the capacity to construct, update, and predict with an implicit 3D world model from continuous sensory experience — moving beyond reactive, task-driven systems. The authors propose a four-stage hierarchy (semantic perception, streaming event cognition, implicit 3D spatial cognition, predictive world modeling) and make three main contributions: (1) a diagnostic analysis showing many existing video benchmarks are solvable via language priors or single frames; (2) VSI-SUPER, a two-part benchmark (VSR for long-horizon visual spatial recall and VSC for continual visual spatial counting) designed to be resistant to brute-force context expansion; and (3) VSI-590K, a large-scale spatial instruction-tuning dataset, and Cambrian-S, a family of spatially-grounded MLLMs achieving state-of-the-art on VSI-Bench (+30% absolute improvement) without sacrificing general capabilities. Despite this, Cambrian-S fails on VSI-SUPER, demonstrating limits of data scaling. As a path forward, the paper proposes 'predictive sensing' — a self-supervised next-latent-frame prediction approach where prediction error ('surprise') drives memory management and event segmentation. This proof-of-concept substantially outperforms strong proprietary baselines (e.g., Gemini-2.5) on VSI-SUPER, suggesting that spatial supersensing requires models that anticipate, select, and organize experience.",
+      "Strengths": [
+        "Novel conceptual framework: The supersensing hierarchy provides a structured way to organize video understanding capabilities and identifies clear gaps in current evaluation.",
+        "Well-designed benchmark: VSI-SUPER tasks are cleverly constructed to be resistant to brute-force context expansion, requiring genuine spatial reasoning and memory organization.",
+        "Strong empirical results: Cambrian-S achieves impressive +30% absolute improvement on VSI-Bench with robust generalization to unseen spatial question types, without sacrificing general capabilities.",
+        "Comprehensive diagnostic analysis: The benchmark diagnostic tests (Fig. 2) systematically reveal how existing benchmarks rely on language priors versus genuine visual understanding.",
+        "Promising proof-of-concept: The predictive sensing approach using prediction error as a surprise signal is intuitive, well-motivated, and demonstrates substantial improvements over strong baselines on VSI-SUPER.",
+        "Thorough ablations: The paper includes extensive ablation studies on data sources, training recipes, model sizes, and surprise measurement methods.",
+        "Honest evaluation: The authors clearly acknowledge that scaling alone is insufficient and frame predictive sensing as a proof-of-concept."
+      ],
+      "Weaknesses": [
+        "Overreach in paradigm claims: The paper frames predictive sensing as a 'new paradigm' and 'path forward,' but the demonstrated approach is a relatively simple proof-of-concept (two-layer MLP head with heuristic memory management) built on existing techniques. The evidence does not fully support the strong claim of a fundamental shift.",
+        "Synthetic and narrow benchmark: VSI-SUPER is constructed by editing objects into frames and concatenating indoor room-tour videos. This limits ecological validity and generalizability to real-world, diverse, and unbounded video streams with varied scenes, camera motions, and events.",
+        "Incomplete comparisons: Comparisons with proprietary models (Gemini, GPT) on VSI-SUPER are potentially unfair since those models are not fine-tuned on VSI-590K. Recent strong open-source models (e.g., Qwen2.5-VL-7B, LLaVA-OneVision-7B) are also missing from key comparisons.",
+        "Limited analysis of predictive sensing: The paper does not deeply explore the design space of the LFP head (e.g., prediction horizon, latent space choice), provide sensitivity analysis on the surprise threshold τ, or compare against more sophisticated baselines beyond adjacent-frame feature difference.",
+        "Lack of theoretical grounding: The 'surprise' signal is operationalized as prediction error in a latent space, but the paper does not provide formal analysis of why this should correspond to meaningful event boundaries or memory importance. The connection to cognitive science is suggestive but not rigorously established.",
+        "Insufficient failure-case analysis: The paper does not deeply analyze where the approach still fails on VSI-SUPER or what types of events are missed by the surprise-based segmentation."
+      ],
+      "Originality": 4,
+      "Quality": 3,
+      "Clarity": 4,
+      "Significance": 4,
+      "Questions": [
+        "How sensitive are the VSI-SUPER results to the surprise threshold τ? Is there a principled way to set this threshold or adapt it dynamically, or does it require per-video tuning?",
+        "The paper claims VSI-SUPER is 'resistant to brute-force context expansion.' For the 240-minute VSR videos, how many tokens would this require at 1 FPS with the current model? Could a model with 4M+ context (e.g., Gemini-2.5-Pro) handle this if tokenized efficiently?",
+        "In the VSC streaming evaluation (Fig. 11c), what exactly are the 10 timestamps at which questions are asked? Are they uniformly distributed across the video duration? How does performance vary across these timestamps?",
+        "For the LFP head, what is the prediction horizon? Is it predicting the very next frame or a future frame several steps ahead? How does this choice affect surprise estimation quality?",
+        "How does the performance of Cambrian-S with surprise-driven segmentation on VSC compare to using ground-truth scene boundaries (GT Seg.)? What is the gap, and what types of errors does the surprise-based approach make?",
+        "Could the surprising performance gains on VSI-SUPER be partly due to the model's strong VSI-Bench performance rather than the surprise mechanism itself? Have you tried using Cambrian-S without LFP but with an oracle segmentation (e.g., using scene change detection from a separate model)?",
+        "How does the performance of Cambrian-S with surprise-based memory compare to simply using a larger context window or more aggressive token compression methods?",
+        "How does the LFP head's training on VSI-590K data affect the surprise signal's generalizability to videos outside this distribution (e.g., outdoor scenes, different object types)?",
+        "In the VSC streaming evaluation, how were the queries phrased for Gemini-Live and GPT-Realtime? Were they given the same frame sampling rate as Cambrian-S?",
+        "What is the computational overhead of the predictive sensing approach during inference, beyond GPU memory usage? Does the surprise calculation add significant latency to the streaming pipeline?"
+      ],
+      "Limitations": [
+        "The VSI-SUPER benchmark is synthetic, built from edited and concatenated indoor room-tour videos, limiting its ecological validity and generalizability to real-world continuous video streams with diverse scene types, camera motions, and events.",
+        "The predictive sensing proof-of-concept is relatively simple and has not been scaled or tested on diverse real-world scenarios. Its generalizability to other tasks and domains is not demonstrated.",
+        "The VSI-590K dataset is primarily focused on indoor room-tour videos, which may limit the model's spatial reasoning generalization to outdoor, egocentric, or dynamic environments.",
+        "The paper does not deeply explore the scalability of the predictive sensing approach to larger model sizes or more diverse training data.",
+        "The evaluation is primarily focused on indoor scenes (ScanNet, ARKitScenes, ProcTHOR), which may limit generalizability to outdoor or dynamic environments.",
+        "Potential negative societal impact: Enhanced spatial reasoning in video MLLMs could be used for surveillance applications, potentially infringing on privacy. The paper does not discuss this possibility or mitigation strategies.",
+        "The evaluation of streaming capabilities is limited to specific synthetic scenarios. Real-world streaming understanding involves handling interruptions, user interactions, and multi-modal inputs (audio, text) that are not addressed."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 4,
+      "Contribution": 4,
+      "Overall": 7,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "THOUGHT:\nThe paper presents a substantial contribution with a novel conceptual framework, a carefully designed benchmark (VSI-SUPER), a large dataset (VSI-590K), and strong empirical results with Cambrian-S. All five reviewers recommend acceptance, with overall scores of 6, 7, 7, 7, and 7. The consensus is that the paper is technically solid, original, and significant, despite shared concerns about the synthetic nature of the benchmark, the simplicity of the predictive sensing proof-of-concept, and the potential overstatement of the \"paradigm shift\" claim.\n\nThe main weaknesses are consistently identified across reviews: (1) the synthetic and narrow indoor-focused benchmark limits generalizability, (2) the predictive sensing approach is a simple proof-of-concept rather than a complete new paradigm, (3) comparisons with proprietary models may be unfair due to lack of fine-tuning, and (4) some analyses (e.g., on hyperparameter sensitivity, failure cases, and why context expansion fails) are incomplete. However, these are not seen as fatal flaws; they are areas for improvement that the authors could address in a rebuttal.\n\nGiven the strong agreement among reviewers and the overall positive assessment, I believe the paper should be accepted. The contribution is significant for the community: it identifies a real gap in video understanding evaluation, provides a challenging benchmark, and demonstrates that both data scaling and prediction-based memory management are promising directions. The weaknesses are valid but do not undermine the core contributions.\n\nI will write a meta-review that reflects this consensus, highlighting the strengths while noting the shared concerns. I will set the overall score to 7 (Accept), matching the most common reviewer score, and the decision to Accept.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper argues that true multimodal intelligence requires 'spatial supersensing' — the capacity to construct, update, and predict with an implicit 3D world model from continuous sensory experience — moving beyond reactive, task-driven systems. The authors propose a four-stage hierarchy (semantic perception, streaming event cognition, implicit 3D spatial cognition, predictive world modeling) and make three main contributions: (1) a diagnostic analysis showing many existing video benchmarks are solvable via language priors or single frames; (2) VSI-SUPER, a two-part benchmark (VSR for long-horizon visual spatial recall and VSC for continual visual spatial counting) designed to be resistant to brute-force context expansion; and (3) VSI-590K, a large-scale spatial instruction-tuning dataset, and Cambrian-S, a family of spatially-grounded MLLMs achieving state-of-the-art on VSI-Bench (+30% absolute improvement) without sacrificing general capabilities. Despite this, Cambrian-S fails on VSI-SUPER, demonstrating limits of data scaling. As a path forward, the paper proposes 'predictive sensing' — a self-supervised next-latent-frame prediction approach where prediction error ('surprise') drives memory management and event segmentation. This proof-of-concept substantially outperforms strong proprietary baselines (e.g., Gemini-2.5) on VSI-SUPER, suggesting that spatial supersensing requires models that anticipate, select, and organize experience.\",\n  \"Strengths\": [\n    \"Novel conceptual framework: The supersensing hierarchy provides a structured way to organize video understanding capabilities and identifies clear gaps in current evaluation.\",\n    \"Well-designed benchmark: VSI-SUPER tasks are cleverly constructed to be resistant to brute-force context expansion, requiring genuine spatial reasoning and memory organization.\",\n    \"Strong empirical results: Cambrian-S achieves impressive +30% absolute improvement on VSI-Bench with robust generalization to unseen spatial question types, without sacrificing general capabilities.\",\n    \"Comprehensive diagnostic analysis: The benchmark diagnostic tests (Fig. 2) systematically reveal how existing benchmarks rely on language priors versus genuine visual understanding.\",\n    \"Promising proof-of-concept: The predictive sensing approach using prediction error as a surprise signal is intuitive, well-motivated, and demonstrates substantial improvements over strong baselines on VSI-SUPER.\",\n    \"Thorough ablations: The paper includes extensive ablation studies on data sources, training recipes, model sizes, and surprise measurement methods.\",\n    \"Honest evaluation: The authors clearly acknowledge that scaling alone is insufficient and frame predictive sensing as a proof-of-concept.\"\n  ],\n  \"Weaknesses\": [\n    \"Overreach in paradigm claims: The paper frames predictive sensing as a 'new paradigm' and 'path forward,' but the demonstrated approach is a relatively simple proof-of-concept (two-layer MLP head with heuristic memory management) built on existing techniques. The evidence does not fully support the strong claim of a fundamental shift.\",\n    \"Synthetic and narrow benchmark: VSI-SUPER is constructed by editing objects into frames and concatenating indoor room-tour videos. This limits ecological validity and generalizability to real-world, diverse, and unbounded video streams with varied scenes, camera motions, and events.\",\n    \"Incomplete comparisons: Comparisons with proprietary models (Gemini, GPT) on VSI-SUPER are potentially unfair since those models are not fine-tuned on VSI-590K. Recent strong open-source models (e.g., Qwen2.5-VL-7B, LLaVA-OneVision-7B) are also missing from key comparisons.\",\n    \"Limited analysis of predictive sensing: The paper does not deeply explore the design space of the LFP head (e.g., prediction horizon, latent space choice), provide sensitivity analysis on the surprise threshold τ, or compare against more sophisticated baselines beyond adjacent-frame feature difference.\",\n    \"Lack of theoretical grounding: The 'surprise' signal is operationalized as prediction error in a latent space, but the paper does not provide formal analysis of why this should correspond to meaningful event boundaries or memory importance. The connection to cognitive science is suggestive but not rigorously established.\",\n    \"Insufficient failure-case analysis: The paper does not deeply analyze where the approach still fails on VSI-SUPER or what types of events are missed by the surprise-based segmentation.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 4,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"How sensitive are the VSI-SUPER results to the surprise threshold τ? Is there a principled way to set this threshold or adapt it dynamically, or does it require per-video tuning?\",\n    \"The paper claims VSI-SUPER is 'resistant to brute-force context expansion.' For the 240-minute VSR videos, how many tokens would this require at 1 FPS with the current model? Could a model with 4M+ context (e.g., Gemini-2.5-Pro) handle this if tokenized efficiently?\",\n    \"In the VSC streaming evaluation (Fig. 11c), what exactly are the 10 timestamps at which questions are asked? Are they uniformly distributed across the video duration? How does performance vary across these timestamps?\",\n    \"For the LFP head, what is the prediction horizon? Is it predicting the very next frame or a future frame several steps ahead? How does this choice affect surprise estimation quality?\",\n    \"How does the performance of Cambrian-S with surprise-driven segmentation on VSC compare to using ground-truth scene boundaries (GT Seg.)? What is the gap, and what types of errors does the surprise-based approach make?\",\n    \"Could the surprising performance gains on VSI-SUPER be partly due to the model's strong VSI-Bench performance rather than the surprise mechanism itself? Have you tried using Cambrian-S without LFP but with an oracle segmentation (e.g., using scene change detection from a separate model)?\",\n    \"How does the performance of Cambrian-S with surprise-based memory compare to simply using a larger context window or more aggressive token compression methods?\",\n    \"How does the LFP head's training on VSI-590K data affect the surprise signal's generalizability to videos outside this distribution (e.g., outdoor scenes, different object types)?\",\n    \"In the VSC streaming evaluation, how were the queries phrased for Gemini-Live and GPT-Realtime? Were they given the same frame sampling rate as Cambrian-S?\",\n    \"What is the computational overhead of the predictive sensing approach during inference, beyond GPU memory usage? Does the surprise calculation add significant latency to the streaming pipeline?\"\n  ],\n  \"Limitations\": [\n    \"The VSI-SUPER benchmark is synthetic, built from edited and concatenated indoor room-tour videos, limiting its ecological validity and generalizability to real-world continuous video streams with diverse scene types, camera motions, and events.\",\n    \"The predictive sensing proof-of-concept is relatively simple and has not been scaled or tested on diverse real-world scenarios. Its generalizability to other tasks and domains is not demonstrated.\",\n    \"The VSI-590K dataset is primarily focused on indoor room-tour videos, which may limit the model's spatial reasoning generalization to outdoor, egocentric, or dynamic environments.\",\n    \"The paper does not deeply explore the scalability of the predictive sensing approach to larger model sizes or more diverse training data.\",\n    \"The evaluation is primarily focused on indoor scenes (ScanNet, ARKitScenes, ProcTHOR), which may limit generalizability to outdoor or dynamic environments.\",\n    \"Potential negative societal impact: Enhanced spatial reasoning in video MLLMs could be used for surveillance applications, potentially infringing on privacy. The paper does not discuss this possibility or mitigation strategies.\",\n    \"The evaluation of streaming capabilities is limited to specific synthetic scenarios. Real-world streaming understanding involves handling interruptions, user interactions, and multi-modal inputs (audio, text) that are not addressed.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 4,\n  \"Contribution\": 4,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 8274,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 8274,
+      "completion_tokens": 2065,
+      "reasoning_tokens": 0,
+      "total_tokens": 10339
+    },
+    "attempts": 1,
+    "response_id": "4c31e497-27cb-47fa-9619-5d7f33e0fff9"
+  },
+  "final_review": {
+    "Summary": "This paper argues that true multimodal intelligence requires 'spatial supersensing' — the capacity to construct, update, and predict with an implicit 3D world model from continuous sensory experience — moving beyond reactive, task-driven systems. The authors propose a four-stage hierarchy (semantic perception, streaming event cognition, implicit 3D spatial cognition, predictive world modeling) and make three main contributions: (1) a diagnostic analysis showing many existing video benchmarks are solvable via language priors or single frames; (2) VSI-SUPER, a two-part benchmark (VSR for long-horizon visual spatial recall and VSC for continual visual spatial counting) designed to be resistant to brute-force context expansion; and (3) VSI-590K, a large-scale spatial instruction-tuning dataset, and Cambrian-S, a family of spatially-grounded MLLMs achieving state-of-the-art on VSI-Bench (+30% absolute improvement) without sacrificing general capabilities. Despite this, Cambrian-S fails on VSI-SUPER, demonstrating limits of data scaling. As a path forward, the paper proposes 'predictive sensing' — a self-supervised next-latent-frame prediction approach where prediction error ('surprise') drives memory management and event segmentation. This proof-of-concept substantially outperforms strong proprietary baselines (e.g., Gemini-2.5) on VSI-SUPER, suggesting that spatial supersensing requires models that anticipate, select, and organize experience.",
+    "Strengths": [
+      "Novel conceptual framework: The supersensing hierarchy provides a structured way to organize video understanding capabilities and identifies clear gaps in current evaluation.",
+      "Well-designed benchmark: VSI-SUPER tasks are cleverly constructed to be resistant to brute-force context expansion, requiring genuine spatial reasoning and memory organization.",
+      "Strong empirical results: Cambrian-S achieves impressive +30% absolute improvement on VSI-Bench with robust generalization to unseen spatial question types, without sacrificing general capabilities.",
+      "Comprehensive diagnostic analysis: The benchmark diagnostic tests (Fig. 2) systematically reveal how existing benchmarks rely on language priors versus genuine visual understanding.",
+      "Promising proof-of-concept: The predictive sensing approach using prediction error as a surprise signal is intuitive, well-motivated, and demonstrates substantial improvements over strong baselines on VSI-SUPER.",
+      "Thorough ablations: The paper includes extensive ablation studies on data sources, training recipes, model sizes, and surprise measurement methods.",
+      "Honest evaluation: The authors clearly acknowledge that scaling alone is insufficient and frame predictive sensing as a proof-of-concept."
+    ],
+    "Weaknesses": [
+      "Overreach in paradigm claims: The paper frames predictive sensing as a 'new paradigm' and 'path forward,' but the demonstrated approach is a relatively simple proof-of-concept (two-layer MLP head with heuristic memory management) built on existing techniques. The evidence does not fully support the strong claim of a fundamental shift.",
+      "Synthetic and narrow benchmark: VSI-SUPER is constructed by editing objects into frames and concatenating indoor room-tour videos. This limits ecological validity and generalizability to real-world, diverse, and unbounded video streams with varied scenes, camera motions, and events.",
+      "Incomplete comparisons: Comparisons with proprietary models (Gemini, GPT) on VSI-SUPER are potentially unfair since those models are not fine-tuned on VSI-590K. Recent strong open-source models (e.g., Qwen2.5-VL-7B, LLaVA-OneVision-7B) are also missing from key comparisons.",
+      "Limited analysis of predictive sensing: The paper does not deeply explore the design space of the LFP head (e.g., prediction horizon, latent space choice), provide sensitivity analysis on the surprise threshold τ, or compare against more sophisticated baselines beyond adjacent-frame feature difference.",
+      "Lack of theoretical grounding: The 'surprise' signal is operationalized as prediction error in a latent space, but the paper does not provide formal analysis of why this should correspond to meaningful event boundaries or memory importance. The connection to cognitive science is suggestive but not rigorously established.",
+      "Insufficient failure-case analysis: The paper does not deeply analyze where the approach still fails on VSI-SUPER or what types of events are missed by the surprise-based segmentation."
+    ],
+    "Originality": 4,
+    "Quality": 3,
+    "Clarity": 4,
+    "Significance": 4,
+    "Questions": [
+      "How sensitive are the VSI-SUPER results to the surprise threshold τ? Is there a principled way to set this threshold or adapt it dynamically, or does it require per-video tuning?",
+      "The paper claims VSI-SUPER is 'resistant to brute-force context expansion.' For the 240-minute VSR videos, how many tokens would this require at 1 FPS with the current model? Could a model with 4M+ context (e.g., Gemini-2.5-Pro) handle this if tokenized efficiently?",
+      "In the VSC streaming evaluation (Fig. 11c), what exactly are the 10 timestamps at which questions are asked? Are they uniformly distributed across the video duration? How does performance vary across these timestamps?",
+      "For the LFP head, what is the prediction horizon? Is it predicting the very next frame or a future frame several steps ahead? How does this choice affect surprise estimation quality?",
+      "How does the performance of Cambrian-S with surprise-driven segmentation on VSC compare to using ground-truth scene boundaries (GT Seg.)? What is the gap, and what types of errors does the surprise-based approach make?",
+      "Could the surprising performance gains on VSI-SUPER be partly due to the model's strong VSI-Bench performance rather than the surprise mechanism itself? Have you tried using Cambrian-S without LFP but with an oracle segmentation (e.g., using scene change detection from a separate model)?",
+      "How does the performance of Cambrian-S with surprise-based memory compare to simply using a larger context window or more aggressive token compression methods?",
+      "How does the LFP head's training on VSI-590K data affect the surprise signal's generalizability to videos outside this distribution (e.g., outdoor scenes, different object types)?",
+      "In the VSC streaming evaluation, how were the queries phrased for Gemini-Live and GPT-Realtime? Were they given the same frame sampling rate as Cambrian-S?",
+      "What is the computational overhead of the predictive sensing approach during inference, beyond GPU memory usage? Does the surprise calculation add significant latency to the streaming pipeline?"
+    ],
+    "Limitations": [
+      "The VSI-SUPER benchmark is synthetic, built from edited and concatenated indoor room-tour videos, limiting its ecological validity and generalizability to real-world continuous video streams with diverse scene types, camera motions, and events.",
+      "The predictive sensing proof-of-concept is relatively simple and has not been scaled or tested on diverse real-world scenarios. Its generalizability to other tasks and domains is not demonstrated.",
+      "The VSI-590K dataset is primarily focused on indoor room-tour videos, which may limit the model's spatial reasoning generalization to outdoor, egocentric, or dynamic environments.",
+      "The paper does not deeply explore the scalability of the predictive sensing approach to larger model sizes or more diverse training data.",
+      "The evaluation is primarily focused on indoor scenes (ScanNet, ARKitScenes, ProcTHOR), which may limit generalizability to outdoor or dynamic environments.",
+      "Potential negative societal impact: Enhanced spatial reasoning in video MLLMs could be used for surveillance applications, potentially infringing on privacy. The paper does not discuss this possibility or mitigation strategies.",
+      "The evaluation of streaming capabilities is limited to specific synthetic scenarios. Real-world streaming understanding involves handling interruptions, user interactions, and multi-modal inputs (audio, text) that are not addressed."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 4,
+    "Contribution": 4,
+    "Overall": 7,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 224584,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 215624,
+    "completion_tokens": 11283,
+    "reasoning_tokens": 0,
+    "total_tokens": 235867,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.03018736,
+    "output_usd": 0.00315924,
+    "total_usd": 0.03337169
+  },
+  "elapsed_seconds": 37.743,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Accept",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B194",
+    "filename": "B194.txt",
+    "blind_text_sha256": "bee834b2d7e4435bd62123a0f55fcedf020459e3a6791e0321b6ce1b92fe2b05",
+    "characters": 141111,
+    "full_text_saved": false
+  }
+}

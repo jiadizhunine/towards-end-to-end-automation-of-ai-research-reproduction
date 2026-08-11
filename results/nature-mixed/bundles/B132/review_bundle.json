@@ -1,0 +1,712 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:48:33.348865+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "This paper introduces Matryoshka MoE (M-MoE), a training framework that randomizes the number of activated experts during training to enable elastic inference in Mixture-of-Experts (MoE) models. The key insight is that standard fixed-k Top-K routing makes models brittle when the number of active experts changes at inference time. M-MoE instills a coarse-to-fine hierarchy in expert routing by training with variable k values (e.g., sampled uniformly from [1,6]), forcing the router to learn a meaningful expert ranking where top experts provide essential capabilities and additional experts add finer detail. The authors explore several strategies: batch-level, micro-batch, and layer-wise sampling (with uniform and capacity-aware variants). Experiments on a 20B-parameter MoE model in both continual pre-training and from-scratch settings show that a single M-MoE model achieves performance comparable to a suite of specialist models across different k values. The paper also provides analysis showing that M-MoE induces more stable expert rankings (higher Focused Spearman Correlation) and greater expert specialization (lower MODS) compared to fixed-k training, and demonstrates novel layer-wise inference strategies where different layers use different numbers of experts.",
+        "Strengths": [
+          "Well-motivated problem: The observation that fixed-k MoE training leads to severe performance degradation when k changes at inference is important and practically relevant for elastic deployment.",
+          "Simple and elegant method: Randomizing the number of active experts during training is a straightforward yet effective approach that directly addresses the identified problem.",
+          "Comprehensive experimental setup: The paper evaluates multiple M-MoE variants (global-batch, micro-batch, layer-wise) in both continual pre-training and from-scratch scenarios, providing a thorough comparison.",
+          "Mechanistic analysis: The Focused Spearman Correlation and MODS analyses provide useful insights into why M-MoE works, showing improved ranking stability and expert specialization.",
+          "Practical layer-wise inference: The exploration of allocating different expert counts to different layers opens up new deployment strategies and provides interesting findings about layer criticality.",
+          "Honest evaluation: The paper acknowledges the training cost advantage (M-MoE trained for same tokens as a single specialist) and provides detailed training/inference setup information."
+        ],
+        "Weaknesses": [
+          "Suspicious table duplication: Table 1 shows M-MoE-global-batch results that are numerically identical to the Top-p results, which appears to be a copy-paste error. This undermines confidence in the reported results and needs clarification.",
+          "Limited evaluation benchmarks: The evaluation is restricted to common sense and knowledge benchmarks (MMLU, ARC, BoolQ, etc.). No code, math, or complex reasoning benchmarks are included, which limits the generality of the conclusions.",
+          "Modest improvements over Top-p: The Top-p baseline, which also introduces activation diversity, performs quite competitively. The gains of M-MoE-layer over Top-p are relatively small (e.g., 54.61 vs 54.19 at k=1, 56.69 vs 56.04 at k=4).",
+          "No comparison with other elastic inference methods: The paper does not compare against established elastic inference approaches like FlexTron (Cai et al., 2024), which is a notable omission given the related work discussion.",
+          "Limited exploration of capacity-aware sampling: The tau=2 variant is only briefly evaluated, and the paper does not systematically study the trade-offs of different sampling distributions.",
+          "The from-scratch experiment is limited to 80B tokens, which is relatively short for a 20B parameter model, and the results may not reflect the method's behavior at larger scale."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "The M-MoE-global-batch results in Table 1 appear to be identical to the Top-p results. Is this a copy-paste error in the paper, or is there a methodological reason for this exact match? Please provide the correct M-MoE-global-batch results.",
+          "How does M-MoE compare to simply fine-tuning a model with a curriculum of k values (e.g., training with k=1 for some steps, then k=6 for others) rather than random sampling each step?",
+          "What is the computational overhead of the layer-wise M-MoE approach during training compared to standard Top-k training? The paper mentions throughput improvements with the budget mechanism, but what about the unconstrained version?",
+          "How sensitive is the method to the choice of k_min and k_max? What happens if the range is extended to include larger values (e.g., k=8 or k=12)?",
+          "The capacity-aware weighted sampling with tau=2 shows some improvements at higher k values. Have the authors systematically explored different tau values and their impact on the performance-efficiency trade-off?",
+          "In the layer-wise inference experiments, the paper only explores patterns with uniform k within layer groups. Have the authors tried more fine-grained patterns or patterns that vary k non-monotonically across layers?"
+        ],
+        "Limitations": [
+          "The paper does not discuss potential negative societal impacts of elastic inference, such as the possibility of users unknowingly receiving lower-quality outputs when computational budgets are reduced for cost savings, which could lead to biased or incorrect results in critical applications.",
+          "The evaluation is limited to English-language benchmarks, and the method's effectiveness on multilingual or multimodal tasks is unexplored.",
+          "The layer-wise inference analysis is based on a single model and limited patterns; more extensive validation is needed to establish generalizable conclusions about layer criticality.",
+          "The paper does not address potential issues with expert load balancing under variable k, which could lead to some experts being underutilized or over-utilized in production deployments."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 5,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes Matryoshka MoE (M-MoE), a training framework that randomizes the number of activated experts during training to enable elastic inference in Mixture-of-Experts models. The core idea is to instill a coarse-to-fine hierarchy in expert routing, where top-ranked experts provide coarse-grained capabilities and additional experts add finer details. The authors explore several strategies (batch-level, micro-batch, layer-wise with uniform and capacity-aware sampling) and compare against Top-k baselines in both continual pre-training and from-scratch settings.\n\nThe paper has several strengths:\n1. The problem is well-motivated - the observation that fixed-k training leads to brittle inference-time behavior is important and practically relevant\n2. The method is simple and elegant - randomizing k during training is a straightforward yet effective approach\n3. The experimental setup is thorough, including both continual pre-training and from-scratch scenarios\n4. The analysis of router behavior (Focused Spearman Correlation and MODS) provides mechanistic insights\n5. The layer-wise inference experiments open up novel deployment strategies\n\nHowever, there are notable weaknesses:\n1. The table appears to have an error - the M-MoE-global-batch results are identical to Top-p results, which seems suspicious and could indicate a copy-paste error\n2. The improvements over Top-p (a baseline that also introduces activation diversity) are relatively modest\n3. The paper lacks comparisons with other elastic inference methods like FlexTron\n4. The evaluation is limited to common sense benchmarks - no code, math, or reasoning-heavy tasks\n5. The \"specialist\" comparison is somewhat unfair since specialists are trained for 80B tokens each, but the M-MoE model is also trained for 80B tokens - this is actually a strength of the paper (favoring M-MoE), but the framing could be clearer\n6. The layer-wise inference analysis is interesting but only explores a small subset of possible patterns\n\nQuestions I would ask:\n- Why are M-MoE-global-batch results identical to Top-p results?\n- How does the capacity-aware sampling with different tau values affect the performance-efficiency trade-off?\n- What is the computational overhead of the layer-wise approach during training?\n- How does M-MoE compare to simply fine-tuning a model with mixed k values (e.g., alternating between k=1 and k=6)?\n\nThe paper is technically sound overall, with clear writing and good experimental methodology. The main concerns are the suspicious table duplication and the relatively limited evaluation compared to the claims. The significance is moderate - this is a useful technique for elastic MoE inference, but it's an incremental contribution over existing dynamic routing approaches.\n\nI would rate this as a borderline accept - the core idea is valid and well-executed, but there are some presentation issues and the contribution is somewhat incremental. The suspicious table duplication is concerning and needs to be addressed. Overall score: 5 (Borderline accept).\n\nDecision: Given the instructions to only use Accept or Reject, and considering that the suspicious table issue could be a genuine error that undermines confidence in the results, I lean toward Reject but with a note that this could be resolved in rebuttal. However, the technical soundness of the main method is solid, and the issue is likely a copy-paste error in the paper. I'll go with Reject due to the table issue and limited evaluation, but acknowledge this is borderline.\n\nActually, on reflection, the table issue is likely just a formatting error in the paper submission (the M-MoE-global-batch and Top-p rows being identical). The core methodology and results seem sound. The paper makes a reasonable contribution to elastic MoE inference. I'll go with Accept as a borderline case, noting the table issue needs clarification.\n\nFinal decision: Accept with overall score 5 (borderline accept).REVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper introduces Matryoshka MoE (M-MoE), a training framework that randomizes the number of activated experts during training to enable elastic inference in Mixture-of-Experts (MoE) models. The key insight is that standard fixed-k Top-K routing makes models brittle when the number of active experts changes at inference time. M-MoE instills a coarse-to-fine hierarchy in expert routing by training with variable k values (e.g., sampled uniformly from [1,6]), forcing the router to learn a meaningful expert ranking where top experts provide essential capabilities and additional experts add finer detail. The authors explore several strategies: batch-level, micro-batch, and layer-wise sampling (with uniform and capacity-aware variants). Experiments on a 20B-parameter MoE model in both continual pre-training and from-scratch settings show that a single M-MoE model achieves performance comparable to a suite of specialist models across different k values. The paper also provides analysis showing that M-MoE induces more stable expert rankings (higher Focused Spearman Correlation) and greater expert specialization (lower MODS) compared to fixed-k training, and demonstrates novel layer-wise inference strategies where different layers use different numbers of experts.\",\n  \"Strengths\": [\n    \"Well-motivated problem: The observation that fixed-k MoE training leads to severe performance degradation when k changes at inference is important and practically relevant for elastic deployment.\",\n    \"Simple and elegant method: Randomizing the number of active experts during training is a straightforward yet effective approach that directly addresses the identified problem.\",\n    \"Comprehensive experimental setup: The paper evaluates multiple M-MoE variants (global-batch, micro-batch, layer-wise) in both continual pre-training and from-scratch scenarios, providing a thorough comparison.\",\n    \"Mechanistic analysis: The Focused Spearman Correlation and MODS analyses provide useful insights into why M-MoE works, showing improved ranking stability and expert specialization.\",\n    \"Practical layer-wise inference: The exploration of allocating different expert counts to different layers opens up new deployment strategies and provides interesting findings about layer criticality.\",\n    \"Honest evaluation: The paper acknowledges the training cost advantage (M-MoE trained for same tokens as a single specialist) and provides detailed training/inference setup information.\"\n  ],\n  \"Weaknesses\": [\n    \"Suspicious table duplication: Table 1 shows M-MoE-global-batch results that are numerically identical to the Top-p results, which appears to be a copy-paste error. This undermines confidence in the reported results and needs clarification.\",\n    \"Limited evaluation benchmarks: The evaluation is restricted to common sense and knowledge benchmarks (MMLU, ARC, BoolQ, etc.). No code, math, or complex reasoning benchmarks are included, which limits the generality of the conclusions.\",\n    \"Modest improvements over Top-p: The Top-p baseline, which also introduces activation diversity, performs quite competitively. The gains of M-MoE-layer over Top-p are relatively small (e.g., 54.61 vs 54.19 at k=1, 56.69 vs 56.04 at k=4).\",\n    \"No comparison with other elastic inference methods: The paper does not compare against established elastic inference approaches like FlexTron (Cai et al., 2024), which is a notable omission given the related work discussion.\",\n    \"Limited exploration of capacity-aware sampling: The tau=2 variant is only briefly evaluated, and the paper does not systematically study the trade-offs of different sampling distributions.\",\n    \"The from-scratch experiment is limited to 80B tokens, which is relatively short for a 20B parameter model, and the results may not reflect the method's behavior at larger scale.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"The M-MoE-global-batch results in Table 1 appear to be identical to the Top-p results. Is this a copy-paste error in the paper, or is there a methodological reason for this exact match? Please provide the correct M-MoE-global-batch results.\",\n    \"How does M-MoE compare to simply fine-tuning a model with a curriculum of k values (e.g., training with k=1 for some steps, then k=6 for others) rather than random sampling each step?\",\n    \"What is the computational overhead of the layer-wise M-MoE approach during training compared to standard Top-k training? The paper mentions throughput improvements with the budget mechanism, but what about the unconstrained version?\",\n    \"How sensitive is the method to the choice of k_min and k_max? What happens if the range is extended to include larger values (e.g., k=8 or k=12)?\",\n    \"The capacity-aware weighted sampling with tau=2 shows some improvements at higher k values. Have the authors systematically explored different tau values and their impact on the performance-efficiency trade-off?\",\n    \"In the layer-wise inference experiments, the paper only explores patterns with uniform k within layer groups. Have the authors tried more fine-grained patterns or patterns that vary k non-monotonically across layers?\"\n  ],\n  \"Limitations\": [\n    \"The paper does not discuss potential negative societal impacts of elastic inference, such as the possibility of users unknowingly receiving lower-quality outputs when computational budgets are reduced for cost savings, which could lead to biased or incorrect results in critical applications.\",\n    \"The evaluation is limited to English-language benchmarks, and the method's effectiveness on multilingual or multimodal tasks is unexplored.\",\n    \"The layer-wise inference analysis is based on a single model and limited patterns; more extensive validation is needed to establish generalizable conclusions about layer criticality.\",\n    \"The paper does not address potential issues with expert load balancing under variable k, which could lead to some experts being underutilized or over-utilized in production deployments.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 5,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 16617,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 14825,
+        "completion_tokens": 2099,
+        "reasoning_tokens": 0,
+        "total_tokens": 18716
+      },
+      "attempts": 1,
+      "response_id": "ef7cdf12-2ce7-4fdb-a3b3-eacad9504b6c"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "This paper introduces Matryoshka MoE (M-MoE), a training framework that enables elastic inference in Mixture-of-Experts (MoE) large language models. The key idea is to vary the number of activated experts during training (rather than using a fixed Top-K), instilling a coarse-to-fine functional hierarchy within the expert ensemble. The authors explore multiple randomization strategies: batch-level (global and micro-batch), layer-wise uniform sampling, and capacity-aware weighted sampling. Their most effective approach, layer-wise randomization, allows each Transformer layer to independently sample a different number of active experts during training. Experiments on a 20B-parameter MoE model (56 layers, 96 experts) in both continual pre-training and from-scratch settings demonstrate that a single M-MoE model achieves performance comparable to a suite of specialist models trained for specific expert counts, but at a fraction of the training cost. The paper also provides mechanistic analyses showing that M-MoE induces stable expert rankings (Matryoshka property) and greater expert specialization compared to fixed-k training, and demonstrates novel layer-wise inference strategies where different computational budgets are allocated to different layers.",
+        "Strengths": [
+          "Clear problem identification: The paper convincingly demonstrates the brittleness of standard Top-K trained MoE models when evaluated at different expert counts (Figure 1), which is a significant practical limitation.",
+          "Simple and elegant solution: The proposed M-MoE framework is conceptually straightforward—randomize k during training—yet highly effective, making it easily adoptable by practitioners.",
+          "Comprehensive experimental evaluation: The authors evaluate multiple strategies (global-batch, micro-batch, layer-wise, capacity-aware) in both continual pre-training and from-scratch settings, providing a thorough understanding of design choices.",
+          "Mechanistic insights: The Focused Spearman Correlation analysis and MODS (Mean Off-Diagonal Similarity) analysis provide compelling evidence for the Matryoshka property and expert specialization, going beyond simple performance metrics.",
+          "Practical contributions: The layer-wise inference analysis and the activation budget mechanism address real-world deployment concerns and open new research directions.",
+          "Strong results: The M-MoE model matches or exceeds specialist models across the entire range of expert counts, achieving remarkable elasticity from a single model."
+        ],
+        "Weaknesses": [
+          "Suspicious duplicate results in Table 1: The M-MoE-global-batch and Top-p rows are identical across all metrics. This is highly unlikely to be a coincidence and suggests a copy-paste error or a fundamental issue with the experimental setup. This needs clarification.",
+          "Limited comparison to other elastic inference methods: The paper mentions FlexTron and MatFormer in related work but does not experimentally compare against these alternatives. Including such comparisons would strengthen the claims.",
+          "Narrow evaluation benchmarks: Only 7 common-sense/knowledge benchmarks are used (MMLU, ARC-C, BoolQ, HellaSwag, LogiQA, OpenBookQA, Winogrande). Evaluation on larger reasoning tasks, code generation, or open-ended generation would strengthen the findings.",
+          "Layer-wise inference analysis is preliminary: Only a few activation patterns are explored, and the conclusions about early layers being more critical could benefit from a more systematic search or theoretical grounding.",
+          "The 'fraction of training cost' claim could be misleading: While the M-MoE model is trained for the same tokens as one specialist model, the comparison to multiple specialists involves summing their training costs. This framing is valid but should be more explicitly clarified.",
+          "No discussion of limitations or potential negative societal impacts of the work, which is expected for this type of research but should be acknowledged."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "The results for M-MoE-global-batch in Table 1 are identical to those of Top-p. Is this a copy-paste error, or do these methods somehow produce the same results? If this is an error, please provide the correct M-MoE-global-batch results.",
+          "How does the computational cost of training M-MoE compare to training a single specialist model? Does the variable-k training introduce any overhead in terms of memory or compute?",
+          "Have you compared against other elastic inference methods such as FlexTron or MatFormer? If not, why were these excluded, and what would you expect the relative performance to be?",
+          "The layer-wise inference analysis shows that early layers are more critical. Could you provide a more systematic exploration of the layer-wise budget allocation space, or discuss why this asymmetry exists?",
+          "How sensitive is the performance of M-MoE to the choice of k_min and k_max? Have you explored different ranges?",
+          "The capacity-aware weighted sampling with tau=2 shows slightly better high-k performance but worse low-k performance compared to uniform sampling. Could you discuss the trade-offs and provide guidance on choosing tau?",
+          "How does the router's load balancing behavior differ between M-MoE and Top-k training? Are there any issues with expert utilization or collapse?"
+        ],
+        "Limitations": [
+          "The evaluation is limited to a single model architecture (20B parameters, 56 layers, 96 experts) and may not generalize to other MoE designs (e.g., different expert counts, routing mechanisms, or model sizes).",
+          "The benchmarks used are relatively small-scale and may not capture the full impact of elastic inference on complex tasks such as reasoning, coding, or long-context understanding.",
+          "The paper does not explore the interaction between M-MoE and other efficiency techniques such as quantization, distillation, or speculative decoding.",
+          "The layer-wise inference analysis is based on a single model and may not generalize to other architectures or training setups.",
+          "The paper does not discuss potential negative societal impacts, such as the environmental cost of training large MoE models or the potential for misuse of elastic inference capabilities."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 4,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces Matryoshka MoE (M-MoE), a training framework that instills a coarse-to-fine structure in Mixture-of-Experts models by varying the number of activated experts during training. The key idea is to train models with variable expert counts (randomized at different granularities: global batch, micro-batch, or layer-wise) to enable elastic inference—the ability to adapt computational cost at inference time by selecting different numbers of experts.\n\nThe paper is well-motivated: the authors demonstrate empirically that standard Top-K trained MoE models fail catastrophically when evaluated with different expert counts than those used during training. They propose a simple solution—randomize k during training—and show it works across multiple settings.\n\nStrengths:\n1. Clear problem identification with compelling empirical evidence (Figure 1 showing performance collapse)\n2. Simple, elegant solution that is well-grounded in the Matryoshka Representation Learning principle\n3. Comprehensive experimental evaluation including continual pre-training and from-scratch training\n4. Interesting analyses of router behavior (Focused Spearman Correlation, MODS) that provide mechanistic insights\n5. Practical contributions including the layer-wise inference strategies and activation budget mechanism\n6. Strong results showing the single M-MoE model matches specialist models trained for each k\n\nWeaknesses:\n1. The paper appears to have a significant error in Table 1: M-MoE-global-batch results are identical to Top-p results. This is suspicious and needs clarification—either a copy-paste error or the methods somehow produce identical results.\n2. The comparison to specialist models is somewhat unfair—the specialist models are trained for 80B tokens each, while the M-MoE model is also trained for 80B tokens total. So the comparison shows M-MoE matches specialists at a fraction of total training cost, which is a valid point but could be more clearly framed.\n3. The paper lacks comparison to other elastic inference methods beyond Top-p (e.g., FlexTron, MatFormer are mentioned in related work but not compared experimentally).\n4. The evaluation is limited to relatively small-scale benchmarks (7 tasks); no evaluation on larger reasoning or generation tasks.\n5. The layer-wise inference analysis is interesting but somewhat preliminary—only explores a few configurations.\n6. The paper doesn't discuss potential negative societal impacts (though this is common for this type of work).\n7. Some claims about \"fraction of training cost\" could be misleading—while the M-MoE model is trained for the same tokens as one specialist, the specialist models are trained independently. The comparison should be clearer about total training compute.\n\nThe paper is technically sound overall, with good experimental design and analysis. The main issues are the suspicious duplicate results in Table 1 and the limited comparison to other elastic methods. The contribution is significant—this is a practical, simple approach to enabling elastic inference in MoE models that could be widely adopted.\n\nI would rate this as a borderline accept. The core idea is good and the results are convincing, but the experimental issues and limited comparison to alternatives hold it back slightly. The paper makes a solid contribution to the field and the approach is likely to be used by practitioners.\n\nFor the review, I'll note the suspicious Table 1 issue as a major concern that needs clarification, and recommend the authors compare to more elastic inference baselines. The layer-wise inference analysis is a nice addition but could be more thorough.\n\nDecision: Accept (with reservations about the Table 1 issue, but the overall contribution is solid)\n\nConfidence: 3 (fairly confident, but the Table 1 issue is concerning and I haven't checked all details)REVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper introduces Matryoshka MoE (M-MoE), a training framework that enables elastic inference in Mixture-of-Experts (MoE) large language models. The key idea is to vary the number of activated experts during training (rather than using a fixed Top-K), instilling a coarse-to-fine functional hierarchy within the expert ensemble. The authors explore multiple randomization strategies: batch-level (global and micro-batch), layer-wise uniform sampling, and capacity-aware weighted sampling. Their most effective approach, layer-wise randomization, allows each Transformer layer to independently sample a different number of active experts during training. Experiments on a 20B-parameter MoE model (56 layers, 96 experts) in both continual pre-training and from-scratch settings demonstrate that a single M-MoE model achieves performance comparable to a suite of specialist models trained for specific expert counts, but at a fraction of the training cost. The paper also provides mechanistic analyses showing that M-MoE induces stable expert rankings (Matryoshka property) and greater expert specialization compared to fixed-k training, and demonstrates novel layer-wise inference strategies where different computational budgets are allocated to different layers.\",\n  \"Strengths\": [\n    \"Clear problem identification: The paper convincingly demonstrates the brittleness of standard Top-K trained MoE models when evaluated at different expert counts (Figure 1), which is a significant practical limitation.\",\n    \"Simple and elegant solution: The proposed M-MoE framework is conceptually straightforward—randomize k during training—yet highly effective, making it easily adoptable by practitioners.\",\n    \"Comprehensive experimental evaluation: The authors evaluate multiple strategies (global-batch, micro-batch, layer-wise, capacity-aware) in both continual pre-training and from-scratch settings, providing a thorough understanding of design choices.\",\n    \"Mechanistic insights: The Focused Spearman Correlation analysis and MODS (Mean Off-Diagonal Similarity) analysis provide compelling evidence for the Matryoshka property and expert specialization, going beyond simple performance metrics.\",\n    \"Practical contributions: The layer-wise inference analysis and the activation budget mechanism address real-world deployment concerns and open new research directions.\",\n    \"Strong results: The M-MoE model matches or exceeds specialist models across the entire range of expert counts, achieving remarkable elasticity from a single model.\"\n  ],\n  \"Weaknesses\": [\n    \"Suspicious duplicate results in Table 1: The M-MoE-global-batch and Top-p rows are identical across all metrics. This is highly unlikely to be a coincidence and suggests a copy-paste error or a fundamental issue with the experimental setup. This needs clarification.\",\n    \"Limited comparison to other elastic inference methods: The paper mentions FlexTron and MatFormer in related work but does not experimentally compare against these alternatives. Including such comparisons would strengthen the claims.\",\n    \"Narrow evaluation benchmarks: Only 7 common-sense/knowledge benchmarks are used (MMLU, ARC-C, BoolQ, HellaSwag, LogiQA, OpenBookQA, Winogrande). Evaluation on larger reasoning tasks, code generation, or open-ended generation would strengthen the findings.\",\n    \"Layer-wise inference analysis is preliminary: Only a few activation patterns are explored, and the conclusions about early layers being more critical could benefit from a more systematic search or theoretical grounding.\",\n    \"The 'fraction of training cost' claim could be misleading: While the M-MoE model is trained for the same tokens as one specialist model, the comparison to multiple specialists involves summing their training costs. This framing is valid but should be more explicitly clarified.\",\n    \"No discussion of limitations or potential negative societal impacts of the work, which is expected for this type of research but should be acknowledged.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"The results for M-MoE-global-batch in Table 1 are identical to those of Top-p. Is this a copy-paste error, or do these methods somehow produce the same results? If this is an error, please provide the correct M-MoE-global-batch results.\",\n    \"How does the computational cost of training M-MoE compare to training a single specialist model? Does the variable-k training introduce any overhead in terms of memory or compute?\",\n    \"Have you compared against other elastic inference methods such as FlexTron or MatFormer? If not, why were these excluded, and what would you expect the relative performance to be?\",\n    \"The layer-wise inference analysis shows that early layers are more critical. Could you provide a more systematic exploration of the layer-wise budget allocation space, or discuss why this asymmetry exists?\",\n    \"How sensitive is the performance of M-MoE to the choice of k_min and k_max? Have you explored different ranges?\",\n    \"The capacity-aware weighted sampling with tau=2 shows slightly better high-k performance but worse low-k performance compared to uniform sampling. Could you discuss the trade-offs and provide guidance on choosing tau?\",\n    \"How does the router's load balancing behavior differ between M-MoE and Top-k training? Are there any issues with expert utilization or collapse?\"\n  ],\n  \"Limitations\": [\n    \"The evaluation is limited to a single model architecture (20B parameters, 56 layers, 96 experts) and may not generalize to other MoE designs (e.g., different expert counts, routing mechanisms, or model sizes).\",\n    \"The benchmarks used are relatively small-scale and may not capture the full impact of elastic inference on complex tasks such as reasoning, coding, or long-context understanding.\",\n    \"The paper does not explore the interaction between M-MoE and other efficiency techniques such as quantization, distillation, or speculative decoding.\",\n    \"The layer-wise inference analysis is based on a single model and may not generalize to other architectures or training setups.\",\n    \"The paper does not discuss potential negative societal impacts, such as the environmental cost of training large MoE models or the potential for misuse of elastic inference capabilities.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 4,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 16617,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 14825,
+        "completion_tokens": 2078,
+        "reasoning_tokens": 0,
+        "total_tokens": 18695
+      },
+      "attempts": 1,
+      "response_id": "3e1fc737-e366-4a93-b833-ed475d02cc7a"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper introduces Matryoshka MoE (M-MoE), a training framework that instills a coarse-to-fine functional hierarchy in Mixture-of-Experts (MoE) models by varying the number of activated experts during training. The key insight is that standard fixed-k training makes MoE models brittle when the expert count changes at inference time. M-MoE randomizes the number of active experts during training (at global-batch, micro-batch, or per-layer granularity), forcing the router to learn a meaningful expert ranking where top experts provide essential coarse-grained capabilities and additional experts add finer detail. Experiments on a 20B-parameter MoE model show that M-MoE-layer achieves elastic performance comparable to specialist models trained for each expert count, at only a fraction of the training cost. The paper also provides mechanistic analysis showing M-MoE induces stable expert rankings (measured via Focused Spearman Correlation) and higher expert specialization (measured via Mean Off-Diagonal Similarity), and explores novel layer-wise inference strategies that allocate different computational budgets to different layers.",
+        "Strengths": [
+          "Clear problem identification with empirical evidence of fixed-k MoE brittleness",
+          "Well-designed experimental comparison across multiple M-MoE strategies (global-batch, micro-batch, layer-wise) with substantial compute budget",
+          "Strong mechanistic analysis (Focused Spearman Correlation, MODS) providing insights into why M-MoE works",
+          "Practical considerations addressed (activation budget mechanism for training efficiency, longer training scaling experiments)",
+          "Novel layer-wise inference experiments reveal that earlier layers are more critical, providing actionable insights for deployment",
+          "Paper is well-written and clearly organized with good reproducibility details (pseudo-code provided)"
+        ],
+        "Weaknesses": [
+          "Suspicious identical results between Top-p and M-MoE-global-batch in Table 1, suggesting a potential copy-paste error or misunderstanding",
+          "No direct comparison with other elastic inference methods (FlexTron, MatFormer) that are cited in related work",
+          "Limited evaluation to 7 English benchmarks; no diverse or harder tasks to validate generalizability",
+          "The claim of matching 'an entire suite of specialist models' is somewhat overstated since specialists are trained independently and the comparison doesn't account for total compute fairly",
+          "Layer-wise inference experiments explore a limited set of patterns without a systematic optimization framework",
+          "No statistical significance testing or variance analysis across seeds"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "Why are the Top-p and M-MoE-global-batch results identical in Table 1? This appears to be a copy-paste error that needs correction.",
+          "How does M-MoE compare empirically to FlexTron and MatFormer? These are cited as related work but not compared experimentally.",
+          "What is the variance of results across different random seeds? Are the performance differences between M-MoE variants statistically significant?",
+          "Does M-MoE training affect the router's Top-1 accuracy or expert load balancing compared to standard Top-k training?",
+          "Have you explored non-uniform sampling distributions for k that favor lower values (since inference typically uses fewer experts)?",
+          "How does the activation budget mechanism affect the distribution of k across layers during training? Does it introduce bias toward certain configurations?"
+        ],
+        "Limitations": [
+          "The substantial computational cost (90K GPU hours for main experiments) limits reproducibility for other research groups",
+          "Evaluation is limited to English benchmarks; performance on multilingual or code tasks is not assessed",
+          "The paper doesn't address potential issues with expert load balancing that could arise from variable-k training",
+          "The layer-wise inference analysis is descriptive rather than prescriptive; no automated method for finding optimal layer-wise allocations is provided",
+          "No discussion of potential negative societal impacts, though the method itself has limited direct societal implications"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes Matryoshka MoE (M-MoE), a training framework that instills a coarse-to-fine structure in MoE models by varying the number of activated experts during training. The core idea is that by randomizing k during training, the router learns a meaningful ranking where top experts provide coarse-grained capabilities and additional experts add finer detail, enabling elastic inference.\n\nThe paper is well-motivated and addresses a real problem - the brittleness of fixed-k MoE models when the number of activated experts changes at inference. The experimental setup is substantial (20B parameter model, 80B token continual pre-training, 90K GPU hours), and the results show clear improvements over static Top-k baselines.\n\nStrengths:\n1. Clear problem identification with empirical evidence (Figure 1 showing performance degradation)\n2. Well-designed experimental comparison across multiple strategies (global-batch, micro-batch, layer-wise)\n3. Strong analysis of router mechanics (Focused Spearman Correlation, MODS) providing mechanistic insights\n4. Practical considerations addressed (activation budget mechanism, longer training scaling)\n5. The layer-wise inference experiments provide novel insights about capacity allocation\n\nWeaknesses:\n1. The paper claims M-MoE matches \"an entire suite of specialist models\" but the comparison is somewhat unfair - the M-MoE model is trained on 80B tokens while the specialists are each trained separately. The paper acknowledges this but could provide a more direct comparison with equal total compute.\n2. The Top-p baseline results appear identical to M-MoE-global-batch in Table 1, which is suspicious and needs clarification.\n3. The paper doesn't compare against other elastic inference methods like FlexTron or MatFormer, which are cited but not empirically compared.\n4. The evaluation is limited to 7 benchmarks, all in English, and doesn't include more diverse or harder tasks.\n5. The layer-wise inference experiments only explore a limited set of patterns and don't provide a systematic optimization framework.\n\nQuestions for authors:\n1. Why are Top-p and M-MoE-global-batch results identical in Table 1? This seems like a copy-paste error.\n2. How does M-MoE compare to FlexTron or MatFormer in terms of training efficiency and final performance?\n3. What is the variance across different random seeds? Are the reported differences statistically significant?\n4. How does the router's Top-1 accuracy change during training? Does M-MoE sacrifice routing quality?\n5. What happens if k is sampled from a non-uniform distribution that favors lower values (since inference typically uses fewer experts)?\n\nLimitations:\n1. The paper doesn't discuss potential negative societal impacts, though this is a training technique with limited direct societal implications\n2. The computational cost is substantial (90K GPU hours for main experiments), which limits reproducibility\n3. The paper doesn't address potential issues with expert load balancing, which could be exacerbated by variable k training\n\nOverall, this is a solid paper with a clear contribution. The idea is simple but effective, and the analysis provides good mechanistic understanding. The main concerns are the suspicious identical results between Top-p and M-MoE-global-batch, and the lack of comparison with other elastic inference methods. I'd rate this as a borderline accept - the technical quality is good but there are some evaluation gaps.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper introduces Matryoshka MoE (M-MoE), a training framework that instills a coarse-to-fine functional hierarchy in Mixture-of-Experts (MoE) models by varying the number of activated experts during training. The key insight is that standard fixed-k training makes MoE models brittle when the expert count changes at inference time. M-MoE randomizes the number of active experts during training (at global-batch, micro-batch, or per-layer granularity), forcing the router to learn a meaningful expert ranking where top experts provide essential coarse-grained capabilities and additional experts add finer detail. Experiments on a 20B-parameter MoE model show that M-MoE-layer achieves elastic performance comparable to specialist models trained for each expert count, at only a fraction of the training cost. The paper also provides mechanistic analysis showing M-MoE induces stable expert rankings (measured via Focused Spearman Correlation) and higher expert specialization (measured via Mean Off-Diagonal Similarity), and explores novel layer-wise inference strategies that allocate different computational budgets to different layers.\",\n  \"Strengths\": [\n    \"Clear problem identification with empirical evidence of fixed-k MoE brittleness\",\n    \"Well-designed experimental comparison across multiple M-MoE strategies (global-batch, micro-batch, layer-wise) with substantial compute budget\",\n    \"Strong mechanistic analysis (Focused Spearman Correlation, MODS) providing insights into why M-MoE works\",\n    \"Practical considerations addressed (activation budget mechanism for training efficiency, longer training scaling experiments)\",\n    \"Novel layer-wise inference experiments reveal that earlier layers are more critical, providing actionable insights for deployment\",\n    \"Paper is well-written and clearly organized with good reproducibility details (pseudo-code provided)\"\n  ],\n  \"Weaknesses\": [\n    \"Suspicious identical results between Top-p and M-MoE-global-batch in Table 1, suggesting a potential copy-paste error or misunderstanding\",\n    \"No direct comparison with other elastic inference methods (FlexTron, MatFormer) that are cited in related work\",\n    \"Limited evaluation to 7 English benchmarks; no diverse or harder tasks to validate generalizability\",\n    \"The claim of matching 'an entire suite of specialist models' is somewhat overstated since specialists are trained independently and the comparison doesn't account for total compute fairly\",\n    \"Layer-wise inference experiments explore a limited set of patterns without a systematic optimization framework\",\n    \"No statistical significance testing or variance analysis across seeds\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"Why are the Top-p and M-MoE-global-batch results identical in Table 1? This appears to be a copy-paste error that needs correction.\",\n    \"How does M-MoE compare empirically to FlexTron and MatFormer? These are cited as related work but not compared experimentally.\",\n    \"What is the variance of results across different random seeds? Are the performance differences between M-MoE variants statistically significant?\",\n    \"Does M-MoE training affect the router's Top-1 accuracy or expert load balancing compared to standard Top-k training?\",\n    \"Have you explored non-uniform sampling distributions for k that favor lower values (since inference typically uses fewer experts)?\",\n    \"How does the activation budget mechanism affect the distribution of k across layers during training? Does it introduce bias toward certain configurations?\"\n  ],\n  \"Limitations\": [\n    \"The substantial computational cost (90K GPU hours for main experiments) limits reproducibility for other research groups\",\n    \"Evaluation is limited to English benchmarks; performance on multilingual or code tasks is not assessed\",\n    \"The paper doesn't address potential issues with expert load balancing that could arise from variable-k training\",\n    \"The layer-wise inference analysis is descriptive rather than prescriptive; no automated method for finding optimal layer-wise allocations is provided\",\n    \"No discussion of potential negative societal impacts, though the method itself has limited direct societal implications\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 16617,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 14825,
+        "completion_tokens": 1590,
+        "reasoning_tokens": 0,
+        "total_tokens": 18207
+      },
+      "attempts": 1,
+      "response_id": "aa175421-eb56-4085-a200-576546e9abb8"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "This paper introduces Matryoshka MoE (M-MoE), a training framework that instills a coarse-to-fine structure into Mixture-of-Experts models by randomly varying the number of activated experts during training. The authors identify that standard fixed-k Top-K routing causes brittleness when the expert count is changed at inference time. They propose several strategies for randomizing k during training, with the layer-wise approach being most effective. Experiments on a 20B parameter MoE model show that M-MoE achieves elastic inference performance comparable to specialist models trained for each k value, while only requiring training for a single token budget. The paper also provides analysis showing M-MoE induces stable expert rankings (Matryoshka property) and greater expert specialization, and demonstrates novel layer-wise inference strategies for heterogeneous computational allocation.",
+        "Strengths": [
+          "The paper identifies a practically important problem: the brittleness of fixed-k MoE training for elastic inference, which is well-motivated and empirically demonstrated.",
+          "The proposed M-MoE method is simple, elegant, and effective - randomizing k during training is a straightforward yet powerful idea.",
+          "The experimental setup is thorough, including continual pre-training and from-scratch training scenarios on a substantial 20B parameter model.",
+          "The analysis of router behavior (Focused Spearman Correlation and MODS) provides mechanistic insights into why the method works, going beyond simple performance comparisons.",
+          "The layer-wise inference analysis opens up novel deployment strategies, which is a unique contribution.",
+          "The paper is well-written and clearly organized, with helpful pseudo-code in the appendix.",
+          "The exploration of multiple randomization strategies (global-batch, micro-batch, layer-wise, capacity-aware sampling) is comprehensive."
+        ],
+        "Weaknesses": [
+          "The claim that M-MoE matches the performance of 'an entire suite of specialist models' is somewhat overstated - at k=6, M-MoE-layer (56.72 avg) does not match the specialist Top-k k=6 (57.03 avg), and at k=2, M-MoE-layer (56.11) does not match the specialist Top-k k=2 (55.73, actually slightly lower). The performance gap should be acknowledged more clearly.",
+          "No comparison with existing elastic inference methods such as Flextron or MatFormer, which are cited but not experimentally compared. This is a significant gap for establishing the contribution relative to prior work.",
+          "The improvements over Top-p (probability-based routing) are relatively modest in some configurations, and it's unclear if the differences are statistically significant given no variance/error bars are reported.",
+          "The paper does not address potential load balancing issues across experts when using variable k during training, which is a known challenge in MoE training and could affect the practical applicability.",
+          "Evaluation is limited to 7 English benchmarks; no analysis on multilingual, code, or reasoning-heavy tasks that are common in modern LLM evaluation.",
+          "The capacity-aware weighted sampling (τ=2) shows mixed results - it improves performance at higher k but degrades at k=1 compared to uniform sampling, and the paper does not provide a clear explanation or recommendation for when to use it.",
+          "No ablation on the range of k values (e.g., [1,4] vs [1,8]) or the impact of the sampling distribution shape."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 4,
+        "Questions": [
+          "How does M-MoE compare to Flextron and MatFormer in terms of elastic inference performance? These are cited but not experimentally compared.",
+          "What is the statistical significance of the performance differences between M-MoE variants and Top-p? Are the differences within noise given the small benchmark variations?",
+          "How does variable k during training affect expert load balancing? Did you observe any token dropping or routing collapse issues, and how were these handled?",
+          "What happens if the sampling range is different, e.g., k ∈ [1,4] or [1,8]? Does the method remain effective?",
+          "Why does the capacity-aware weighted sampling with τ=2 degrade performance at k=1? Is there a trade-off that needs to be tuned?",
+          "How does the M-MoE model perform on more diverse benchmarks such as code generation, mathematical reasoning, or multilingual tasks?",
+          "Can the layer-wise inference strategy be combined with other efficiency techniques like token pruning or layer skipping for further gains?"
+        ],
+        "Limitations": [
+          "The paper does not compare against existing elastic inference methods (Flextron, MatFormer), limiting the assessment of relative contribution.",
+          "The evaluation is restricted to a specific model size (20B) and training budget (80B tokens continual pre-training), and it's unclear how well the findings generalize to other scales or training regimes.",
+          "No analysis of potential negative societal impacts, though this is a training methodology paper with limited direct societal implications.",
+          "The paper does not address the environmental cost of training (180,000 GPU hours for base model + 90,000 for experiments), which could be noted for transparency.",
+          "The sampling strategies for k are relatively simple (uniform or power-law); more sophisticated adaptive sampling based on training dynamics or layer importance might yield further improvements."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 4,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes Matryoshka MoE (M-MoE), a training framework that instills a coarse-to-fine structure into Mixture-of-Experts models by randomly varying the number of activated experts during training. The key idea is to train the model with variable expert counts (k ∈ [1,6]) so that at inference time, the model can be deployed with any number of experts without significant performance degradation. The authors explore several strategies: batch-level randomization, micro-batch randomization, and layer-wise randomization, with the layer-wise approach being the most effective.\n\nThe paper has several notable strengths:\n1. The problem is well-motivated - elastic inference for MoE models is practically important, and the observed brittleness of fixed-k training is a real issue.\n2. The proposed method is simple and elegant - just randomize k during training.\n3. The experimental setup is thorough, including continual pre-training and from-scratch training scenarios.\n4. The analysis of router behavior (Focused Spearman Correlation and MODS) provides mechanistic insights into why the method works.\n5. The layer-wise inference analysis opens up new possibilities for heterogeneous deployment.\n\nHowever, there are several weaknesses and concerns:\n1. The comparison to specialist models is somewhat unfair - the M-MoE model is trained for 80B tokens, same as each specialist, but the claim is that M-MoE matches the performance of \"an entire suite of specialist models.\" Looking at the numbers, M-MoE-layer at k=6 (56.72 avg) does not match the specialist Top-k k=6 (57.03 avg). The M-MoE model performs worse than specialists at their native k values, which is expected but should be acknowledged more clearly.\n2. The paper lacks comparison with other elastic inference methods like Flextron or MatFormer, which are cited but not experimentally compared.\n3. The improvements over Top-p (probability-based routing) are relatively modest in some cases.\n4. The paper does not discuss potential issues with load balancing across experts when using variable k, which is a known challenge in MoE training.\n5. The evaluation is limited to 7 benchmarks, all in English, and no analysis of training stability or convergence is provided.\n6. The capacity-aware weighted sampling with τ=2 shows mixed results - better at higher k but worse at k=1 compared to uniform sampling.\n\nThe writing is generally clear, but there are some issues:\n- The paper structure is good, but some sections could be more concise.\n- The tables are dense and could benefit from better formatting.\n- The pseudo-code in the appendix is helpful but could be more detailed.\n\nOriginality: The idea of randomizing k during training for elastic inference is novel and builds on MRL principles. The layer-wise randomization strategy is a creative extension.\n\nQuality: The experimental setup is solid with a 20B parameter model, but the lack of comparison with existing elastic methods (Flextron, MatFormer) is a significant gap. The analysis of router behavior is thoughtful.\n\nClarity: The paper is well-written and easy to follow. The motivations and method descriptions are clear.\n\nSignificance: The work addresses an important practical problem (elastic MoE inference) and provides a simple yet effective solution. The layer-wise inference analysis is a nice contribution.\n\nOverall, this is a solid paper with a simple and effective idea. The main weaknesses are the lack of comparison with existing elastic methods and the somewhat overstated claim about matching specialist performance. I would lean toward acceptance with revisions.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper introduces Matryoshka MoE (M-MoE), a training framework that instills a coarse-to-fine structure into Mixture-of-Experts models by randomly varying the number of activated experts during training. The authors identify that standard fixed-k Top-K routing causes brittleness when the expert count is changed at inference time. They propose several strategies for randomizing k during training, with the layer-wise approach being most effective. Experiments on a 20B parameter MoE model show that M-MoE achieves elastic inference performance comparable to specialist models trained for each k value, while only requiring training for a single token budget. The paper also provides analysis showing M-MoE induces stable expert rankings (Matryoshka property) and greater expert specialization, and demonstrates novel layer-wise inference strategies for heterogeneous computational allocation.\",\n  \"Strengths\": [\n    \"The paper identifies a practically important problem: the brittleness of fixed-k MoE training for elastic inference, which is well-motivated and empirically demonstrated.\",\n    \"The proposed M-MoE method is simple, elegant, and effective - randomizing k during training is a straightforward yet powerful idea.\",\n    \"The experimental setup is thorough, including continual pre-training and from-scratch training scenarios on a substantial 20B parameter model.\",\n    \"The analysis of router behavior (Focused Spearman Correlation and MODS) provides mechanistic insights into why the method works, going beyond simple performance comparisons.\",\n    \"The layer-wise inference analysis opens up novel deployment strategies, which is a unique contribution.\",\n    \"The paper is well-written and clearly organized, with helpful pseudo-code in the appendix.\",\n    \"The exploration of multiple randomization strategies (global-batch, micro-batch, layer-wise, capacity-aware sampling) is comprehensive.\"\n  ],\n  \"Weaknesses\": [\n    \"The claim that M-MoE matches the performance of 'an entire suite of specialist models' is somewhat overstated - at k=6, M-MoE-layer (56.72 avg) does not match the specialist Top-k k=6 (57.03 avg), and at k=2, M-MoE-layer (56.11) does not match the specialist Top-k k=2 (55.73, actually slightly lower). The performance gap should be acknowledged more clearly.\",\n    \"No comparison with existing elastic inference methods such as Flextron or MatFormer, which are cited but not experimentally compared. This is a significant gap for establishing the contribution relative to prior work.\",\n    \"The improvements over Top-p (probability-based routing) are relatively modest in some configurations, and it's unclear if the differences are statistically significant given no variance/error bars are reported.\",\n    \"The paper does not address potential load balancing issues across experts when using variable k during training, which is a known challenge in MoE training and could affect the practical applicability.\",\n    \"Evaluation is limited to 7 English benchmarks; no analysis on multilingual, code, or reasoning-heavy tasks that are common in modern LLM evaluation.\",\n    \"The capacity-aware weighted sampling (τ=2) shows mixed results - it improves performance at higher k but degrades at k=1 compared to uniform sampling, and the paper does not provide a clear explanation or recommendation for when to use it.\",\n    \"No ablation on the range of k values (e.g., [1,4] vs [1,8]) or the impact of the sampling distribution shape.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 4,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"How does M-MoE compare to Flextron and MatFormer in terms of elastic inference performance? These are cited but not experimentally compared.\",\n    \"What is the statistical significance of the performance differences between M-MoE variants and Top-p? Are the differences within noise given the small benchmark variations?\",\n    \"How does variable k during training affect expert load balancing? Did you observe any token dropping or routing collapse issues, and how were these handled?\",\n    \"What happens if the sampling range is different, e.g., k ∈ [1,4] or [1,8]? Does the method remain effective?\",\n    \"Why does the capacity-aware weighted sampling with τ=2 degrade performance at k=1? Is there a trade-off that needs to be tuned?\",\n    \"How does the M-MoE model perform on more diverse benchmarks such as code generation, mathematical reasoning, or multilingual tasks?\",\n    \"Can the layer-wise inference strategy be combined with other efficiency techniques like token pruning or layer skipping for further gains?\"\n  ],\n  \"Limitations\": [\n    \"The paper does not compare against existing elastic inference methods (Flextron, MatFormer), limiting the assessment of relative contribution.\",\n    \"The evaluation is restricted to a specific model size (20B) and training budget (80B tokens continual pre-training), and it's unclear how well the findings generalize to other scales or training regimes.\",\n    \"No analysis of potential negative societal impacts, though this is a training methodology paper with limited direct societal implications.\",\n    \"The paper does not address the environmental cost of training (180,000 GPU hours for base model + 90,000 for experiments), which could be noted for transparency.\",\n    \"The sampling strategies for k are relatively simple (uniform or power-law); more sophisticated adaptive sampling based on training dynamics or layer importance might yield further improvements.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 4,\n  \"Contribution\": 4,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 16617,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 14825,
+        "completion_tokens": 1913,
+        "reasoning_tokens": 0,
+        "total_tokens": 18530
+      },
+      "attempts": 1,
+      "response_id": "c3042631-183d-4643-a3b8-d5120ff053b9"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper introduces Matryoshka MoE (M-MoE), a training framework that instills a coarse-to-fine structure in Mixture-of-Experts (MoE) models by varying the number of activated experts during training. The authors identify that standard fixed Top-K routing makes MoE models brittle to inference-time changes in expert count. They propose several strategies, including batch-level and layer-wise randomization of expert counts, with layer-wise being most effective. Experiments on a 20B parameter MoE model show that M-MoE achieves elastic inference capabilities, matching or exceeding specialist models trained for specific expert counts, while training only a single model. The paper also provides analysis showing M-MoE induces stable expert rankings and greater expert specialization, and enables novel layer-wise inference strategies.",
+        "Strengths": [
+          "Clear motivation with empirical evidence of the rigidity problem in fixed-k MoE models",
+          "Well-designed exploration of different granularities for applying the Matryoshka principle",
+          "Substantial experimental validation including both continual pre-training and from-scratch training",
+          "Interesting analysis of router mechanics (nested routing behavior and expert specialization)",
+          "Novel layer-wise inference strategies enabled by the training method",
+          "Practical contributions including activation budget mechanism for training efficiency",
+          "Good reproducibility details with pseudo-code for core components"
+        ],
+        "Weaknesses": [
+          "Suspicious identical results between Top-p and M-MoE-global-batch in Table 1, suggesting a potential error or copy-paste mistake",
+          "Performance gains over specialist models are modest at higher expert counts (e.g., M-MoE-layer at k=6: 56.72 vs specialist k=6: 57.03)",
+          "No comparison against existing elastic inference methods such as FlexTron or MatFormer",
+          "Limited evaluation benchmarks (only commonsense reasoning); no code, math, or more complex reasoning tasks",
+          "The capacity-aware weighted sampling (τ=2) shows mixed results, performing worse at k=1 compared to uniform sampling, and the paper doesn't deeply analyze why",
+          "The claim about 'fraction of training cost' needs more careful quantification - the total compute for training all specialists isn't clearly specified",
+          "Limited analysis of why layer-wise randomization outperforms micro-batch randomization"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "Why do Top-p and M-MoE-global-batch produce exactly identical results in Table 1? This seems highly suspicious and could indicate an error in the evaluation or reporting.",
+          "How does M-MoE compare against other elastic inference approaches like FlexTron or MatFormer, which also aim to provide flexible model configurations?",
+          "What is the total training compute for the specialist models compared to the single M-MoE model? The paper claims 'a fraction of the total training cost' but doesn't quantify this clearly.",
+          "Why does capacity-aware weighted sampling (τ=2) perform worse at k=1 compared to uniform sampling? This seems counterintuitive and deserves more analysis.",
+          "How does the model perform on more complex tasks like code generation or mathematical reasoning, which are important for real-world deployment?",
+          "What is the training time overhead of M-MoE compared to standard Top-k training? The stochastic expert counts may affect batching and memory allocation.",
+          "How sensitive is the method to the choice of k_min and k_max? Would a different range (e.g., [1,8] or [2,6]) change the conclusions?",
+          "Could the layer-wise inference patterns discovered in Section 4.4 be used to develop an automatic method for finding optimal layer-wise budgets?"
+        ],
+        "Limitations": [
+          "The evaluation is limited to English commonsense reasoning benchmarks, which may not fully capture the capabilities of the model across diverse tasks",
+          "The method is only tested on one model size (20B parameters) and one architecture; generalization to other scales and architectures is unclear",
+          "The training setup is computationally expensive (90,000 GPU hours for main experiments), which may limit reproducibility for smaller research groups",
+          "The paper doesn't address potential negative societal impacts of elastic inference, such as the risk of users deploying lower-quality configurations unknowingly",
+          "The layer-wise inference analysis is limited to a few hand-crafted patterns; more systematic exploration would strengthen the findings",
+          "The paper doesn't discuss potential failure modes or limitations of the elastic approach, such as when the model might not gracefully degrade"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces Matryoshka MoE (M-MoE), a training framework that makes MoE models elastic by varying the number of activated experts during training. The core idea is compelling and timely, addressing a real limitation of fixed Top-K routing. The paper is generally well-written and the experimental setup is substantial (20B parameter model, 80B tokens continual pre-training).\n\nKey strengths:\n1. Clear motivation with empirical evidence of the rigidity problem (Figure 1)\n2. Well-designed exploration of different granularities (batch-level vs layer-wise)\n3. Strong experimental validation including both continual and from-scratch training\n4. Interesting analysis of router mechanics (nested routing, expert specialization)\n5. Novel layer-wise inference strategies enabled by the method\n6. Practical considerations (activation budget mechanism, longer training)\n\nKey weaknesses:\n1. The Top-p baseline appears to have identical results to M-MoE-global-batch, which is suspicious and could indicate a copy-paste error or something wrong with the evaluation\n2. The capacity-aware weighted sampling (τ=2) shows mixed results - better at higher k but worse at k=1 compared to uniform sampling\n3. The performance gains over specialist models are modest (e.g., M-MoE-layer at k=6: 56.72 vs specialist k=6: 57.03)\n4. Limited analysis of why layer-wise works better than micro-batch\n5. The paper doesn't compare against other elastic inference methods like FlexTron or MatFormer\n6. Evaluation is limited to commonsense reasoning benchmarks; no code/math or more complex reasoning tasks\n7. The claim about \"fraction of training cost\" needs more careful analysis - while M-MoE trains one model vs multiple specialists, the total compute for specialists isn't clearly quantified\n\nThe work is original and addresses an important problem. The experimental methodology is sound overall, though there are some concerns about the Top-p results. The paper is clearly written and well-organized. The significance is moderate-to-high for the MoE community.\n\nI would rate this as a borderline accept. The core idea is good and the experiments are reasonably comprehensive, but there are some concerns about the suspicious Top-p results, modest performance gains, and limited comparison to existing elastic inference methods.\n\nSoundness: 3 (good) - generally sound methodology, but the Top-p issue and modest gains are concerns\nPresentation: 3 (good) - clear writing, well-organized, but some figures/tables could be better explained\nContribution: 3 (good) - novel idea with practical implications, but not groundbreaking\nOverall: 6 (weak accept) - technically solid with moderate impact, but with some concerns\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper introduces Matryoshka MoE (M-MoE), a training framework that instills a coarse-to-fine structure in Mixture-of-Experts (MoE) models by varying the number of activated experts during training. The authors identify that standard fixed Top-K routing makes MoE models brittle to inference-time changes in expert count. They propose several strategies, including batch-level and layer-wise randomization of expert counts, with layer-wise being most effective. Experiments on a 20B parameter MoE model show that M-MoE achieves elastic inference capabilities, matching or exceeding specialist models trained for specific expert counts, while training only a single model. The paper also provides analysis showing M-MoE induces stable expert rankings and greater expert specialization, and enables novel layer-wise inference strategies.\",\n    \"Strengths\": [\n        \"Clear motivation with empirical evidence of the rigidity problem in fixed-k MoE models\",\n        \"Well-designed exploration of different granularities for applying the Matryoshka principle\",\n        \"Substantial experimental validation including both continual pre-training and from-scratch training\",\n        \"Interesting analysis of router mechanics (nested routing behavior and expert specialization)\",\n        \"Novel layer-wise inference strategies enabled by the training method\",\n        \"Practical contributions including activation budget mechanism for training efficiency\",\n        \"Good reproducibility details with pseudo-code for core components\"\n    ],\n    \"Weaknesses\": [\n        \"Suspicious identical results between Top-p and M-MoE-global-batch in Table 1, suggesting a potential error or copy-paste mistake\",\n        \"Performance gains over specialist models are modest at higher expert counts (e.g., M-MoE-layer at k=6: 56.72 vs specialist k=6: 57.03)\",\n        \"No comparison against existing elastic inference methods such as FlexTron or MatFormer\",\n        \"Limited evaluation benchmarks (only commonsense reasoning); no code, math, or more complex reasoning tasks\",\n        \"The capacity-aware weighted sampling (τ=2) shows mixed results, performing worse at k=1 compared to uniform sampling, and the paper doesn't deeply analyze why\",\n        \"The claim about 'fraction of training cost' needs more careful quantification - the total compute for training all specialists isn't clearly specified\",\n        \"Limited analysis of why layer-wise randomization outperforms micro-batch randomization\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"Why do Top-p and M-MoE-global-batch produce exactly identical results in Table 1? This seems highly suspicious and could indicate an error in the evaluation or reporting.\",\n        \"How does M-MoE compare against other elastic inference approaches like FlexTron or MatFormer, which also aim to provide flexible model configurations?\",\n        \"What is the total training compute for the specialist models compared to the single M-MoE model? The paper claims 'a fraction of the total training cost' but doesn't quantify this clearly.\",\n        \"Why does capacity-aware weighted sampling (τ=2) perform worse at k=1 compared to uniform sampling? This seems counterintuitive and deserves more analysis.\",\n        \"How does the model perform on more complex tasks like code generation or mathematical reasoning, which are important for real-world deployment?\",\n        \"What is the training time overhead of M-MoE compared to standard Top-k training? The stochastic expert counts may affect batching and memory allocation.\",\n        \"How sensitive is the method to the choice of k_min and k_max? Would a different range (e.g., [1,8] or [2,6]) change the conclusions?\",\n        \"Could the layer-wise inference patterns discovered in Section 4.4 be used to develop an automatic method for finding optimal layer-wise budgets?\"\n    ],\n    \"Limitations\": [\n        \"The evaluation is limited to English commonsense reasoning benchmarks, which may not fully capture the capabilities of the model across diverse tasks\",\n        \"The method is only tested on one model size (20B parameters) and one architecture; generalization to other scales and architectures is unclear\",\n        \"The training setup is computationally expensive (90,000 GPU hours for main experiments), which may limit reproducibility for smaller research groups\",\n        \"The paper doesn't address potential negative societal impacts of elastic inference, such as the risk of users deploying lower-quality configurations unknowingly\",\n        \"The layer-wise inference analysis is limited to a few hand-crafted patterns; more systematic exploration would strengthen the findings\",\n        \"The paper doesn't discuss potential failure modes or limitations of the elastic approach, such as when the model might not gracefully degrade\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 16617,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 14825,
+        "completion_tokens": 1595,
+        "reasoning_tokens": 0,
+        "total_tokens": 18212
+      },
+      "attempts": 1,
+      "response_id": "5915dfa9-0cda-41e3-b34b-fe3d5fd64fd1"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 5,
+      "Reject": 0
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          3,
+          3,
+          3,
+          4,
+          4
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          3,
+          3,
+          4,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Significance": {
+        "values": [
+          3,
+          4,
+          3,
+          4,
+          3
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          3,
+          3,
+          4,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Contribution": {
+        "values": [
+          3,
+          4,
+          3,
+          4,
+          3
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Overall": {
+        "values": [
+          5,
+          7,
+          6,
+          7,
+          6
+        ],
+        "mean": 6.2,
+        "rounded_mean": 6,
+        "population_sd": 0.748,
+        "min": 5,
+        "max": 7
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "This paper introduces Matryoshka MoE (M-MoE), a training framework that randomizes the number of activated experts during training to enable elastic inference in Mixture-of-Experts (MoE) language models. Standard fixed-k Top-K routing is shown to be brittle when the expert count changes at inference time. M-MoE instills a coarse-to-fine hierarchy by training with variable k values, forcing the router to learn a meaningful expert ranking. The authors explore several strategies (batch-level, micro-batch, layer-wise, and capacity-aware sampling) and demonstrate on a 20B-parameter MoE model that a single M-MoE model achieves performance comparable to a suite of specialist models trained for specific expert counts. The paper also provides mechanistic analysis (Focused Spearman Correlation, MODS) showing improved expert ranking stability and specialization, and explores novel layer-wise inference strategies for heterogeneous computational allocation.",
+      "Strengths": [
+        "Well-motivated problem: The brittleness of fixed-k MoE models under inference-time expert count changes is clearly demonstrated and practically relevant.",
+        "Simple and elegant method: Randomizing k during training is straightforward, conceptually clear, and easily adoptable.",
+        "Comprehensive experimental setup: Multiple M-MoE variants are evaluated in both continual pre-training and from-scratch settings on a substantial 20B model.",
+        "Mechanistic insights: Focused Spearman Correlation and MODS analyses provide compelling evidence for the Matryoshka property and expert specialization.",
+        "Practical contributions: Layer-wise inference strategies and the activation budget mechanism address real deployment concerns and open new research directions.",
+        "Honest reporting: Training/inference setup details are provided, and the paper acknowledges limitations in scale and scope."
+      ],
+      "Weaknesses": [
+        "Suspicious duplicate results: In Table 1, the M-MoE-global-batch row is numerically identical to the Top-p row across all metrics, which strongly suggests a copy-paste error or a fundamental issue. This must be clarified and corrected.",
+        "No comparison with existing elastic inference methods (e.g., FlexTron, MatFormer) that are cited in related work, limiting the assessment of relative contribution.",
+        "Limited evaluation benchmarks: Only 7 English commonsense/knowledge benchmarks are used; no code, math, or complex reasoning tasks are included.",
+        "Modest improvements over Top-p: The Top-p baseline performs competitively, and the gains of M-MoE-layer are relatively small in several configurations.",
+        "Limited exploration of design choices: The range of k values, sampling distributions (beyond tau=2), and systematic layer-wise budget optimization are not thoroughly investigated.",
+        "The claim of matching 'an entire suite of specialist models' is somewhat overstated; at some k values (e.g., k=6), the specialist model still performs slightly better.",
+        "No statistical significance testing or variance analysis across seeds is reported."
+      ],
+      "Originality": 3,
+      "Quality": 3,
+      "Clarity": 3,
+      "Significance": 3,
+      "Questions": [
+        "The M-MoE-global-batch results in Table 1 are identical to the Top-p results. Is this a copy-paste error, or is there a methodological reason for this exact match? Please provide the correct M-MoE-global-batch results and explain the discrepancy.",
+        "How does M-MoE compare empirically to existing elastic inference methods such as FlexTron or MatFormer? These are cited in related work but not experimentally compared.",
+        "What is the statistical significance of the performance differences between M-MoE variants and Top-p? Are the reported differences within noise given the small benchmark variations?",
+        "How does variable-k training affect expert load balancing? Were there any token dropping or routing collapse issues, and how were they handled?",
+        "How sensitive is the method to the choice of k_min and k_max? Would a different range (e.g., [1,4] or [1,8]) change the conclusions?",
+        "Why does capacity-aware weighted sampling (tau=2) degrade performance at k=1 compared to uniform sampling? What is the recommended trade-off and guidance for choosing tau?",
+        "How does the method perform on more diverse benchmarks such as code generation, mathematical reasoning, or multilingual tasks?",
+        "What is the training time overhead of M-MoE compared to standard Top-k training? The stochastic expert counts may affect batching and memory allocation.",
+        "Can the layer-wise inference patterns be discovered automatically, or is a more systematic optimization framework needed to find optimal layer-wise budgets?"
+      ],
+      "Limitations": [
+        "The evaluation is limited to a single model size (20B) and architecture (56 layers, 96 experts); generalization to other scales, expert counts, or routing mechanisms is unclear.",
+        "The benchmarks used are relatively small-scale English commonsense tasks; performance on code, math, multilingual, or long-context tasks is not assessed.",
+        "The paper does not compare against other elastic inference methods (FlexTron, MatFormer), limiting the assessment of relative contribution.",
+        "The layer-wise inference analysis is based on a single model and a limited set of hand-crafted patterns; more systematic exploration is needed.",
+        "The paper does not address potential expert load balancing issues that could arise from variable-k training in production deployments.",
+        "The substantial computational cost (90,000 GPU hours for main experiments) limits reproducibility for smaller research groups.",
+        "The paper does not discuss potential negative societal impacts, such as users unknowingly receiving lower-quality outputs when computational budgets are reduced for cost savings, which could lead to biased or incorrect results in critical applications.",
+        "The interaction of M-MoE with other efficiency techniques (quantization, distillation, speculative decoding) is not explored."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 3,
+      "Contribution": 3,
+      "Overall": 6,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "THOUGHT:\nThe paper proposes a practical and novel method for elastic inference in MoE models by randomizing the number of active experts during training. All five reviewers agree the problem is well-motivated, the method is elegant, and the experimental work is substantial. The main concerns are: (1) a suspicious duplication between Top-p and M-MoE-global-batch results in Table 1, (2) lack of comparison with existing elastic inference methods (FlexTron, MatFormer), (3) limited benchmark diversity (no code/math), and (4) modest improvements over Top-p. All reviewers recommend Accept (with scores 5, 7, 6, 7, 6). The consensus is that the paper is technically solid with a clear contribution, but the duplicate results issue must be clarified. I will write a meta-review that aggregates these views, highlights the consensus, and recommends Accept, while noting the critical clarifications needed.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper introduces Matryoshka MoE (M-MoE), a training framework that randomizes the number of activated experts during training to enable elastic inference in Mixture-of-Experts (MoE) language models. Standard fixed-k Top-K routing is shown to be brittle when the expert count changes at inference time. M-MoE instills a coarse-to-fine hierarchy by training with variable k values, forcing the router to learn a meaningful expert ranking. The authors explore several strategies (batch-level, micro-batch, layer-wise, and capacity-aware sampling) and demonstrate on a 20B-parameter MoE model that a single M-MoE model achieves performance comparable to a suite of specialist models trained for specific expert counts. The paper also provides mechanistic analysis (Focused Spearman Correlation, MODS) showing improved expert ranking stability and specialization, and explores novel layer-wise inference strategies for heterogeneous computational allocation.\",\n  \"Strengths\": [\n    \"Well-motivated problem: The brittleness of fixed-k MoE models under inference-time expert count changes is clearly demonstrated and practically relevant.\",\n    \"Simple and elegant method: Randomizing k during training is straightforward, conceptually clear, and easily adoptable.\",\n    \"Comprehensive experimental setup: Multiple M-MoE variants are evaluated in both continual pre-training and from-scratch settings on a substantial 20B model.\",\n    \"Mechanistic insights: Focused Spearman Correlation and MODS analyses provide compelling evidence for the Matryoshka property and expert specialization.\",\n    \"Practical contributions: Layer-wise inference strategies and the activation budget mechanism address real deployment concerns and open new research directions.\",\n    \"Honest reporting: Training/inference setup details are provided, and the paper acknowledges limitations in scale and scope.\"\n  ],\n  \"Weaknesses\": [\n    \"Suspicious duplicate results: In Table 1, the M-MoE-global-batch row is numerically identical to the Top-p row across all metrics, which strongly suggests a copy-paste error or a fundamental issue. This must be clarified and corrected.\",\n    \"No comparison with existing elastic inference methods (e.g., FlexTron, MatFormer) that are cited in related work, limiting the assessment of relative contribution.\",\n    \"Limited evaluation benchmarks: Only 7 English commonsense/knowledge benchmarks are used; no code, math, or complex reasoning tasks are included.\",\n    \"Modest improvements over Top-p: The Top-p baseline performs competitively, and the gains of M-MoE-layer are relatively small in several configurations.\",\n    \"Limited exploration of design choices: The range of k values, sampling distributions (beyond tau=2), and systematic layer-wise budget optimization are not thoroughly investigated.\",\n    \"The claim of matching 'an entire suite of specialist models' is somewhat overstated; at some k values (e.g., k=6), the specialist model still performs slightly better.\",\n    \"No statistical significance testing or variance analysis across seeds is reported.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"The M-MoE-global-batch results in Table 1 are identical to the Top-p results. Is this a copy-paste error, or is there a methodological reason for this exact match? Please provide the correct M-MoE-global-batch results and explain the discrepancy.\",\n    \"How does M-MoE compare empirically to existing elastic inference methods such as FlexTron or MatFormer? These are cited in related work but not experimentally compared.\",\n    \"What is the statistical significance of the performance differences between M-MoE variants and Top-p? Are the reported differences within noise given the small benchmark variations?\",\n    \"How does variable-k training affect expert load balancing? Were there any token dropping or routing collapse issues, and how were they handled?\",\n    \"How sensitive is the method to the choice of k_min and k_max? Would a different range (e.g., [1,4] or [1,8]) change the conclusions?\",\n    \"Why does capacity-aware weighted sampling (tau=2) degrade performance at k=1 compared to uniform sampling? What is the recommended trade-off and guidance for choosing tau?\",\n    \"How does the method perform on more diverse benchmarks such as code generation, mathematical reasoning, or multilingual tasks?\",\n    \"What is the training time overhead of M-MoE compared to standard Top-k training? The stochastic expert counts may affect batching and memory allocation.\",\n    \"Can the layer-wise inference patterns be discovered automatically, or is a more systematic optimization framework needed to find optimal layer-wise budgets?\"\n  ],\n  \"Limitations\": [\n    \"The evaluation is limited to a single model size (20B) and architecture (56 layers, 96 experts); generalization to other scales, expert counts, or routing mechanisms is unclear.\",\n    \"The benchmarks used are relatively small-scale English commonsense tasks; performance on code, math, multilingual, or long-context tasks is not assessed.\",\n    \"The paper does not compare against other elastic inference methods (FlexTron, MatFormer), limiting the assessment of relative contribution.\",\n    \"The layer-wise inference analysis is based on a single model and a limited set of hand-crafted patterns; more systematic exploration is needed.\",\n    \"The paper does not address potential expert load balancing issues that could arise from variable-k training in production deployments.\",\n    \"The substantial computational cost (90,000 GPU hours for main experiments) limits reproducibility for smaller research groups.\",\n    \"The paper does not discuss potential negative societal impacts, such as users unknowingly receiving lower-quality outputs when computational budgets are reduced for cost savings, which could lead to biased or incorrect results in critical applications.\",\n    \"The interaction of M-MoE with other efficiency techniques (quantization, distillation, speculative decoding) is not explored.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 7402,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 7402,
+      "completion_tokens": 1476,
+      "reasoning_tokens": 0,
+      "total_tokens": 8878
+    },
+    "attempts": 1,
+    "response_id": "9340447f-7e6b-4b7d-a830-ae9d8c713f6a"
+  },
+  "final_review": {
+    "Summary": "This paper introduces Matryoshka MoE (M-MoE), a training framework that randomizes the number of activated experts during training to enable elastic inference in Mixture-of-Experts (MoE) language models. Standard fixed-k Top-K routing is shown to be brittle when the expert count changes at inference time. M-MoE instills a coarse-to-fine hierarchy by training with variable k values, forcing the router to learn a meaningful expert ranking. The authors explore several strategies (batch-level, micro-batch, layer-wise, and capacity-aware sampling) and demonstrate on a 20B-parameter MoE model that a single M-MoE model achieves performance comparable to a suite of specialist models trained for specific expert counts. The paper also provides mechanistic analysis (Focused Spearman Correlation, MODS) showing improved expert ranking stability and specialization, and explores novel layer-wise inference strategies for heterogeneous computational allocation.",
+    "Strengths": [
+      "Well-motivated problem: The brittleness of fixed-k MoE models under inference-time expert count changes is clearly demonstrated and practically relevant.",
+      "Simple and elegant method: Randomizing k during training is straightforward, conceptually clear, and easily adoptable.",
+      "Comprehensive experimental setup: Multiple M-MoE variants are evaluated in both continual pre-training and from-scratch settings on a substantial 20B model.",
+      "Mechanistic insights: Focused Spearman Correlation and MODS analyses provide compelling evidence for the Matryoshka property and expert specialization.",
+      "Practical contributions: Layer-wise inference strategies and the activation budget mechanism address real deployment concerns and open new research directions.",
+      "Honest reporting: Training/inference setup details are provided, and the paper acknowledges limitations in scale and scope."
+    ],
+    "Weaknesses": [
+      "Suspicious duplicate results: In Table 1, the M-MoE-global-batch row is numerically identical to the Top-p row across all metrics, which strongly suggests a copy-paste error or a fundamental issue. This must be clarified and corrected.",
+      "No comparison with existing elastic inference methods (e.g., FlexTron, MatFormer) that are cited in related work, limiting the assessment of relative contribution.",
+      "Limited evaluation benchmarks: Only 7 English commonsense/knowledge benchmarks are used; no code, math, or complex reasoning tasks are included.",
+      "Modest improvements over Top-p: The Top-p baseline performs competitively, and the gains of M-MoE-layer are relatively small in several configurations.",
+      "Limited exploration of design choices: The range of k values, sampling distributions (beyond tau=2), and systematic layer-wise budget optimization are not thoroughly investigated.",
+      "The claim of matching 'an entire suite of specialist models' is somewhat overstated; at some k values (e.g., k=6), the specialist model still performs slightly better.",
+      "No statistical significance testing or variance analysis across seeds is reported."
+    ],
+    "Originality": 3,
+    "Quality": 3,
+    "Clarity": 3,
+    "Significance": 3,
+    "Questions": [
+      "The M-MoE-global-batch results in Table 1 are identical to the Top-p results. Is this a copy-paste error, or is there a methodological reason for this exact match? Please provide the correct M-MoE-global-batch results and explain the discrepancy.",
+      "How does M-MoE compare empirically to existing elastic inference methods such as FlexTron or MatFormer? These are cited in related work but not experimentally compared.",
+      "What is the statistical significance of the performance differences between M-MoE variants and Top-p? Are the reported differences within noise given the small benchmark variations?",
+      "How does variable-k training affect expert load balancing? Were there any token dropping or routing collapse issues, and how were they handled?",
+      "How sensitive is the method to the choice of k_min and k_max? Would a different range (e.g., [1,4] or [1,8]) change the conclusions?",
+      "Why does capacity-aware weighted sampling (tau=2) degrade performance at k=1 compared to uniform sampling? What is the recommended trade-off and guidance for choosing tau?",
+      "How does the method perform on more diverse benchmarks such as code generation, mathematical reasoning, or multilingual tasks?",
+      "What is the training time overhead of M-MoE compared to standard Top-k training? The stochastic expert counts may affect batching and memory allocation.",
+      "Can the layer-wise inference patterns be discovered automatically, or is a more systematic optimization framework needed to find optimal layer-wise budgets?"
+    ],
+    "Limitations": [
+      "The evaluation is limited to a single model size (20B) and architecture (56 layers, 96 experts); generalization to other scales, expert counts, or routing mechanisms is unclear.",
+      "The benchmarks used are relatively small-scale English commonsense tasks; performance on code, math, multilingual, or long-context tasks is not assessed.",
+      "The paper does not compare against other elastic inference methods (FlexTron, MatFormer), limiting the assessment of relative contribution.",
+      "The layer-wise inference analysis is based on a single model and a limited set of hand-crafted patterns; more systematic exploration is needed.",
+      "The paper does not address potential expert load balancing issues that could arise from variable-k training in production deployments.",
+      "The substantial computational cost (90,000 GPU hours for main experiments) limits reproducibility for smaller research groups.",
+      "The paper does not discuss potential negative societal impacts, such as users unknowingly receiving lower-quality outputs when computational budgets are reduced for cost savings, which could lead to biased or incorrect results in critical applications.",
+      "The interaction of M-MoE with other efficiency techniques (quantization, distillation, speculative decoding) is not explored."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 3,
+    "Contribution": 3,
+    "Overall": 6,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 90487,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 81527,
+    "completion_tokens": 10751,
+    "reasoning_tokens": 0,
+    "total_tokens": 101238,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.01141378,
+    "output_usd": 0.00301028,
+    "total_usd": 0.01444915
+  },
+  "elapsed_seconds": 33.555,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Accept",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B132",
+    "filename": "B132.txt",
+    "blind_text_sha256": "ba85e97aa86301d9fe2c9b69aedc035f3d520cf1c2127c05f14632648b53361f",
+    "characters": 53768,
+    "full_text_saved": false
+  }
+}

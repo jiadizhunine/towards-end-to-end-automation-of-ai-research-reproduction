@@ -1,0 +1,688 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:49:27.791262+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper introduces CAMA (Cohort-based Active Modality Acquisition), a novel test-time setting for deciding which samples in a cohort should receive additional modalities under budget constraints. The authors formalize the problem, derive acquisition functions based on generative imputation and discriminative modeling, and propose upper-bound heuristics for benchmarking. They evaluate on four multimodal datasets (UKBB, MIMIC Symile, MIMIC HAIM, MOSEI) with up to 15 modalities and 100,000 samples, demonstrating that imputation-based strategies, particularly KL-Divergence, can effectively guide modality acquisition compared to baselines.",
+        "Strengths": [
+          "Novel problem formulation: CAMA is clearly distinguished from existing paradigms (AL, AFA, AMA) by its cohort-level, test-time focus on modality acquisition.",
+          "Comprehensive evaluation across diverse datasets with varying modality counts, scales, and domains (healthcare, emotion recognition).",
+          "Clear theoretical framework deriving acquisition functions from evaluation metrics (AUROC, AUPRC).",
+          "Includes oracle and upper-bound heuristics that provide useful performance ceilings for benchmarking.",
+          "Real-world relevance demonstrated through the UK Biobank application with proteomics acquisition.",
+          "Good discussion of architectural choices (DDPM vs BC-VAE) and their trade-offs in terms of performance and efficiency.",
+          "Thorough appendices with detailed hyperparameters, dataset descriptions, and full results."
+        ],
+        "Weaknesses": [
+          "Inconsistent performance gains: The proposed imputation-based strategies do not consistently outperform simpler baselines across all datasets and endpoints. For instance, on MIMIC HAIM, the Probability baseline achieves higher mean G_full for AUPRC than the imputation-based KL-Divergence.",
+          "Overstated central claim: The statement that 'imputation-based KL-Divergence strategy consistently and significantly outperforms all other non-oracle methods' is not fully supported by the results, especially on HAIM and some MOSEI subsets.",
+          "Evaluation methodology excludes tasks with negative gains, which may bias results toward favorable scenarios and limit generalizability.",
+          "Lack of comparison against a baseline that directly predicts the full score from available modalities (without explicit imputation), which could be a simpler and more effective approach.",
+          "The oracle gains exceeding 1 (outperforming the full multimodal model) raise questions about the multimodal model's effectiveness and could indicate model limitations rather than acquisition strategy strengths."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "On MIMIC HAIM, why do simple baselines (e.g., Probability) outperform the proposed imputation-based KL-Divergence on mean AUPRC? Does this suggest the imputation model is less effective for this dataset, or is the metric choice a factor?",
+          "How sensitive are the results to the quality of the imputation model? Have the authors tested with degraded imputation performance (e.g., fewer DDPM samples or a weaker generative model)?",
+          "The oracle gains > 1 are intriguing. Could this indicate that the multimodal model is not well-calibrated or overfits when all modalities are present? How would the results change with a better-performing multimodal model?",
+          "What happens when the acquisition budget is very small (e.g., 1-5% of the cohort)? Are there differences in the ranking of strategies compared to larger budgets?",
+          "How is the acquisition budget β determined in practice? Is there a method to estimate the optimal budget for a given application?",
+          "The paper excludes tasks with negative gains. How would the overall conclusions change if these tasks were included? Could the proposed method still provide value in such cases?"
+        ],
+        "Limitations": [
+          "The authors acknowledge potential biases in ranking but do not provide specific fairness analysis or mitigation strategies, which is important for healthcare applications.",
+          "The evaluation excludes tasks where multimodal performance is worse than unimodal, potentially limiting the generalizability of the findings.",
+          "The computational cost of DDPM-based imputation (100 samples per patient) may be prohibitive for very large cohorts, though the BC-VAE variant offers a faster alternative.",
+          "The paper does not address the scenario where multiple modalities could be acquired per sample, only a single fixed additional modality."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces CAMA (Cohort-based Active Modality Acquisition), a new test-time setting for deciding which samples in a cohort should receive additional modalities under budget constraints. The authors propose imputation-based acquisition functions that use generative models (DDPMs, BC-VAEs) to estimate the expected benefit of acquiring missing modalities. They evaluate on four multimodal datasets, including the large-scale UK Biobank.\n\nStrengths:\n- Novel problem formulation: The CAMA setting (cohort-level, test-time modality acquisition) is clearly distinct from prior work in AL, AFA, and AMA.\n- Comprehensive evaluation across diverse datasets with varying modality counts and scales.\n- Clear theoretical framework deriving acquisition functions from evaluation metrics (AUROC, AUPRC).\n- Includes oracle and upper-bound heuristics for benchmarking.\n- Real-world relevance demonstrated through UK Biobank application.\n- Good discussion of architectural choices and their trade-offs (DDPM vs BC-VAE).\n\nWeaknesses:\n- The performance gains of imputation-based strategies over simpler baselines are not always consistent across all datasets and endpoints. For example, on MIMIC HAIM, the baselines (Probability, Uncertainty) sometimes outperform the proposed imputation-based methods on the mean G_full metric.\n- The paper's claim that \"imputation-based KL-Divergence strategy consistently and significantly outperforms all other non-oracle methods\" is somewhat overstated, as the results show this is not true on HAIM for AUPRC (where Probability baseline is best) or on some MOSEI subsets.\n- The evaluation methodology excludes tasks with negative gains, which may bias results toward favorable scenarios.\n- The oracle gains exceeding 1 (performance better than full multimodal) raises questions about the model's ability to handle multimodal data effectively; this could indicate a model limitation rather than a strength of the acquisition strategy.\n- The paper lacks a comparison against a more sophisticated baseline that uses the available modality's predicted score change (e.g., using a model trained to predict the full score directly rather than imputing the missing modality).\n\nOriginality: High - the CAMA setting is novel, and the combination of generative imputation with discriminative scoring for cohort-level acquisition is a new contribution.\n\nQuality: Good - the technical approach is sound, and the evaluation is thorough. However, the inconsistency in results across datasets weakens the central claim.\n\nClarity: Good - the paper is well-structured, with clear problem formulation and detailed appendices. However, the main results section could benefit from more nuanced discussion of the failures.\n\nSignificance: High - the problem is practically important, especially in healthcare, and the framework provides a useful starting point for future work.\n\nQuestions for authors:\n1. On MIMIC HAIM, why do simple baselines (Probability) outperform the proposed imputation-based KL-Divergence on mean AUPRC? Does this suggest the imputation model is less effective for this dataset?\n2. How sensitive are the results to the choice of imputation model quality? Have you tested with degraded imputation performance?\n3. The oracle gains > 1 are interesting. Could this indicate the multimodal model is not well-calibrated or overfits? How would the results change with a better multimodal model?\n4. What happens when the budget is very small (e.g., 1-5% of cohort)? Are there differences in strategy rankings?\n5. How is the acquisition budget β determined in practice? Is there a method to estimate the optimal budget?\n\nLimitations:\n- The authors acknowledge the potential for bias in ranking, but don't provide specific mitigation strategies or fairness analysis.\n- The evaluation excludes tasks with negative gains, which could be seen as cherry-picking.\n- The computational cost of DDPM-based imputation at inference (100 samples) may be prohibitive for very large cohorts.\n\nEthical concerns: The paper discusses potential biases but doesn't provide concrete fairness evaluations or mitigation strategies. This is a general concern but not a specific ethical violation.\n\nSoundness: 3 (good) - technically sound but central claims are somewhat overstated given inconsistent results.\n\nPresentation: 3 (good) - clear organization and detailed appendices, but could improve discussion of negative results.\n\nContribution: 3 (good) - novel setting and framework, but the practical benefit over simpler baselines needs more consistent demonstration.\n\nOverall: 6 (Weak Accept) - solid technical work with a novel problem formulation, but the inconsistent performance gains and somewhat overstated claims prevent a stronger recommendation.\n\nConfidence: 4 - I am confident in my assessment based on the detailed results provided.\n\nDecision: Accept (borderline, but the novelty of the setting and thorough evaluation justify acceptance)REVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper introduces CAMA (Cohort-based Active Modality Acquisition), a novel test-time setting for deciding which samples in a cohort should receive additional modalities under budget constraints. The authors formalize the problem, derive acquisition functions based on generative imputation and discriminative modeling, and propose upper-bound heuristics for benchmarking. They evaluate on four multimodal datasets (UKBB, MIMIC Symile, MIMIC HAIM, MOSEI) with up to 15 modalities and 100,000 samples, demonstrating that imputation-based strategies, particularly KL-Divergence, can effectively guide modality acquisition compared to baselines.\",\n    \"Strengths\": [\n        \"Novel problem formulation: CAMA is clearly distinguished from existing paradigms (AL, AFA, AMA) by its cohort-level, test-time focus on modality acquisition.\",\n        \"Comprehensive evaluation across diverse datasets with varying modality counts, scales, and domains (healthcare, emotion recognition).\",\n        \"Clear theoretical framework deriving acquisition functions from evaluation metrics (AUROC, AUPRC).\",\n        \"Includes oracle and upper-bound heuristics that provide useful performance ceilings for benchmarking.\",\n        \"Real-world relevance demonstrated through the UK Biobank application with proteomics acquisition.\",\n        \"Good discussion of architectural choices (DDPM vs BC-VAE) and their trade-offs in terms of performance and efficiency.\",\n        \"Thorough appendices with detailed hyperparameters, dataset descriptions, and full results.\"\n    ],\n    \"Weaknesses\": [\n        \"Inconsistent performance gains: The proposed imputation-based strategies do not consistently outperform simpler baselines across all datasets and endpoints. For instance, on MIMIC HAIM, the Probability baseline achieves higher mean G_full for AUPRC than the imputation-based KL-Divergence.\",\n        \"Overstated central claim: The statement that 'imputation-based KL-Divergence strategy consistently and significantly outperforms all other non-oracle methods' is not fully supported by the results, especially on HAIM and some MOSEI subsets.\",\n        \"Evaluation methodology excludes tasks with negative gains, which may bias results toward favorable scenarios and limit generalizability.\",\n        \"Lack of comparison against a baseline that directly predicts the full score from available modalities (without explicit imputation), which could be a simpler and more effective approach.\",\n        \"The oracle gains exceeding 1 (outperforming the full multimodal model) raise questions about the multimodal model's effectiveness and could indicate model limitations rather than acquisition strategy strengths.\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 4,\n    \"Questions\": [\n        \"On MIMIC HAIM, why do simple baselines (e.g., Probability) outperform the proposed imputation-based KL-Divergence on mean AUPRC? Does this suggest the imputation model is less effective for this dataset, or is the metric choice a factor?\",\n        \"How sensitive are the results to the quality of the imputation model? Have the authors tested with degraded imputation performance (e.g., fewer DDPM samples or a weaker generative model)?\",\n        \"The oracle gains > 1 are intriguing. Could this indicate that the multimodal model is not well-calibrated or overfits when all modalities are present? How would the results change with a better-performing multimodal model?\",\n        \"What happens when the acquisition budget is very small (e.g., 1-5% of the cohort)? Are there differences in the ranking of strategies compared to larger budgets?\",\n        \"How is the acquisition budget β determined in practice? Is there a method to estimate the optimal budget for a given application?\",\n        \"The paper excludes tasks with negative gains. How would the overall conclusions change if these tasks were included? Could the proposed method still provide value in such cases?\"\n    ],\n    \"Limitations\": [\n        \"The authors acknowledge potential biases in ranking but do not provide specific fairness analysis or mitigation strategies, which is important for healthcare applications.\",\n        \"The evaluation excludes tasks where multimodal performance is worse than unimodal, potentially limiting the generalizability of the findings.\",\n        \"The computational cost of DDPM-based imputation (100 samples per patient) may be prohibitive for very large cohorts, though the BC-VAE variant offers a faster alternative.\",\n        \"The paper does not address the scenario where multiple modalities could be acquired per sample, only a single fixed additional modality.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 52110,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 50318,
+        "completion_tokens": 1935,
+        "reasoning_tokens": 0,
+        "total_tokens": 54045
+      },
+      "attempts": 1,
+      "response_id": "bfb16036-8aae-4a5d-b99d-92ba0cee052c"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper introduces a new setting, Cohort-based Active Modality Acquisition (CAMA), for test-time selection of samples to receive additional costly modalities, with the goal of maximizing a global cohort-level performance metric (e.g., AUROC, AUPRC) under a budget constraint. The authors formalize the problem and propose several acquisition functions (AFs), including oracle and upper-bound strategies for benchmarking, and novel imputation-based strategies that use generative models (DDPMs, BC-VAEs) to estimate the counterfactual benefit of acquiring a missing modality. The imputation-based KL-Divergence AF is highlighted as the most effective. The framework is evaluated on four multimodal datasets, including the large-scale UK Biobank with 15 modalities, demonstrating that the proposed imputation-based strategies can outperform baselines like uncertainty sampling and random selection.",
+        "Strengths": [
+          "The paper addresses a novel and practically relevant problem setting (CAMA) that is underexplored in the literature, distinguishing itself from individual-level active learning and feature acquisition.",
+          "The proposed imputation-based acquisition functions are a sensible and well-motivated approach, combining generative and discriminative modeling to estimate counterfactual outcomes.",
+          "The evaluation is comprehensive, spanning multiple diverse datasets (healthcare, emotion recognition) and a large-scale real-world cohort (UKBB), which strengthens the generalizability of the findings.",
+          "The paper is generally well-written and clearly formalizes the problem, the different types of AFs, and the evaluation metric (G_full).",
+          "The analysis includes upper-bound heuristics and oracle strategies, which provides useful context for understanding the performance ceiling of the proposed methods."
+        ],
+        "Weaknesses": [
+          "The novelty is incremental. While the cohort-level test-time setting is new, the individual AFs are largely adaptations of well-known active learning principles (e.g., uncertainty, KL-divergence, rank change) to this new setting.",
+          "The theoretical framework is not deeply formalized. The AFs are presented as heuristics derived from the metrics, but there is no strong theoretical justification or analysis of why imputation-based KL-divergence should be the most effective strategy.",
+          "The experimental results are noisy and not always consistent. While the imputation-based KL-Divergence strategy performs well on average, its advantage over simpler baselines is not statistically significant in many individual tasks (e.g., on MIMIC HAIM and some MOSEI settings). The paper could benefit from a more rigorous statistical comparison (e.g., pairwise significance tests).",
+          "The paper's clarity is hampered by the sheer volume of results in the appendix, and the main text's summary tables (Tables 3, 4, 5) can be difficult to interpret without fully digesting the appendix. The definition of the `G_full` metric and its interpretation (e.g., values > 1) could be more intuitively explained.",
+          "The evaluation relies on a single, fixed model architecture (late fusion with a Transformer head). The robustness of the AFs to different model architectures is not explored.",
+          "The problem setting assumes a fixed set of available modalities and a single target modality to acquire. Extensions to dynamic selection of which modality to acquire are only mentioned as future work."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "The paper claims the imputation-based KL-Divergence strategy can slightly outperform its upper-bound heuristic (True KL-Div). Can the authors explain this surprising result in more detail? Does it suggest that the imputation process provides a beneficial regularization or averaging effect?",
+          "The oracle strategies can achieve G_full values greater than 1, indicating a mix of unimodal and multimodal samples can outperform the fully multimodal cohort. What are the characteristics of the samples that the oracle chooses NOT to acquire? Is this related to the model being poorly calibrated or overfitting to certain modalities?",
+          "The performance of the imputation-based AFs varies significantly across different datasets and tasks (e.g., it works well on UKBB but is less consistently superior on MIMIC HAIM). What are the key factors that determine when imputation-based strategies are most beneficial?",
+          "The paper uses a single model trained with a specific missingness mask. How sensitive are the results to the choice of the missingness mask during training? Could the model be biased towards certain missingness patterns?",
+          "What is the computational overhead of the imputation-based methods at test time? The paper provides an efficiency analysis in Table 6, but how does this translate to the overall time for ranking a large cohort like UKBB?",
+          "The paper uses K=100 DDPM samples for inference. How sensitive are the results to the choice of K? Is there a trade-off between the number of samples and the stability of the AF ranking?"
+        ],
+        "Limitations": [
+          "The authors acknowledge the potential for bias and fairness issues in healthcare applications, but do not provide any empirical analysis or mitigation strategies. This is a significant limitation given the paper's stated motivation.",
+          "The evaluation is limited to binary classification tasks. The extension to multi-class or regression problems is not addressed.",
+          "The study assumes that the cost of acquiring the modality is uniform across all samples. In practice, costs may vary (e.g., based on patient location or accessibility), which is not modeled.",
+          "The paper does not discuss the potential negative societal impact of using such a system to ration healthcare resources, beyond a brief mention in the appendix. A more detailed discussion of the ethical implications is warranted."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 5,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces a novel test-time, cohort-based active modality acquisition (CAMA) setting, which is a meaningful and practical extension of prior work in active learning and feature acquisition. The core idea is to select which samples in a cohort should receive an additional expensive modality to maximize a global metric (e.g., AUROC) under a budget constraint. The authors propose several acquisition functions, with a key contribution being imputation-based strategies that use generative models (DDPMs, BC-VAEs) to estimate counterfactual scores. They also define oracle and upper-bound heuristics for benchmarking.\n\nThe paper is well-structured, with clear problem formulation and a comprehensive evaluation across four datasets, including the large-scale UK Biobank. The results show that the imputation-based KL-Divergence strategy consistently outperforms other practical baselines, which is a solid finding. The theoretical grounding via the derivation of AFs from evaluation metrics is a strength.\n\nHowever, there are several weaknesses. The main claim of novelty is somewhat incremental; while the cohort-level test-time setting is new, the individual strategies (KL-divergence, uncertainty, etc.) are adapted from active learning. The theoretical framework is not deeply formalized; the AFs are heuristics derived from the metrics, and the paper lacks a strong theoretical justification for why KL-divergence should be the best. The evaluation, while extensive, can be noisy, and the performance of the proposed methods is not always consistently better than simpler baselines, especially on the MIMIC datasets. The paper also has some clarity issues, particularly with the tables in the appendices, and the definition of the `G_full` metric could be more clearly explained. The reliance on a single pre-trained model and the assumption of a fixed set of available modalities are also limitations.\n\nOverall, this is a solid piece of work addressing a relevant and underexplored problem. The practical insights and the large-scale UKBB experiment are valuable. However, the modest incremental contribution and the lack of a deeper theoretical analysis prevent me from giving it a high score. I'll lean towards a borderline reject to weak accept, but given the instruction to only use Accept or Reject, I'll choose Reject due to the limited novelty and the inconsistency of the results.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper introduces a new setting, Cohort-based Active Modality Acquisition (CAMA), for test-time selection of samples to receive additional costly modalities, with the goal of maximizing a global cohort-level performance metric (e.g., AUROC, AUPRC) under a budget constraint. The authors formalize the problem and propose several acquisition functions (AFs), including oracle and upper-bound strategies for benchmarking, and novel imputation-based strategies that use generative models (DDPMs, BC-VAEs) to estimate the counterfactual benefit of acquiring a missing modality. The imputation-based KL-Divergence AF is highlighted as the most effective. The framework is evaluated on four multimodal datasets, including the large-scale UK Biobank with 15 modalities, demonstrating that the proposed imputation-based strategies can outperform baselines like uncertainty sampling and random selection.\",\n  \"Strengths\": [\n    \"The paper addresses a novel and practically relevant problem setting (CAMA) that is underexplored in the literature, distinguishing itself from individual-level active learning and feature acquisition.\",\n    \"The proposed imputation-based acquisition functions are a sensible and well-motivated approach, combining generative and discriminative modeling to estimate counterfactual outcomes.\",\n    \"The evaluation is comprehensive, spanning multiple diverse datasets (healthcare, emotion recognition) and a large-scale real-world cohort (UKBB), which strengthens the generalizability of the findings.\",\n    \"The paper is generally well-written and clearly formalizes the problem, the different types of AFs, and the evaluation metric (G_full).\",\n    \"The analysis includes upper-bound heuristics and oracle strategies, which provides useful context for understanding the performance ceiling of the proposed methods.\"\n  ],\n  \"Weaknesses\": [\n    \"The novelty is incremental. While the cohort-level test-time setting is new, the individual AFs are largely adaptations of well-known active learning principles (e.g., uncertainty, KL-divergence, rank change) to this new setting.\",\n    \"The theoretical framework is not deeply formalized. The AFs are presented as heuristics derived from the metrics, but there is no strong theoretical justification or analysis of why imputation-based KL-divergence should be the most effective strategy.\",\n    \"The experimental results are noisy and not always consistent. While the imputation-based KL-Divergence strategy performs well on average, its advantage over simpler baselines is not statistically significant in many individual tasks (e.g., on MIMIC HAIM and some MOSEI settings). The paper could benefit from a more rigorous statistical comparison (e.g., pairwise significance tests).\",\n    \"The paper's clarity is hampered by the sheer volume of results in the appendix, and the main text's summary tables (Tables 3, 4, 5) can be difficult to interpret without fully digesting the appendix. The definition of the `G_full` metric and its interpretation (e.g., values > 1) could be more intuitively explained.\",\n    \"The evaluation relies on a single, fixed model architecture (late fusion with a Transformer head). The robustness of the AFs to different model architectures is not explored.\",\n    \"The problem setting assumes a fixed set of available modalities and a single target modality to acquire. Extensions to dynamic selection of which modality to acquire are only mentioned as future work.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"The paper claims the imputation-based KL-Divergence strategy can slightly outperform its upper-bound heuristic (True KL-Div). Can the authors explain this surprising result in more detail? Does it suggest that the imputation process provides a beneficial regularization or averaging effect?\",\n    \"The oracle strategies can achieve G_full values greater than 1, indicating a mix of unimodal and multimodal samples can outperform the fully multimodal cohort. What are the characteristics of the samples that the oracle chooses NOT to acquire? Is this related to the model being poorly calibrated or overfitting to certain modalities?\",\n    \"The performance of the imputation-based AFs varies significantly across different datasets and tasks (e.g., it works well on UKBB but is less consistently superior on MIMIC HAIM). What are the key factors that determine when imputation-based strategies are most beneficial?\",\n    \"The paper uses a single model trained with a specific missingness mask. How sensitive are the results to the choice of the missingness mask during training? Could the model be biased towards certain missingness patterns?\",\n    \"What is the computational overhead of the imputation-based methods at test time? The paper provides an efficiency analysis in Table 6, but how does this translate to the overall time for ranking a large cohort like UKBB?\",\n    \"The paper uses K=100 DDPM samples for inference. How sensitive are the results to the choice of K? Is there a trade-off between the number of samples and the stability of the AF ranking?\"\n  ],\n  \"Limitations\": [\n    \"The authors acknowledge the potential for bias and fairness issues in healthcare applications, but do not provide any empirical analysis or mitigation strategies. This is a significant limitation given the paper's stated motivation.\",\n    \"The evaluation is limited to binary classification tasks. The extension to multi-class or regression problems is not addressed.\",\n    \"The study assumes that the cost of acquiring the modality is uniform across all samples. In practice, costs may vary (e.g., based on patient location or accessibility), which is not modeled.\",\n    \"The paper does not discuss the potential negative societal impact of using such a system to ration healthcare resources, beyond a brief mention in the appendix. A more detailed discussion of the ethical implications is warranted.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 5,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 52110,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 50318,
+        "completion_tokens": 1708,
+        "reasoning_tokens": 0,
+        "total_tokens": 53818
+      },
+      "attempts": 1,
+      "response_id": "2ae8877c-88f5-4506-913a-ed765111203e"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "This paper introduces Cohort-based Active Modality Acquisition (CAMA), a novel test-time setting for selecting which samples in a cohort should receive additional modalities under a budget constraint to maximize a global performance metric. The authors formalize the problem, propose a theoretical framework for deriving acquisition functions (AFs) based on metrics like AUROC and AUPRC, and develop several strategies, including imputation-based AFs that use generative models (DDPMs, BC-VAEs) to estimate the counterfactual benefit of acquiring missing modalities. They also define oracle strategies and label-agnostic upper-bound heuristics as benchmarks. The methods are evaluated on four multimodal datasets, including the large-scale UK Biobank with 15 modalities, demonstrating that the proposed imputation-based KL-Divergence strategy consistently outperforms baselines and other heuristics.",
+        "Strengths": [
+          "Novel and practically relevant problem setting (cohort-level, test-time modality acquisition) that addresses a clear gap in the literature.",
+          "Comprehensive and well-structured framework, including formal problem formulation, theoretical derivation of AFs, and a clear taxonomy of strategies.",
+          "Extensive empirical evaluation across diverse datasets (healthcare, emotion recognition) with varying scales and modality counts.",
+          "The proposed imputation-based KL-Divergence strategy demonstrates consistent and significant improvements over non-oracle baselines, validating the core hypothesis.",
+          "The paper is well-written and provides sufficient details for understanding the proposed methods and reproducing the experiments (with code to be released)."
+        ],
+        "Weaknesses": [
+          "The claim of being 'previously unexplored' is somewhat overstated; the novelty is in the specific combination of existing ideas (active feature acquisition, imputation) applied to a new problem setting.",
+          "The evaluation metric (G_full) is not well-calibrated when oracle strategies exceed a value of 1, making the interpretation of intermediate values less clear.",
+          "The proposed imputation-based methods are computationally expensive (training generative models, sampling K=100 at inference), which may limit practical scalability for very large cohorts.",
+          "The evaluation excludes tasks where the multimodal model underperforms the unimodal baseline, limiting the applicability of the findings to settings where the additional modality is known to be beneficial.",
+          "Results on MIMIC HAIM are noisier and less consistent, suggesting that the proposed method's performance can be context-dependent, and in some cases, simpler baselines like random selection perform competitively."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How sensitive is the performance of the imputation-based KL-Divergence strategy to the number of imputation samples K? Is there a point of diminishing returns?",
+          "How would the framework extend to scenarios where multiple modalities are missing, and the decision involves choosing which modality to acquire for each sample?",
+          "In the UKBB experiment, how was the 'available' subset of modalities defined for each sample? Was there a specific set of modalities that were considered 'always available'?",
+          "The oracle strategies show that performance can exceed the full multimodal baseline. Does this suggest that there might be a better overall strategy that involves not using the additional modality for some samples even if it were free? How does this affect the practical implications of the work?",
+          "Can the authors provide more details on how the 'random assignment of available modalities' was performed in the cross-validation runs? This is crucial for understanding the robustness of the results."
+        ],
+        "Limitations": [
+          "The paper focuses on binary classification; extension to multi-class or regression is not explored.",
+          "The computational cost of the generative imputation model may be prohibitive for real-time applications or extremely large cohorts.",
+          "Fairness and equity concerns are only briefly mentioned; a more detailed discussion of potential biases in the acquisition ranking and their mitigation would be beneficial.",
+          "The evaluation implicitly assumes that the additional modality is beneficial on average, which may not always be known in practice."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 5,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces a novel setting called Cohort-based Active Modality Acquisition (CAMA), which addresses the problem of selecting which samples in a test-time cohort should receive additional modalities under a budget constraint. The authors propose several acquisition functions, including imputation-based strategies that use generative models (DDPMs, BC-VAEs) to estimate the expected benefit of acquiring missing modalities. They also define upper-bound heuristics and oracle strategies for benchmarking. The evaluation is conducted on four multimodal datasets, including the large-scale UK Biobank with 15 modalities.\n\nStrengths:\n- The paper addresses a novel and practically relevant problem: cohort-level, test-time modality acquisition. This is a clear gap in the literature as prior work focuses on individual-level acquisition or training-time active learning.\n- The proposed framework is comprehensive, including a formal problem formulation, theoretical derivation of acquisition functions based on common metrics (AUROC, AUPRC), and a clear categorization of strategies (oracle, upper-bound, imputation-based, baselines).\n- The empirical evaluation is extensive, covering diverse datasets (healthcare, emotion recognition) with varying numbers of modalities and sample sizes, including a large-scale real-world scenario (UKBB).\n- The imputation-based KL-Divergence strategy consistently outperforms other non-oracle methods, providing strong evidence for the paper's main hypothesis.\n- The paper is generally well-written and clearly explains the different strategies and their motivations.\n\nWeaknesses:\n- The paper's claim that CAMA is \"previously unexplored\" is somewhat strong. While the specific combination of cohort-level, test-time, and modality acquisition is novel, the components (active feature acquisition, imputation for missing data) are well-established. The novelty lies in the specific problem formulation and the application of these techniques to a new setting.\n- The evaluation of the \"oracle\" strategies reveals that they can exceed a gain of 1, indicating that a strategic mix of unimodal and multimodal samples can outperform a fully multimodal cohort. This is an interesting finding, but it also highlights a potential issue with the proposed metric (G_full). If the oracle can exceed 1, then the metric is not well-calibrated, and the interpretation of values between 0 and 1 becomes less clear. The authors discuss this, but it's a point that needs careful consideration.\n- The imputation-based strategies are computationally expensive, as they require training a generative model (DDPM) and sampling K=100 imputations per sample at inference time. While the paper provides an efficiency analysis, the practical scalability of this approach for very large cohorts might be questioned.\n- The paper excludes tasks where the multimodal model performs worse than the unimodal baseline. This is a reasonable filtering step, but it also means the results are only applicable to settings where the additional modality is known to be beneficial on average. In practice, one might not know this a priori.\n- The results on MIMIC HAIM appear to be noisier and less consistent than on other datasets. For instance, the imputation-based KL-Divergence strategy does not always outperform the baselines, and sometimes the random strategy performs surprisingly well. This suggests that the proposed method's performance can be context-dependent.\n\nQuestions for the authors:\n1. How sensitive is the performance of the imputation-based KL-Divergence strategy to the number of imputation samples K? Is there a point of diminishing returns?\n2. The paper uses a fixed budget for acquiring one specific modality. How would the framework extend to scenarios where multiple modalities are missing, and the decision involves choosing which modality to acquire for each sample?\n3. In the UKBB experiment, the missingness is inherent, not synthetically created. How was the \"available\" subset of modalities defined for each sample? Was there a specific set of modalities that were considered \"always available\" (e.g., EHRs)?\n4. The oracle strategies show that performance can exceed the full multimodal baseline. Does this suggest that there might be a better overall strategy that involves not using the additional modality for some samples even if it were free? How does this affect the practical implications of the work?\n5. Can the authors provide more details on how the \"random assignment of available modalities\" was performed in the cross-validation runs? This is crucial for understanding the robustness of the results.\n\nLimitations:\n- The paper focuses on binary classification. The extension to multi-class or regression is mentioned as future work but not explored.\n- The computational cost of the generative imputation model might be prohibitive in some real-time applications.\n- The fairness and equity concerns are only briefly mentioned in the broader impact statement. A more detailed discussion of potential biases in the acquisition ranking and their mitigation would be beneficial.\n\nEthical Concerns: No significant ethical concerns beyond the general ones already mentioned in the paper (fairness, bias in healthcare applications).\n\nOverall Assessment:\nThis is a solid paper that introduces a novel and relevant problem setting. The proposed framework is well-motivated, and the empirical results provide strong support for the main contribution (imputation-based KL-Divergence strategy). However, there are some concerns regarding the evaluation metric, the computational cost, and the context-dependency of the results. The paper makes a meaningful contribution to the field, but it's not without limitations. I would rate it as a borderline accept, leaning towards reject due to the evaluation issues and limited practical scalability.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper introduces Cohort-based Active Modality Acquisition (CAMA), a novel test-time setting for selecting which samples in a cohort should receive additional modalities under a budget constraint to maximize a global performance metric. The authors formalize the problem, propose a theoretical framework for deriving acquisition functions (AFs) based on metrics like AUROC and AUPRC, and develop several strategies, including imputation-based AFs that use generative models (DDPMs, BC-VAEs) to estimate the counterfactual benefit of acquiring missing modalities. They also define oracle strategies and label-agnostic upper-bound heuristics as benchmarks. The methods are evaluated on four multimodal datasets, including the large-scale UK Biobank with 15 modalities, demonstrating that the proposed imputation-based KL-Divergence strategy consistently outperforms baselines and other heuristics.\",\n  \"Strengths\": [\n    \"Novel and practically relevant problem setting (cohort-level, test-time modality acquisition) that addresses a clear gap in the literature.\",\n    \"Comprehensive and well-structured framework, including formal problem formulation, theoretical derivation of AFs, and a clear taxonomy of strategies.\",\n    \"Extensive empirical evaluation across diverse datasets (healthcare, emotion recognition) with varying scales and modality counts.\",\n    \"The proposed imputation-based KL-Divergence strategy demonstrates consistent and significant improvements over non-oracle baselines, validating the core hypothesis.\",\n    \"The paper is well-written and provides sufficient details for understanding the proposed methods and reproducing the experiments (with code to be released).\"\n  ],\n  \"Weaknesses\": [\n    \"The claim of being 'previously unexplored' is somewhat overstated; the novelty is in the specific combination of existing ideas (active feature acquisition, imputation) applied to a new problem setting.\",\n    \"The evaluation metric (G_full) is not well-calibrated when oracle strategies exceed a value of 1, making the interpretation of intermediate values less clear.\",\n    \"The proposed imputation-based methods are computationally expensive (training generative models, sampling K=100 at inference), which may limit practical scalability for very large cohorts.\",\n    \"The evaluation excludes tasks where the multimodal model underperforms the unimodal baseline, limiting the applicability of the findings to settings where the additional modality is known to be beneficial.\",\n    \"Results on MIMIC HAIM are noisier and less consistent, suggesting that the proposed method's performance can be context-dependent, and in some cases, simpler baselines like random selection perform competitively.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How sensitive is the performance of the imputation-based KL-Divergence strategy to the number of imputation samples K? Is there a point of diminishing returns?\",\n    \"How would the framework extend to scenarios where multiple modalities are missing, and the decision involves choosing which modality to acquire for each sample?\",\n    \"In the UKBB experiment, how was the 'available' subset of modalities defined for each sample? Was there a specific set of modalities that were considered 'always available'?\",\n    \"The oracle strategies show that performance can exceed the full multimodal baseline. Does this suggest that there might be a better overall strategy that involves not using the additional modality for some samples even if it were free? How does this affect the practical implications of the work?\",\n    \"Can the authors provide more details on how the 'random assignment of available modalities' was performed in the cross-validation runs? This is crucial for understanding the robustness of the results.\"\n  ],\n  \"Limitations\": [\n    \"The paper focuses on binary classification; extension to multi-class or regression is not explored.\",\n    \"The computational cost of the generative imputation model may be prohibitive for real-time applications or extremely large cohorts.\",\n    \"Fairness and equity concerns are only briefly mentioned; a more detailed discussion of potential biases in the acquisition ranking and their mitigation would be beneficial.\",\n    \"The evaluation implicitly assumes that the additional modality is beneficial on average, which may not always be known in practice.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 5,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 52110,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 50318,
+        "completion_tokens": 2015,
+        "reasoning_tokens": 0,
+        "total_tokens": 54125
+      },
+      "attempts": 1,
+      "response_id": "904b3c80-8d5e-4148-8fbb-68008931dc0b"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper introduces Cohort-based Active Modality Acquisition (CAMA), a novel test-time setting for deciding which samples in a cohort should receive additional modalities under budget constraints. The authors formalize the problem, derive acquisition functions based on generative imputation and discriminative modeling, and define upper-bound heuristics. They evaluate their proposed imputation-based strategies (particularly KL-Divergence) against various baselines on four multimodal datasets, including a large-scale UK Biobank cohort with 100k samples and 15 modalities. The key finding is that imputation-based KL-Divergence consistently guides acquisition effectively, though not universally outperforming all baselines.",
+        "Strengths": [
+          "Novel problem formulation: CAMA is a genuinely new setting that addresses cohort-level, test-time modality acquisition, clearly distinguished from existing paradigms (AL, AFA, AMA).",
+          "Comprehensive evaluation: Experiments span diverse datasets (healthcare, emotion recognition) with up to 15 modalities and 100k samples, including a real-world large-scale UK Biobank application.",
+          "Theoretical grounding: The acquisition functions are derived from standard evaluation metrics (AUROC, AUPRC), providing a principled basis.",
+          "Inclusion of upper bounds and oracles: The paper provides performance ceilings for benchmarking, which is valuable for understanding the limits of acquisition strategies.",
+          "Practical relevance: The UKBB proteomics acquisition scenario demonstrates real-world applicability in a resource-constrained healthcare setting.",
+          "Robustness analysis: The paper discusses the resilience of the KL-Divergence strategy to imputation noise and the importance of modeling a distribution of outcomes."
+        ],
+        "Weaknesses": [
+          "Consistency of results: The imputation-based KL-Divergence strategy does not consistently outperform simpler baselines across all datasets and endpoints (e.g., MIMIC HAIM, some MOSEI tasks). The claim of 'substantial and reliable gains' is overstated.",
+          "High variance in some results: Several tables (e.g., Symile with ECG imputed by Image) show extremely high standard errors, indicating instability and making comparisons unreliable.",
+          "Selection bias in evaluation: The paper excludes tasks where multimodal performance is worse than unimodal, which could bias results towards favorable outcomes. This selection is acknowledged but not deeply discussed.",
+          "Computational cost: The DDPM-based imputation is computationally expensive (as shown in Table 6), and the paper does not adequately discuss the practical trade-offs between performance and computational cost.",
+          "Limited analysis of failure cases: The paper notes that not all imputation-based AFs outperform baselines but does not provide a thorough analysis of when and why the proposed strategies fail.",
+          "Missing comparison with RL-based methods: Given the related work on AMA using RL (Kossen et al., 2023), a comparison with such approaches would strengthen the evaluation."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "1. In the evaluation, tasks where the multimodal model underperforms the unimodal baseline are excluded. How does this selection affect the reported results, and what are the implications for real-world applications where this might occur? Could you provide results including these tasks?",
+          "2. The imputation-based KL-Divergence strategy outperforms the corresponding upper-bound heuristic in some cases (e.g., Table 5). How is this possible, given that the upper-bound heuristic has access to true future scores? Please explain this phenomenon.",
+          "3. The paper claims robustness to imputation errors. Could you provide a more detailed analysis of how sensitive the different acquisition functions are to the quality of the imputation model?",
+          "4. For the MIMIC HAIM dataset, the baseline probability strategy often performs comparably to or better than the proposed imputation-based KL-Divergence. What are the characteristics of this dataset/task that make the proposed strategy less effective?",
+          "5. The computational cost of DDPMs is significant. In real-world deployment, how would you balance the cost of running the imputation model against the cost of acquiring the additional modality?",
+          "6. The paper focuses on binary classification. How would the proposed acquisition functions need to be adapted for multi-class or regression settings?",
+          "7. Could you elaborate on the choice of K=100 for the number of imputation samples? Was there a sensitivity analysis for this hyperparameter?"
+        ],
+        "Limitations": [
+          "The evaluation excludes tasks where multimodal performance is worse than unimodal, which may not reflect all real-world scenarios and could bias results.",
+          "The computational overhead of the DDPM-based imputation model is significant, which may limit practical deployment in some settings.",
+          "The paper focuses on binary classification and does not address multi-class or regression problems, limiting generalizability.",
+          "The experiments use synthetically created missing modalities for most datasets, which may not fully capture the complexities of real-world missingness patterns.",
+          "Potential negative societal impacts, particularly around equity and fairness in healthcare applications, are acknowledged but not deeply explored with concrete mitigation strategies."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces CAMA (Cohort-based Active Modality Acquisition), a novel test-time setting for deciding which samples in a cohort should receive additional modalities under budget constraints. The work is timely and addresses a real gap in the literature, as most prior work focuses on individual-level acquisition or training-time paradigms. The paper is technically strong, with a clear problem formulation, well-defined acquisition functions, and comprehensive experiments across multiple datasets including a large-scale UK Biobank application.\n\nThe main strengths are: (1) the novel problem formulation and its clear distinction from prior work (AL, AFA, AMA); (2) the theoretical derivation of acquisition functions based on standard metrics like AUROC and AUPRC; (3) the thorough empirical evaluation across diverse datasets with varying numbers of modalities; (4) the inclusion of oracle and upper-bound heuristics as benchmarks; and (5) the demonstration of scalability to a large real-world cohort (UKBB with 100k samples, 15 modalities).\n\nThe main weaknesses are: (1) The imputation-based KL-Divergence strategy, while consistently good, does not always outperform simpler baselines (e.g., on MIMIC HAIM, the baseline probability strategy performs comparably or better); (2) The paper claims superiority of imputation-based KL-Divergence, but the results show this is not universally true across all tasks and metrics; (3) The computational cost of the DDPM-based imputation is significant, and the paper could better discuss trade-offs; (4) Some results show high variance (e.g., on Symile with ECG imputed by Image), suggesting instability; (5) The evaluation excludes tasks where multimodal performance is worse than unimodal, which might bias results; (6) The paper could benefit from a more thorough analysis of when and why imputation-based strategies fail.\n\nThe paper is well-written and clearly organized. The theoretical foundation is sound, and the experimental methodology is appropriate. The significance is high, as this addresses a practical problem in resource-constrained multimodal settings.\n\nI would rate the soundness as good (3), presentation as good (3), and contribution as high (3). The overall score is 7 (Accept), as the paper presents a solid contribution with some limitations in the experimental evaluation.\n\nFor the decision, I lean towards Accept given the novelty of the setting and the thorough evaluation, despite some weaknesses in the consistency of results.\n\nREVIEW JSON:\n```json\n{\n\"Summary\": \"The paper introduces Cohort-based Active Modality Acquisition (CAMA), a novel test-time setting for deciding which samples in a cohort should receive additional modalities under budget constraints. The authors formalize the problem, derive acquisition functions based on generative imputation and discriminative modeling, and define upper-bound heuristics. They evaluate their proposed imputation-based strategies (particularly KL-Divergence) against various baselines on four multimodal datasets, including a large-scale UK Biobank cohort with 100k samples and 15 modalities. The key finding is that imputation-based KL-Divergence consistently guides acquisition effectively, though not universally outperforming all baselines.\",\n\"Strengths\": [\n\"Novel problem formulation: CAMA is a genuinely new setting that addresses cohort-level, test-time modality acquisition, clearly distinguished from existing paradigms (AL, AFA, AMA).\",\n\"Comprehensive evaluation: Experiments span diverse datasets (healthcare, emotion recognition) with up to 15 modalities and 100k samples, including a real-world large-scale UK Biobank application.\",\n\"Theoretical grounding: The acquisition functions are derived from standard evaluation metrics (AUROC, AUPRC), providing a principled basis.\",\n\"Inclusion of upper bounds and oracles: The paper provides performance ceilings for benchmarking, which is valuable for understanding the limits of acquisition strategies.\",\n\"Practical relevance: The UKBB proteomics acquisition scenario demonstrates real-world applicability in a resource-constrained healthcare setting.\",\n\"Robustness analysis: The paper discusses the resilience of the KL-Divergence strategy to imputation noise and the importance of modeling a distribution of outcomes.\"\n],\n\"Weaknesses\": [\n\"Consistency of results: The imputation-based KL-Divergence strategy does not consistently outperform simpler baselines across all datasets and endpoints (e.g., MIMIC HAIM, some MOSEI tasks). The claim of 'substantial and reliable gains' is overstated.\",\n\"High variance in some results: Several tables (e.g., Symile with ECG imputed by Image) show extremely high standard errors, indicating instability and making comparisons unreliable.\",\n\"Selection bias in evaluation: The paper excludes tasks where multimodal performance is worse than unimodal, which could bias results towards favorable outcomes. This selection is acknowledged but not deeply discussed.\",\n\"Computational cost: The DDPM-based imputation is computationally expensive (as shown in Table 6), and the paper does not adequately discuss the practical trade-offs between performance and computational cost.\",\n\"Limited analysis of failure cases: The paper notes that not all imputation-based AFs outperform baselines but does not provide a thorough analysis of when and why the proposed strategies fail.\",\n\"Missing comparison with RL-based methods: Given the related work on AMA using RL (Kossen et al., 2023), a comparison with such approaches would strengthen the evaluation.\"\n],\n\"Originality\": 4,\n\"Quality\": 3,\n\"Clarity\": 3,\n\"Significance\": 3,\n\"Questions\": [\n\"1. In the evaluation, tasks where the multimodal model underperforms the unimodal baseline are excluded. How does this selection affect the reported results, and what are the implications for real-world applications where this might occur? Could you provide results including these tasks?\",\n\"2. The imputation-based KL-Divergence strategy outperforms the corresponding upper-bound heuristic in some cases (e.g., Table 5). How is this possible, given that the upper-bound heuristic has access to true future scores? Please explain this phenomenon.\",\n\"3. The paper claims robustness to imputation errors. Could you provide a more detailed analysis of how sensitive the different acquisition functions are to the quality of the imputation model?\",\n\"4. For the MIMIC HAIM dataset, the baseline probability strategy often performs comparably to or better than the proposed imputation-based KL-Divergence. What are the characteristics of this dataset/task that make the proposed strategy less effective?\",\n\"5. The computational cost of DDPMs is significant. In real-world deployment, how would you balance the cost of running the imputation model against the cost of acquiring the additional modality?\",\n\"6. The paper focuses on binary classification. How would the proposed acquisition functions need to be adapted for multi-class or regression settings?\",\n\"7. Could you elaborate on the choice of K=100 for the number of imputation samples? Was there a sensitivity analysis for this hyperparameter?\"\n],\n\"Limitations\": [\n\"The evaluation excludes tasks where multimodal performance is worse than unimodal, which may not reflect all real-world scenarios and could bias results.\",\n\"The computational overhead of the DDPM-based imputation model is significant, which may limit practical deployment in some settings.\",\n\"The paper focuses on binary classification and does not address multi-class or regression problems, limiting generalizability.\",\n\"The experiments use synthetically created missing modalities for most datasets, which may not fully capture the complexities of real-world missingness patterns.\",\n\"Potential negative societal impacts, particularly around equity and fairness in healthcare applications, are acknowledged but not deeply explored with concrete mitigation strategies.\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 3,\n\"Contribution\": 3,\n\"Overall\": 7,\n\"Confidence\": 4,\n\"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 52110,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 50318,
+        "completion_tokens": 1589,
+        "reasoning_tokens": 0,
+        "total_tokens": 53699
+      },
+      "attempts": 1,
+      "response_id": "72d896f7-259b-411a-9063-6ccabf56da22"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper introduces Cohort-based Active Modality Acquisition (CAMA), a novel test-time setting for deciding which samples in a cohort should receive additional costly modalities under a budget constraint to maximize a global performance metric like AUROC or AUPRC. The authors propose several acquisition functions (AFs), including oracle and upper-bound heuristics as benchmarks, and imputation-based strategies that use generative models (DDPMs, BC-VAEs) to estimate the counterfactual benefit of acquiring a missing modality. The methods are evaluated on four multimodal datasets, including the large-scale UK Biobank with 15 modalities. The key finding is that an imputation-based KL-Divergence AF consistently outperforms simpler baselines and other imputation-based strategies.",
+        "Strengths": [
+          "The CAMA setting is novel and well-motivated, addressing a real-world gap in test-time, cohort-level modality acquisition.",
+          "The paper provides a comprehensive framework, including theoretical derivations of AFs from AUROC/AUPRC metrics, upper-bound heuristics, and practical architectures.",
+          "The evaluation is extensive: multiple datasets (Symile, HAIM, MOSEI, UKBB), up to 15 modalities, 100k samples, and robustness checks (BC-VAE vs DDPM).",
+          "The finding that imputation-based KL-Divergence consistently outperforms baselines is a clear, actionable contribution.",
+          "The paper is generally well-written and clearly organized, with detailed appendices for reproducibility."
+        ],
+        "Weaknesses": [
+          "The evaluation methodology has a critical flaw: the oracle and upper-bound strategies assume access to true full scores (s_full) and true labels (for oracle). In practice, these are unknown. The paper does not adequately discuss how the imputation-based strategies would perform if the imputation model is poorly calibrated or if the missing modality is not predictable from available ones.",
+          "The paper excludes tasks where the multimodal model underperforms the unimodal baseline (negative gain). This selection bias could overstate the effectiveness of the proposed methods, as it removes cases where acquisition is detrimental.",
+          "The comparison with baselines is somewhat limited. While uncertainty and probability baselines are included, there is no comparison with more sophisticated AL/AFA methods adapted to this setting, e.g., reinforcement learning-based approaches from AMA literature (Kossen et al., 2023).",
+          "The paper's claim that 'imputation-based KL-Divergence strategy consistently and significantly outperforms all other non-oracle methods' is not fully supported by the detailed results in appendices. For instance, on MIMIC HAIM (Table 38), the random baseline sometimes outperforms the proposed methods. The paper should provide a more nuanced analysis of when and why the proposed method fails.",
+          "The computational cost of the proposed method is high (DDPM sampling with K=100 samples per test sample). The paper mentions BC-VAE as a faster alternative but does not provide a thorough cost-benefit analysis."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "1. In the evaluation, you exclude tasks with negative gain. What is the proportion of excluded tasks per dataset? How would the results change if these tasks were included? This is crucial for understanding the generalizability of your method.",
+          "2. The oracle strategies assume access to true labels and full scores. Could you discuss the practical implications of this assumption? How would the performance of your imputation-based methods degrade if the imputation model is not well-calibrated or if the missing modality is not predictable from the available ones?",
+          "3. You compare against simple baselines (uncertainty, probability, random). Have you considered comparing against more sophisticated methods from the Active Feature Acquisition or Active Modality Acquisition literature, such as reinforcement learning-based approaches (e.g., Kossen et al., 2023)?",
+          "4. The computational cost of the DDPM-based approach seems high (K=100 imputation samples per test sample). Could you provide a more detailed analysis of the inference time and memory footprint, and discuss the trade-offs with the BC-VAE variant?",
+          "5. In the discussion, you mention that the imputation-based KL-Divergence AF can slightly outperform the corresponding upper-bound heuristic. Could you elaborate on why this might happen? Is it due to the averaging over K samples acting as a form of regularization?",
+          "6. How do you handle the case where multiple modalities are missing for a sample? The problem formulation suggests a single target modality, but the datasets have multiple missing modalities. Does your method generalize to sequential acquisition of multiple modalities?"
+        ],
+        "Limitations": [
+          "The paper assumes a single model f that can process any subset of modalities. This may not hold in all practical settings where models are trained for specific modality combinations.",
+          "The evaluation is limited to binary classification tasks. The extension to multi-class or regression is mentioned as future work but not addressed.",
+          "The paper does not discuss the potential for negative societal impact beyond fairness concerns in the appendix. Specifically, the strategic acquisition of costly medical tests could exacerbate existing health inequities if not carefully deployed.",
+          "The computational cost of the proposed method (training and inference of generative models) is not thoroughly analyzed, which could limit its practical applicability in resource-constrained settings.",
+          "The paper's evaluation methodology, particularly the exclusion of tasks with negative gain, limits the generalizability of the conclusions."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 5,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces CAMA (Cohort-based Active Modality Acquisition), a new test-time setting for deciding which samples should receive additional modalities under a budget constraint to maximize a global metric. The paper proposes imputation-based acquisition functions (AFs) that use generative models (DDPMs, BC-VAEs) to estimate the benefit of acquiring a missing modality, benchmarked against oracle and upper-bound heuristics. The work is evaluated on four datasets, including UK Biobank with 15 modalities.\n\nStrengths:\n1. The CAMA setting is novel and well-motivated, addressing a real-world gap in test-time, cohort-level modality acquisition.\n2. The paper provides a comprehensive framework, including theoretical derivations of AFs from AUROC/AUPRC metrics, upper-bound heuristics, and practical architectures.\n3. The evaluation is extensive: multiple datasets (Symile, HAIM, MOSEI, UKBB), up to 15 modalities, 100k samples, and robustness checks (BC-VAE vs DDPM).\n4. The finding that imputation-based KL-Divergence consistently outperforms baselines is a clear, actionable contribution.\n5. The paper is generally well-written and clearly organized, with detailed appendices for reproducibility.\n\nWeaknesses:\n1. The evaluation methodology has a critical flaw: the oracle and upper-bound strategies assume access to true full scores (s_full) and true labels (for oracle). In practice, these are unknown. The paper does not adequately discuss how the imputation-based strategies would perform if the imputation model is poorly calibrated or if the missing modality is not predictable from available ones.\n2. The paper excludes tasks where the multimodal model underperforms the unimodal baseline (negative gain). This selection bias could overstate the effectiveness of the proposed methods, as it removes cases where acquisition is detrimental.\n3. The comparison with baselines is somewhat limited. While uncertainty and probability baselines are included, there is no comparison with more sophisticated AL/AFA methods adapted to this setting, e.g., reinforcement learning-based approaches from AMA literature (Kossen et al., 2023).\n4. The paper's claim that \"imputation-based KL-Divergence strategy consistently and significantly outperforms all other non-oracle methods\" is not fully supported by the detailed results in appendices. For instance, on MIMIC HAIM (Table 38), the random baseline sometimes outperforms the proposed methods. The paper should provide a more nuanced analysis of when and why the proposed method fails.\n5. The computational cost of the proposed method is high (DDPM sampling with K=100 samples per test sample). The paper mentions BC-VAE as a faster alternative but does not provide a thorough cost-benefit analysis.\n\nOriginality: The CAMA setting is novel. The combination of generative imputation with discriminative models for cohort-level AFs is a creative contribution. The paper clearly distinguishes itself from AL, AFA, and AMA.\n\nQuality: The technical soundness is good. The theoretical derivations of AFs are correct. The experiments are extensive, but the evaluation methodology has potential biases (task exclusion). The paper is honest about limitations but could be more critical of its own results.\n\nClarity: The paper is well-written. The problem formulation is clear, and the figures (though not fully visible in the text) are described well. The appendices provide sufficient detail for reproduction.\n\nSignificance: The problem is important and timely. The CAMA setting has clear real-world applications, particularly in healthcare. The proposed methods and benchmarks could be useful for future research. However, the significance is somewhat diminished by the evaluation biases and the lack of comparison with more advanced baselines.\n\nOverall: I lean towards a borderline reject. While the setting and contributions are novel, the evaluation has methodological issues that undermine the central claims. The paper needs a more careful analysis of when the proposed method works and when it doesn't, and a more honest treatment of the task exclusion.\n\nEthical Concerns: The paper discusses broader impact and ethics in Appendix A, acknowledging fairness concerns. No immediate ethical red flags.\n\nSoundness: 3 (good) - The methodology is mostly sound, but the task exclusion and oracle assumptions need more discussion.\n\nPresentation: 3 (good) - Well-written but the over-claiming of results in the abstract and discussion is a minor issue.\n\nContribution: 3 (good) - The CAMA setting and AFs are a valuable contribution, but the evaluation gaps prevent it from being excellent.\n\nOverall: 5 (Borderline accept) → Decision: Reject. The paper has a novel contribution but the evaluation methodology has significant biases that prevent a strong acceptance.\n\nConfidence: 4 (confident) - I am familiar with the related work and have checked the math/experimental setup. I'm not absolutely certain about all details, but I'm confident in my main criticisms.\n\nREVIEW JSON:\n```json\n{\n\"Summary\": \"The paper introduces Cohort-based Active Modality Acquisition (CAMA), a novel test-time setting for deciding which samples in a cohort should receive additional costly modalities under a budget constraint to maximize a global performance metric like AUROC or AUPRC. The authors propose several acquisition functions (AFs), including oracle and upper-bound heuristics as benchmarks, and imputation-based strategies that use generative models (DDPMs, BC-VAEs) to estimate the counterfactual benefit of acquiring a missing modality. The methods are evaluated on four multimodal datasets, including the large-scale UK Biobank with 15 modalities. The key finding is that an imputation-based KL-Divergence AF consistently outperforms simpler baselines and other imputation-based strategies.\",\n\"Strengths\": [\n\"The CAMA setting is novel and well-motivated, addressing a real-world gap in test-time, cohort-level modality acquisition.\",\n\"The paper provides a comprehensive framework, including theoretical derivations of AFs from AUROC/AUPRC metrics, upper-bound heuristics, and practical architectures.\",\n\"The evaluation is extensive: multiple datasets (Symile, HAIM, MOSEI, UKBB), up to 15 modalities, 100k samples, and robustness checks (BC-VAE vs DDPM).\",\n\"The finding that imputation-based KL-Divergence consistently outperforms baselines is a clear, actionable contribution.\",\n\"The paper is generally well-written and clearly organized, with detailed appendices for reproducibility.\"\n],\n\"Weaknesses\": [\n\"The evaluation methodology has a critical flaw: the oracle and upper-bound strategies assume access to true full scores (s_full) and true labels (for oracle). In practice, these are unknown. The paper does not adequately discuss how the imputation-based strategies would perform if the imputation model is poorly calibrated or if the missing modality is not predictable from available ones.\",\n\"The paper excludes tasks where the multimodal model underperforms the unimodal baseline (negative gain). This selection bias could overstate the effectiveness of the proposed methods, as it removes cases where acquisition is detrimental.\",\n\"The comparison with baselines is somewhat limited. While uncertainty and probability baselines are included, there is no comparison with more sophisticated AL/AFA methods adapted to this setting, e.g., reinforcement learning-based approaches from AMA literature (Kossen et al., 2023).\",\n\"The paper's claim that 'imputation-based KL-Divergence strategy consistently and significantly outperforms all other non-oracle methods' is not fully supported by the detailed results in appendices. For instance, on MIMIC HAIM (Table 38), the random baseline sometimes outperforms the proposed methods. The paper should provide a more nuanced analysis of when and why the proposed method fails.\",\n\"The computational cost of the proposed method is high (DDPM sampling with K=100 samples per test sample). The paper mentions BC-VAE as a faster alternative but does not provide a thorough cost-benefit analysis.\"\n],\n\"Originality\": 4,\n\"Quality\": 3,\n\"Clarity\": 3,\n\"Significance\": 3,\n\"Questions\": [\n\"1. In the evaluation, you exclude tasks with negative gain. What is the proportion of excluded tasks per dataset? How would the results change if these tasks were included? This is crucial for understanding the generalizability of your method.\",\n\"2. The oracle strategies assume access to true labels and full scores. Could you discuss the practical implications of this assumption? How would the performance of your imputation-based methods degrade if the imputation model is not well-calibrated or if the missing modality is not predictable from the available ones?\",\n\"3. You compare against simple baselines (uncertainty, probability, random). Have you considered comparing against more sophisticated methods from the Active Feature Acquisition or Active Modality Acquisition literature, such as reinforcement learning-based approaches (e.g., Kossen et al., 2023)?\",\n\"4. The computational cost of the DDPM-based approach seems high (K=100 imputation samples per test sample). Could you provide a more detailed analysis of the inference time and memory footprint, and discuss the trade-offs with the BC-VAE variant?\",\n\"5. In the discussion, you mention that the imputation-based KL-Divergence AF can slightly outperform the corresponding upper-bound heuristic. Could you elaborate on why this might happen? Is it due to the averaging over K samples acting as a form of regularization?\",\n\"6. How do you handle the case where multiple modalities are missing for a sample? The problem formulation suggests a single target modality, but the datasets have multiple missing modalities. Does your method generalize to sequential acquisition of multiple modalities?\"\n],\n\"Limitations\": [\n\"The paper assumes a single model f that can process any subset of modalities. This may not hold in all practical settings where models are trained for specific modality combinations.\",\n\"The evaluation is limited to binary classification tasks. The extension to multi-class or regression is mentioned as future work but not addressed.\",\n\"The paper does not discuss the potential for negative societal impact beyond fairness concerns in the appendix. Specifically, the strategic acquisition of costly medical tests could exacerbate existing health inequities if not carefully deployed.\",\n\"The computational cost of the proposed method (training and inference of generative models) is not thoroughly analyzed, which could limit its practical applicability in resource-constrained settings.\",\n\"The paper's evaluation methodology, particularly the exclusion of tasks with negative gain, limits the generalizability of the conclusions.\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 3,\n\"Contribution\": 3,\n\"Overall\": 5,\n\"Confidence\": 4,\n\"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 52110,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 50318,
+        "completion_tokens": 2170,
+        "reasoning_tokens": 0,
+        "total_tokens": 54280
+      },
+      "attempts": 1,
+      "response_id": "c21fcd2a-0912-4e80-b029-22f97363a30a"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 2,
+      "Reject": 3
+    },
+    "unanimous_decision": false,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          4,
+          3,
+          3,
+          4,
+          4
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          4,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          6,
+          5,
+          5,
+          7,
+          5
+        ],
+        "mean": 5.6,
+        "rounded_mean": 6,
+        "population_sd": 0.8,
+        "min": 5,
+        "max": 7
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper introduces Cohort-based Active Modality Acquisition (CAMA), a new test-time problem setting where, given a cohort of samples with some available modalities and a budget to acquire additional modalities for a subset of samples, the goal is to select which samples to acquire to maximize a global cohort-level performance metric (e.g., AUROC, AUPRC). The authors formalize the problem, derive acquisition functions from these metrics, and propose several strategies: oracle and upper-bound heuristics for benchmarking, and imputation-based strategies that use generative models (DDPMs, BC-VAEs) to estimate the counterfactual benefit of acquiring a missing modality. The imputation-based KL-Divergence strategy is highlighted as the most effective. The framework is evaluated on four multimodal datasets (UKBB, MIMIC Symile, MIMIC HAIM, MOSEI) with up to 15 modalities and 100k samples, showing that the proposed method can outperform simpler baselines like uncertainty sampling and random selection in many settings.",
+      "Strengths": [
+        "The CAMA problem setting is novel and practically relevant, clearly distinguishing itself from individual-level active learning and active feature acquisition paradigms.",
+        "The paper provides a comprehensive framework, including a formal problem formulation, theoretical derivation of acquisition functions from standard metrics (AUROC, AUPRC), and a clear taxonomy of strategies.",
+        "The evaluation is extensive, covering diverse datasets (healthcare, emotion recognition), varying modality counts (up to 15), and a large-scale real-world UK Biobank cohort (100k samples).",
+        "Inclusion of oracle strategies and upper-bound heuristics provides useful performance ceilings for benchmarking.",
+        "The paper is generally well-written and organized, with detailed appendices for reproducibility.",
+        "The finding that imputation-based KL-Divergence can outperform simpler baselines is an actionable and interesting contribution."
+      ],
+      "Weaknesses": [
+        "The central claim that the imputation-based KL-Divergence strategy 'consistently and significantly outperforms all other non-oracle methods' is not fully supported by the results. On MIMIC HAIM and some MOSEI tasks, simpler baselines (e.g., Probability, Random) perform comparably or better.",
+        "The evaluation excludes tasks where the multimodal model underperforms the unimodal baseline (negative gains), which introduces selection bias and limits the generalizability of the conclusions. The proportion of excluded tasks and the impact on results are not adequately discussed.",
+        "The experimental results are noisy and lack rigorous statistical significance testing (e.g., pairwise comparisons with confidence intervals). Some tables show high standard errors, making comparisons unreliable.",
+        "The computational cost of the DDPM-based imputation (K=100 samples per test sample) is significant, and the paper does not provide a thorough cost-benefit analysis versus the faster BC-VAE variant.",
+        "The novelty is incremental: while the cohort-level setting is new, the acquisition functions are largely adaptations of existing active learning principles (uncertainty, KL-divergence) to this new context.",
+        "The paper does not compare against more sophisticated baselines from the Active Modality Acquisition literature, such as reinforcement learning-based approaches (e.g., Kossen et al., 2023)."
+      ],
+      "Originality": 4,
+      "Quality": 3,
+      "Clarity": 3,
+      "Significance": 3,
+      "Questions": [
+        "1. What is the proportion of excluded tasks (with negative gain) per dataset? How would the overall results and conclusions change if these tasks were included? This is crucial for assessing the generalizability of the proposed method.",
+        "2. The oracle strategies can achieve G_full > 1, indicating that a mix of unimodal and multimodal samples outperforms the fully multimodal cohort. What are the characteristics of samples the oracle does NOT acquire? Does this suggest the multimodal model is poorly calibrated or overfits to certain modalities?",
+        "3. The imputation-based KL-Divergence strategy sometimes slightly outperforms its corresponding upper-bound heuristic (True KL-Div). Can the authors explain this surprising result? Is it due to the averaging over K samples acting as a form of regularization?",
+        "4. On MIMIC HAIM, why do simple baselines (e.g., Probability, Random) often perform comparably or better than the proposed imputation-based methods? What are the dataset/task characteristics that make the proposed strategy less effective?",
+        "5. How sensitive are the results to the quality of the imputation model? Have the authors tested with degraded imputation performance (e.g., fewer DDPM samples, a weaker generative model)?",
+        "6. What happens when the acquisition budget is very small (e.g., 1-5% of the cohort)? Are there differences in the ranking of strategies compared to larger budgets?",
+        "7. The paper focuses on binary classification. How would the acquisition functions need to be adapted for multi-class or regression settings?",
+        "8. How does the method generalize to scenarios where multiple modalities are missing and the decision involves choosing which modality to acquire for each sample, rather than a single fixed target modality?"
+      ],
+      "Limitations": [
+        "The evaluation excludes tasks with negative gains, which biases results toward favorable scenarios and limits applicability to cases where the additional modality's benefit is unknown.",
+        "The computational cost of the DDPM-based imputation is high, potentially limiting practical deployment in real-time or very large cohort settings.",
+        "The paper focuses on binary classification; extension to multi-class or regression is not addressed.",
+        "Fairness and equity concerns in healthcare applications are acknowledged but not empirically analyzed or mitigated. The strategic acquisition of costly medical tests could exacerbate health inequities if not carefully deployed.",
+        "The evaluation uses synthetically created missing modalities for most datasets, which may not fully capture real-world missingness patterns.",
+        "The paper assumes a single model f that can process any subset of modalities, which may not hold in all practical settings."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 3,
+      "Contribution": 3,
+      "Overall": 5,
+      "Confidence": 4,
+      "Decision": "Reject"
+    },
+    "raw_response": "THOUGHT:\nThe paper introduces a novel problem setting (CAMA) with clear practical relevance, and the proposed imputation-based acquisition functions are well-motivated. However, the reviews reveal significant concerns: inconsistent performance across datasets (especially MIMIC HAIM), selection bias from excluding negative-gain tasks, lack of statistical significance in many comparisons, computational overhead, and a central claim (\"consistently and significantly outperforms\") that is not fully supported by the evidence. The reviewers are split: two accept (6, 7), three reject (5, 5, 5). The accept reviews acknowledge the novelty but note the same weaknesses. The reject reviews emphasize the overstated claims and methodological issues. The consensus is that the paper is technically solid but has notable evaluation flaws and overclaims. Given the mixed evidence and the importance of the selection bias and inconsistent results, I lean towards rejection. The paper has a good contribution but does not meet the bar for acceptance as-is; the authors need to address the selection bias, provide more rigorous statistical analysis, and temper their claims. Overall score: 5 (borderline reject), decision: Reject.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper introduces Cohort-based Active Modality Acquisition (CAMA), a new test-time problem setting where, given a cohort of samples with some available modalities and a budget to acquire additional modalities for a subset of samples, the goal is to select which samples to acquire to maximize a global cohort-level performance metric (e.g., AUROC, AUPRC). The authors formalize the problem, derive acquisition functions from these metrics, and propose several strategies: oracle and upper-bound heuristics for benchmarking, and imputation-based strategies that use generative models (DDPMs, BC-VAEs) to estimate the counterfactual benefit of acquiring a missing modality. The imputation-based KL-Divergence strategy is highlighted as the most effective. The framework is evaluated on four multimodal datasets (UKBB, MIMIC Symile, MIMIC HAIM, MOSEI) with up to 15 modalities and 100k samples, showing that the proposed method can outperform simpler baselines like uncertainty sampling and random selection in many settings.\",\n  \"Strengths\": [\n    \"The CAMA problem setting is novel and practically relevant, clearly distinguishing itself from individual-level active learning and active feature acquisition paradigms.\",\n    \"The paper provides a comprehensive framework, including a formal problem formulation, theoretical derivation of acquisition functions from standard metrics (AUROC, AUPRC), and a clear taxonomy of strategies.\",\n    \"The evaluation is extensive, covering diverse datasets (healthcare, emotion recognition), varying modality counts (up to 15), and a large-scale real-world UK Biobank cohort (100k samples).\",\n    \"Inclusion of oracle strategies and upper-bound heuristics provides useful performance ceilings for benchmarking.\",\n    \"The paper is generally well-written and organized, with detailed appendices for reproducibility.\",\n    \"The finding that imputation-based KL-Divergence can outperform simpler baselines is an actionable and interesting contribution.\"\n  ],\n  \"Weaknesses\": [\n    \"The central claim that the imputation-based KL-Divergence strategy 'consistently and significantly outperforms all other non-oracle methods' is not fully supported by the results. On MIMIC HAIM and some MOSEI tasks, simpler baselines (e.g., Probability, Random) perform comparably or better.\",\n    \"The evaluation excludes tasks where the multimodal model underperforms the unimodal baseline (negative gains), which introduces selection bias and limits the generalizability of the conclusions. The proportion of excluded tasks and the impact on results are not adequately discussed.\",\n    \"The experimental results are noisy and lack rigorous statistical significance testing (e.g., pairwise comparisons with confidence intervals). Some tables show high standard errors, making comparisons unreliable.\",\n    \"The computational cost of the DDPM-based imputation (K=100 samples per test sample) is significant, and the paper does not provide a thorough cost-benefit analysis versus the faster BC-VAE variant.\",\n    \"The novelty is incremental: while the cohort-level setting is new, the acquisition functions are largely adaptations of existing active learning principles (uncertainty, KL-divergence) to this new context.\",\n    \"The paper does not compare against more sophisticated baselines from the Active Modality Acquisition literature, such as reinforcement learning-based approaches (e.g., Kossen et al., 2023).\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"1. What is the proportion of excluded tasks (with negative gain) per dataset? How would the overall results and conclusions change if these tasks were included? This is crucial for assessing the generalizability of the proposed method.\",\n    \"2. The oracle strategies can achieve G_full > 1, indicating that a mix of unimodal and multimodal samples outperforms the fully multimodal cohort. What are the characteristics of samples the oracle does NOT acquire? Does this suggest the multimodal model is poorly calibrated or overfits to certain modalities?\",\n    \"3. The imputation-based KL-Divergence strategy sometimes slightly outperforms its corresponding upper-bound heuristic (True KL-Div). Can the authors explain this surprising result? Is it due to the averaging over K samples acting as a form of regularization?\",\n    \"4. On MIMIC HAIM, why do simple baselines (e.g., Probability, Random) often perform comparably or better than the proposed imputation-based methods? What are the dataset/task characteristics that make the proposed strategy less effective?\",\n    \"5. How sensitive are the results to the quality of the imputation model? Have the authors tested with degraded imputation performance (e.g., fewer DDPM samples, a weaker generative model)?\",\n    \"6. What happens when the acquisition budget is very small (e.g., 1-5% of the cohort)? Are there differences in the ranking of strategies compared to larger budgets?\",\n    \"7. The paper focuses on binary classification. How would the acquisition functions need to be adapted for multi-class or regression settings?\",\n    \"8. How does the method generalize to scenarios where multiple modalities are missing and the decision involves choosing which modality to acquire for each sample, rather than a single fixed target modality?\"\n  ],\n  \"Limitations\": [\n    \"The evaluation excludes tasks with negative gains, which biases results toward favorable scenarios and limits applicability to cases where the additional modality's benefit is unknown.\",\n    \"The computational cost of the DDPM-based imputation is high, potentially limiting practical deployment in real-time or very large cohort settings.\",\n    \"The paper focuses on binary classification; extension to multi-class or regression is not addressed.\",\n    \"Fairness and equity concerns in healthcare applications are acknowledged but not empirically analyzed or mitigated. The strategic acquisition of costly medical tests could exacerbate health inequities if not carefully deployed.\",\n    \"The evaluation uses synthetically created missing modalities for most datasets, which may not fully capture real-world missingness patterns.\",\n    \"The paper assumes a single model f that can process any subset of modalities, which may not hold in all practical settings.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 5,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 7168,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 7168,
+      "completion_tokens": 1547,
+      "reasoning_tokens": 0,
+      "total_tokens": 8715
+    },
+    "attempts": 1,
+    "response_id": "49f31aa0-4ba2-4444-b1dd-4147e489d627"
+  },
+  "final_review": {
+    "Summary": "The paper introduces Cohort-based Active Modality Acquisition (CAMA), a new test-time problem setting where, given a cohort of samples with some available modalities and a budget to acquire additional modalities for a subset of samples, the goal is to select which samples to acquire to maximize a global cohort-level performance metric (e.g., AUROC, AUPRC). The authors formalize the problem, derive acquisition functions from these metrics, and propose several strategies: oracle and upper-bound heuristics for benchmarking, and imputation-based strategies that use generative models (DDPMs, BC-VAEs) to estimate the counterfactual benefit of acquiring a missing modality. The imputation-based KL-Divergence strategy is highlighted as the most effective. The framework is evaluated on four multimodal datasets (UKBB, MIMIC Symile, MIMIC HAIM, MOSEI) with up to 15 modalities and 100k samples, showing that the proposed method can outperform simpler baselines like uncertainty sampling and random selection in many settings.",
+    "Strengths": [
+      "The CAMA problem setting is novel and practically relevant, clearly distinguishing itself from individual-level active learning and active feature acquisition paradigms.",
+      "The paper provides a comprehensive framework, including a formal problem formulation, theoretical derivation of acquisition functions from standard metrics (AUROC, AUPRC), and a clear taxonomy of strategies.",
+      "The evaluation is extensive, covering diverse datasets (healthcare, emotion recognition), varying modality counts (up to 15), and a large-scale real-world UK Biobank cohort (100k samples).",
+      "Inclusion of oracle strategies and upper-bound heuristics provides useful performance ceilings for benchmarking.",
+      "The paper is generally well-written and organized, with detailed appendices for reproducibility.",
+      "The finding that imputation-based KL-Divergence can outperform simpler baselines is an actionable and interesting contribution."
+    ],
+    "Weaknesses": [
+      "The central claim that the imputation-based KL-Divergence strategy 'consistently and significantly outperforms all other non-oracle methods' is not fully supported by the results. On MIMIC HAIM and some MOSEI tasks, simpler baselines (e.g., Probability, Random) perform comparably or better.",
+      "The evaluation excludes tasks where the multimodal model underperforms the unimodal baseline (negative gains), which introduces selection bias and limits the generalizability of the conclusions. The proportion of excluded tasks and the impact on results are not adequately discussed.",
+      "The experimental results are noisy and lack rigorous statistical significance testing (e.g., pairwise comparisons with confidence intervals). Some tables show high standard errors, making comparisons unreliable.",
+      "The computational cost of the DDPM-based imputation (K=100 samples per test sample) is significant, and the paper does not provide a thorough cost-benefit analysis versus the faster BC-VAE variant.",
+      "The novelty is incremental: while the cohort-level setting is new, the acquisition functions are largely adaptations of existing active learning principles (uncertainty, KL-divergence) to this new context.",
+      "The paper does not compare against more sophisticated baselines from the Active Modality Acquisition literature, such as reinforcement learning-based approaches (e.g., Kossen et al., 2023)."
+    ],
+    "Originality": 4,
+    "Quality": 3,
+    "Clarity": 3,
+    "Significance": 3,
+    "Questions": [
+      "1. What is the proportion of excluded tasks (with negative gain) per dataset? How would the overall results and conclusions change if these tasks were included? This is crucial for assessing the generalizability of the proposed method.",
+      "2. The oracle strategies can achieve G_full > 1, indicating that a mix of unimodal and multimodal samples outperforms the fully multimodal cohort. What are the characteristics of samples the oracle does NOT acquire? Does this suggest the multimodal model is poorly calibrated or overfits to certain modalities?",
+      "3. The imputation-based KL-Divergence strategy sometimes slightly outperforms its corresponding upper-bound heuristic (True KL-Div). Can the authors explain this surprising result? Is it due to the averaging over K samples acting as a form of regularization?",
+      "4. On MIMIC HAIM, why do simple baselines (e.g., Probability, Random) often perform comparably or better than the proposed imputation-based methods? What are the dataset/task characteristics that make the proposed strategy less effective?",
+      "5. How sensitive are the results to the quality of the imputation model? Have the authors tested with degraded imputation performance (e.g., fewer DDPM samples, a weaker generative model)?",
+      "6. What happens when the acquisition budget is very small (e.g., 1-5% of the cohort)? Are there differences in the ranking of strategies compared to larger budgets?",
+      "7. The paper focuses on binary classification. How would the acquisition functions need to be adapted for multi-class or regression settings?",
+      "8. How does the method generalize to scenarios where multiple modalities are missing and the decision involves choosing which modality to acquire for each sample, rather than a single fixed target modality?"
+    ],
+    "Limitations": [
+      "The evaluation excludes tasks with negative gains, which biases results toward favorable scenarios and limits applicability to cases where the additional modality's benefit is unknown.",
+      "The computational cost of the DDPM-based imputation is high, potentially limiting practical deployment in real-time or very large cohort settings.",
+      "The paper focuses on binary classification; extension to multi-class or regression is not addressed.",
+      "Fairness and equity concerns in healthcare applications are acknowledged but not empirically analyzed or mitigated. The strategic acquisition of costly medical tests could exacerbate health inequities if not carefully deployed.",
+      "The evaluation uses synthetically created missing modalities for most datasets, which may not fully capture real-world missingness patterns.",
+      "The paper assumes a single model f that can process any subset of modalities, which may not hold in all practical settings."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 3,
+    "Contribution": 3,
+    "Overall": 6,
+    "Confidence": 4,
+    "Decision": "Reject"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 267718,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 258758,
+    "completion_tokens": 10964,
+    "reasoning_tokens": 0,
+    "total_tokens": 278682,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.03622612,
+    "output_usd": 0.00306992,
+    "total_usd": 0.03932113
+  },
+  "elapsed_seconds": 35.8,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Reject",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B148",
+    "filename": "B148.txt",
+    "blind_text_sha256": "af84304a2974bdc6303d92c902296133e8b3dcd2b48261d7aeed3686430a69e6",
+    "characters": 146986,
+    "full_text_saved": false
+  }
+}

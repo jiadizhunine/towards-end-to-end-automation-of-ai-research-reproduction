@@ -1,0 +1,700 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:43:04.843135+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "This paper introduces BWFlow, a flow-matching framework for graph generation that constructs probability paths via Bures-Wasserstein (BW) optimal transport displacement between Markov Random Field (MRF) parameterizations of graphs. The key contribution is replacing the standard linear interpolation of nodes/edges (which the authors argue produces non-smooth paths with sharp transitions) with a theoretically grounded BW interpolation that respects the joint evolution of graph components. The paper derives closed-form expressions for the BW distance, interpolation, and velocity (Propositions 1-3), and provides both continuous and discrete flow-matching algorithms. Experiments on plain graph generation (planar, tree, SBM), 2D molecules (MOSES, GUACAMOL), and 3D molecules (QM9, GEOM-DRUGS) show competitive or superior performance, better training convergence, and efficient sampling compared to SOTA diffusion and flow-based methods.",
+        "Strengths": [
+          "Theoretical grounding: The paper provides a rigorous framework with formal propositions (BW distance, interpolation, velocity) and complete proofs in the appendix, going beyond heuristic path manipulations used in prior work.",
+          "Clear motivation: Figure 1 convincingly demonstrates the non-smoothness of linear interpolation paths and the resulting training/sampling issues, providing strong empirical justification for the proposed approach.",
+          "Comprehensive evaluation: Experiments cover multiple graph types (plain, 2D molecules, 3D molecules with/without hydrogen), with ablations on interpolation methods, sampling step reduction, and convergence analysis.",
+          "Honest limitations: The authors openly discuss the tree graph performance gap, computational complexity (O(N³)), and multi-relational graph limitations, with constructive suggestions for future work.",
+          "Practical significance: BWFlow shows clear benefits in training convergence speed and sampling efficiency (Table 3), which are important for real-world deployment."
+        ],
+        "Weaknesses": [
+          "The claim that linear interpolation 'breaks the interconnected patterns of graphs' is not rigorously proven—the paper relies primarily on empirical evidence rather than a theoretical argument for why linear interpolation is fundamentally suboptimal.",
+          "Computational overhead: The BW interpolation requires O(N³) matrix operations (pseudo-inverse calculations), which may limit scalability, though the paper discusses LSQR approximation as a mitigation.",
+          "Tree graph performance: BWFlow underperforms on tree graphs compared to competitors (Table 1), which the authors attribute to spectral properties but remains a notable weakness.",
+          "The discrete extension (Section 3.3) relies on a central limit theorem approximation that is not rigorously justified for the small graph sizes used in experiments (e.g., 64 nodes in planar graphs).",
+          "The 'relaxed stability' metric introduced for molecule generation is non-standard and may not be directly comparable to metrics used in prior work, potentially making cross-paper comparisons difficult.",
+          "The comparison with DeFoG in Table 3 is somewhat unfair: DeFoG-1 disables path manipulation while BWFlow uses its natural BW path, making the comparison more about the approach itself rather than a controlled ablation."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "Can you provide a more rigorous theoretical argument for why linear interpolation is fundamentally suboptimal for graph generation, beyond the empirical observation of non-smooth paths? For instance, is there a formal characterization of the class of graph distributions where linear interpolation fails to recover the OT displacement?",
+          "The discrete extension uses a central limit theorem approximation for the Wasserstein distance between Bernoulli distributions. How does this approximation behave for small graphs (e.g., 64 nodes)? Have you validated this approximation empirically, and what are the error bounds?",
+          "The 'relaxed stability' metric for molecule generation differs from standard stability metrics. Can you clarify how it relates to the conventional measures (e.g., RDKit validity, atom stability) and whether results are comparable to prior work that uses the standard metrics?",
+          "For the tree graph limitation, you attribute the performance gap to spectral properties. Could you provide more detailed analysis (e.g., spectral distributions) and discuss whether a different parameterization (e.g., hyperbolic geometry) could address this?",
+          "The LSQR approximation for the pseudo-inverse shows promising results (Table 6). What is the actual speedup in training time, and how does the approximation error affect the probability path quality?",
+          "In the sampling analysis (Table 3), the comparison with DeFoG-2 (with path manipulation) seems more informative than DeFoG-1. Could you highlight this comparison more prominently and discuss how BWFlow compares when DeFoG uses its optimal configuration?"
+        ],
+        "Limitations": [
+          "The O(N³) computational complexity of BW interpolation may limit scalability to very large graphs, though the LSQR approximation provides a promising mitigation.",
+          "The framework is not easily generalizable to multiple edge types (heterogeneous graphs), which is a common requirement in real-world applications.",
+          "The performance on tree graphs is notably worse than competitors, suggesting the MRF prior is not well-suited for all graph types.",
+          "The discrete extension relies on an approximation (CLT) that may not be valid for small graphs, potentially limiting its applicability.",
+          "The paper does not address potential negative societal impacts of graph generation (e.g., generation of realistic social networks could raise privacy concerns, or molecule generation could be used for harmful substances)."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 4,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces BWFlow, a flow-matching framework for graph generation that uses Bures-Wasserstein interpolation between Markov Random Field (MRF) parameterizations of graphs. The key idea is to replace the standard linear interpolation of nodes/edges with an optimal transport displacement on the graph Laplacian, which the authors argue produces smoother probability paths and better training/sampling dynamics.\n\nStrengths:\n1. The theoretical framework is well-developed, with formal propositions for the BW distance (Prop 1), interpolation (Prop 2), and velocity (Prop 3), all with proofs in the appendix.\n2. The motivation is clear: the paper convincingly demonstrates (via Figure 1) that linear interpolation leads to non-smooth probability paths with sharp transitions, which harms velocity estimation and sampling convergence.\n3. The experimental evaluation is comprehensive, covering plain graphs (planar, tree, SBM), 2D molecules (MOSES, GUACAMOL), and 3D molecules (QM9, GEOM-DRUGS), with competitive or superior performance compared to SOTA methods.\n4. The paper includes useful ablations (interpolation method comparison, sampling step reduction) and behavior analysis (training path smoothness, convergence speed) that support the claims.\n5. The authors are honest about limitations (tree graphs, multi-relational graphs, computational complexity) and provide constructive discussion of these issues.\n\nWeaknesses:\n1. The claim that linear interpolation \"breaks the interconnected patterns of graphs\" is somewhat overstated—the paper does not provide a rigorous theoretical argument for why linear interpolation is fundamentally suboptimal beyond empirical observations.\n2. The computational complexity of the BW interpolation (O(N³) for matrix operations) is a practical concern, though the authors discuss mitigation strategies (LSQR).\n3. The paper's performance on tree graphs is notably worse than competitors, which the authors attribute to spectral properties but this remains a limitation.\n4. The discrete extension (Section 3.3) relies on an approximation (CLT) that is not rigorously justified for the small graph sizes used in experiments.\n5. The comparison with DeFoG in Table 3 is somewhat unfair since DeFoG-1 disables path manipulation while BWFlow uses its natural BW path—the comparison with DeFoG-2 is more informative but not highlighted.\n6. The \"relaxed stability\" metric for molecule generation is non-standard and may not be directly comparable to metrics used in prior work.\n\nOriginality: The paper presents a novel combination of MRF modeling, Bures-Wasserstein optimal transport, and flow matching for graphs. While individual components are known, the integration is novel and theoretically grounded. The paper clearly differentiates from prior work (e.g., DeFoG's heuristic path manipulation).\n\nQuality: The theoretical derivations appear sound (though I did not check all details), and the experimental methodology is careful (e.g., CAVG evaluation, disabling path manipulation for fair comparison). However, there are some concerns about the fairness of comparisons and the robustness of the relaxed stability metric.\n\nClarity: The paper is generally well-written and organized, with clear motivation, formal definitions, and helpful figures. Some technical details (e.g., the derivation of the BW distance) are dense but appropriately deferred to the appendix.\n\nSignificance: The work addresses an important problem (probability path construction in graph generation) with a principled approach that shows clear benefits in training dynamics and sampling efficiency. The results are likely to influence future work on graph generation and flow matching on structured data.\n\nOverall, I think this is a strong paper with solid theoretical foundations and promising empirical results. The main concerns are the computational cost, the tree graph limitation, and some minor experimental issues. I would lean toward acceptance.\n\nDecision: Accept\n\nConfidence: 4 (I'm confident in my assessment but did not check all mathematical details carefully)\n\nRatings:\n- Originality: 4 (very high)\n- Quality: 3 (good)\n- Clarity: 3 (good)\n- Significance: 4 (very high)\n- Soundness: 3 (good)\n- Presentation: 3 (good)\n- Contribution: 4 (very high)\n- Overall: 7 (Accept)REVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper introduces BWFlow, a flow-matching framework for graph generation that constructs probability paths via Bures-Wasserstein (BW) optimal transport displacement between Markov Random Field (MRF) parameterizations of graphs. The key contribution is replacing the standard linear interpolation of nodes/edges (which the authors argue produces non-smooth paths with sharp transitions) with a theoretically grounded BW interpolation that respects the joint evolution of graph components. The paper derives closed-form expressions for the BW distance, interpolation, and velocity (Propositions 1-3), and provides both continuous and discrete flow-matching algorithms. Experiments on plain graph generation (planar, tree, SBM), 2D molecules (MOSES, GUACAMOL), and 3D molecules (QM9, GEOM-DRUGS) show competitive or superior performance, better training convergence, and efficient sampling compared to SOTA diffusion and flow-based methods.\",\n  \"Strengths\": [\n    \"Theoretical grounding: The paper provides a rigorous framework with formal propositions (BW distance, interpolation, velocity) and complete proofs in the appendix, going beyond heuristic path manipulations used in prior work.\",\n    \"Clear motivation: Figure 1 convincingly demonstrates the non-smoothness of linear interpolation paths and the resulting training/sampling issues, providing strong empirical justification for the proposed approach.\",\n    \"Comprehensive evaluation: Experiments cover multiple graph types (plain, 2D molecules, 3D molecules with/without hydrogen), with ablations on interpolation methods, sampling step reduction, and convergence analysis.\",\n    \"Honest limitations: The authors openly discuss the tree graph performance gap, computational complexity (O(N³)), and multi-relational graph limitations, with constructive suggestions for future work.\",\n    \"Practical significance: BWFlow shows clear benefits in training convergence speed and sampling efficiency (Table 3), which are important for real-world deployment.\"\n  ],\n  \"Weaknesses\": [\n    \"The claim that linear interpolation 'breaks the interconnected patterns of graphs' is not rigorously proven—the paper relies primarily on empirical evidence rather than a theoretical argument for why linear interpolation is fundamentally suboptimal.\",\n    \"Computational overhead: The BW interpolation requires O(N³) matrix operations (pseudo-inverse calculations), which may limit scalability, though the paper discusses LSQR approximation as a mitigation.\",\n    \"Tree graph performance: BWFlow underperforms on tree graphs compared to competitors (Table 1), which the authors attribute to spectral properties but remains a notable weakness.\",\n    \"The discrete extension (Section 3.3) relies on a central limit theorem approximation that is not rigorously justified for the small graph sizes used in experiments (e.g., 64 nodes in planar graphs).\",\n    \"The 'relaxed stability' metric introduced for molecule generation is non-standard and may not be directly comparable to metrics used in prior work, potentially making cross-paper comparisons difficult.\",\n    \"The comparison with DeFoG in Table 3 is somewhat unfair: DeFoG-1 disables path manipulation while BWFlow uses its natural BW path, making the comparison more about the approach itself rather than a controlled ablation.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"Can you provide a more rigorous theoretical argument for why linear interpolation is fundamentally suboptimal for graph generation, beyond the empirical observation of non-smooth paths? For instance, is there a formal characterization of the class of graph distributions where linear interpolation fails to recover the OT displacement?\",\n    \"The discrete extension uses a central limit theorem approximation for the Wasserstein distance between Bernoulli distributions. How does this approximation behave for small graphs (e.g., 64 nodes)? Have you validated this approximation empirically, and what are the error bounds?\",\n    \"The 'relaxed stability' metric for molecule generation differs from standard stability metrics. Can you clarify how it relates to the conventional measures (e.g., RDKit validity, atom stability) and whether results are comparable to prior work that uses the standard metrics?\",\n    \"For the tree graph limitation, you attribute the performance gap to spectral properties. Could you provide more detailed analysis (e.g., spectral distributions) and discuss whether a different parameterization (e.g., hyperbolic geometry) could address this?\",\n    \"The LSQR approximation for the pseudo-inverse shows promising results (Table 6). What is the actual speedup in training time, and how does the approximation error affect the probability path quality?\",\n    \"In the sampling analysis (Table 3), the comparison with DeFoG-2 (with path manipulation) seems more informative than DeFoG-1. Could you highlight this comparison more prominently and discuss how BWFlow compares when DeFoG uses its optimal configuration?\"\n  ],\n  \"Limitations\": [\n    \"The O(N³) computational complexity of BW interpolation may limit scalability to very large graphs, though the LSQR approximation provides a promising mitigation.\",\n    \"The framework is not easily generalizable to multiple edge types (heterogeneous graphs), which is a common requirement in real-world applications.\",\n    \"The performance on tree graphs is notably worse than competitors, suggesting the MRF prior is not well-suited for all graph types.\",\n    \"The discrete extension relies on an approximation (CLT) that may not be valid for small graphs, potentially limiting its applicability.\",\n    \"The paper does not address potential negative societal impacts of graph generation (e.g., generation of realistic social networks could raise privacy concerns, or molecule generation could be used for harmful substances).\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 4,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 40760,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 38968,
+        "completion_tokens": 2073,
+        "reasoning_tokens": 0,
+        "total_tokens": 42833
+      },
+      "attempts": 1,
+      "response_id": "fe018a3c-3900-42a8-9f23-e816fe3a95de"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper introduces BWFlow, a flow-matching framework for graph generation that constructs probability paths using Bures-Wasserstein (BW) interpolation between graph distributions modeled as Markov Random Fields (MRFs). The authors argue that standard linear interpolation used in existing graph diffusion/flow models breaks the interconnected patterns of graphs, leading to non-smooth probability paths, poor training dynamics, and faulty sampling convergence. BWFlow models graphs as connected systems via MRFs, derives a closed-form Bures-Wasserstein distance between graph distributions, and leverages this to construct optimal transport displacement interpolations that ensure co-evolution of graph components. The framework supports both continuous and discrete flow matching regimes. Experiments on plain graphs (Planar, Tree, SBM), 2D molecules (MOSES, GUACAMOL), and 3D molecules (QM9, GEOM-DRUGS) demonstrate competitive performance, better training convergence, and efficient sampling compared to existing diffusion and flow-based models.",
+        "Strengths": [
+          "The theoretical framework is well-developed, with clear propositions for the BW distance, interpolation, and velocity, along with rigorous proofs in the appendix.",
+          "The motivation is compelling and well-illustrated with empirical evidence showing the limitations of linear interpolation in graph generation.",
+          "The experimental evaluation is comprehensive, covering multiple graph generation tasks including plain graphs, 2D molecules, and 3D molecules.",
+          "The paper honestly discusses limitations, including performance on tree graphs, extension to multi-relational graphs, and computational complexity.",
+          "The approach is novel, applying Bures-Wasserstein geometry to graph generation through an MRF parameterization.",
+          "The paper provides good empirical evidence of faster training convergence and better sampling efficiency with small step sizes."
+        ],
+        "Weaknesses": [
+          "The empirical results are mixed - while BWFlow outperforms baselines on Planar and SBM datasets, it underperforms on Tree graphs in terms of V.U.N. metrics, and the paper's explanation for this gap is somewhat speculative.",
+          "The 'relaxed stability' metric introduced for molecule generation without bond types is non-standard and may not be directly comparable to existing metrics, potentially making the reported improvements less interpretable.",
+          "The comparison setup disables path manipulation techniques (e.g., target guidance, time distortion) from baseline models, which may not be a fair comparison since these techniques are legitimate contributions of those baselines.",
+          "The computational complexity of O(N³) for the pseudo-inverse calculation is a practical concern, though the paper discusses mitigation strategies such as LSQR.",
+          "The theoretical framework relies on several assumptions (shared V, ν→0) that may limit its generality, and the paper does not fully explore the sensitivity to these assumptions.",
+          "The paper lacks a detailed analysis of when BW interpolation provides the most benefit versus when linear interpolation is sufficient, which would help practitioners decide which method to use."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "Could you provide more details on the sensitivity of BWFlow to the choice of V (the transformation matrix)? How is V determined in practice, and how does its choice affect the quality of the probability path?",
+          "The relaxed stability metric is non-standard. Could you provide a detailed comparison between the relaxed stability and the standard stability metrics used in previous work (e.g., MiDi, FlowMol) to help readers interpret the reported improvements?",
+          "In Table 1, BWFlow underperforms on Tree graphs in terms of V.U.N. compared to Cometh and DeFoG. Could you elaborate on the spectral properties of tree graphs that make them challenging for the GMRF framework? Is there a way to adapt the framework to better handle such graphs?",
+          "The paper mentions that path manipulation techniques from baselines are disabled for fair comparison. However, these techniques are part of the baselines' contributions. Could you provide results with all techniques enabled to give a complete picture of the state-of-the-art comparison?",
+          "How does the O(N³) computational cost of BW interpolation scale with graph size in practice? The LSQR approximation is mentioned but not fully evaluated - could you provide more extensive benchmarks on larger graphs?",
+          "Could you discuss the theoretical conditions under which BW interpolation is guaranteed to provide a better probability path than linear interpolation? Are there identifiable characteristics of graph datasets that would indicate BWFlow is preferred?"
+        ],
+        "Limitations": [
+          "The paper acknowledges limitations in handling multi-relational graphs (multiple edge types), which is common in real-world applications like molecular generation with bond types.",
+          "The performance on tree graphs is notably worse than baselines, and the paper's explanation (spectral spread) is not fully validated.",
+          "The computational overhead of O(N³) for pseudo-inverse calculations may limit scalability to very large graphs, despite the proposed LSQR approximation.",
+          "The theoretical framework relies on assumptions (shared V, ν→0) that may not hold in all practical scenarios, and the paper does not provide extensive sensitivity analysis to these assumptions.",
+          "The paper does not discuss potential negative societal impacts of improved graph generation, such as potential misuse in generating deceptive social networks or designing harmful molecules."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces BWFlow, a flow-matching framework for graph generation that constructs probability paths using Bures-Wasserstein (BW) interpolation between graph distributions modeled as Markov Random Fields (MRFs). The key contribution is a theoretically grounded alternative to the standard linear interpolation used in existing graph diffusion/flow models, which the authors argue breaks the interconnected patterns of graphs and leads to poor training dynamics and sampling convergence.\n\nThe paper has several notable strengths:\n1. The theoretical framework is well-developed, with clear propositions for the BW distance, interpolation, and velocity (Propositions 1-3), along with proofs in the appendix.\n2. The motivation is compelling - the paper identifies a real limitation of linear interpolation in graph generation and provides empirical evidence (Fig. 1) showing the non-smooth training path.\n3. The experimental evaluation is thorough, covering plain graphs (Planar, Tree, SBM), 2D molecules (MOSES, GUACAMOL), and 3D molecules (QM9, GEOM-DRUGS).\n4. The paper honestly discusses limitations (tree graphs, multi-relational graphs, computational complexity).\n\nHowever, there are several weaknesses:\n1. The paper claims superiority over linear interpolation but the comparisons in Table 1 show mixed results - BWFlow is better on Planar and SBM but worse on Tree in terms of V.U.N.\n2. The \"relaxed stability\" metric introduced for molecule generation without bond types is non-standard and may not be directly comparable to existing metrics.\n3. The computational complexity of O(N³) for the pseudo-inverse calculation is a practical concern, though the paper discusses mitigation strategies.\n4. The paper's claim about \"unifying\" path distortion designs is somewhat unclear - the comparison setup disables path manipulation techniques from baselines, which may not be a fair comparison since those techniques are part of the baselines' contributions.\n5. The theoretical framework relies on several assumptions (shared V, ν→0) that may limit generality.\n\nThe paper is well-written and technically sound, with clear derivations and honest discussion of limitations. The originality is high - this is a novel application of Bures-Wasserstein geometry to graph generation. The significance is moderate-to-high, as it addresses a fundamental issue in graph generative modeling.\n\nOverall, I lean toward acceptance given the solid theoretical contribution, comprehensive experiments, and honest evaluation. The main concerns are the mixed empirical results on some datasets and potential fairness issues in baseline comparisons.\n\nREVIEW JSON:\n```json\n{\n\"Summary\": \"The paper introduces BWFlow, a flow-matching framework for graph generation that constructs probability paths using Bures-Wasserstein (BW) interpolation between graph distributions modeled as Markov Random Fields (MRFs). The authors argue that standard linear interpolation used in existing graph diffusion/flow models breaks the interconnected patterns of graphs, leading to non-smooth probability paths, poor training dynamics, and faulty sampling convergence. BWFlow models graphs as connected systems via MRFs, derives a closed-form Bures-Wasserstein distance between graph distributions, and leverages this to construct optimal transport displacement interpolations that ensure co-evolution of graph components. The framework supports both continuous and discrete flow matching regimes. Experiments on plain graphs (Planar, Tree, SBM), 2D molecules (MOSES, GUACAMOL), and 3D molecules (QM9, GEOM-DRUGS) demonstrate competitive performance, better training convergence, and efficient sampling compared to existing diffusion and flow-based models.\",\n\"Strengths\": [\n\"The theoretical framework is well-developed, with clear propositions for the BW distance, interpolation, and velocity, along with rigorous proofs in the appendix.\",\n\"The motivation is compelling and well-illustrated with empirical evidence showing the limitations of linear interpolation in graph generation.\",\n\"The experimental evaluation is comprehensive, covering multiple graph generation tasks including plain graphs, 2D molecules, and 3D molecules.\",\n\"The paper honestly discusses limitations, including performance on tree graphs, extension to multi-relational graphs, and computational complexity.\",\n\"The approach is novel, applying Bures-Wasserstein geometry to graph generation through an MRF parameterization.\",\n\"The paper provides good empirical evidence of faster training convergence and better sampling efficiency with small step sizes.\"\n],\n\"Weaknesses\": [\n\"The empirical results are mixed - while BWFlow outperforms baselines on Planar and SBM datasets, it underperforms on Tree graphs in terms of V.U.N. metrics, and the paper's explanation for this gap is somewhat speculative.\",\n\"The 'relaxed stability' metric introduced for molecule generation without bond types is non-standard and may not be directly comparable to existing metrics, potentially making the reported improvements less interpretable.\",\n\"The comparison setup disables path manipulation techniques (e.g., target guidance, time distortion) from baseline models, which may not be a fair comparison since these techniques are legitimate contributions of those baselines.\",\n\"The computational complexity of O(N³) for the pseudo-inverse calculation is a practical concern, though the paper discusses mitigation strategies such as LSQR.\",\n\"The theoretical framework relies on several assumptions (shared V, ν→0) that may limit its generality, and the paper does not fully explore the sensitivity to these assumptions.\",\n\"The paper lacks a detailed analysis of when BW interpolation provides the most benefit versus when linear interpolation is sufficient, which would help practitioners decide which method to use.\"\n],\n\"Originality\": 4,\n\"Quality\": 3,\n\"Clarity\": 3,\n\"Significance\": 3,\n\"Questions\": [\n\"Could you provide more details on the sensitivity of BWFlow to the choice of V (the transformation matrix)? How is V determined in practice, and how does its choice affect the quality of the probability path?\",\n\"The relaxed stability metric is non-standard. Could you provide a detailed comparison between the relaxed stability and the standard stability metrics used in previous work (e.g., MiDi, FlowMol) to help readers interpret the reported improvements?\",\n\"In Table 1, BWFlow underperforms on Tree graphs in terms of V.U.N. compared to Cometh and DeFoG. Could you elaborate on the spectral properties of tree graphs that make them challenging for the GMRF framework? Is there a way to adapt the framework to better handle such graphs?\",\n\"The paper mentions that path manipulation techniques from baselines are disabled for fair comparison. However, these techniques are part of the baselines' contributions. Could you provide results with all techniques enabled to give a complete picture of the state-of-the-art comparison?\",\n\"How does the O(N³) computational cost of BW interpolation scale with graph size in practice? The LSQR approximation is mentioned but not fully evaluated - could you provide more extensive benchmarks on larger graphs?\",\n\"Could you discuss the theoretical conditions under which BW interpolation is guaranteed to provide a better probability path than linear interpolation? Are there identifiable characteristics of graph datasets that would indicate BWFlow is preferred?\"\n],\n\"Limitations\": [\n\"The paper acknowledges limitations in handling multi-relational graphs (multiple edge types), which is common in real-world applications like molecular generation with bond types.\",\n\"The performance on tree graphs is notably worse than baselines, and the paper's explanation (spectral spread) is not fully validated.\",\n\"The computational overhead of O(N³) for pseudo-inverse calculations may limit scalability to very large graphs, despite the proposed LSQR approximation.\",\n\"The theoretical framework relies on assumptions (shared V, ν→0) that may not hold in all practical scenarios, and the paper does not provide extensive sensitivity analysis to these assumptions.\",\n\"The paper does not discuss potential negative societal impacts of improved graph generation, such as potential misuse in generating deceptive social networks or designing harmful molecules.\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 3,\n\"Contribution\": 3,\n\"Overall\": 7,\n\"Confidence\": 4,\n\"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 40760,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 38968,
+        "completion_tokens": 1608,
+        "reasoning_tokens": 0,
+        "total_tokens": 42368
+      },
+      "attempts": 1,
+      "response_id": "d666be8e-50ad-40ab-8d47-a35cca7e0321"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "This paper introduces BWFlow, a flow-matching framework for graph generation that constructs probability paths using Bures-Wasserstein (BW) interpolation between Markov Random Field (MRF) representations of graphs. The key contribution is moving beyond standard linear interpolation used in existing graph diffusion/flow models, which treats nodes and edges independently. Instead, the authors model graphs as interconnected systems via MRFs and derive closed-form optimal transport interpolations and velocities. The paper provides theoretical foundations (Propositions 1-3) for the BW distance, interpolation, and velocity, and validates the approach on plain graph generation (planar, tree, SBM), 2D molecule generation (MOSES, GUACAMOL), and 3D molecule generation (QM9, GEOM-DRUGS). Results show improved performance, faster training convergence, and better sampling efficiency compared to linear-interpolation baselines.",
+        "Strengths": [
+          "Well-developed theoretical framework with clear propositions and proofs for Bures-Wasserstein distance, interpolation, and velocity in graph generation",
+          "Compelling motivation with empirical evidence (Figure 1) showing that linear interpolation leads to non-smooth probability paths with sharp transitions",
+          "Comprehensive experimental evaluation across multiple graph generation tasks (plain graphs, 2D/3D molecules)",
+          "Honest discussion of limitations, particularly the weaker performance on tree graphs and computational overhead",
+          "Ablation studies comparing BW interpolation with linear, harmonic, and geometric interpolations",
+          "Theoretical grounding for why linear interpolation is suboptimal for graph generation, addressing a gap in existing literature"
+        ],
+        "Weaknesses": [
+          "Performance gains are modest in some benchmarks (e.g., SBM V.U.N. is 84.5% vs 85.0% for DeFoG)",
+          "Computational complexity of O(N³) for pseudo-inverse calculation is a significant limitation for scaling to larger graphs",
+          "The paper does not adequately analyze how the choice of reference distribution p0 affects generation quality",
+          "Comparison with baselines disables path manipulation techniques (target guidance, time distortion) for DeFoG, which may not represent full baseline capability",
+          "The claim that linear interpolation is 'suboptimal' is somewhat overstated without a formal theoretical comparison to other non-linear interpolations",
+          "Limited analysis of the discrete BWFlow formulation - the approximation of Wasserstein distance for Bernoulli distributions is not rigorously justified"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How does the choice of reference distribution p0 affect the quality of generated graphs? Have you experimented with different reference distributions (e.g., Erdos-Renyi vs. uniform)?",
+          "Can you provide more details on the computational overhead of BW interpolation during training? Table 9 shows up to 1.8x training time increase - is this acceptable for practical applications?",
+          "The paper mentions LSQR approximation for large graphs. Can you provide more details on the accuracy-speed trade-off, especially for graphs with more than 200 nodes?",
+          "How does BWFlow handle graphs of varying sizes? The current formulation assumes same-sized graphs between source and target - how is this constraint addressed?",
+          "In the discrete formulation (Section 3.3), how do you ensure that the Bernoulli distribution parameters Wt remain in [0,1] after BW interpolation? The paper mentions hard-clipping but doesn't provide details on its impact."
+        ],
+        "Limitations": [
+          "Computational complexity: The O(N³) pseudo-inverse calculation limits scalability to large graphs, though LSQR approximation is proposed as a mitigation",
+          "Tree graph performance: BWFlow underperforms on tree datasets due to different spectral patterns, which the authors acknowledge",
+          "Multiple edge types: The framework is not easily generalizable to heterogeneous graphs with multiple relation types",
+          "Theoretical assumptions: The derivation assumes same-sized graphs with shared node sets, which may not hold in all real-world scenarios",
+          "Reference distribution sensitivity: The paper does not analyze how the choice of p0 impacts generation quality",
+          "Potential negative societal impact: Graph generation could be used for malicious social network manipulation or counterfeit molecule design, though this is not discussed in the paper"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces BWFlow, a flow-matching framework for graph generation that constructs probability paths using Bures-Wasserstein interpolation between Markov Random Field (MRF) representations of graphs. The key contribution is moving beyond the standard linear interpolation used in existing graph diffusion/flow models, which treats nodes and edges independently. Instead, the authors model graphs as interconnected systems via MRFs and derive closed-form optimal transport interpolations and velocities.\n\nThe paper has several notable strengths:\n1. The theoretical framework is well-developed, with clear propositions and proofs for the Bures-Wasserstein distance between graph distributions, the interpolation formula, and the velocity field.\n2. The motivation is compelling - the authors provide empirical evidence (Figure 1) showing that linear interpolation leads to non-smooth probability paths with sharp transitions, causing poor training dynamics.\n3. The experimental evaluation is comprehensive, covering plain graph generation (planar, tree, SBM), 2D molecule generation (MOSES, GUACAMOL), and 3D molecule generation (QM9, GEOM-DRUGS).\n4. The paper is honest about limitations, particularly the weaker performance on tree graphs and the computational overhead of the Bures-Wasserstein interpolation.\n\nHowever, there are several weaknesses:\n1. The claim that linear interpolation is \"suboptimal\" is somewhat overstated. The paper shows empirical evidence of improved performance, but the theoretical argument for why Bures-Wasserstein interpolation is superior to other non-linear interpolations (harmonic, geometric) is not fully developed.\n2. The performance gains, while consistent, are modest in some cases. For example, on the SBM dataset, the V.U.N. score is 84.5% vs 85.0% for DeFoG (though A.Ratio improves).\n3. The computational complexity of O(N³) for the pseudo-inverse calculation is a significant limitation for scaling to larger graphs, though the authors address this with LSQR approximation.\n4. The paper does not adequately discuss the choice of the reference distribution p0 and how it affects the quality of generated graphs.\n5. The comparison with existing methods in Table 1 disables path manipulation techniques (target guidance, time distortion) for DeFoG, which may not represent the full capability of the baseline.\n\nThe paper is technically sound overall. The mathematical derivations appear correct, and the experimental methodology is reasonable. The authors are careful to report both averaged and best-checkpoint results, and they provide extensive ablation studies.\n\nFor originality, the work is novel in its application of Bures-Wasserstein geometry to graph generation. While Haasler & Frossard (2024) introduced Bures-Wasserstein means of graphs, this paper extends that work to flow matching and provides the complete framework.\n\nThe significance is moderate-to-high. The paper addresses an important problem (probability path construction in graph generation) and provides a theoretically grounded alternative to the ubiquitous linear interpolation. The improved training convergence and sampling efficiency are practically valuable.\n\nMy main concerns are:\n1. The practical impact of the O(N³) complexity, even with LSQR approximation.\n2. The modest performance gains in some benchmarks.\n3. The lack of analysis on how the choice of reference distribution affects results.\n\nOverall, I believe this is a solid paper that makes a meaningful contribution to the graph generation literature. The theoretical framework is sound, and the empirical results support the claims. However, the computational overhead and modest gains in some settings prevent me from giving a higher score.\n\nI'll rate this as a borderline accept, with the understanding that the authors should address the computational efficiency concerns and provide more analysis on the reference distribution choice.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper introduces BWFlow, a flow-matching framework for graph generation that constructs probability paths using Bures-Wasserstein (BW) interpolation between Markov Random Field (MRF) representations of graphs. The key contribution is moving beyond standard linear interpolation used in existing graph diffusion/flow models, which treats nodes and edges independently. Instead, the authors model graphs as interconnected systems via MRFs and derive closed-form optimal transport interpolations and velocities. The paper provides theoretical foundations (Propositions 1-3) for the BW distance, interpolation, and velocity, and validates the approach on plain graph generation (planar, tree, SBM), 2D molecule generation (MOSES, GUACAMOL), and 3D molecule generation (QM9, GEOM-DRUGS). Results show improved performance, faster training convergence, and better sampling efficiency compared to linear-interpolation baselines.\",\n    \"Strengths\": [\n        \"Well-developed theoretical framework with clear propositions and proofs for Bures-Wasserstein distance, interpolation, and velocity in graph generation\",\n        \"Compelling motivation with empirical evidence (Figure 1) showing that linear interpolation leads to non-smooth probability paths with sharp transitions\",\n        \"Comprehensive experimental evaluation across multiple graph generation tasks (plain graphs, 2D/3D molecules)\",\n        \"Honest discussion of limitations, particularly the weaker performance on tree graphs and computational overhead\",\n        \"Ablation studies comparing BW interpolation with linear, harmonic, and geometric interpolations\",\n        \"Theoretical grounding for why linear interpolation is suboptimal for graph generation, addressing a gap in existing literature\"\n    ],\n    \"Weaknesses\": [\n        \"Performance gains are modest in some benchmarks (e.g., SBM V.U.N. is 84.5% vs 85.0% for DeFoG)\",\n        \"Computational complexity of O(N³) for pseudo-inverse calculation is a significant limitation for scaling to larger graphs\",\n        \"The paper does not adequately analyze how the choice of reference distribution p0 affects generation quality\",\n        \"Comparison with baselines disables path manipulation techniques (target guidance, time distortion) for DeFoG, which may not represent full baseline capability\",\n        \"The claim that linear interpolation is 'suboptimal' is somewhat overstated without a formal theoretical comparison to other non-linear interpolations\",\n        \"Limited analysis of the discrete BWFlow formulation - the approximation of Wasserstein distance for Bernoulli distributions is not rigorously justified\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"How does the choice of reference distribution p0 affect the quality of generated graphs? Have you experimented with different reference distributions (e.g., Erdos-Renyi vs. uniform)?\",\n        \"Can you provide more details on the computational overhead of BW interpolation during training? Table 9 shows up to 1.8x training time increase - is this acceptable for practical applications?\",\n        \"The paper mentions LSQR approximation for large graphs. Can you provide more details on the accuracy-speed trade-off, especially for graphs with more than 200 nodes?\",\n        \"How does BWFlow handle graphs of varying sizes? The current formulation assumes same-sized graphs between source and target - how is this constraint addressed?\",\n        \"In the discrete formulation (Section 3.3), how do you ensure that the Bernoulli distribution parameters Wt remain in [0,1] after BW interpolation? The paper mentions hard-clipping but doesn't provide details on its impact.\"\n    ],\n    \"Limitations\": [\n        \"Computational complexity: The O(N³) pseudo-inverse calculation limits scalability to large graphs, though LSQR approximation is proposed as a mitigation\",\n        \"Tree graph performance: BWFlow underperforms on tree datasets due to different spectral patterns, which the authors acknowledge\",\n        \"Multiple edge types: The framework is not easily generalizable to heterogeneous graphs with multiple relation types\",\n        \"Theoretical assumptions: The derivation assumes same-sized graphs with shared node sets, which may not hold in all real-world scenarios\",\n        \"Reference distribution sensitivity: The paper does not analyze how the choice of p0 impacts generation quality\",\n        \"Potential negative societal impact: Graph generation could be used for malicious social network manipulation or counterfeit molecule design, though this is not discussed in the paper\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 40760,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 38968,
+        "completion_tokens": 1708,
+        "reasoning_tokens": 0,
+        "total_tokens": 42468
+      },
+      "attempts": 1,
+      "response_id": "402d3935-0272-4f5d-985e-c528526021bc"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "This paper introduces BWFlow, a flow matching framework for graph generation that addresses the limitations of linear interpolation in probability path construction. The key idea is to model graphs as Markov Random Fields (MRFs), which captures the interconnected nature of nodes and edges, and then leverage the Bures-Wasserstein (BW) distance between these MRF representations to construct smooth, optimal transport-based probability paths. The authors derive closed-form expressions for the BW distance, interpolation, and velocity (Propositions 1-3), and integrate these into both continuous and discrete flow matching algorithms. Experiments on plain graph generation (Planar, Tree, SBM), 2D molecule generation (MOSES, GUACAMOL), and 3D molecule generation (QM9, GEOM-DRUGS) demonstrate competitive or superior performance compared to existing diffusion and flow-based methods, with better training convergence and sampling efficiency, especially with few sampling steps.",
+        "Strengths": [
+          "Novel theoretical framework: The paper presents a principled approach to probability path construction for graph generation by combining Markov Random Fields with Bures-Wasserstein geometry, addressing a fundamental limitation of existing linear interpolation methods.",
+          "Clear motivation: The paper provides strong empirical evidence (Fig. 1) showing the non-smooth nature of linear interpolation paths and explains why this leads to poor training dynamics and sampling convergence.",
+          "Rigorous theoretical development: The derivation of the BW distance, interpolation, and velocity for graph distributions (Propositions 1-3) is well-supported with proofs in the appendix, showing a solid understanding of optimal transport and graph theory.",
+          "Comprehensive experiments: The evaluation covers diverse graph generation tasks (plain graphs, 2D/3D molecules) and includes detailed ablation studies comparing different interpolation methods, sampling step sizes, and convergence behavior.",
+          "Good analysis of training/sampling dynamics: The paper goes beyond just reporting final metrics and provides insights into why BWFlow works better through probability path visualizations, convergence curves, and small-step sampling experiments.",
+          "Honest discussion of limitations: The authors openly discuss the weaker performance on tree graphs, computational complexity, and extension to multi-relational graphs, with constructive suggestions for future work."
+        ],
+        "Weaknesses": [
+          "Tree graph performance: BWFlow achieves lower V.U.N. on tree graphs (81.5) compared to Cometh (84.5) and DeFoG (83.5), which the authors attribute to the wide spectral spread of trees. While this is acknowledged, the explanation in App. A.3 is somewhat qualitative and lacks a deeper analysis.",
+          "Computational overhead: The O(N³) cost for computing matrix inverses (pseudo-inverses) during path construction is a practical limitation, especially for large graphs. Although LSQR is proposed as an approximation, this is only briefly explored in a preliminary experiment.",
+          "Discrete extension ad-hoc elements: The discrete BW flow matching (Section 3.3) involves hard-clipping of Wt to [0,1] and approximating Wasserstein distance for discrete distributions via Gaussian counterparts, which are somewhat heuristic and could affect the theoretical guarantees.",
+          "Potential unfair comparison: The paper disables path manipulation techniques (e.g., target guidance, time distortion) for baseline methods to isolate the impact of path construction. While this is a valid experimental design, it may not reflect the best achievable performance of these baselines, and the comparison with DeFoG-2 in Table 3 shows that manipulation can close the gap.",
+          "Simplified node feature velocity: In Proposition 3, the node feature velocity omits the covariance-related term, simplifying to v_t(X_t) = (X_1 - X_t)/(1-t). The justification for this simplification (amplitude of covariance much smaller than mean difference) is not thoroughly validated empirically."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "1. The paper claims that the BW interpolation provides a smoother probability path. Could you provide a more quantitative measure of path smoothness beyond the A.Ratio proxy? For example, how does the curvature of the velocity field compare between BW and linear interpolation?",
+          "2. In the discrete extension, how sensitive is the performance to the hard-clipping of Wt to [0,1]? Does clipping introduce biases that might affect the quality of generated graphs, especially during early training when Wt might be far from the valid range?",
+          "3. The simplification of node feature velocity in Proposition 3 omits the covariance term. Under what conditions does this approximation hold? Could you provide empirical evidence showing that the covariance term is indeed negligible for the datasets used?",
+          "4. For tree graphs, the paper mentions the wide spectral spread as the reason for weaker performance. Are there any modifications to the GraphMRF framework that could better handle such graphs, or is this a fundamental limitation of the approach?",
+          "5. The LSQR approximation for computing pseudo-inverses is only tested on planar and tree graphs. How does this approximation affect performance on larger, denser graphs like SBM or molecular datasets?",
+          "6. In Table 3, DeFoG-2 with path manipulation achieves comparable performance to BWFlow. Could you clarify what specific manipulations are enabled for DeFoG-2 and whether BWFlow could also benefit from similar techniques on top of its BW path?",
+          "7. The paper focuses on flow matching. How would the BW interpolation extend to diffusion models, as discussed in App. F.2? Are there any preliminary results or theoretical insights on whether BW paths would also improve diffusion-based graph generation?"
+        ],
+        "Limitations": [
+          "The framework is built on the assumption that graphs can be well-modeled by Markov Random Fields with colored Gaussian distributions. This may not hold for all graph types, particularly those with wide spectral spreads like trees, as acknowledged by the authors.",
+          "The computational cost of O(N³) for matrix inverse computations in path construction could limit scalability to very large graphs, despite the proposed LSQR approximation.",
+          "The discrete extension involves several approximations (hard-clipping, Gaussian approximation of Wasserstein distance) that may deviate from the theoretical optimality guarantees.",
+          "The paper does not address potential negative societal impacts of graph generation, such as the possibility of generating realistic-looking but fake molecular structures or social networks that could be misused. This is a general concern for generative models and should be discussed.",
+          "The comparison with baselines is conducted with path manipulation techniques disabled, which may not reflect the full potential of these methods in practical settings where such techniques are commonly used."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces BWFlow, a flow matching framework for graph generation that addresses the limitations of linear interpolation in probability path construction. The key contribution is modeling graphs as Markov Random Fields (MRFs) and deriving the Bures-Wasserstein (BW) distance and interpolation for these graph distributions, leading to smoother probability paths and better training/sampling dynamics.\n\nThe paper is technically strong with solid theoretical foundations (Propositions 1-3 with proofs in the appendix). The motivation is clear: linear interpolation in the disjoint node/edge space breaks interconnected graph patterns, leading to irregular paths and poor training dynamics. The proposed BW interpolation captures joint evolution of graph components.\n\nStrengths:\n1. Novel theoretical framework connecting MRFs, optimal transport, and flow matching for graphs\n2. Clear motivation with empirical evidence of the limitations of linear interpolation\n3. Comprehensive experiments across plain graphs, 2D molecules, and 3D molecules\n4. Good ablation studies comparing different interpolation methods\n5. Analysis of training/sampling dynamics and convergence behavior\n\nWeaknesses:\n1. Performance on tree graphs is notably weaker (81.5 vs 84.5 for Cometh, 83.5 for DeFoG on V.U.N.), though A.Ratio is better - the authors acknowledge this but the explanation in App. A.3 is somewhat hand-wavy\n2. The O(N³) computational overhead is a practical concern, though LSQR approximation is proposed\n3. The discrete extension (Section 3.3) has some ad-hoc elements - hard clipping of Wt to [0,1] and the approximation of Wasserstein distance for discrete distributions\n4. Comparison with DeFoG is somewhat unfair since path manipulation techniques are disabled for baselines but the paper's advantage partially comes from having a better path\n5. The velocity for node features in Proposition 3 is simplified by omitting the covariance term, which needs more justification\n\nThe paper is well-written and organized. The theoretical contributions are significant - this is the first work I'm aware of that uses Bures-Wasserstein geometry for graph flow matching. The experimental results are competitive, especially on planar and SBM datasets, and the behavior analysis (Fig. 3, Table 3) provides good insights into why the method works.\n\nOriginality: High - novel combination of MRFs, optimal transport, and flow matching\nQuality: Good - solid theory with rigorous proofs, comprehensive experiments\nClarity: Good - well-structured but some technical details are dense\nSignificance: High - addresses a fundamental issue in graph generation\n\nOverall, I think this is a solid paper worth accepting at a top venue. The theoretical contribution is novel and the empirical results support the claims. The main concerns are the tree graph performance, computational cost, and some ad-hoc elements in the discrete extension, but these are adequately discussed as limitations.\n\nI'll rate: Soundness 3 (good), Presentation 3 (good), Contribution 3 (good), Overall 7 (Accept), Confidence 4```json\n{\n  \"Summary\": \"This paper introduces BWFlow, a flow matching framework for graph generation that addresses the limitations of linear interpolation in probability path construction. The key idea is to model graphs as Markov Random Fields (MRFs), which captures the interconnected nature of nodes and edges, and then leverage the Bures-Wasserstein (BW) distance between these MRF representations to construct smooth, optimal transport-based probability paths. The authors derive closed-form expressions for the BW distance, interpolation, and velocity (Propositions 1-3), and integrate these into both continuous and discrete flow matching algorithms. Experiments on plain graph generation (Planar, Tree, SBM), 2D molecule generation (MOSES, GUACAMOL), and 3D molecule generation (QM9, GEOM-DRUGS) demonstrate competitive or superior performance compared to existing diffusion and flow-based methods, with better training convergence and sampling efficiency, especially with few sampling steps.\",\n  \"Strengths\": [\n    \"Novel theoretical framework: The paper presents a principled approach to probability path construction for graph generation by combining Markov Random Fields with Bures-Wasserstein geometry, addressing a fundamental limitation of existing linear interpolation methods.\",\n    \"Clear motivation: The paper provides strong empirical evidence (Fig. 1) showing the non-smooth nature of linear interpolation paths and explains why this leads to poor training dynamics and sampling convergence.\",\n    \"Rigorous theoretical development: The derivation of the BW distance, interpolation, and velocity for graph distributions (Propositions 1-3) is well-supported with proofs in the appendix, showing a solid understanding of optimal transport and graph theory.\",\n    \"Comprehensive experiments: The evaluation covers diverse graph generation tasks (plain graphs, 2D/3D molecules) and includes detailed ablation studies comparing different interpolation methods, sampling step sizes, and convergence behavior.\",\n    \"Good analysis of training/sampling dynamics: The paper goes beyond just reporting final metrics and provides insights into why BWFlow works better through probability path visualizations, convergence curves, and small-step sampling experiments.\",\n    \"Honest discussion of limitations: The authors openly discuss the weaker performance on tree graphs, computational complexity, and extension to multi-relational graphs, with constructive suggestions for future work.\"\n  ],\n  \"Weaknesses\": [\n    \"Tree graph performance: BWFlow achieves lower V.U.N. on tree graphs (81.5) compared to Cometh (84.5) and DeFoG (83.5), which the authors attribute to the wide spectral spread of trees. While this is acknowledged, the explanation in App. A.3 is somewhat qualitative and lacks a deeper analysis.\",\n    \"Computational overhead: The O(N³) cost for computing matrix inverses (pseudo-inverses) during path construction is a practical limitation, especially for large graphs. Although LSQR is proposed as an approximation, this is only briefly explored in a preliminary experiment.\",\n    \"Discrete extension ad-hoc elements: The discrete BW flow matching (Section 3.3) involves hard-clipping of Wt to [0,1] and approximating Wasserstein distance for discrete distributions via Gaussian counterparts, which are somewhat heuristic and could affect the theoretical guarantees.\",\n    \"Potential unfair comparison: The paper disables path manipulation techniques (e.g., target guidance, time distortion) for baseline methods to isolate the impact of path construction. While this is a valid experimental design, it may not reflect the best achievable performance of these baselines, and the comparison with DeFoG-2 in Table 3 shows that manipulation can close the gap.\",\n    \"Simplified node feature velocity: In Proposition 3, the node feature velocity omits the covariance-related term, simplifying to v_t(X_t) = (X_1 - X_t)/(1-t). The justification for this simplification (amplitude of covariance much smaller than mean difference) is not thoroughly validated empirically.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"1. The paper claims that the BW interpolation provides a smoother probability path. Could you provide a more quantitative measure of path smoothness beyond the A.Ratio proxy? For example, how does the curvature of the velocity field compare between BW and linear interpolation?\",\n    \"2. In the discrete extension, how sensitive is the performance to the hard-clipping of Wt to [0,1]? Does clipping introduce biases that might affect the quality of generated graphs, especially during early training when Wt might be far from the valid range?\",\n    \"3. The simplification of node feature velocity in Proposition 3 omits the covariance term. Under what conditions does this approximation hold? Could you provide empirical evidence showing that the covariance term is indeed negligible for the datasets used?\",\n    \"4. For tree graphs, the paper mentions the wide spectral spread as the reason for weaker performance. Are there any modifications to the GraphMRF framework that could better handle such graphs, or is this a fundamental limitation of the approach?\",\n    \"5. The LSQR approximation for computing pseudo-inverses is only tested on planar and tree graphs. How does this approximation affect performance on larger, denser graphs like SBM or molecular datasets?\",\n    \"6. In Table 3, DeFoG-2 with path manipulation achieves comparable performance to BWFlow. Could you clarify what specific manipulations are enabled for DeFoG-2 and whether BWFlow could also benefit from similar techniques on top of its BW path?\",\n    \"7. The paper focuses on flow matching. How would the BW interpolation extend to diffusion models, as discussed in App. F.2? Are there any preliminary results or theoretical insights on whether BW paths would also improve diffusion-based graph generation?\"\n  ],\n  \"Limitations\": [\n    \"The framework is built on the assumption that graphs can be well-modeled by Markov Random Fields with colored Gaussian distributions. This may not hold for all graph types, particularly those with wide spectral spreads like trees, as acknowledged by the authors.\",\n    \"The computational cost of O(N³) for matrix inverse computations in path construction could limit scalability to very large graphs, despite the proposed LSQR approximation.\",\n    \"The discrete extension involves several approximations (hard-clipping, Gaussian approximation of Wasserstein distance) that may deviate from the theoretical optimality guarantees.\",\n    \"The paper does not address potential negative societal impacts of graph generation, such as the possibility of generating realistic-looking but fake molecular structures or social networks that could be misused. This is a general concern for generative models and should be discussed.\",\n    \"The comparison with baselines is conducted with path manipulation techniques disabled, which may not reflect the full potential of these methods in practical settings where such techniques are commonly used.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 40760,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 38968,
+        "completion_tokens": 2069,
+        "reasoning_tokens": 0,
+        "total_tokens": 42829
+      },
+      "attempts": 1,
+      "response_id": "cf458758-9400-4732-91d7-e2f9277606fd"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper introduces BWFlow, a flow-matching framework for graph generation that constructs probability paths using Bures-Wasserstein (BW) interpolation based on Markov Random Fields (MRFs). The key idea is to model graphs as interconnected systems parameterized by MRFs, where nodes and edges co-evolve jointly rather than being interpolated independently. The authors derive closed-form expressions for the BW distance, interpolation, and velocity fields, and integrate these into a flow-matching training/sampling framework. Experiments on plain graph generation (planar, tree, SBM), 2D molecules (MOSES, GUACAMOL), and 3D molecules (QM9, GEOM-DRUGS) show competitive or superior performance compared to existing diffusion and flow-based methods, with better training convergence and sampling efficiency.",
+        "Strengths": [
+          "The theoretical framework is well-developed, with clear propositions and proofs for the Bures-Wasserstein distance, interpolation, and velocity",
+          "The motivation is compelling - the authors demonstrate the limitations of linear interpolation with empirical evidence (Fig. 1)",
+          "Comprehensive experiments across plain graphs, 2D molecules, and 3D molecules",
+          "Good analysis of behavior including training convergence and sampling efficiency",
+          "The authors are honest about limitations (tree graphs, multi-relational extension, computational complexity)"
+        ],
+        "Weaknesses": [
+          "The performance improvement over baselines is modest in some cases (e.g., tree graphs where BWFlow underperforms)",
+          "The computational overhead of O(N³) matrix operations is not fully addressed - though they discuss LSQR approximation, it's only preliminary",
+          "The 'relaxed stability' metric for molecules without bond types seems potentially problematic - it might be too permissive",
+          "The comparison with DeFoG in Table 1 uses disabled path manipulation for DeFoG, which might not be a fair comparison since those manipulations are part of DeFoG's contribution",
+          "The paper doesn't deeply explore the choice of V matrix in the MRF formulation - this seems like an important hyperparameter"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How sensitive is BWFlow to the choice of V matrix? Is there a principled way to set it?",
+          "For the relaxed stability metric, how does it compare to standard validity metrics used in other works?",
+          "The paper mentions the complexity can be reduced via LSQR - have you tested this on larger graphs to verify the speedup?",
+          "How does BWFlow handle graphs of different sizes? The current experiments seem to use fixed-size graphs for the most part.",
+          "For the tree dataset underperformance, could this be addressed by using a different distance metric or interpolation scheme?"
+        ],
+        "Limitations": [
+          "The O(N³) computational complexity for path construction",
+          "Poor performance on tree graphs",
+          "Limited extension to multi-relational graphs",
+          "The assumption of shared V matrix between source and target distributions",
+          "The relaxed stability metric may not be directly comparable to standard metrics"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces BWFlow, a flow-matching framework for graph generation that uses Bures-Wasserstein interpolation based on Markov Random Fields (MRFs) to construct probability paths. The key contribution is moving beyond linear interpolation between nodes/edges independently, instead modeling graphs as interconnected systems via MRFs and deriving optimal transport displacements.\n\nStrengths:\n1. The theoretical framework is well-developed, with clear propositions and proofs for the Bures-Wasserstein distance, interpolation, and velocity\n2. The motivation is compelling - they demonstrate the limitations of linear interpolation with empirical evidence (Fig. 1)\n3. Comprehensive experiments across plain graphs, 2D molecules, and 3D molecules\n4. Good analysis of behavior including training convergence and sampling efficiency\n5. The authors are honest about limitations (tree graphs, multi-relational extension, computational complexity)\n\nWeaknesses:\n1. The performance improvement over baselines is modest in some cases (e.g., tree graphs where BWFlow underperforms)\n2. The computational overhead of O(N³) matrix operations is not fully addressed - though they discuss LSQR approximation, it's only preliminary\n3. The \"relaxed stability\" metric for molecules without bond types seems potentially problematic - it might be too permissive\n4. The comparison with DeFoG in Table 1 uses disabled path manipulation for DeFoG, which might not be a fair comparison since those manipulations are part of DeFoG's contribution\n5. The paper doesn't deeply explore the choice of V matrix in the MRF formulation - this seems like an important hyperparameter\n\nQuestions:\n1. How sensitive is BWFlow to the choice of V matrix? Is there a principled way to set it?\n2. For the relaxed stability metric, how does it compare to standard validity metrics used in other works?\n3. The paper mentions the complexity can be reduced via LSQR - have you tested this on larger graphs to verify the speedup?\n4. How does BWFlow handle graphs of different sizes? The current experiments seem to use fixed-size graphs for the most part.\n5. For the tree dataset underperformance, could this be addressed by using a different distance metric or interpolation scheme?\n\nLimitations:\n- The O(N³) computational complexity for path construction\n- Poor performance on tree graphs\n- Limited extension to multi-relational graphs\n- The assumption of shared V matrix between source and target distributions\n- The relaxed stability metric may not be directly comparable to standard metrics\n\nEthical concerns: None apparent - this is a fundamental ML method paper without direct societal impact concerns.\n\nOverall assessment: The paper makes a solid theoretical contribution to graph generation by proposing a more principled probability path construction. The empirical results show competitive performance with advantages in training convergence and sampling efficiency. However, the improvements are not dramatic, and there are some concerns about computational overhead and specific limitations. I would rate this as a borderline accept - the theoretical contribution is valuable, but the practical impact is somewhat limited by the computational costs and mixed empirical results.\n\nDecision: Accept (with reservations about the computational overhead and some experimental choices)\n\nConfidence: 4 - I'm fairly confident in my assessment, having checked the mathematical derivations and experimental setup carefully.\n\nREVIEW JSON:\n```json\n{\n\"Summary\": \"The paper introduces BWFlow, a flow-matching framework for graph generation that constructs probability paths using Bures-Wasserstein (BW) interpolation based on Markov Random Fields (MRFs). The key idea is to model graphs as interconnected systems parameterized by MRFs, where nodes and edges co-evolve jointly rather than being interpolated independently. The authors derive closed-form expressions for the BW distance, interpolation, and velocity fields, and integrate these into a flow-matching training/sampling framework. Experiments on plain graph generation (planar, tree, SBM), 2D molecules (MOSES, GUACAMOL), and 3D molecules (QM9, GEOM-DRUGS) show competitive or superior performance compared to existing diffusion and flow-based methods, with better training convergence and sampling efficiency.\",\n\"Strengths\": [\n\"The theoretical framework is well-developed, with clear propositions and proofs for the Bures-Wasserstein distance, interpolation, and velocity\",\n\"The motivation is compelling - the authors demonstrate the limitations of linear interpolation with empirical evidence (Fig. 1)\",\n\"Comprehensive experiments across plain graphs, 2D molecules, and 3D molecules\",\n\"Good analysis of behavior including training convergence and sampling efficiency\",\n\"The authors are honest about limitations (tree graphs, multi-relational extension, computational complexity)\"\n],\n\"Weaknesses\": [\n\"The performance improvement over baselines is modest in some cases (e.g., tree graphs where BWFlow underperforms)\",\n\"The computational overhead of O(N³) matrix operations is not fully addressed - though they discuss LSQR approximation, it's only preliminary\",\n\"The 'relaxed stability' metric for molecules without bond types seems potentially problematic - it might be too permissive\",\n\"The comparison with DeFoG in Table 1 uses disabled path manipulation for DeFoG, which might not be a fair comparison since those manipulations are part of DeFoG's contribution\",\n\"The paper doesn't deeply explore the choice of V matrix in the MRF formulation - this seems like an important hyperparameter\"\n],\n\"Originality\": 4,\n\"Quality\": 3,\n\"Clarity\": 3,\n\"Significance\": 3,\n\"Questions\": [\n\"How sensitive is BWFlow to the choice of V matrix? Is there a principled way to set it?\",\n\"For the relaxed stability metric, how does it compare to standard validity metrics used in other works?\",\n\"The paper mentions the complexity can be reduced via LSQR - have you tested this on larger graphs to verify the speedup?\",\n\"How does BWFlow handle graphs of different sizes? The current experiments seem to use fixed-size graphs for the most part.\",\n\"For the tree dataset underperformance, could this be addressed by using a different distance metric or interpolation scheme?\"\n],\n\"Limitations\": [\n\"The O(N³) computational complexity for path construction\",\n\"Poor performance on tree graphs\",\n\"Limited extension to multi-relational graphs\",\n\"The assumption of shared V matrix between source and target distributions\",\n\"The relaxed stability metric may not be directly comparable to standard metrics\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 3,\n\"Contribution\": 3,\n\"Overall\": 6,\n\"Confidence\": 4,\n\"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 40760,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 38968,
+        "completion_tokens": 1334,
+        "reasoning_tokens": 0,
+        "total_tokens": 42094
+      },
+      "attempts": 1,
+      "response_id": "bcc0932b-e598-4bbc-852a-a9aaaa483198"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 5,
+      "Reject": 0
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          4,
+          3,
+          3,
+          4,
+          3
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          4,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Overall": {
+        "values": [
+          7,
+          7,
+          6,
+          7,
+          6
+        ],
+        "mean": 6.6,
+        "rounded_mean": 7,
+        "population_sd": 0.49,
+        "min": 6,
+        "max": 7
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper introduces BWFlow, a flow-matching framework for graph generation that constructs probability paths using Bures-Wasserstein (BW) optimal transport interpolation between Markov Random Field (MRF) parameterizations of graphs. The key contribution is replacing standard linear interpolation of nodes and edges, which produces non-smooth paths with sharp transitions, with a theoretically grounded BW interpolation that respects the joint evolution of graph components. The authors derive closed-form expressions for the BW distance, interpolation, and velocity (Propositions 1-3), and provide both continuous and discrete flow-matching algorithms. Experiments on plain graph generation (planar, tree, SBM), 2D molecules (MOSES, GUACAMOL), and 3D molecules (QM9, GEOM-DRUGS) show competitive or superior performance, better training convergence, and efficient sampling compared to SOTA diffusion and flow-based methods.",
+      "Strengths": [
+        "Novel theoretical framework: Combines Markov Random Fields with Bures-Wasserstein geometry to derive principled probability paths for graph generation, addressing a fundamental limitation of linear interpolation.",
+        "Clear motivation: Figure 1 convincingly demonstrates the non-smoothness of linear interpolation paths and the resulting training/sampling issues.",
+        "Rigorous theoretical development: Propositions 1-3 for BW distance, interpolation, and velocity are well-supported with proofs in the appendix.",
+        "Comprehensive evaluation: Experiments cover plain graphs, 2D molecules, and 3D molecules, with ablations on interpolation methods, sampling step reduction, and convergence analysis.",
+        "Good analysis of training/sampling dynamics: Provides insights into why BWFlow works better through probability path visualizations, convergence curves, and small-step sampling experiments.",
+        "Honest discussion of limitations: Authors openly discuss tree graph performance, computational complexity, and multi-relational graph limitations."
+      ],
+      "Weaknesses": [
+        "Performance on tree graphs is notably worse than baselines (V.U.N. 81.5 vs 84.5 for Cometh), and the explanation based on spectral properties is somewhat qualitative and not fully validated.",
+        "Computational overhead of O(N³) for pseudo-inverse calculations limits scalability; the LSQR approximation is only preliminarily explored.",
+        "The comparison with baselines disables path manipulation techniques (e.g., target guidance, time distortion), which are legitimate contributions of those baselines and may not reflect their full capability.",
+        "The 'relaxed stability' metric introduced for molecule generation without bond types is non-standard and may not be directly comparable to metrics used in prior work.",
+        "The discrete extension (Section 3.3) relies on heuristic elements such as hard-clipping of Wt to [0,1] and Gaussian approximation of Wasserstein distance, which are not rigorously justified for small graphs.",
+        "The simplification of node feature velocity omits the covariance-related term; the justification that this term is negligible is not thoroughly validated empirically.",
+        "Sensitivity to the choice of the V matrix and reference distribution p0 is not deeply analyzed."
+      ],
+      "Originality": 4,
+      "Quality": 3,
+      "Clarity": 3,
+      "Significance": 4,
+      "Questions": [
+        "Can you provide a more rigorous theoretical argument for why linear interpolation is fundamentally suboptimal for graph generation, beyond empirical observations? For instance, is there a formal characterization of graph distributions where linear interpolation fails?",
+        "How sensitive is BWFlow to the choice of the V matrix? Is there a principled way to set it, and how does its choice affect the quality of the probability path?",
+        "How does the choice of reference distribution p0 affect generation quality? Have you experimented with different reference distributions?",
+        "For the 'relaxed stability' metric, can you provide a detailed comparison with standard stability metrics (e.g., RDKit validity, atom stability) to help interpret the reported improvements?",
+        "In Table 1, BWFlow underperforms on tree graphs. Could you elaborate on the spectral properties that make trees challenging, and discuss whether a different parameterization (e.g., hyperbolic geometry) could address this?",
+        "The paper mentions that path manipulation techniques from baselines are disabled for fair comparison. Could you provide results with all techniques enabled to give a complete picture of the state-of-the-art comparison?",
+        "How does the O(N³) computational cost scale with graph size in practice? The LSQR approximation is mentioned but not fully evaluated - could you provide more extensive benchmarks on larger and denser graphs?",
+        "In the discrete formulation, how sensitive is performance to hard-clipping of Wt to [0,1]? Does clipping introduce biases, especially during early training?",
+        "Under what conditions does the simplification of node feature velocity (omitting the covariance term) hold? Can you provide empirical evidence that the covariance term is negligible for the datasets used?",
+        "How does BWFlow handle graphs of varying sizes? The current formulation assumes same-sized graphs between source and target - how is this constraint addressed?",
+        "The paper focuses on flow matching. How would BW interpolation extend to diffusion models, and are there preliminary results showing improvements there as well?"
+      ],
+      "Limitations": [
+        "The O(N³) computational complexity of BW interpolation may limit scalability to very large graphs, though the LSQR approximation provides a promising mitigation that needs more extensive evaluation.",
+        "The framework is not easily generalizable to multiple edge types (heterogeneous graphs), which is common in real-world applications like molecular generation with bond types.",
+        "Performance on tree graphs is notably worse than competitors, suggesting the MRF prior is not well-suited for all graph types.",
+        "The discrete extension relies on approximations (CLT, hard-clipping) that may deviate from theoretical optimality guarantees and may not be valid for small graphs.",
+        "The theoretical framework relies on assumptions (shared V, ν→0) that may limit generality, and the paper does not fully explore sensitivity to these assumptions.",
+        "The paper does not address potential negative societal impacts of graph generation, such as generation of realistic social networks (privacy concerns) or harmful molecules."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 3,
+      "Contribution": 4,
+      "Overall": 7,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "THOUGHT:\nThe five reviews are broadly consistent: all recommend acceptance, with overall scores of 7, 7, 6, 7, and 6. The paper presents a novel theoretical contribution (Bures-Wasserstein interpolation for graph flow matching) with solid empirical evaluation. The main concerns raised across reviews include: (1) modest or negative results on tree graphs, (2) O(N³) computational cost, (3) fairness of baseline comparisons (disabling path manipulation), (4) non-standard \"relaxed stability\" metric, (5) heuristic elements in the discrete extension, and (6) sensitivity to the V matrix and reference distribution.\n\nGiven the strong theoretical contribution, comprehensive experiments, and honest discussion of limitations, the paper meets the bar for acceptance at a top ML conference. The weaknesses are not fatal; they are typical of a solid research contribution. The reviewers' scores (6-7) indicate a solid accept, not a strong accept. I will aggregate to an overall of 7 (Accept) with confidence 4.\n\nI will consolidate the strengths and weaknesses, synthesize the common questions, and produce a meta-review that respects the consensus. The decision is Accept.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper introduces BWFlow, a flow-matching framework for graph generation that constructs probability paths using Bures-Wasserstein (BW) optimal transport interpolation between Markov Random Field (MRF) parameterizations of graphs. The key contribution is replacing standard linear interpolation of nodes and edges, which produces non-smooth paths with sharp transitions, with a theoretically grounded BW interpolation that respects the joint evolution of graph components. The authors derive closed-form expressions for the BW distance, interpolation, and velocity (Propositions 1-3), and provide both continuous and discrete flow-matching algorithms. Experiments on plain graph generation (planar, tree, SBM), 2D molecules (MOSES, GUACAMOL), and 3D molecules (QM9, GEOM-DRUGS) show competitive or superior performance, better training convergence, and efficient sampling compared to SOTA diffusion and flow-based methods.\",\n  \"Strengths\": [\n    \"Novel theoretical framework: Combines Markov Random Fields with Bures-Wasserstein geometry to derive principled probability paths for graph generation, addressing a fundamental limitation of linear interpolation.\",\n    \"Clear motivation: Figure 1 convincingly demonstrates the non-smoothness of linear interpolation paths and the resulting training/sampling issues.\",\n    \"Rigorous theoretical development: Propositions 1-3 for BW distance, interpolation, and velocity are well-supported with proofs in the appendix.\",\n    \"Comprehensive evaluation: Experiments cover plain graphs, 2D molecules, and 3D molecules, with ablations on interpolation methods, sampling step reduction, and convergence analysis.\",\n    \"Good analysis of training/sampling dynamics: Provides insights into why BWFlow works better through probability path visualizations, convergence curves, and small-step sampling experiments.\",\n    \"Honest discussion of limitations: Authors openly discuss tree graph performance, computational complexity, and multi-relational graph limitations.\"\n  ],\n  \"Weaknesses\": [\n    \"Performance on tree graphs is notably worse than baselines (V.U.N. 81.5 vs 84.5 for Cometh), and the explanation based on spectral properties is somewhat qualitative and not fully validated.\",\n    \"Computational overhead of O(N³) for pseudo-inverse calculations limits scalability; the LSQR approximation is only preliminarily explored.\",\n    \"The comparison with baselines disables path manipulation techniques (e.g., target guidance, time distortion), which are legitimate contributions of those baselines and may not reflect their full capability.\",\n    \"The 'relaxed stability' metric introduced for molecule generation without bond types is non-standard and may not be directly comparable to metrics used in prior work.\",\n    \"The discrete extension (Section 3.3) relies on heuristic elements such as hard-clipping of Wt to [0,1] and Gaussian approximation of Wasserstein distance, which are not rigorously justified for small graphs.\",\n    \"The simplification of node feature velocity omits the covariance-related term; the justification that this term is negligible is not thoroughly validated empirically.\",\n    \"Sensitivity to the choice of the V matrix and reference distribution p0 is not deeply analyzed.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"Can you provide a more rigorous theoretical argument for why linear interpolation is fundamentally suboptimal for graph generation, beyond empirical observations? For instance, is there a formal characterization of graph distributions where linear interpolation fails?\",\n    \"How sensitive is BWFlow to the choice of the V matrix? Is there a principled way to set it, and how does its choice affect the quality of the probability path?\",\n    \"How does the choice of reference distribution p0 affect generation quality? Have you experimented with different reference distributions?\",\n    \"For the 'relaxed stability' metric, can you provide a detailed comparison with standard stability metrics (e.g., RDKit validity, atom stability) to help interpret the reported improvements?\",\n    \"In Table 1, BWFlow underperforms on tree graphs. Could you elaborate on the spectral properties that make trees challenging, and discuss whether a different parameterization (e.g., hyperbolic geometry) could address this?\",\n    \"The paper mentions that path manipulation techniques from baselines are disabled for fair comparison. Could you provide results with all techniques enabled to give a complete picture of the state-of-the-art comparison?\",\n    \"How does the O(N³) computational cost scale with graph size in practice? The LSQR approximation is mentioned but not fully evaluated - could you provide more extensive benchmarks on larger and denser graphs?\",\n    \"In the discrete formulation, how sensitive is performance to hard-clipping of Wt to [0,1]? Does clipping introduce biases, especially during early training?\",\n    \"Under what conditions does the simplification of node feature velocity (omitting the covariance term) hold? Can you provide empirical evidence that the covariance term is negligible for the datasets used?\",\n    \"How does BWFlow handle graphs of varying sizes? The current formulation assumes same-sized graphs between source and target - how is this constraint addressed?\",\n    \"The paper focuses on flow matching. How would BW interpolation extend to diffusion models, and are there preliminary results showing improvements there as well?\"\n  ],\n  \"Limitations\": [\n    \"The O(N³) computational complexity of BW interpolation may limit scalability to very large graphs, though the LSQR approximation provides a promising mitigation that needs more extensive evaluation.\",\n    \"The framework is not easily generalizable to multiple edge types (heterogeneous graphs), which is common in real-world applications like molecular generation with bond types.\",\n    \"Performance on tree graphs is notably worse than competitors, suggesting the MRF prior is not well-suited for all graph types.\",\n    \"The discrete extension relies on approximations (CLT, hard-clipping) that may deviate from theoretical optimality guarantees and may not be valid for small graphs.\",\n    \"The theoretical framework relies on assumptions (shared V, ν→0) that may limit generality, and the paper does not fully explore sensitivity to these assumptions.\",\n    \"The paper does not address potential negative societal impacts of graph generation, such as generation of realistic social networks (privacy concerns) or harmful molecules.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 4,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 7185,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 7185,
+      "completion_tokens": 1590,
+      "reasoning_tokens": 0,
+      "total_tokens": 8775
+    },
+    "attempts": 1,
+    "response_id": "c929dc30-d066-4f91-9a81-0bec8b5e6895"
+  },
+  "final_review": {
+    "Summary": "The paper introduces BWFlow, a flow-matching framework for graph generation that constructs probability paths using Bures-Wasserstein (BW) optimal transport interpolation between Markov Random Field (MRF) parameterizations of graphs. The key contribution is replacing standard linear interpolation of nodes and edges, which produces non-smooth paths with sharp transitions, with a theoretically grounded BW interpolation that respects the joint evolution of graph components. The authors derive closed-form expressions for the BW distance, interpolation, and velocity (Propositions 1-3), and provide both continuous and discrete flow-matching algorithms. Experiments on plain graph generation (planar, tree, SBM), 2D molecules (MOSES, GUACAMOL), and 3D molecules (QM9, GEOM-DRUGS) show competitive or superior performance, better training convergence, and efficient sampling compared to SOTA diffusion and flow-based methods.",
+    "Strengths": [
+      "Novel theoretical framework: Combines Markov Random Fields with Bures-Wasserstein geometry to derive principled probability paths for graph generation, addressing a fundamental limitation of linear interpolation.",
+      "Clear motivation: Figure 1 convincingly demonstrates the non-smoothness of linear interpolation paths and the resulting training/sampling issues.",
+      "Rigorous theoretical development: Propositions 1-3 for BW distance, interpolation, and velocity are well-supported with proofs in the appendix.",
+      "Comprehensive evaluation: Experiments cover plain graphs, 2D molecules, and 3D molecules, with ablations on interpolation methods, sampling step reduction, and convergence analysis.",
+      "Good analysis of training/sampling dynamics: Provides insights into why BWFlow works better through probability path visualizations, convergence curves, and small-step sampling experiments.",
+      "Honest discussion of limitations: Authors openly discuss tree graph performance, computational complexity, and multi-relational graph limitations."
+    ],
+    "Weaknesses": [
+      "Performance on tree graphs is notably worse than baselines (V.U.N. 81.5 vs 84.5 for Cometh), and the explanation based on spectral properties is somewhat qualitative and not fully validated.",
+      "Computational overhead of O(N³) for pseudo-inverse calculations limits scalability; the LSQR approximation is only preliminarily explored.",
+      "The comparison with baselines disables path manipulation techniques (e.g., target guidance, time distortion), which are legitimate contributions of those baselines and may not reflect their full capability.",
+      "The 'relaxed stability' metric introduced for molecule generation without bond types is non-standard and may not be directly comparable to metrics used in prior work.",
+      "The discrete extension (Section 3.3) relies on heuristic elements such as hard-clipping of Wt to [0,1] and Gaussian approximation of Wasserstein distance, which are not rigorously justified for small graphs.",
+      "The simplification of node feature velocity omits the covariance-related term; the justification that this term is negligible is not thoroughly validated empirically.",
+      "Sensitivity to the choice of the V matrix and reference distribution p0 is not deeply analyzed."
+    ],
+    "Originality": 4,
+    "Quality": 3,
+    "Clarity": 3,
+    "Significance": 3,
+    "Questions": [
+      "Can you provide a more rigorous theoretical argument for why linear interpolation is fundamentally suboptimal for graph generation, beyond empirical observations? For instance, is there a formal characterization of graph distributions where linear interpolation fails?",
+      "How sensitive is BWFlow to the choice of the V matrix? Is there a principled way to set it, and how does its choice affect the quality of the probability path?",
+      "How does the choice of reference distribution p0 affect generation quality? Have you experimented with different reference distributions?",
+      "For the 'relaxed stability' metric, can you provide a detailed comparison with standard stability metrics (e.g., RDKit validity, atom stability) to help interpret the reported improvements?",
+      "In Table 1, BWFlow underperforms on tree graphs. Could you elaborate on the spectral properties that make trees challenging, and discuss whether a different parameterization (e.g., hyperbolic geometry) could address this?",
+      "The paper mentions that path manipulation techniques from baselines are disabled for fair comparison. Could you provide results with all techniques enabled to give a complete picture of the state-of-the-art comparison?",
+      "How does the O(N³) computational cost scale with graph size in practice? The LSQR approximation is mentioned but not fully evaluated - could you provide more extensive benchmarks on larger and denser graphs?",
+      "In the discrete formulation, how sensitive is performance to hard-clipping of Wt to [0,1]? Does clipping introduce biases, especially during early training?",
+      "Under what conditions does the simplification of node feature velocity (omitting the covariance term) hold? Can you provide empirical evidence that the covariance term is negligible for the datasets used?",
+      "How does BWFlow handle graphs of varying sizes? The current formulation assumes same-sized graphs between source and target - how is this constraint addressed?",
+      "The paper focuses on flow matching. How would BW interpolation extend to diffusion models, and are there preliminary results showing improvements there as well?"
+    ],
+    "Limitations": [
+      "The O(N³) computational complexity of BW interpolation may limit scalability to very large graphs, though the LSQR approximation provides a promising mitigation that needs more extensive evaluation.",
+      "The framework is not easily generalizable to multiple edge types (heterogeneous graphs), which is common in real-world applications like molecular generation with bond types.",
+      "Performance on tree graphs is notably worse than competitors, suggesting the MRF prior is not well-suited for all graph types.",
+      "The discrete extension relies on approximations (CLT, hard-clipping) that may deviate from theoretical optimality guarantees and may not be valid for small graphs.",
+      "The theoretical framework relies on assumptions (shared V, ν→0) that may limit generality, and the paper does not fully explore sensitivity to these assumptions.",
+      "The paper does not address potential negative societal impacts of graph generation, such as generation of realistic social networks (privacy concerns) or harmful molecules."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 3,
+    "Contribution": 3,
+    "Overall": 7,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 210985,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 202025,
+    "completion_tokens": 10382,
+    "reasoning_tokens": 0,
+    "total_tokens": 221367,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.0282835,
+    "output_usd": 0.00290696,
+    "total_usd": 0.03121555
+  },
+  "elapsed_seconds": 33.194,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Accept",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B038",
+    "filename": "B038.txt",
+    "blind_text_sha256": "0c0a6527a91c780e4de54493bb39ddca5db9a3b060348f52719f95a0c503c2eb",
+    "characters": 125621,
+    "full_text_saved": false
+  }
+}

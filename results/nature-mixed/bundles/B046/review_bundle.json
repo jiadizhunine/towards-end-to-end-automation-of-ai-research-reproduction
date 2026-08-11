@@ -1,0 +1,725 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:43:39.045036+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "This paper introduces the InSTA pipeline, an automated system for internet-scale training of web navigation agents without human annotations. The pipeline has three stages: (1) an LLM task proposer annotates 150k websites (filtered from 1M) with agentic tasks via a feedback loop (easy task → agent exploration → harder grounded task), (2) LLM agents complete these tasks producing 2.2M screenshots and reasoning traces, and (3) an LLM judge filters trajectories by predicting success scores (0-1). The paper demonstrates that a small Qwen 3 1.7B model trained on this data achieves 56.9% success rate on held-out websites, outperforming the Qwen 3 235B data collection policy and Llama 4 Maverick (400B), and reaching 94.7% of Gemini 2.5 Flash performance. The agents also zero-shot transfer to WebVoyager and improve performance on WebLINX and Mind2Web when mixed with human data. The paper releases code, models, and data.",
+        "Strengths": [
+          "Impressive scale: 150k websites annotated, 2.2M screenshots and reasoning traces collected, all for only $521.55 in compute costs",
+          "Novel pipeline design with a feedback loop for task generation (easy task → explore → harder task), enabling deep environment exploration",
+          "Strong empirical results: small 1.7B model matches or outperforms much larger models (235B, 400B), demonstrating the quality of the generated data",
+          "Clean train-test split: no overlap between training sites and testing sites (including WebVoyager, WebLINX, Mind2Web), avoiding common evaluation pitfalls",
+          "Comprehensive evaluation including zero-shot transfer to WebVoyager, static benchmark integration (WebLINX, Mind2Web), and reasoning budget analysis",
+          "Good safety analysis with up to 97% accuracy in detecting harmful content and high recall (0.98-1.0)",
+          "Full release of code, models, and data, enabling reproducibility and further research",
+          "Thoughtful discussion of limitations and ethical considerations in appendices"
+        ],
+        "Weaknesses": [
+          "Judge accuracy of 82.6% (GPT-4o) is concerning for filtering training data - with 150k trajectories, this could mislabel ~26k trajectories, potentially propagating errors into training data",
+          "Human evaluation sets are small: only 100 trajectories for judge accuracy and 300 tasks for reliability assessment, which may not be statistically robust",
+          "The safety filter evaluation uses only 100 websites (50 safe, 50 unsafe), which may not adequately represent the diversity of content on the internet",
+          "The comparison to frontier LLMs is limited to WebVoyager for zero-shot transfer; no head-to-head comparison on other benchmarks",
+          "The reasoning budget ablation (Figure 10) is only performed on Gemini 2.5 Flash, not on the trained Qwen 3 1.7B model, making it unclear if the trained model also benefits from test-time compute scaling",
+          "The static benchmark transfer results (WebLINX, Mind2Web) show large relative improvements but from very low baselines, and the absolute performance may still be limited",
+          "The paper does not analyze the distribution of judge scores or failure modes of the judge (e.g., false positives/negatives) in detail",
+          "No analysis of data diversity beyond word clouds and category frequencies - it's unclear if the 150k tasks cover all necessary web agent skills"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "How does the judge's accuracy vary across different task categories? Are there systematic biases in the judge that could affect training data quality?",
+          "The paper mentions that filtering with Judge(Success)=1 selects 10.5k of 20k trajectories. What is the distribution of judge scores, and how sensitive are the results to the filtering threshold?",
+          "Could you provide more details on the human evaluation for task reliability? Were the evaluators given specific criteria for 'achievable and verifiable'? What was the inter-annotator agreement?",
+          "For the WebVoyager zero-shot transfer, what is the breakdown of success rates per website? Are there particular website types where the trained model performs well or poorly?",
+          "The reasoning budget ablation is only shown for Gemini 2.5 Flash. Does the trained Qwen 3 1.7B model also show monotonic improvement with increased reasoning budget?",
+          "How much of the 150k sites' data was actually used for training the small models? Was the full 20k trajectory dataset used, or a subset?",
+          "What is the overlap between the 1M sites considered and the websites in WebVoyager, WebLINX, and Mind2Web? The paper claims no overlap, but this should be explicitly verified and reported",
+          "Have you considered using the judge's efficiency and self-correction scores (in addition to success) for filtering? Could this improve training data quality?"
+        ],
+        "Limitations": [
+          "The paper acknowledges that agents can influence website analytics and potentially impact prices/decisions, though they limit interaction to ~90 seconds per site on average",
+          "The task proposer filters out social media and forum sites, which limits the diversity of tasks that can be generated - this is a significant restriction on the types of skills agents can learn",
+          "The pipeline does not handle tasks requiring user accounts or personal data, limiting applicability to real-world scenarios where such interactions are common",
+          "The judge-based evaluation may not capture all aspects of task success, particularly for complex multi-step tasks where partial progress might be valuable",
+          "The paper notes that some task categories (e.g., downloading files, product comparison) are not feasible with the Playwright API, indicating limitations in the action space",
+          "Potential negative societal impact: the release of a pipeline that can autonomously interact with websites at scale could be misused for scraping, spamming, or other malicious activities. The paper discusses some safeguards but does not fully address this risk"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper presents a pipeline for internet-scale training of web navigation agents without human annotations. The key contributions are: (1) an LLM-based task proposer that annotates 150k websites with agentic tasks, (2) an agent that completes tasks and produces trajectories, and (3) an LLM judge that filters trajectories. They train a small Qwen 3 1.7B model that competes with frontier LLMs.\n\nStrengths:\n- The scale of the work is impressive (150k sites, 2.2M screenshots/traces)\n- The pipeline is fully automated and low-cost ($521.55 for data collection)\n- Strong experimental validation with multiple benchmarks (WebVoyager, WebLINX, Mind2Web)\n- The train-test split is clean (no overlap between training and testing sites)\n- Small model (1.7B) matching frontier LLMs (235B+) is a significant result\n- Good analysis of judge accuracy and safety filtering\n- Releases code, models, and data\n\nWeaknesses:\n- The judge accuracy (82.6%) is concerning for filtering training data - this could propagate errors\n- The human evaluation for task reliability (89% achievable) is based on only 300 tasks\n- The safety filter evaluation (100 sites) is quite small\n- The comparison to frontier LLMs is somewhat limited (only WebVoyager for zero-shot transfer)\n- The paper doesn't fully address potential issues with the judge's confidence calibration across different site types\n- The static benchmark transfer results show improvements but the baseline performance is quite low\n- The reasoning budget ablation is only done for Gemini 2.5 Flash, not for their trained model\n\nOriginality: High - the pipeline approach is novel, combining task generation, agent execution, and LLM-based filtering at scale. The feedback loop for task generation (easy task → explore → harder task) is a nice contribution.\n\nQuality: Good - the experiments are thorough and the analysis is careful. However, some evaluations are based on small human-annotated sets (100 trajectories for judge accuracy, 300 tasks for reliability). The claims about \"matching frontier LLMs\" should be qualified since they only test on WebVoyager for zero-shot transfer.\n\nClarity: Good - the paper is well-organized and explains the pipeline clearly. However, some figures are referenced but not fully described in the text, and the mathematical notation could be cleaner.\n\nSignificance: High - this addresses a critical bottleneck in agent training (data collection) and shows that small models can be competitive. The release of the pipeline and data is valuable for the community.\n\nOverall assessment: This is a strong paper with significant contributions. The main concerns are the relatively small human evaluation sets for judge accuracy and task reliability, and the potential propagation of judge errors through the training data. The paper would benefit from more analysis of the judge's failure modes and how they affect trained agents.\n\nI would rate this as a borderline accept. The technical contributions are solid and the results are impressive, but there are some concerns about the evaluation methodology and the robustness of the judge-based filtering.\n\nDecision: Accept (with reservations about the evaluation scale)```json\n{\n    \"Summary\": \"This paper introduces the InSTA pipeline, an automated system for internet-scale training of web navigation agents without human annotations. The pipeline has three stages: (1) an LLM task proposer annotates 150k websites (filtered from 1M) with agentic tasks via a feedback loop (easy task → agent exploration → harder grounded task), (2) LLM agents complete these tasks producing 2.2M screenshots and reasoning traces, and (3) an LLM judge filters trajectories by predicting success scores (0-1). The paper demonstrates that a small Qwen 3 1.7B model trained on this data achieves 56.9% success rate on held-out websites, outperforming the Qwen 3 235B data collection policy and Llama 4 Maverick (400B), and reaching 94.7% of Gemini 2.5 Flash performance. The agents also zero-shot transfer to WebVoyager and improve performance on WebLINX and Mind2Web when mixed with human data. The paper releases code, models, and data.\",\n    \"Strengths\": [\n        \"Impressive scale: 150k websites annotated, 2.2M screenshots and reasoning traces collected, all for only $521.55 in compute costs\",\n        \"Novel pipeline design with a feedback loop for task generation (easy task → explore → harder task), enabling deep environment exploration\",\n        \"Strong empirical results: small 1.7B model matches or outperforms much larger models (235B, 400B), demonstrating the quality of the generated data\",\n        \"Clean train-test split: no overlap between training sites and testing sites (including WebVoyager, WebLINX, Mind2Web), avoiding common evaluation pitfalls\",\n        \"Comprehensive evaluation including zero-shot transfer to WebVoyager, static benchmark integration (WebLINX, Mind2Web), and reasoning budget analysis\",\n        \"Good safety analysis with up to 97% accuracy in detecting harmful content and high recall (0.98-1.0)\",\n        \"Full release of code, models, and data, enabling reproducibility and further research\",\n        \"Thoughtful discussion of limitations and ethical considerations in appendices\"\n    ],\n    \"Weaknesses\": [\n        \"Judge accuracy of 82.6% (GPT-4o) is concerning for filtering training data - with 150k trajectories, this could mislabel ~26k trajectories, potentially propagating errors into training data\",\n        \"Human evaluation sets are small: only 100 trajectories for judge accuracy and 300 tasks for reliability assessment, which may not be statistically robust\",\n        \"The safety filter evaluation uses only 100 websites (50 safe, 50 unsafe), which may not adequately represent the diversity of content on the internet\",\n        \"The comparison to frontier LLMs is limited to WebVoyager for zero-shot transfer; no head-to-head comparison on other benchmarks\",\n        \"The reasoning budget ablation (Figure 10) is only performed on Gemini 2.5 Flash, not on the trained Qwen 3 1.7B model, making it unclear if the trained model also benefits from test-time compute scaling\",\n        \"The static benchmark transfer results (WebLINX, Mind2Web) show large relative improvements but from very low baselines, and the absolute performance may still be limited\",\n        \"The paper does not analyze the distribution of judge scores or failure modes of the judge (e.g., false positives/negatives) in detail\",\n        \"No analysis of data diversity beyond word clouds and category frequencies - it's unclear if the 150k tasks cover all necessary web agent skills\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 4,\n    \"Questions\": [\n        \"How does the judge's accuracy vary across different task categories? Are there systematic biases in the judge that could affect training data quality?\",\n        \"The paper mentions that filtering with Judge(Success)=1 selects 10.5k of 20k trajectories. What is the distribution of judge scores, and how sensitive are the results to the filtering threshold?\",\n        \"Could you provide more details on the human evaluation for task reliability? Were the evaluators given specific criteria for 'achievable and verifiable'? What was the inter-annotator agreement?\",\n        \"For the WebVoyager zero-shot transfer, what is the breakdown of success rates per website? Are there particular website types where the trained model performs well or poorly?\",\n        \"The reasoning budget ablation is only shown for Gemini 2.5 Flash. Does the trained Qwen 3 1.7B model also show monotonic improvement with increased reasoning budget?\",\n        \"How much of the 150k sites' data was actually used for training the small models? Was the full 20k trajectory dataset used, or a subset?\",\n        \"What is the overlap between the 1M sites considered and the websites in WebVoyager, WebLINX, and Mind2Web? The paper claims no overlap, but this should be explicitly verified and reported\",\n        \"Have you considered using the judge's efficiency and self-correction scores (in addition to success) for filtering? Could this improve training data quality?\"\n    ],\n    \"Limitations\": [\n        \"The paper acknowledges that agents can influence website analytics and potentially impact prices/decisions, though they limit interaction to ~90 seconds per site on average\",\n        \"The task proposer filters out social media and forum sites, which limits the diversity of tasks that can be generated - this is a significant restriction on the types of skills agents can learn\",\n        \"The pipeline does not handle tasks requiring user accounts or personal data, limiting applicability to real-world scenarios where such interactions are common\",\n        \"The judge-based evaluation may not capture all aspects of task success, particularly for complex multi-step tasks where partial progress might be valuable\",\n        \"The paper notes that some task categories (e.g., downloading files, product comparison) are not feasible with the Playwright API, indicating limitations in the action space\",\n        \"Potential negative societal impact: the release of a pipeline that can autonomously interact with websites at scale could be misused for scraping, spamming, or other malicious activities. The paper discusses some safeguards but does not fully address this risk\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 7,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 21517,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 19725,
+        "completion_tokens": 2030,
+        "reasoning_tokens": 0,
+        "total_tokens": 23547
+      },
+      "attempts": 1,
+      "response_id": "2c4a40e3-e00a-43fd-884a-ac33c6386b2f"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "This paper introduces InSTA, an automatic pipeline for generating internet-scale training data for web navigation agents without human annotations. The pipeline has three stages: (1) an LLM task proposer annotates 150k websites with agentic tasks while filtering unsafe content, (2) LLM agents complete these tasks producing trajectories, and (3) an LLM judge filters trajectories by predicting success scores. The authors train Qwen 3 1.7B models on this data and show they achieve competitive performance with frontier LLMs (Qwen 3 235B, Llama 4 Maverick, Gemini 2.5 Flash) on both their test set and WebVoyager, while being significantly smaller. They also demonstrate that their data improves generalization when mixed with human data from static benchmarks (WebLINX, Mind2Web). The pipeline, models, and data are released publicly.",
+        "Strengths": [
+          "Addresses an important and timely problem: scaling training data for web agents beyond limited human annotations",
+          "Novel pipeline design with three stages (task proposal, execution, evaluation) that creates a data flywheel",
+          "Impressive empirical results showing small models (1.7B) can compete with frontier LLMs (up to 235x larger)",
+          "Strong evaluation methodology with held-out test sets, zero-shot transfer to WebVoyager, and multiple independent judges",
+          "Thorough safety considerations including harmful content filtering (97% accuracy) and PII removal",
+          "Comprehensive release of code, models, and data to the community",
+          "Cost analysis shows the pipeline is accessible to academic labs (~$500 for data collection)",
+          "Good discussion of limitations and future work, including RL-based training and multimodal extension"
+        ],
+        "Weaknesses": [
+          "The judge's accuracy (82.6%) is modest for a critical component that determines training data quality; this could introduce significant noise",
+          "Human evaluation sets for both safety filter (100 sites) and judge (100 trajectories) are relatively small",
+          "The claim of 'matching frontier LLMs' needs careful scrutiny - the comparison is on a specific test set with potentially different optimizations",
+          "The paper doesn't deeply analyze failure modes of the judge or task proposer, or how judge errors correlate with downstream agent performance",
+          "The static benchmark experiments use different model architectures (flan-t5-large, Llama-3.1-8B) than the main results (Qwen 3 1.7B), making direct comparisons less clear",
+          "Only one loop of task generation was used; the potential of the feedback process is not fully demonstrated",
+          "The test set of 3,000 sites lacks clear description of selection methodology or human verification of task quality"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "How was the 3,000-site held-out test set selected? Was there any human verification of task quality or feasibility?",
+          "What is the inter-annotator agreement on the 100 human-labeled trajectories used to evaluate the judge?",
+          "Could the judge be biased toward trajectories that resemble its own generation patterns, given that Qwen 3 235B generated both the trajectories and the judge scores?",
+          "How does agent performance vary across different task categories? Are there categories where the judge is particularly unreliable?",
+          "What is the distribution of judge scores? Is there a clear separation between successful and unsuccessful trajectories, or is there a large gray area?",
+          "How robust is the pipeline to changes in website content over time? Have the authors tested whether tasks remain valid after website updates?",
+          "In the static benchmark experiments, why were different model architectures used (flan-t5-large for Mind2Web, Llama-3.1-8B for WebLINX) rather than the Qwen 3 1.7B model?",
+          "What is the variance in performance across multiple runs of the full pipeline? Could the results be sensitive to random seed or LLM sampling?"
+        ],
+        "Limitations": [
+          "The safety filter's 97% accuracy means approximately 4,500 unsafe sites could pass through in the 150k dataset, which may not be adequately addressed",
+          "The judge's 82.6% accuracy means significant noise in training labels, which could propagate errors to trained agents",
+          "The paper focuses on text-based observations despite collecting multimodal data (2.2M screenshots), leaving multimodal training unexplored",
+          "Only one feedback loop was used in task generation, so the full potential of the iterative process is not demonstrated",
+          "The pipeline's reliance on LLM judgment for both data generation and evaluation could introduce systematic biases",
+          "Ethical concerns about autonomous agents interacting with live websites are acknowledged but the mitigation strategies (limiting interactions) may not fully address issues like scraping or analytics pollution",
+          "The paper doesn't discuss potential negative societal impacts of making web agents more capable, such as facilitating automated fraud or misinformation campaigns"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 4,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper presents an automatic pipeline (InSTA) for generating training data for web navigation agents at internet scale, using LLMs to propose tasks, complete them, and judge success. The key contributions are: (1) a pipeline that annotates 150k websites with tasks without human intervention, (2) a large dataset of trajectories with judge scores, and (3) trained small models (Qwen 3 1.7B) that compete with frontier LLMs on web navigation benchmarks.\n\nStrengths:\n- The paper addresses an important problem: scaling training data for web agents beyond human annotation\n- The pipeline is well-designed with three stages (task proposal, execution, evaluation)\n- Strong empirical results showing small models can match frontier LLMs\n- Good evaluation methodology with held-out test sets and zero-shot transfer to WebVoyager\n- Thorough safety considerations and filtering\n- Releasing code, models, and data is valuable for the community\n- Cost analysis shows accessibility\n\nWeaknesses:\n- The evaluation of the judge and task proposer relies on relatively small human-annotated sets (100 examples each)\n- The \"accuracy\" of the judge (82.6%) seems modest for a critical component of the pipeline\n- Some claims about \"matching frontier LLMs\" need careful scrutiny - the comparison is on a specific test set, and the frontier models may not be optimized for this environment\n- The test set uses 3,000 held-out websites, but it's unclear how these were selected and whether there's potential bias\n- The paper doesn't deeply analyze failure modes of the judge or task proposer\n- The comparison with WebVoyager uses different judges, which could introduce inconsistency\n- The static benchmark experiments (WebLINX, Mind2Web) use different model architectures, making direct comparison less clear\n\nQuestions for authors:\n- How was the 3,000-site test set selected? Was there any human verification of task quality?\n- What is the inter-annotator agreement on the 100 human-labeled trajectories for judge evaluation?\n- Could the judge be biased toward trajectories that look like its own generation patterns?\n- How does performance vary across different task categories?\n- What is the distribution of judge scores? Is there a clear separation between successful and unsuccessful trajectories?\n- How robust is the pipeline to changes in website content over time?\n\nLimitations:\n- The paper acknowledges limitations in the appendix but could be more upfront in the main text\n- Safety filter accuracy of 97% still means ~4,500 unsafe sites could pass through in the 150k dataset\n- The judge's 82.6% accuracy means significant noise in the training labels\n- Only one loop of task generation was used; the potential of the feedback process is not fully explored\n- The paper focuses on text-based observations despite collecting multimodal data\n\nOverall assessment:\nThis is a solid paper with an important contribution to scaling web agent training data. The pipeline is novel and the results are impressive. However, there are questions about the reliability of the automated evaluation and whether the claims fully hold up. The paper would benefit from more rigorous evaluation of the judge and task proposer components. I lean toward acceptance but with some reservations about the strength of the evaluation.\n\nRatings:\n- Originality: 4 (very high) - the pipeline approach is novel\n- Quality: 3 (good) - solid but with some evaluation gaps\n- Clarity: 3 (good) - well-written but some details are in appendices\n- Significance: 4 (very high) - important contribution to the field\n- Soundness: 3 (good)\n- Presentation: 3 (good)\n- Contribution: 4 (very high)\n- Overall: 7 (Accept)\n\nConfidence: 4 - I'm fairly confident in my assessment, though I haven't checked all details carefully.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper introduces InSTA, an automatic pipeline for generating internet-scale training data for web navigation agents without human annotations. The pipeline has three stages: (1) an LLM task proposer annotates 150k websites with agentic tasks while filtering unsafe content, (2) LLM agents complete these tasks producing trajectories, and (3) an LLM judge filters trajectories by predicting success scores. The authors train Qwen 3 1.7B models on this data and show they achieve competitive performance with frontier LLMs (Qwen 3 235B, Llama 4 Maverick, Gemini 2.5 Flash) on both their test set and WebVoyager, while being significantly smaller. They also demonstrate that their data improves generalization when mixed with human data from static benchmarks (WebLINX, Mind2Web). The pipeline, models, and data are released publicly.\",\n  \"Strengths\": [\n    \"Addresses an important and timely problem: scaling training data for web agents beyond limited human annotations\",\n    \"Novel pipeline design with three stages (task proposal, execution, evaluation) that creates a data flywheel\",\n    \"Impressive empirical results showing small models (1.7B) can compete with frontier LLMs (up to 235x larger)\",\n    \"Strong evaluation methodology with held-out test sets, zero-shot transfer to WebVoyager, and multiple independent judges\",\n    \"Thorough safety considerations including harmful content filtering (97% accuracy) and PII removal\",\n    \"Comprehensive release of code, models, and data to the community\",\n    \"Cost analysis shows the pipeline is accessible to academic labs (~$500 for data collection)\",\n    \"Good discussion of limitations and future work, including RL-based training and multimodal extension\"\n  ],\n  \"Weaknesses\": [\n    \"The judge's accuracy (82.6%) is modest for a critical component that determines training data quality; this could introduce significant noise\",\n    \"Human evaluation sets for both safety filter (100 sites) and judge (100 trajectories) are relatively small\",\n    \"The claim of 'matching frontier LLMs' needs careful scrutiny - the comparison is on a specific test set with potentially different optimizations\",\n    \"The paper doesn't deeply analyze failure modes of the judge or task proposer, or how judge errors correlate with downstream agent performance\",\n    \"The static benchmark experiments use different model architectures (flan-t5-large, Llama-3.1-8B) than the main results (Qwen 3 1.7B), making direct comparisons less clear\",\n    \"Only one loop of task generation was used; the potential of the feedback process is not fully demonstrated\",\n    \"The test set of 3,000 sites lacks clear description of selection methodology or human verification of task quality\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"How was the 3,000-site held-out test set selected? Was there any human verification of task quality or feasibility?\",\n    \"What is the inter-annotator agreement on the 100 human-labeled trajectories used to evaluate the judge?\",\n    \"Could the judge be biased toward trajectories that resemble its own generation patterns, given that Qwen 3 235B generated both the trajectories and the judge scores?\",\n    \"How does agent performance vary across different task categories? Are there categories where the judge is particularly unreliable?\",\n    \"What is the distribution of judge scores? Is there a clear separation between successful and unsuccessful trajectories, or is there a large gray area?\",\n    \"How robust is the pipeline to changes in website content over time? Have the authors tested whether tasks remain valid after website updates?\",\n    \"In the static benchmark experiments, why were different model architectures used (flan-t5-large for Mind2Web, Llama-3.1-8B for WebLINX) rather than the Qwen 3 1.7B model?\",\n    \"What is the variance in performance across multiple runs of the full pipeline? Could the results be sensitive to random seed or LLM sampling?\"\n  ],\n  \"Limitations\": [\n    \"The safety filter's 97% accuracy means approximately 4,500 unsafe sites could pass through in the 150k dataset, which may not be adequately addressed\",\n    \"The judge's 82.6% accuracy means significant noise in training labels, which could propagate errors to trained agents\",\n    \"The paper focuses on text-based observations despite collecting multimodal data (2.2M screenshots), leaving multimodal training unexplored\",\n    \"Only one feedback loop was used in task generation, so the full potential of the iterative process is not demonstrated\",\n    \"The pipeline's reliance on LLM judgment for both data generation and evaluation could introduce systematic biases\",\n    \"Ethical concerns about autonomous agents interacting with live websites are acknowledged but the mitigation strategies (limiting interactions) may not fully address issues like scraping or analytics pollution\",\n    \"The paper doesn't discuss potential negative societal impacts of making web agents more capable, such as facilitating automated fraud or misinformation campaigns\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 4,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 21517,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 19725,
+        "completion_tokens": 1923,
+        "reasoning_tokens": 0,
+        "total_tokens": 23440
+      },
+      "attempts": 1,
+      "response_id": "cb90cd15-808f-430e-a9a6-f86bbfb58a5a"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper introduces InSTA, an automatic pipeline for internet-scale training of web navigation agents without human annotations. The pipeline consists of three stages: (1) an LLM task proposer that annotates 150k websites with agentic tasks and filters unsafe content, (2) LLM agents that complete tasks on live websites producing trajectories, and (3) an LLM judge that filters successful trajectories. The authors train small models (Qwen 3 1.7B) on this data and show they can compete with frontier LLMs like Llama 4 Maverick and approach Gemini 2.5 Flash performance on their test set and WebVoyager. The paper releases code, models, and data.",
+        "Strengths": [
+          "The scale of the pipeline is impressive: 150k sites, 2.2M screenshots, and 2.2M action traces.",
+          "The train-test split is strong, with zero-shot transfer to WebVoyager demonstrating generalization.",
+          "The cost analysis shows the pipeline is accessible (under $600 for data collection), which is valuable for the community.",
+          "The safety filter evaluation is thorough, with up to 97% accuracy and high recall.",
+          "The judge's confidence calibration is an interesting finding, showing that confident predictions are more accurate.",
+          "The paper is well-written and clearly describes the pipeline components and experiments."
+        ],
+        "Weaknesses": [
+          "The primary evaluation on the InSTA test set uses the same judge (Qwen 3 235B) for filtering and evaluation, which could introduce bias. The paper does mention secondary judges in Figure 7 but the main claims rely on the same model.",
+          "Human validation is limited: only 100 trajectories for judge accuracy and 300 tasks for reliability. This is a small sample for such a large pipeline.",
+          "The comparison to frontier models is not entirely fair: Gemini 2.5 Flash is used zero-shot, while the small model is fine-tuned on the InSTA data. This is a common issue but should be acknowledged more clearly.",
+          "The paper does not deeply analyze failure modes of the judge or task proposer. What types of tasks are systematically misjudged?",
+          "The claim of a 'dynamic' environment is not fully demonstrated; only one loop of task generation is run.",
+          "The final success rate (56.9%) is not groundbreaking, and the paper does not compare to other training data pipelines (e.g., NNetNav) on the same benchmark."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How does the judge's performance vary by task category? Are there systematic biases for certain types of tasks?",
+          "What is the inter-annotator agreement on the human evaluation of trajectories for the judge accuracy experiment?",
+          "Would the results change if a different judge (e.g., Gemini) was used for filtering instead of Qwen 3 235B?",
+          "Is there evidence that the second phase of task generation (feedback loop) produces better tasks than the initial phase?",
+          "How representative is the test set of 3,000 sites? Is it a random sample of the 150k sites, and how does performance vary by site popularity?",
+          "What is the distribution of task difficulty, and how does the judge's accuracy vary with task difficulty?"
+        ],
+        "Limitations": [
+          "The paper discusses safety and PII in the appendix, which is good, but the societal impact of training agents on live websites is not deeply explored beyond limiting actions.",
+          "The potential for bias in LLM-generated tasks (e.g., over-representation of popular categories) is not discussed.",
+          "The paper does not analyze the diversity of the tasks in detail (e.g., how many tasks require multi-step reasoning vs. simple lookups).",
+          "The 'dynamic' aspect of the environment is not demonstrated; the paper only shows a static snapshot of the pipeline."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper presents a pipeline for internet-scale training of web navigation agents without human annotations. The key contributions are: (1) an automatic pipeline (InSTA) with a task proposer, agent, and judge, (2) a large dataset of 150k sites with tasks and trajectories, (3) trained small agents (Qwen 3 1.7B) that compete with frontier LLMs.\n\nStrengths:\n- The scale of the work is impressive: 150k sites, 2.2M screenshots, 2.2M traces.\n- The train-test split is strong: training on diverse sites and zero-shot transfer to WebVoyager.\n- The cost analysis is useful and shows the pipeline is accessible.\n- The safety filtering evaluation is good (97% accuracy).\n- The judge accuracy (82.6%) is decent and confidence calibration is interesting.\n- The paper is generally well-written and clear.\n\nWeaknesses:\n- The evaluation on the InSTA test set uses the same judge (Qwen 3 235B) for filtering and evaluation, which could introduce bias. While they mention secondary judges in Figure 7, the main claims rely on the same judge.\n- The human evaluation for tasks is limited (100 trajectories, 300 tasks), and the reliability of tasks (89% achievable) is not deeply analyzed.\n- The comparison to frontier models is not entirely fair: Gemini 2.5 Flash is used zero-shot without fine-tuning, while the small model is fine-tuned on the InSTA data. This is a known limitation of such comparisons.\n- The paper does not deeply analyze failure modes of the judge or the task proposer beyond accuracy numbers. For example, what types of tasks are misjudged?\n- The claim of \"internet-scale\" is a bit overstated: 150k sites is a small fraction of 300M, though the pipeline is designed to scale.\n- The paper mentions a feedback loop but only runs one loop; this is acknowledged as future work but limits the novelty of the \"dynamic\" environment claim.\n- The \"dynamic\" aspect is not really demonstrated: they don't show re-running the pipeline at different times to show adaptation.\n\nQuestions for authors:\n- How does the judge's performance vary by task category? Are there systematic biases?\n- What is the inter-annotator agreement on the human evaluation of trajectories?\n- How would the results change if a different judge (e.g., Gemini) was used for filtering?\n- Is there evidence that the task proposer's second phase (feedback loop) produces better tasks than the first phase?\n- How representative is the test set of 3,000 sites? Is it a random sample of the 150k?\n\nLimitations:\n- The paper discusses safety and PII in the appendix, which is good.\n- However, the societal impact of training agents on live websites (even with limited interaction) is not deeply explored. The paper discusses the risk but does not provide a detailed mitigation strategy beyond limiting actions.\n- The potential for bias in tasks generated by LLMs (e.g., focusing on popular categories) is not discussed.\n\nOverall, this is a solid paper with a clear contribution: a scalable pipeline for generating training data for web agents. The results are promising but not groundbreaking in terms of final performance (56.9% success rate). The main concerns are the evaluation methodology (self-judge bias) and the limited human validation. I lean towards acceptance but with reservations.\n\nDecision: Accept (borderline). The paper is technically sound, presents a novel pipeline, and releases valuable resources. The weaknesses are not fatal but should be addressed in rebuttal.\n\nRatings:\n- Originality: 3 (high) - The pipeline is novel in its combination of task generation, agent execution, and judging at scale.\n- Quality: 3 (good) - The experiments are well-designed but the self-judge evaluation is a concern.\n- Clarity: 3 (good) - The paper is well-written but some details are in the appendix.\n- Significance: 3 (high) - The pipeline and dataset are valuable to the community.\n- Soundness: 3 (good)\n- Presentation: 3 (good)\n- Contribution: 3 (good)\n- Overall: 6 (Weak Accept)\n\nConfidence: 4 (confident)\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper introduces InSTA, an automatic pipeline for internet-scale training of web navigation agents without human annotations. The pipeline consists of three stages: (1) an LLM task proposer that annotates 150k websites with agentic tasks and filters unsafe content, (2) LLM agents that complete tasks on live websites producing trajectories, and (3) an LLM judge that filters successful trajectories. The authors train small models (Qwen 3 1.7B) on this data and show they can compete with frontier LLMs like Llama 4 Maverick and approach Gemini 2.5 Flash performance on their test set and WebVoyager. The paper releases code, models, and data.\",\n    \"Strengths\": [\n        \"The scale of the pipeline is impressive: 150k sites, 2.2M screenshots, and 2.2M action traces.\",\n        \"The train-test split is strong, with zero-shot transfer to WebVoyager demonstrating generalization.\",\n        \"The cost analysis shows the pipeline is accessible (under $600 for data collection), which is valuable for the community.\",\n        \"The safety filter evaluation is thorough, with up to 97% accuracy and high recall.\",\n        \"The judge's confidence calibration is an interesting finding, showing that confident predictions are more accurate.\",\n        \"The paper is well-written and clearly describes the pipeline components and experiments.\"\n    ],\n    \"Weaknesses\": [\n        \"The primary evaluation on the InSTA test set uses the same judge (Qwen 3 235B) for filtering and evaluation, which could introduce bias. The paper does mention secondary judges in Figure 7 but the main claims rely on the same model.\",\n        \"Human validation is limited: only 100 trajectories for judge accuracy and 300 tasks for reliability. This is a small sample for such a large pipeline.\",\n        \"The comparison to frontier models is not entirely fair: Gemini 2.5 Flash is used zero-shot, while the small model is fine-tuned on the InSTA data. This is a common issue but should be acknowledged more clearly.\",\n        \"The paper does not deeply analyze failure modes of the judge or task proposer. What types of tasks are systematically misjudged?\",\n        \"The claim of a 'dynamic' environment is not fully demonstrated; only one loop of task generation is run.\",\n        \"The final success rate (56.9%) is not groundbreaking, and the paper does not compare to other training data pipelines (e.g., NNetNav) on the same benchmark.\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"How does the judge's performance vary by task category? Are there systematic biases for certain types of tasks?\",\n        \"What is the inter-annotator agreement on the human evaluation of trajectories for the judge accuracy experiment?\",\n        \"Would the results change if a different judge (e.g., Gemini) was used for filtering instead of Qwen 3 235B?\",\n        \"Is there evidence that the second phase of task generation (feedback loop) produces better tasks than the initial phase?\",\n        \"How representative is the test set of 3,000 sites? Is it a random sample of the 150k sites, and how does performance vary by site popularity?\",\n        \"What is the distribution of task difficulty, and how does the judge's accuracy vary with task difficulty?\"\n    ],\n    \"Limitations\": [\n        \"The paper discusses safety and PII in the appendix, which is good, but the societal impact of training agents on live websites is not deeply explored beyond limiting actions.\",\n        \"The potential for bias in LLM-generated tasks (e.g., over-representation of popular categories) is not discussed.\",\n        \"The paper does not analyze the diversity of the tasks in detail (e.g., how many tasks require multi-step reasoning vs. simple lookups).\",\n        \"The 'dynamic' aspect of the environment is not demonstrated; the paper only shows a static snapshot of the pipeline.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 21517,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 19725,
+        "completion_tokens": 1807,
+        "reasoning_tokens": 0,
+        "total_tokens": 23324
+      },
+      "attempts": 1,
+      "response_id": "5ca99fc1-3a63-4e9a-92dd-961e3cb64be6"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "This paper introduces InSTA, an automated pipeline for generating internet-scale training data for web navigation agents without human annotations. The pipeline has three stages: (1) an LLM task proposer annotates 150k websites with agentic tasks, (2) LLM agents complete tasks producing trajectories, and (3) an LLM judge filters trajectories by predicting success scores. The authors train Qwen 3 1.7B models on this data and show they match frontier LLMs (Qwen 3 235B, Llama 4 Maverick) while being much smaller and faster. The paper releases code, models, and a dataset with 2.2M screenshots and reasoning traces. Key results include a 56.9% success rate on held-out test sites, zero-shot transfer to WebVoyager, and improvements when mixing data with existing static benchmarks (Mind2Web, WebLINX).",
+        "Strengths": [
+          "The scale of data collection is impressive: 150k sites, 2.2M trajectories, and 2.2M screenshots, representing a significant advance over existing datasets limited to ~200 popular websites.",
+          "The three-stage pipeline (task proposer, agent, judge) is novel and provides a complete automated solution for agent data generation without human intervention.",
+          "Strong empirical results showing small models (Qwen 3 1.7B) can match frontier LLMs, demonstrating the value of the generated data.",
+          "Good train-test separation: models are evaluated on held-out websites and zero-shot transfer to WebVoyager without any overlap with training data.",
+          "Comprehensive safety considerations including harmful content filtering (97% accuracy) and PII removal with scrubadub.",
+          "Cost analysis showing the pipeline is accessible to academic labs ($521.55 for data collection).",
+          "Full release of code, models, and data promotes reproducibility and further research."
+        ],
+        "Weaknesses": [
+          "The judge used for data filtering (Qwen 3 235B) is the same type of model used for evaluation, potentially introducing bias. The evaluation on the test set relies on LLM judges with only 82.6% accuracy, which may not be reliable enough for definitive claims about agent performance.",
+          "The safety filter evaluation uses only 100 manually curated websites, which is a relatively small sample to validate the 97% accuracy claim.",
+          "The reliability study (89% verifiable tasks) is based on only 300 human-annotated tasks, limiting statistical power.",
+          "The paper lacks a detailed analysis of task quality and diversity beyond word clouds and category distributions. It's unclear how many tasks are trivial or unsolvable.",
+          "Comparisons with frontier LLMs may be confounded by different judges used across evaluations. It's unclear if the reported success rates are directly comparable.",
+          "The claim of 'internet-scale' may be overstated since only top 1M sites by PageRank are considered, which may not represent the full diversity of the internet.",
+          "The paper does not deeply explore potential negative impacts of automated agents interacting with websites, despite acknowledging risks in the appendix."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "Can you provide an analysis of the correlation between judge scores and actual task success? Given the judge accuracy is 82.6%, how much does this uncertainty affect the reported agent success rates?",
+          "How do you ensure that the judge doesn't have systematic biases (e.g., favoring certain types of websites or tasks) that could affect both data filtering and evaluation?",
+          "Could you provide more details on the diversity of generated tasks? What fraction of tasks are solvable by simple lookups vs. requiring multi-step reasoning?",
+          "Have you considered using multiple judges or a consensus mechanism to improve evaluation reliability?",
+          "How does the performance of your trained agents compare when evaluated by human annotators rather than LLM judges on a subset of tasks?",
+          "Can you elaborate on the failure modes of the safety filter? What types of harmful content are most likely to be missed?",
+          "What is the distribution of trajectory lengths and reasoning trace quality in the released dataset? Are there filtering mechanisms beyond the judge score?"
+        ],
+        "Limitations": [
+          "The evaluation methodology relies heavily on LLM judges with limited accuracy (82.6%), which could lead to noisy or biased performance estimates. This is particularly concerning for the main claims about agent performance.",
+          "The safety filter evaluation is based on a small sample (100 websites) and may not generalize to the full diversity of the internet.",
+          "The paper doesn't fully address the potential for LLM judge bias, especially when the same model family is used for both data generation and evaluation.",
+          "While the paper discusses limitations of the Playwright API (e.g., inability to download files), it doesn't fully explore other constraints that might limit agent capabilities.",
+          "The societal impact of deploying autonomous agents at scale on live websites is not deeply analyzed, particularly regarding website traffic, analytics pollution, and potential unintended actions.",
+          "The paper acknowledges PII risks but the effectiveness of scrubadub is not evaluated or quantified."
+        ],
+        "Ethical Concerns": true,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 4,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper presents an automated pipeline for generating internet-scale training data for web navigation agents. The key contributions are: (1) a three-stage pipeline (task proposer → agent → judge) that annotates 150k websites with tasks without human annotation, (2) a large dataset release with 2.2M screenshots and trajectories, and (3) trained small models (Qwen 3 1.7B) that achieve competitive performance with frontier LLMs.\n\nStrengths:\n- The scale of the data collection is impressive (150k sites, 2.2M trajectories)\n- The approach is novel in combining task generation, agent execution, and LLM-based judging in an automated loop\n- Strong empirical results: small models matching frontier LLMs\n- Good train-test separation (no overlap with WebVoyager)\n- Detailed safety considerations and PII removal\n- Cost analysis shows significant savings\n- Release of code, models, and data\n\nWeaknesses:\n- The judge accuracy (82.6%) is concerning as it's used for both data filtering and evaluation. The evaluation on the test set relies on the same judge that was used for filtering, which could lead to biased results.\n- The safety filter evaluation uses only 100 websites, which is a small sample\n- The reliability study (89% verifiable tasks) is based on human annotation of only 300 tasks\n- The comparison to frontier LLMs may not be entirely fair since different judges are used\n- The paper doesn't deeply analyze the diversity or quality of the generated tasks\n- Some claims about \"internet-scale\" might be overstated since only top 1M sites were considered\n\nThe paper is technically sound with good experimental methodology. The main concerns are around evaluation validity (judge bias) and the relatively small validation sets for safety/reliability claims.\n\nI would rate this as a solid paper with some concerns. The contribution is significant - providing a scalable pipeline for agent training data. The technical execution is good but there are some methodological concerns about evaluation bias.\n\nOverall score: 7 (Accept) - technically solid with high impact potential, but with some evaluation concerns that should be addressed.\n\nDecision: Accept\n\nConfidence: 4 - I'm fairly confident but not absolutely certain about some aspects.REVIEW JSON:\n```json\n{\n\"Summary\": \"This paper introduces InSTA, an automated pipeline for generating internet-scale training data for web navigation agents without human annotations. The pipeline has three stages: (1) an LLM task proposer annotates 150k websites with agentic tasks, (2) LLM agents complete tasks producing trajectories, and (3) an LLM judge filters trajectories by predicting success scores. The authors train Qwen 3 1.7B models on this data and show they match frontier LLMs (Qwen 3 235B, Llama 4 Maverick) while being much smaller and faster. The paper releases code, models, and a dataset with 2.2M screenshots and reasoning traces. Key results include a 56.9% success rate on held-out test sites, zero-shot transfer to WebVoyager, and improvements when mixing data with existing static benchmarks (Mind2Web, WebLINX).\",\n\"Strengths\": [\n\"The scale of data collection is impressive: 150k sites, 2.2M trajectories, and 2.2M screenshots, representing a significant advance over existing datasets limited to ~200 popular websites.\",\n\"The three-stage pipeline (task proposer, agent, judge) is novel and provides a complete automated solution for agent data generation without human intervention.\",\n\"Strong empirical results showing small models (Qwen 3 1.7B) can match frontier LLMs, demonstrating the value of the generated data.\",\n\"Good train-test separation: models are evaluated on held-out websites and zero-shot transfer to WebVoyager without any overlap with training data.\",\n\"Comprehensive safety considerations including harmful content filtering (97% accuracy) and PII removal with scrubadub.\",\n\"Cost analysis showing the pipeline is accessible to academic labs ($521.55 for data collection).\",\n\"Full release of code, models, and data promotes reproducibility and further research.\"\n],\n\"Weaknesses\": [\n\"The judge used for data filtering (Qwen 3 235B) is the same type of model used for evaluation, potentially introducing bias. The evaluation on the test set relies on LLM judges with only 82.6% accuracy, which may not be reliable enough for definitive claims about agent performance.\",\n\"The safety filter evaluation uses only 100 manually curated websites, which is a relatively small sample to validate the 97% accuracy claim.\",\n\"The reliability study (89% verifiable tasks) is based on only 300 human-annotated tasks, limiting statistical power.\",\n\"The paper lacks a detailed analysis of task quality and diversity beyond word clouds and category distributions. It's unclear how many tasks are trivial or unsolvable.\",\n\"Comparisons with frontier LLMs may be confounded by different judges used across evaluations. It's unclear if the reported success rates are directly comparable.\",\n\"The claim of 'internet-scale' may be overstated since only top 1M sites by PageRank are considered, which may not represent the full diversity of the internet.\",\n\"The paper does not deeply explore potential negative impacts of automated agents interacting with websites, despite acknowledging risks in the appendix.\"\n],\n\"Originality\": 4,\n\"Quality\": 3,\n\"Clarity\": 3,\n\"Significance\": 4,\n\"Questions\": [\n\"Can you provide an analysis of the correlation between judge scores and actual task success? Given the judge accuracy is 82.6%, how much does this uncertainty affect the reported agent success rates?\",\n\"How do you ensure that the judge doesn't have systematic biases (e.g., favoring certain types of websites or tasks) that could affect both data filtering and evaluation?\",\n\"Could you provide more details on the diversity of generated tasks? What fraction of tasks are solvable by simple lookups vs. requiring multi-step reasoning?\",\n\"Have you considered using multiple judges or a consensus mechanism to improve evaluation reliability?\",\n\"How does the performance of your trained agents compare when evaluated by human annotators rather than LLM judges on a subset of tasks?\",\n\"Can you elaborate on the failure modes of the safety filter? What types of harmful content are most likely to be missed?\",\n\"What is the distribution of trajectory lengths and reasoning trace quality in the released dataset? Are there filtering mechanisms beyond the judge score?\"\n],\n\"Limitations\": [\n\"The evaluation methodology relies heavily on LLM judges with limited accuracy (82.6%), which could lead to noisy or biased performance estimates. This is particularly concerning for the main claims about agent performance.\",\n\"The safety filter evaluation is based on a small sample (100 websites) and may not generalize to the full diversity of the internet.\",\n\"The paper doesn't fully address the potential for LLM judge bias, especially when the same model family is used for both data generation and evaluation.\",\n\"While the paper discusses limitations of the Playwright API (e.g., inability to download files), it doesn't fully explore other constraints that might limit agent capabilities.\",\n\"The societal impact of deploying autonomous agents at scale on live websites is not deeply analyzed, particularly regarding website traffic, analytics pollution, and potential unintended actions.\",\n\"The paper acknowledges PII risks but the effectiveness of scrubadub is not evaluated or quantified.\"\n],\n\"Ethical Concerns\": true,\n\"Soundness\": 3,\n\"Presentation\": 3,\n\"Contribution\": 4,\n\"Overall\": 7,\n\"Confidence\": 4,\n\"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 21517,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 19725,
+        "completion_tokens": 1572,
+        "reasoning_tokens": 0,
+        "total_tokens": 23089
+      },
+      "attempts": 1,
+      "response_id": "1a7b33ed-4a5f-4dc7-8650-384c3932313c"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "This paper introduces InSTA, an automated pipeline for internet-scale training of web navigation agents without human annotations. The pipeline consists of three stages: (1) an LLM task proposer that annotates 150k websites with agentic tasks (filtering from 1M sites based on safety), (2) LLM agents that complete these tasks producing trajectories with 2.2M screenshots and reasoning traces, and (3) an LLM judge that filters trajectories by predicting success scores. The authors train Qwen 3 1.7B models on the resulting data, achieving 56.9% success rate on a held-out test set, outperforming the Qwen 3 235B data collection policy and Llama 4 Maverick (400B params), and reaching 94.7% of Gemini 2.5 Flash's performance. The paper also demonstrates zero-shot transfer to WebVoyager and improvements on static benchmarks (WebLINX, Mind2Web). The full pipeline, code, models, and data are released.",
+        "Strengths": [
+          "The scale of data collection is impressive - annotating 150k real websites (vs. ~200 in prior work) with a fully automated pipeline addresses a critical bottleneck in web agent research.",
+          "Strong train-test separation: training on diverse internet sites and testing on WebVoyager, WebLINX, and Mind2Web without overlap demonstrates genuine generalization.",
+          "Compelling results showing a 1.7B parameter model matching or exceeding much larger models (235B, 400B) as web agents.",
+          "The paper validates key components (safety filter, judge accuracy, task reliability) with human evaluation, showing 97% safety detection accuracy and 82.6% judge accuracy.",
+          "Transparent about limitations and safeguards, including interaction limits, PII removal, and ethical considerations in appendices.",
+          "Cost analysis (Appendix J) showing significant reductions using local LLMs makes the approach accessible to academic labs.",
+          "The three-stage pipeline with feedback loop for task generation is a novel contribution that could enable future RL-based training."
+        ],
+        "Weaknesses": [
+          "The evaluation relies heavily on LLM judges (max 82.6% accuracy), which could introduce systematic bias - especially when the same model family (Qwen 3 235B) is used for both data filtering and evaluation of the trained Qwen 3 1.7B model.",
+          "The human verification scale is relatively small (300 tasks, 100 trajectories for judge validation) given the 150k task scale, and failure modes of the judge are not deeply analyzed.",
+          "The claim of 'internet-scale' is somewhat overstated - 150k sites out of 300M+ is still a small fraction, and the paper doesn't address coverage biases in the Common Crawl PageRank selection.",
+          "Task quality analysis shows some categories (e.g., product comparison) have very low success rates (<20%), suggesting the task proposer generates some infeasible or ambiguous tasks that may introduce noise into training data.",
+          "The comparison to frontier LLMs is somewhat confounded - the judge used for evaluation may be more lenient toward the Qwen family of models, and the 'matching' claim varies across different judges (only 3 of 4 for WebVoyager).",
+          "The paper doesn't provide a detailed analysis of what types of errors the judge makes or how judge inaccuracies might propagate through the training pipeline."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "How does the judge's accuracy vary across different task categories? Are there categories where the judge is systematically wrong, and how does this affect the quality of filtered training data?",
+          "The paper reports judge accuracy of 82.6% on 100 human-annotated trajectories. Could you provide a more detailed error analysis, particularly for false positives (unsuccessful trajectories judged as successful) and false negatives?",
+          "Given that the same model family (Qwen 3) is used for data collection, filtering, and evaluation, could there be a systematic bias? Have you tested with a judge from a completely different model family (e.g., only GPT-4o or only Gemini) for the final evaluation of trained agents?",
+          "What is the distribution of task difficulty across the 150k generated tasks? The paper mentions some categories have very low success rates - how do you ensure that the training data includes a balanced mix of difficulty levels?",
+          "How sensitive are the results to the judge's confidence threshold for filtering? The paper uses Judge(Success)=1, but could lower thresholds (e.g., >0.8) provide better or worse training data?",
+          "For the WebVoyager transfer experiments, what is the variance across the 15 websites? Are there websites where the model performs significantly worse, and does this correlate with website complexity or domain?",
+          "The paper mentions the task proposer uses a feedback loop with exploratory trajectories. How many trajectories were needed per site on average, and does the quality of the final task depend on the quality of the initial exploration?"
+        ],
+        "Limitations": [
+          "The paper acknowledges limitations in Appendix A, including potential impact on website analytics and the risk of harmful content. The authors mitigate this by limiting interactions (30 actions per site, one task per website) and using a safety filter.",
+          "The reliance on LLM judges for both data filtering and evaluation creates a potential circularity issue - the authors should more explicitly acknowledge this and discuss potential biases.",
+          "The safety filter is evaluated on only 100 websites, which is a small sample given the claim of 97% accuracy on the broader internet. More extensive safety evaluation would strengthen the claims.",
+          "The paper doesn't address potential privacy concerns beyond PII removal - the training data includes screenshots of live websites, which may contain user-specific content or copyrighted material that isn't fully addressed.",
+          "The societal impact discussion (Appendix C) is brief and doesn't fully explore the implications of deploying small, efficient web agents that could be used for automated browsing at scale."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 4,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper presents a pipeline for internet-scale training of web navigation agents without human annotations. The InSTA pipeline has three stages: LLM-based task generation for 150k websites, agent trajectory collection, and LLM-based filtering/judging. The key contributions are: (1) scaling task coverage to 150k real websites vs. ~200 in prior work, (2) a fully automated data flywheel, (3) training small models (Qwen 3 1.7B) that compete with frontier LLMs, and (4) releasing code, models, and data.\n\nStrengths:\n- The scale of the data collection (150k sites, 2.2M screenshots/traces) is impressive and addresses a real bottleneck in web agent research.\n- The train-test split is strong - training on diverse internet sites and testing on WebVoyager without overlap.\n- The results showing a 1.7B model matching 235B and 400B models are compelling.\n- The safety filter evaluation (97% accuracy) and judge verification (82.6% accuracy) are good validation steps.\n- The paper is well-written and transparent about limitations (Appendix A).\n- The cost analysis (Appendix J) is useful for reproducibility.\n\nWeaknesses:\n- The evaluation relies heavily on LLM judges, which are imperfect (82.6% max accuracy). This compounds when used for both filtering and evaluation.\n- The human verification of tasks is relatively small scale (300 tasks, 100 trajectories) and the paper doesn't deeply analyze failure modes.\n- The comparison to frontier LLMs might be confounded by the judge being from the same family (Qwen 3 235B judging Qwen 3 1.7B trajectories).\n- The paper doesn't deeply analyze what types of tasks are being generated - some categories (like \"product comparison\") have very low success rates, suggesting task quality issues.\n- The claim about \"internet-scale\" is somewhat overstated - 150k sites out of 300M+ is still a small fraction.\n- The WebVoyager results show the model matches frontier LLMs for \"three of four judges\" - this hedging suggests inconsistency.\n\nOriginality: High - the three-stage pipeline with feedback loop for task generation is novel, as is the scale of real website coverage.\n\nQuality: Good - the experimental design is thoughtful with strong train-test separation, but the reliance on LLM judges for both filtering and evaluation creates a potential circularity concern.\n\nClarity: Good - well-organized and readable, though some details (like exact prompts) are deferred to appendices.\n\nSignificance: High - this addresses a critical bottleneck (data collection for web agents) and shows small models can be competitive, which has broad implications.\n\nMy main concerns:\n1. The judge accuracy of 82.6% means ~17% of trajectories are mislabeled. When using this for both filtering and evaluation, the errors could compound.\n2. The paper should more carefully analyze the relationship between judge scores and actual task completion - especially for the held-out test set.\n3. The safety filter evaluation uses only 100 websites, which seems small given the claim of 97% accuracy on the broader internet.\n\nOverall, I think this is a strong paper with important contributions. The scale of data collection and the demonstrated results with small models are significant. The main weaknesses are around evaluation methodology and the potential for judge bias. I'd rate this as a solid accept.\n\nFor the review:\n- Soundness: 3 (good) - solid methodology but some concerns about judge reliability\n- Presentation: 3 (good) - clear and well-organized\n- Contribution: 4 (excellent) - addresses a critical bottleneck with novel approach\n- Overall: 7 (Accept) - technically solid with important contributions\n\nConfidence: 4 - I'm fairly confident in my assessment but haven't checked all the math/details.REVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper introduces InSTA, an automated pipeline for internet-scale training of web navigation agents without human annotations. The pipeline consists of three stages: (1) an LLM task proposer that annotates 150k websites with agentic tasks (filtering from 1M sites based on safety), (2) LLM agents that complete these tasks producing trajectories with 2.2M screenshots and reasoning traces, and (3) an LLM judge that filters trajectories by predicting success scores. The authors train Qwen 3 1.7B models on the resulting data, achieving 56.9% success rate on a held-out test set, outperforming the Qwen 3 235B data collection policy and Llama 4 Maverick (400B params), and reaching 94.7% of Gemini 2.5 Flash's performance. The paper also demonstrates zero-shot transfer to WebVoyager and improvements on static benchmarks (WebLINX, Mind2Web). The full pipeline, code, models, and data are released.\",\n  \"Strengths\": [\n    \"The scale of data collection is impressive - annotating 150k real websites (vs. ~200 in prior work) with a fully automated pipeline addresses a critical bottleneck in web agent research.\",\n    \"Strong train-test separation: training on diverse internet sites and testing on WebVoyager, WebLINX, and Mind2Web without overlap demonstrates genuine generalization.\",\n    \"Compelling results showing a 1.7B parameter model matching or exceeding much larger models (235B, 400B) as web agents.\",\n    \"The paper validates key components (safety filter, judge accuracy, task reliability) with human evaluation, showing 97% safety detection accuracy and 82.6% judge accuracy.\",\n    \"Transparent about limitations and safeguards, including interaction limits, PII removal, and ethical considerations in appendices.\",\n    \"Cost analysis (Appendix J) showing significant reductions using local LLMs makes the approach accessible to academic labs.\",\n    \"The three-stage pipeline with feedback loop for task generation is a novel contribution that could enable future RL-based training.\"\n  ],\n  \"Weaknesses\": [\n    \"The evaluation relies heavily on LLM judges (max 82.6% accuracy), which could introduce systematic bias - especially when the same model family (Qwen 3 235B) is used for both data filtering and evaluation of the trained Qwen 3 1.7B model.\",\n    \"The human verification scale is relatively small (300 tasks, 100 trajectories for judge validation) given the 150k task scale, and failure modes of the judge are not deeply analyzed.\",\n    \"The claim of 'internet-scale' is somewhat overstated - 150k sites out of 300M+ is still a small fraction, and the paper doesn't address coverage biases in the Common Crawl PageRank selection.\",\n    \"Task quality analysis shows some categories (e.g., product comparison) have very low success rates (<20%), suggesting the task proposer generates some infeasible or ambiguous tasks that may introduce noise into training data.\",\n    \"The comparison to frontier LLMs is somewhat confounded - the judge used for evaluation may be more lenient toward the Qwen family of models, and the 'matching' claim varies across different judges (only 3 of 4 for WebVoyager).\",\n    \"The paper doesn't provide a detailed analysis of what types of errors the judge makes or how judge inaccuracies might propagate through the training pipeline.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"How does the judge's accuracy vary across different task categories? Are there categories where the judge is systematically wrong, and how does this affect the quality of filtered training data?\",\n    \"The paper reports judge accuracy of 82.6% on 100 human-annotated trajectories. Could you provide a more detailed error analysis, particularly for false positives (unsuccessful trajectories judged as successful) and false negatives?\",\n    \"Given that the same model family (Qwen 3) is used for data collection, filtering, and evaluation, could there be a systematic bias? Have you tested with a judge from a completely different model family (e.g., only GPT-4o or only Gemini) for the final evaluation of trained agents?\",\n    \"What is the distribution of task difficulty across the 150k generated tasks? The paper mentions some categories have very low success rates - how do you ensure that the training data includes a balanced mix of difficulty levels?\",\n    \"How sensitive are the results to the judge's confidence threshold for filtering? The paper uses Judge(Success)=1, but could lower thresholds (e.g., >0.8) provide better or worse training data?\",\n    \"For the WebVoyager transfer experiments, what is the variance across the 15 websites? Are there websites where the model performs significantly worse, and does this correlate with website complexity or domain?\",\n    \"The paper mentions the task proposer uses a feedback loop with exploratory trajectories. How many trajectories were needed per site on average, and does the quality of the final task depend on the quality of the initial exploration?\"\n  ],\n  \"Limitations\": [\n    \"The paper acknowledges limitations in Appendix A, including potential impact on website analytics and the risk of harmful content. The authors mitigate this by limiting interactions (30 actions per site, one task per website) and using a safety filter.\",\n    \"The reliance on LLM judges for both data filtering and evaluation creates a potential circularity issue - the authors should more explicitly acknowledge this and discuss potential biases.\",\n    \"The safety filter is evaluated on only 100 websites, which is a small sample given the claim of 97% accuracy on the broader internet. More extensive safety evaluation would strengthen the claims.\",\n    \"The paper doesn't address potential privacy concerns beyond PII removal - the training data includes screenshots of live websites, which may contain user-specific content or copyrighted material that isn't fully addressed.\",\n    \"The societal impact discussion (Appendix C) is brief and doesn't fully explore the implications of deploying small, efficient web agents that could be used for automated browsing at scale.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 4,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 21517,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 19725,
+        "completion_tokens": 2169,
+        "reasoning_tokens": 0,
+        "total_tokens": 23686
+      },
+      "attempts": 1,
+      "response_id": "bf658937-3496-47a9-9910-705b7245894b"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 5,
+      "Reject": 0
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          4,
+          4,
+          3,
+          4,
+          4
+        ],
+        "mean": 3.8,
+        "rounded_mean": 4,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          4,
+          4,
+          3,
+          4,
+          4
+        ],
+        "mean": 3.8,
+        "rounded_mean": 4,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          3,
+          4,
+          3,
+          4,
+          4
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Overall": {
+        "values": [
+          7,
+          7,
+          6,
+          7,
+          7
+        ],
+        "mean": 6.8,
+        "rounded_mean": 7,
+        "population_sd": 0.4,
+        "min": 6,
+        "max": 7
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "This paper introduces InSTA, an automated pipeline for generating internet-scale training data for web navigation agents without human annotations. The pipeline consists of three stages: (1) an LLM task proposer that annotates 150k websites (filtered from 1M based on safety) with agentic tasks via a feedback loop, (2) LLM agents that complete these tasks, producing 2.2M screenshots and reasoning traces, and (3) an LLM judge that filters trajectories by predicting success scores. The authors train small Qwen 3 1.7B models on this data and demonstrate they achieve 56.9% success rate on held-out websites, outperforming the Qwen 3 235B data collection policy and Llama 4 Maverick (400B), and reaching 94.7% of Gemini 2.5 Flash performance. The agents also zero-shot transfer to WebVoyager and improve performance on WebLINX and Mind2Web when mixed with human data. The paper releases code, models, and data, and reports a total data collection cost of $521.55.",
+      "Strengths": [
+        "Impressive scale: 150k websites annotated, 2.2M trajectories and screenshots collected, representing a significant advance over prior datasets limited to ~200 sites.",
+        "Novel three-stage pipeline (task proposer, agent, judge) with a feedback loop for task generation, providing a complete automated solution for web agent data generation.",
+        "Strong empirical results showing a 1.7B parameter model can match or exceed much larger models (235B, 400B), demonstrating the quality of the generated data.",
+        "Clean train-test separation: models are evaluated on held-out sites and zero-shot transfer to WebVoyager without overlap with training data, supporting genuine generalization claims.",
+        "Comprehensive evaluation including zero-shot transfer, static benchmark integration, reasoning budget analysis, and multiple judges.",
+        "Thorough safety considerations with 97% accuracy in harmful content detection and PII removal, along with transparent cost analysis making the pipeline accessible to academic labs.",
+        "Full release of code, models, and data, enabling reproducibility and further research."
+      ],
+      "Weaknesses": [
+        "The LLM judge accuracy of 82.6% is a critical bottleneck; with 150k trajectories, this could mislabel ~26k trajectories, potentially propagating errors into training data.",
+        "Potential circularity: the same model family (Qwen 3 235B) is used for data collection, filtering, and evaluation, which could introduce systematic bias favoring the Qwen family.",
+        "Human validation sets are small (100 trajectories for judge accuracy, 300 tasks for reliability), limiting statistical robustness given the scale of the pipeline.",
+        "Limited analysis of judge failure modes (false positives/negatives) and how judge errors correlate with downstream agent performance across task categories.",
+        "The paper does not deeply analyze task diversity beyond word clouds and category frequencies; it is unclear how many tasks are trivial vs. requiring multi-step reasoning, and some categories (e.g., product comparison) have very low success rates.",
+        "The 'internet-scale' claim is somewhat overstated: 150k sites from the top 1M by PageRank is still a small fraction of the internet, and coverage biases are not addressed.",
+        "Comparison to frontier LLMs may be confounded by different judges used across evaluations; the 'matching' claim varies across judges (only 3 of 4 for WebVoyager).",
+        "The reasoning budget ablation is only performed on Gemini 2.5 Flash, not on the trained Qwen 3 1.7B model, leaving unclear whether the trained model benefits from test-time compute scaling."
+      ],
+      "Originality": 4,
+      "Quality": 3,
+      "Clarity": 3,
+      "Significance": 4,
+      "Questions": [
+        "How does the judge's accuracy vary across different task categories? Are there systematic biases, and how do judge errors correlate with downstream agent performance?",
+        "Given that the same model family (Qwen 3) is used for data collection, filtering, and evaluation, could there be a systematic bias? Have you tested with a judge from a completely different model family (e.g., only GPT-4o or only Gemini) for final evaluation of trained agents?",
+        "What is the distribution of judge scores? Is there a clear separation between successful and unsuccessful trajectories, and how sensitive are the results to the filtering threshold (e.g., Judge(Success) > 0.8 instead of =1)?",
+        "What is the inter-annotator agreement on the 100 human-labeled trajectories used to evaluate the judge? Were evaluators given specific criteria, and what was the reliability?",
+        "For the WebVoyager zero-shot transfer, what is the breakdown of success rates per website? Are there particular website types where the trained model performs well or poorly?",
+        "How was the 3,000-site held-out test set selected? Was there any human verification of task quality or feasibility, and how does performance vary by site popularity?",
+        "Does the trained Qwen 3 1.7B model show monotonic improvement with increased reasoning budget, similar to the Gemini 2.5 Flash ablation shown in Figure 10?",
+        "How much of the 150k sites' data was actually used for training the small models? Was the full 20k trajectory dataset used for the main results?"
+      ],
+      "Limitations": [
+        "The judge's 82.6% accuracy means significant noise in training labels, which could propagate errors to trained agents; a more detailed error analysis is needed.",
+        "The safety filter is evaluated on only 100 websites (50 safe, 50 unsafe), which may not adequately represent the diversity of content on the internet; approximately 4,500 unsafe sites could pass through in the 150k dataset.",
+        "The task proposer filters out social media and forum sites, and does not handle tasks requiring user accounts or personal data, limiting the diversity of skills agents can learn.",
+        "The pipeline's reliance on LLM judgment for both data generation and evaluation could introduce systematic biases that are not fully explored.",
+        "The paper focuses on text-based observations despite collecting multimodal data (2.2M screenshots), leaving multimodal training unexplored.",
+        "Only one loop of task generation was used; the full potential of the iterative feedback process is not demonstrated.",
+        "Ethical concerns about autonomous agents interacting with live websites (e.g., analytics pollution, scraping, potential misuse for fraud or misinformation) are acknowledged but mitigation strategies may not fully address these risks.",
+        "The paper does not deeply explore the effectiveness of PII removal (scrubadub) or potential privacy concerns from screenshots of live websites."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 3,
+      "Contribution": 4,
+      "Overall": 7,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "THOUGHT:\nThe paper presents a compelling and timely contribution: an automated pipeline for generating internet-scale web agent training data without human annotations. The scale (150k sites, 2.2M trajectories) and the result that a 1.7B model can match much larger models are significant. All five reviewers lean toward acceptance (scores 6-7), with consistent praise for originality, scale, and generalization evaluation.\n\nThe main weaknesses are consistently identified across reviews: (1) the LLM judge accuracy of 82.6% introduces noise into both filtering and evaluation, (2) potential circularity since the same model family (Qwen 3) is used for data generation, filtering, and evaluation, (3) relatively small human validation sets (100-300 samples), and (4) limited analysis of judge failure modes and task diversity. Reviewers also note the \"internet-scale\" claim is somewhat overstated (150k of 300M+ sites) and that the comparison to frontier models may be confounded by judge choice.\n\nReviewer 3 gives a 6 (weak accept) and reviewer 4 flags ethical concerns (though with \"Ethical Concerns: true\", this seems more about proactive flagging of agent-website interaction risks than a fundamental issue). The other three give 7s.\n\nFor a meta-review, I need to decide between Accept and Reject. Given the consistency of positive assessments, the strong empirical results, and the clear novelty, acceptance is warranted. The weaknesses are significant but not fatal — they suggest areas for improvement rather than fundamental flaws. The paper is transparent about limitations and provides resources (code, data, models) that will enable follow-up work.\n\nI will write a meta-review that: (1) summarizes the contribution, (2) highlights strengths (scale, novelty, generalization, cost), (3) articulates the key weaknesses (judge reliability, potential bias, limited human validation, task diversity analysis), (4) poses targeted questions for the authors regarding judge bias, task category performance, and sensitivity to filtering thresholds, and (5) outlines limitations including ethical considerations. \n\nDecision: Accept. Soundness 3 (good), Presentation 3 (good), Contribution 4 (very high), Overall 7 (Accept). Confidence 4 (confident).\n\nI will note in the strengths that the safety analysis and cost transparency are commendable, and in weaknesses that the evaluation methodology needs more robustness, particularly regarding judge independence and human validation at scale. I will also suggest that the authors address the potential bias from using the same model family for data collection and evaluation.REVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper introduces InSTA, an automated pipeline for generating internet-scale training data for web navigation agents without human annotations. The pipeline consists of three stages: (1) an LLM task proposer that annotates 150k websites (filtered from 1M based on safety) with agentic tasks via a feedback loop, (2) LLM agents that complete these tasks, producing 2.2M screenshots and reasoning traces, and (3) an LLM judge that filters trajectories by predicting success scores. The authors train small Qwen 3 1.7B models on this data and demonstrate they achieve 56.9% success rate on held-out websites, outperforming the Qwen 3 235B data collection policy and Llama 4 Maverick (400B), and reaching 94.7% of Gemini 2.5 Flash performance. The agents also zero-shot transfer to WebVoyager and improve performance on WebLINX and Mind2Web when mixed with human data. The paper releases code, models, and data, and reports a total data collection cost of $521.55.\",\n  \"Strengths\": [\n    \"Impressive scale: 150k websites annotated, 2.2M trajectories and screenshots collected, representing a significant advance over prior datasets limited to ~200 sites.\",\n    \"Novel three-stage pipeline (task proposer, agent, judge) with a feedback loop for task generation, providing a complete automated solution for web agent data generation.\",\n    \"Strong empirical results showing a 1.7B parameter model can match or exceed much larger models (235B, 400B), demonstrating the quality of the generated data.\",\n    \"Clean train-test separation: models are evaluated on held-out sites and zero-shot transfer to WebVoyager without overlap with training data, supporting genuine generalization claims.\",\n    \"Comprehensive evaluation including zero-shot transfer, static benchmark integration, reasoning budget analysis, and multiple judges.\",\n    \"Thorough safety considerations with 97% accuracy in harmful content detection and PII removal, along with transparent cost analysis making the pipeline accessible to academic labs.\",\n    \"Full release of code, models, and data, enabling reproducibility and further research.\"\n  ],\n  \"Weaknesses\": [\n    \"The LLM judge accuracy of 82.6% is a critical bottleneck; with 150k trajectories, this could mislabel ~26k trajectories, potentially propagating errors into training data.\",\n    \"Potential circularity: the same model family (Qwen 3 235B) is used for data collection, filtering, and evaluation, which could introduce systematic bias favoring the Qwen family.\",\n    \"Human validation sets are small (100 trajectories for judge accuracy, 300 tasks for reliability), limiting statistical robustness given the scale of the pipeline.\",\n    \"Limited analysis of judge failure modes (false positives/negatives) and how judge errors correlate with downstream agent performance across task categories.\",\n    \"The paper does not deeply analyze task diversity beyond word clouds and category frequencies; it is unclear how many tasks are trivial vs. requiring multi-step reasoning, and some categories (e.g., product comparison) have very low success rates.\",\n    \"The 'internet-scale' claim is somewhat overstated: 150k sites from the top 1M by PageRank is still a small fraction of the internet, and coverage biases are not addressed.\",\n    \"Comparison to frontier LLMs may be confounded by different judges used across evaluations; the 'matching' claim varies across judges (only 3 of 4 for WebVoyager).\",\n    \"The reasoning budget ablation is only performed on Gemini 2.5 Flash, not on the trained Qwen 3 1.7B model, leaving unclear whether the trained model benefits from test-time compute scaling.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"How does the judge's accuracy vary across different task categories? Are there systematic biases, and how do judge errors correlate with downstream agent performance?\",\n    \"Given that the same model family (Qwen 3) is used for data collection, filtering, and evaluation, could there be a systematic bias? Have you tested with a judge from a completely different model family (e.g., only GPT-4o or only Gemini) for final evaluation of trained agents?\",\n    \"What is the distribution of judge scores? Is there a clear separation between successful and unsuccessful trajectories, and how sensitive are the results to the filtering threshold (e.g., Judge(Success) > 0.8 instead of =1)?\",\n    \"What is the inter-annotator agreement on the 100 human-labeled trajectories used to evaluate the judge? Were evaluators given specific criteria, and what was the reliability?\",\n    \"For the WebVoyager zero-shot transfer, what is the breakdown of success rates per website? Are there particular website types where the trained model performs well or poorly?\",\n    \"How was the 3,000-site held-out test set selected? Was there any human verification of task quality or feasibility, and how does performance vary by site popularity?\",\n    \"Does the trained Qwen 3 1.7B model show monotonic improvement with increased reasoning budget, similar to the Gemini 2.5 Flash ablation shown in Figure 10?\",\n    \"How much of the 150k sites' data was actually used for training the small models? Was the full 20k trajectory dataset used for the main results?\"\n  ],\n  \"Limitations\": [\n    \"The judge's 82.6% accuracy means significant noise in training labels, which could propagate errors to trained agents; a more detailed error analysis is needed.\",\n    \"The safety filter is evaluated on only 100 websites (50 safe, 50 unsafe), which may not adequately represent the diversity of content on the internet; approximately 4,500 unsafe sites could pass through in the 150k dataset.\",\n    \"The task proposer filters out social media and forum sites, and does not handle tasks requiring user accounts or personal data, limiting the diversity of skills agents can learn.\",\n    \"The pipeline's reliance on LLM judgment for both data generation and evaluation could introduce systematic biases that are not fully explored.\",\n    \"The paper focuses on text-based observations despite collecting multimodal data (2.2M screenshots), leaving multimodal training unexplored.\",\n    \"Only one loop of task generation was used; the full potential of the iterative feedback process is not demonstrated.\",\n    \"Ethical concerns about autonomous agents interacting with live websites (e.g., analytics pollution, scraping, potential misuse for fraud or misinformation) are acknowledged but mitigation strategies may not fully address these risks.\",\n    \"The paper does not deeply explore the effectiveness of PII removal (scrubadub) or potential privacy concerns from screenshots of live websites.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 4,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 7584,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 7584,
+      "completion_tokens": 2021,
+      "reasoning_tokens": 0,
+      "total_tokens": 9605
+    },
+    "attempts": 1,
+    "response_id": "7b7787bc-46d2-4a4c-9030-4e3db59e88c3"
+  },
+  "final_review": {
+    "Summary": "This paper introduces InSTA, an automated pipeline for generating internet-scale training data for web navigation agents without human annotations. The pipeline consists of three stages: (1) an LLM task proposer that annotates 150k websites (filtered from 1M based on safety) with agentic tasks via a feedback loop, (2) LLM agents that complete these tasks, producing 2.2M screenshots and reasoning traces, and (3) an LLM judge that filters trajectories by predicting success scores. The authors train small Qwen 3 1.7B models on this data and demonstrate they achieve 56.9% success rate on held-out websites, outperforming the Qwen 3 235B data collection policy and Llama 4 Maverick (400B), and reaching 94.7% of Gemini 2.5 Flash performance. The agents also zero-shot transfer to WebVoyager and improve performance on WebLINX and Mind2Web when mixed with human data. The paper releases code, models, and data, and reports a total data collection cost of $521.55.",
+    "Strengths": [
+      "Impressive scale: 150k websites annotated, 2.2M trajectories and screenshots collected, representing a significant advance over prior datasets limited to ~200 sites.",
+      "Novel three-stage pipeline (task proposer, agent, judge) with a feedback loop for task generation, providing a complete automated solution for web agent data generation.",
+      "Strong empirical results showing a 1.7B parameter model can match or exceed much larger models (235B, 400B), demonstrating the quality of the generated data.",
+      "Clean train-test separation: models are evaluated on held-out sites and zero-shot transfer to WebVoyager without overlap with training data, supporting genuine generalization claims.",
+      "Comprehensive evaluation including zero-shot transfer, static benchmark integration, reasoning budget analysis, and multiple judges.",
+      "Thorough safety considerations with 97% accuracy in harmful content detection and PII removal, along with transparent cost analysis making the pipeline accessible to academic labs.",
+      "Full release of code, models, and data, enabling reproducibility and further research."
+    ],
+    "Weaknesses": [
+      "The LLM judge accuracy of 82.6% is a critical bottleneck; with 150k trajectories, this could mislabel ~26k trajectories, potentially propagating errors into training data.",
+      "Potential circularity: the same model family (Qwen 3 235B) is used for data collection, filtering, and evaluation, which could introduce systematic bias favoring the Qwen family.",
+      "Human validation sets are small (100 trajectories for judge accuracy, 300 tasks for reliability), limiting statistical robustness given the scale of the pipeline.",
+      "Limited analysis of judge failure modes (false positives/negatives) and how judge errors correlate with downstream agent performance across task categories.",
+      "The paper does not deeply analyze task diversity beyond word clouds and category frequencies; it is unclear how many tasks are trivial vs. requiring multi-step reasoning, and some categories (e.g., product comparison) have very low success rates.",
+      "The 'internet-scale' claim is somewhat overstated: 150k sites from the top 1M by PageRank is still a small fraction of the internet, and coverage biases are not addressed.",
+      "Comparison to frontier LLMs may be confounded by different judges used across evaluations; the 'matching' claim varies across judges (only 3 of 4 for WebVoyager).",
+      "The reasoning budget ablation is only performed on Gemini 2.5 Flash, not on the trained Qwen 3 1.7B model, leaving unclear whether the trained model benefits from test-time compute scaling."
+    ],
+    "Originality": 4,
+    "Quality": 3,
+    "Clarity": 3,
+    "Significance": 4,
+    "Questions": [
+      "How does the judge's accuracy vary across different task categories? Are there systematic biases, and how do judge errors correlate with downstream agent performance?",
+      "Given that the same model family (Qwen 3) is used for data collection, filtering, and evaluation, could there be a systematic bias? Have you tested with a judge from a completely different model family (e.g., only GPT-4o or only Gemini) for final evaluation of trained agents?",
+      "What is the distribution of judge scores? Is there a clear separation between successful and unsuccessful trajectories, and how sensitive are the results to the filtering threshold (e.g., Judge(Success) > 0.8 instead of =1)?",
+      "What is the inter-annotator agreement on the 100 human-labeled trajectories used to evaluate the judge? Were evaluators given specific criteria, and what was the reliability?",
+      "For the WebVoyager zero-shot transfer, what is the breakdown of success rates per website? Are there particular website types where the trained model performs well or poorly?",
+      "How was the 3,000-site held-out test set selected? Was there any human verification of task quality or feasibility, and how does performance vary by site popularity?",
+      "Does the trained Qwen 3 1.7B model show monotonic improvement with increased reasoning budget, similar to the Gemini 2.5 Flash ablation shown in Figure 10?",
+      "How much of the 150k sites' data was actually used for training the small models? Was the full 20k trajectory dataset used for the main results?"
+    ],
+    "Limitations": [
+      "The judge's 82.6% accuracy means significant noise in training labels, which could propagate errors to trained agents; a more detailed error analysis is needed.",
+      "The safety filter is evaluated on only 100 websites (50 safe, 50 unsafe), which may not adequately represent the diversity of content on the internet; approximately 4,500 unsafe sites could pass through in the 150k dataset.",
+      "The task proposer filters out social media and forum sites, and does not handle tasks requiring user accounts or personal data, limiting the diversity of skills agents can learn.",
+      "The pipeline's reliance on LLM judgment for both data generation and evaluation could introduce systematic biases that are not fully explored.",
+      "The paper focuses on text-based observations despite collecting multimodal data (2.2M screenshots), leaving multimodal training unexplored.",
+      "Only one loop of task generation was used; the full potential of the iterative feedback process is not demonstrated.",
+      "Ethical concerns about autonomous agents interacting with live websites (e.g., analytics pollution, scraping, potential misuse for fraud or misinformation) are acknowledged but mitigation strategies may not fully address these risks.",
+      "The paper does not deeply explore the effectiveness of PII removal (scrubadub) or potential privacy concerns from screenshots of live websites."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 3,
+    "Contribution": 4,
+    "Overall": 7,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 115169,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 106209,
+    "completion_tokens": 11522,
+    "reasoning_tokens": 0,
+    "total_tokens": 126691,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.01486926,
+    "output_usd": 0.00322616,
+    "total_usd": 0.01812051
+  },
+  "elapsed_seconds": 37.155,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Accept",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B046",
+    "filename": "B046.txt",
+    "blind_text_sha256": "72b691b70751033474b06bf3ecee14b999fc9de841f36ced4f2e03dfcda2c59b",
+    "characters": 76112,
+    "full_text_saved": false
+  }
+}

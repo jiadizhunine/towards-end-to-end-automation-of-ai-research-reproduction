@@ -1,0 +1,724 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:45:36.934812+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "This paper introduces a pragmatic rate-distortion theory for multi-agent collaborative perception, extending classical rate-distortion analysis to account for task-specific distortion and inter-agent redundancy. The theory derives two optimal conditions for communication strategies: (1) pragmatic-relevant (transmit only task-relevant information, H(Z|Y)=0) and (2) redundancy-less (avoid information already available at the receiver, I(Z;Xr)=0). Based on these conditions, the authors propose RDcomm, a communication-efficient collaborative perception framework with two key components: task entropy discrete coding (using confidence-weighted Huffman coding on vector-quantized features) and mutual-information-driven message selection (using a neural estimator to identify and filter redundant features). Extensive experiments on 3D detection (DAIR-V2X, OPV2V, V2XSeq, V2V4Real) and BEV segmentation (OPV2V) demonstrate state-of-the-art performance-communication trade-offs, achieving up to 108× communication reduction compared to prior methods. The paper also includes ablation studies, robustness analysis under latency and pose noise, and an evaluation of the approximation to the theoretical optimal conditions.",
+        "Strengths": [
+          "Novel theoretical contribution: The pragmatic rate-distortion formulation for multi-agent collaboration is a meaningful extension of classical rate-distortion theory, explicitly modeling task-specific distortion and inter-agent redundancy, which previous heuristic approaches lacked.",
+          "Clean and actionable theoretical conditions: The two derived optimal conditions (pragmatic-relevant and redundancy-less) provide clear design principles that directly motivate the two algorithmic components, creating a strong theory-to-practice connection.",
+          "Comprehensive experimental validation: Evaluation spans multiple datasets (real-world and simulated), tasks (3D detection, BEV segmentation), modalities (LiDAR, camera), and varying numbers of agents, providing robust evidence for the method's effectiveness.",
+          "Strong empirical results: RDcomm consistently achieves the best performance-communication trade-offs across all settings, with up to 108× communication reduction while maintaining or improving task performance.",
+          "Thorough ablation studies: The paper isolates the contributions of the coding and selection modules, demonstrating the effectiveness of each component and the superiority of the proposed methods over alternatives.",
+          "Robustness analysis: The paper evaluates performance under transmission latency and pose noise, showing that RDcomm maintains its advantages in realistic disturbed scenarios.",
+          "Transparency: The authors provide detailed training cost analysis, code release, and discussion of limitations, enhancing reproducibility and credibility."
+        ],
+        "Weaknesses": [
+          "Theoretical rigor: The proof of Theorem 1 relies on several inequalities and Markov chain assumptions (e.g., Y↔Xs↔Zs, Xr↔Xs↔Zs) that are not fully justified. The equality conditions are stated but their achievability in practice is not thoroughly discussed.",
+          "Theory-practice gap: The connection between the theoretical conditions and the practical implementation is somewhat loose. For example, task entropy coding uses confidence scores as a proxy for p(Y|Z), but the justification for this proxy is heuristic rather than rigorous.",
+          "MI estimator divergence: The paper uses a GAN-style divergence for mutual information estimation rather than the KL divergence from the original formulation (18). The relationship between these two objectives and the implications for the theoretical guarantees are not fully analyzed.",
+          "Evaluation of optimal condition approximation: Fig. 5 uses kNN-based estimators for mutual information and conditional entropy, which are known to be biased in high-dimensional spaces (64-dim features). This could undermine the validity of the claims about approaching the optimal conditions.",
+          "Baseline fairness: Some baselines may use different backbone architectures or training procedures, making the performance comparisons not strictly apples-to-apples. The paper does not fully discuss potential confounding factors.",
+          "Inference overhead of MI estimator: The paper reports the communication module inference time but does not separately detail the computational cost of the mutual information estimator, which could be significant in real-time applications.",
+          "Presentation: The theory section (Section 3) is dense and some derivation steps are hard to follow. More intuitive explanations and a clearer connection between the mathematical results and the design choices would improve readability."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "In Theorem 1, the proof relies on the Markov chains Y↔Xs↔Zs and Xr↔Xs↔Zs. Could you elaborate on the validity of these assumptions in the context of collaborative perception? Are there scenarios where these assumptions break down, and how would that affect the derived bit-rate?",
+          "The equality condition for the first inequality (I(Zs;Xr)=0) is the redundancy-less condition. However, in practice, you only approximately achieve this via the mutual information selection. Could you quantify the suboptimality introduced by this approximation?",
+          "For the task entropy coding, you use confidence scores as a proxy for p(Y|Z). How sensitive is the performance to the choice of confidence threshold τfilter? Is there a principled way to set this hyperparameter?",
+          "The mutual information estimator uses a GAN-style divergence instead of KL divergence. What is the theoretical justification for this choice? Does the GAN-style estimator still provide a valid lower bound on the true mutual information?",
+          "In Fig. 5, you use kNN-based estimators for I(Zs→r;Xr) and H(Zs→r|Y). Given the known bias of kNN estimators in high dimensions, how reliable are these estimates? Have you considered using neural estimators (e.g., MINE) for these evaluations?",
+          "The paper mentions that RDcomm achieves 'lossless' performance with 4 bpp, close to the 2 bpp theoretical upper bound. Could you clarify what exactly 'lossless' means here (e.g., <5% performance drop), and how the 2 bpp bound is computed?",
+          "How does the mutual information estimator generalize across different datasets or environmental conditions? Is it trained per-dataset, and does it require retraining when the collaboration topology changes?",
+          "The communication volume calculation includes the cost of transmitting the abstraction (Dbase). Could you discuss the trade-off between the abstraction's granularity (codebook size, dimension) and the accuracy of the redundancy estimation?"
+        ],
+        "Limitations": [
+          "The theoretical framework is specifically formulated for perception tasks (detection and segmentation). The authors acknowledge this and suggest future extensions to navigation, manipulation, and scene captioning, but the current theory may not directly transfer to these domains.",
+          "The paper does not address potential negative societal impacts, such as privacy concerns in multi-agent communication or the potential for adversarial attacks on the communication channel.",
+          "The experimental evaluation focuses on autonomous driving scenarios. The applicability to other collaborative perception settings (e.g., robotics, surveillance) is not demonstrated.",
+          "The paper assumes a relatively clean communication environment (no packet loss or bit errors). Real-world wireless channels may introduce additional distortions not modeled in the framework.",
+          "The training process is multi-stage and requires careful tuning of multiple hyperparameters (τc, τMI, τfilter, codebook sizes). This may limit practical deployment without significant engineering effort."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 4,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper presents a theoretical framework (pragmatic rate-distortion theory) for collaborative perception and a practical system (RDcomm) that implements the derived optimal conditions. The work is well-motivated—the lack of theoretical grounding in prior communication-efficient collaborative perception methods is a genuine gap. The theory extends classical rate-distortion to multi-agent settings with pragmatic distortion, and the two derived conditions (pragmatic-relevant and redundancy-less) provide clear design principles.\n\nStrengths:\n1. Novel theoretical contribution: The pragmatic rate-distortion formulation for multi-agent collaboration is a meaningful extension of classical rate-distortion theory, incorporating task-specific distortion and inter-agent redundancy in a principled way.\n2. The two derived conditions (pragmatic-relevant H(Z|Y)=0 and redundancy-less I(Z;Xr)=0) are clean and actionable, directly motivating the two algorithmic components.\n3. Comprehensive experimental validation across multiple datasets (DAIR-V2X, OPV2V, V2XSeq, V2V4Real), tasks (3D detection, BEV segmentation), and modalities (LiDAR, camera).\n4. Strong empirical results: RDcomm achieves state-of-the-art performance-communication trade-offs, with up to 108× communication reduction.\n5. Ablation studies are thorough, isolating the contributions of the coding and selection modules.\n6. The paper includes robustness analysis (latency, pose noise) and training cost comparison, which are often missing in this area.\n7. The authors are transparent about limitations and provide detailed appendix material.\n\nWeaknesses:\n1. The theoretical derivation has some gaps. The proof of Theorem 1 relies on several inequalities and Markov chain assumptions that are not fully justified. The equality conditions are stated but not thoroughly discussed in terms of achievability.\n2. The connection between the theory and the practical implementation is somewhat loose. For example, the task entropy coding uses confidence scores as a proxy for p(Y|Z), but the justification for this proxy is not rigorous.\n3. The mutual information estimator uses a GAN-style divergence rather than the KL divergence from the original formulation, and the relationship between the two is not fully analyzed.\n4. The paper claims \"optimal\" conditions, but the practical system only approximately achieves these conditions. The gap between theory and practice could be more explicitly quantified.\n5. The evaluation of \"approximation of optimal conditions\" in Fig. 5 uses kNN-based estimators, which are known to be biased in high dimensions. This could undermine the validity of the claims about approaching the optimal conditions.\n6. The comparison with prior work is not always apples-to-apples; some baselines use different backbone architectures or training procedures.\n7. The paper does not discuss the computational overhead of the mutual information estimator during inference in much detail.\n8. The theory section is dense and some steps are hard to follow; the paper would benefit from more intuitive explanations.\n\nOverall, this is a strong paper with a novel theoretical contribution and comprehensive empirical validation. The main concerns are about the rigor of the theoretical derivation and the tightness of the theory-practice connection. However, these are not fatal flaws—the theory provides valuable guidance, and the empirical results clearly demonstrate the effectiveness of the approach.\n\nI would rate this as a solid accept. The work advances the state of the art in communication-efficient collaborative perception, provides a theoretical foundation that was previously missing, and demonstrates practical gains. The weaknesses are mainly about the depth of theoretical analysis and some presentation issues, but these are addressable.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper introduces a pragmatic rate-distortion theory for multi-agent collaborative perception, extending classical rate-distortion analysis to account for task-specific distortion and inter-agent redundancy. The theory derives two optimal conditions for communication strategies: (1) pragmatic-relevant (transmit only task-relevant information, H(Z|Y)=0) and (2) redundancy-less (avoid information already available at the receiver, I(Z;Xr)=0). Based on these conditions, the authors propose RDcomm, a communication-efficient collaborative perception framework with two key components: task entropy discrete coding (using confidence-weighted Huffman coding on vector-quantized features) and mutual-information-driven message selection (using a neural estimator to identify and filter redundant features). Extensive experiments on 3D detection (DAIR-V2X, OPV2V, V2XSeq, V2V4Real) and BEV segmentation (OPV2V) demonstrate state-of-the-art performance-communication trade-offs, achieving up to 108× communication reduction compared to prior methods. The paper also includes ablation studies, robustness analysis under latency and pose noise, and an evaluation of the approximation to the theoretical optimal conditions.\",\n    \"Strengths\": [\n        \"Novel theoretical contribution: The pragmatic rate-distortion formulation for multi-agent collaboration is a meaningful extension of classical rate-distortion theory, explicitly modeling task-specific distortion and inter-agent redundancy, which previous heuristic approaches lacked.\",\n        \"Clean and actionable theoretical conditions: The two derived optimal conditions (pragmatic-relevant and redundancy-less) provide clear design principles that directly motivate the two algorithmic components, creating a strong theory-to-practice connection.\",\n        \"Comprehensive experimental validation: Evaluation spans multiple datasets (real-world and simulated), tasks (3D detection, BEV segmentation), modalities (LiDAR, camera), and varying numbers of agents, providing robust evidence for the method's effectiveness.\",\n        \"Strong empirical results: RDcomm consistently achieves the best performance-communication trade-offs across all settings, with up to 108× communication reduction while maintaining or improving task performance.\",\n        \"Thorough ablation studies: The paper isolates the contributions of the coding and selection modules, demonstrating the effectiveness of each component and the superiority of the proposed methods over alternatives.\",\n        \"Robustness analysis: The paper evaluates performance under transmission latency and pose noise, showing that RDcomm maintains its advantages in realistic disturbed scenarios.\",\n        \"Transparency: The authors provide detailed training cost analysis, code release, and discussion of limitations, enhancing reproducibility and credibility.\"\n    ],\n    \"Weaknesses\": [\n        \"Theoretical rigor: The proof of Theorem 1 relies on several inequalities and Markov chain assumptions (e.g., Y↔Xs↔Zs, Xr↔Xs↔Zs) that are not fully justified. The equality conditions are stated but their achievability in practice is not thoroughly discussed.\",\n        \"Theory-practice gap: The connection between the theoretical conditions and the practical implementation is somewhat loose. For example, task entropy coding uses confidence scores as a proxy for p(Y|Z), but the justification for this proxy is heuristic rather than rigorous.\",\n        \"MI estimator divergence: The paper uses a GAN-style divergence for mutual information estimation rather than the KL divergence from the original formulation (18). The relationship between these two objectives and the implications for the theoretical guarantees are not fully analyzed.\",\n        \"Evaluation of optimal condition approximation: Fig. 5 uses kNN-based estimators for mutual information and conditional entropy, which are known to be biased in high-dimensional spaces (64-dim features). This could undermine the validity of the claims about approaching the optimal conditions.\",\n        \"Baseline fairness: Some baselines may use different backbone architectures or training procedures, making the performance comparisons not strictly apples-to-apples. The paper does not fully discuss potential confounding factors.\",\n        \"Inference overhead of MI estimator: The paper reports the communication module inference time but does not separately detail the computational cost of the mutual information estimator, which could be significant in real-time applications.\",\n        \"Presentation: The theory section (Section 3) is dense and some derivation steps are hard to follow. More intuitive explanations and a clearer connection between the mathematical results and the design choices would improve readability.\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 4,\n    \"Questions\": [\n        \"In Theorem 1, the proof relies on the Markov chains Y↔Xs↔Zs and Xr↔Xs↔Zs. Could you elaborate on the validity of these assumptions in the context of collaborative perception? Are there scenarios where these assumptions break down, and how would that affect the derived bit-rate?\",\n        \"The equality condition for the first inequality (I(Zs;Xr)=0) is the redundancy-less condition. However, in practice, you only approximately achieve this via the mutual information selection. Could you quantify the suboptimality introduced by this approximation?\",\n        \"For the task entropy coding, you use confidence scores as a proxy for p(Y|Z). How sensitive is the performance to the choice of confidence threshold τfilter? Is there a principled way to set this hyperparameter?\",\n        \"The mutual information estimator uses a GAN-style divergence instead of KL divergence. What is the theoretical justification for this choice? Does the GAN-style estimator still provide a valid lower bound on the true mutual information?\",\n        \"In Fig. 5, you use kNN-based estimators for I(Zs→r;Xr) and H(Zs→r|Y). Given the known bias of kNN estimators in high dimensions, how reliable are these estimates? Have you considered using neural estimators (e.g., MINE) for these evaluations?\",\n        \"The paper mentions that RDcomm achieves 'lossless' performance with 4 bpp, close to the 2 bpp theoretical upper bound. Could you clarify what exactly 'lossless' means here (e.g., <5% performance drop), and how the 2 bpp bound is computed?\",\n        \"How does the mutual information estimator generalize across different datasets or environmental conditions? Is it trained per-dataset, and does it require retraining when the collaboration topology changes?\",\n        \"The communication volume calculation includes the cost of transmitting the abstraction (Dbase). Could you discuss the trade-off between the abstraction's granularity (codebook size, dimension) and the accuracy of the redundancy estimation?\"\n    ],\n    \"Limitations\": [\n        \"The theoretical framework is specifically formulated for perception tasks (detection and segmentation). The authors acknowledge this and suggest future extensions to navigation, manipulation, and scene captioning, but the current theory may not directly transfer to these domains.\",\n        \"The paper does not address potential negative societal impacts, such as privacy concerns in multi-agent communication or the potential for adversarial attacks on the communication channel.\",\n        \"The experimental evaluation focuses on autonomous driving scenarios. The applicability to other collaborative perception settings (e.g., robotics, surveillance) is not demonstrated.\",\n        \"The paper assumes a relatively clean communication environment (no packet loss or bit errors). Real-world wireless channels may introduce additional distortions not modeled in the framework.\",\n        \"The training process is multi-stage and requires careful tuning of multiple hyperparameters (τc, τMI, τfilter, codebook sizes). This may limit practical deployment without significant engineering effort.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 4,\n    \"Overall\": 7,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 24173,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 22381,
+        "completion_tokens": 2293,
+        "reasoning_tokens": 0,
+        "total_tokens": 26466
+      },
+      "attempts": 1,
+      "response_id": "4a6c03cf-5197-45d0-b66c-3fa970be13df"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "This paper introduces a pragmatic rate-distortion theory for multi-agent collaborative perception, extending classical rate-distortion theory to account for task-specific (pragmatic) distortion and inter-agent redundancy. The theory derives two optimality conditions for communication strategies: pragmatic-relevant (transmit only task-relevant information) and redundancy-less (avoid information already available at the receiver). Based on these conditions, the authors propose RDcomm, a communication-efficient collaborative perception framework with two key innovations: (i) task entropy discrete coding using layered vector quantization and confidence-weighted Huffman coding, and (ii) mutual-information-driven message selection using a neural MI estimator to identify and suppress redundant regions. Extensive experiments on 3D detection and BEV segmentation across DAIR-V2X, OPV2V, V2XSeq, and V2V4Real datasets demonstrate superior performance-communication trade-offs, with up to 108× communication reduction compared to baselines.",
+        "Strengths": [
+          "The theoretical contribution is novel and well-motivated, extending rate-distortion theory to pragmatic (task-specific) distortion in multi-agent settings—a gap in the literature.",
+          "The two derived optimality conditions (pragmatic-relevant and redundancy-less) provide intuitive, principled design guidance that directly connects theory to practical implementation.",
+          "Extensive experimental evaluation covering multiple datasets (DAIR-V2X, OPV2V, V2XSeq, V2V4Real), modalities (LiDAR, camera), tasks (3D detection, BEV segmentation), and multiple baselines, with consistently superior performance-communication trade-offs.",
+          "Comprehensive ablation studies validating the individual contributions of the coding and selection modules.",
+          "Robustness analysis under transmission latency and pose noise demonstrates practical applicability.",
+          "The paper is generally well-written and organized, with detailed mathematical derivations provided in the appendix.",
+          "The approximation of optimal conditions (Fig. 5) provides empirical evidence connecting the theory to the method's behavior."
+        ],
+        "Weaknesses": [
+          "The proof of Theorem 1 involves an inequality chain (equations 59-64) where the equality conditions are not simultaneously guaranteed. The claim that Rate(δ) equals the expression in (10) requires all inequalities to be tight, which may not be achievable in practice.",
+          "The pragmatic distortion for 3D detection (Table 1, equation 8) uses first-order approximations and independence assumptions (Appendix A.6.4) that may not hold in real scenarios, weakening the theoretical rigor.",
+          "The mutual information estimator is used as a GAN-style discriminator rather than a true MI estimator. The paper argues that relative ordering is sufficient, but this claim is not rigorously justified theoretically.",
+          "The communication volume measurement methodology is not fully specified: overhead for Huffman codebook transmission, codebook index encoding, and the exact bit-counting procedure are unclear.",
+          "Comparisons in Figure 2 may not be fully apples-to-apples: it's unclear whether all methods are evaluated at their optimal operating points or if RDcomm is shown at a specific bandwidth setting that favors it.",
+          "The 'lossless bit-rate' experiment (Table 4) uses a loose definition of lossless (5% performance drop), and the comparison to the theoretical 2 bpp bound is suggestive but not rigorous.",
+          "The paper doesn't deeply analyze the computational overhead of the MI estimator during inference beyond reporting one inference time number."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "In the proof of Theorem 1, the inequality chain (equations 59-64) involves multiple steps. Can you clarify under what conditions all these inequalities are simultaneously tight? Is it practically achievable to satisfy both equality conditions (pragmatic-relevant and redundancy-less) at once?",
+          "The pragmatic distortion for 3D detection involves exponential terms with first-order approximations. How sensitive is the derived Rate(δ) to these approximations? Would higher-order corrections change the qualitative conclusions?",
+          "Could you specify the exact communication volume measurement methodology? Specifically, how are Huffman codebooks transmitted (one-time vs. per-frame overhead), and how are codebook indices encoded in practice?",
+          "In Figure 2, are all baseline methods evaluated at their respective optimal operating points, or is RDcomm shown at a specific bandwidth setting that may not be directly comparable to baselines at different settings?",
+          "The MI estimator is trained to distinguish joint vs. marginal samples. Is there a theoretical guarantee that the ranking of features by this discriminator corresponds to the ranking by true mutual information? If not, what empirical evidence supports this assumption?",
+          "Does the smoothing module (UNet) affect the reported communication volume? If the smoothed message is transmitted, does this increase the actual bandwidth usage?",
+          "The paper mentions 'reducing communication volume by up to 108×'—could you clarify the exact comparison baseline for this claim?"
+        ],
+        "Limitations": [
+          "The theoretical framework is developed specifically for perception tasks (detection and segmentation). Extension to other multi-agent tasks (navigation, manipulation, language) is mentioned as future work but not analyzed.",
+          "The theory assumes ideal conditions (e.g., Markov chains Y↔Xs↔Zs and Xr↔Xs↔Zs) that may not hold exactly in practical systems with non-deterministic encoders.",
+          "The paper does not discuss potential negative societal impacts, such as privacy concerns in collaborative sensing (e.g., sharing visual data from public spaces) or safety implications of communication failures in autonomous driving.",
+          "The computational and memory overhead of the MI estimator during inference is only briefly mentioned; a more detailed analysis would strengthen the practical claims.",
+          "The experimental evaluation focuses on performance-communication trade-offs but does not analyze the impact of varying network topologies or dynamic agent counts beyond the reported ranges."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces a pragmatic rate-distortion theory for multi-agent collaborative perception, extending classical rate-distortion theory to handle task-specific distortion (rather than reconstruction error) and multi-agent settings with inter-agent redundancy. The theory derives two optimality conditions: pragmatic-relevant (transmit only task-relevant information) and redundancy-less (avoid transmitting information already available at the receiver). The authors then propose RDcomm, a framework implementing these conditions via task entropy discrete coding and mutual-information-driven message selection.\n\nStrengths:\n1. The theoretical contribution is novel and well-motivated. Extending rate-distortion theory to pragmatic (task-specific) distortion in multi-agent settings is a meaningful contribution that addresses a gap in the literature.\n2. The two derived conditions (pragmatic-relevant and redundancy-less) are intuitive and provide principled design guidance, connecting theory to practice.\n3. The experimental evaluation is extensive: multiple datasets (DAIR-V2X, OPV2V, V2XSeq, V2V4Real), multiple modalities (LiDAR, camera), multiple tasks (3D detection, BEV segmentation), and multiple baselines. The results consistently show superior performance-communication trade-offs.\n4. The paper includes ablation studies that validate the individual contributions of each component.\n5. The robustness analysis under latency and pose noise is valuable for practical deployment.\n6. The paper is generally well-written and organized, with clear mathematical derivations in the appendix.\n\nWeaknesses:\n1. The theoretical derivation has some questionable steps. In particular, the inequality chain in the proof of Theorem 1 (equations 59-64) involves several inequalities that are not all tight simultaneously. The claim that Rate(δ) equals the expression in (10) requires all these inequalities to be equalities, but the conditions for equality (pragmatic-relevant and redundancy-less) are presented as if they can be simultaneously satisfied, which may not be practically achievable.\n2. The \"pragmatic distortion\" for 3D detection in Table 1 involves exponential terms that seem to be approximated rather than exact. The derivation in the appendix uses first-order approximations and independence assumptions that may not hold in practice.\n3. The mutual information estimator is used as a \"discriminator\" rather than a true MI estimator, and the paper acknowledges this but doesn't fully justify why this approximation is valid for the selection task. The claim that relative ordering (rather than absolute values) is sufficient is plausible but not rigorously established.\n4. The communication volume measurements are somewhat unclear. The paper mentions \"reducing communication volume by up to 108×\" but the exact bit-counting methodology (how Huffman codes are transmitted, overhead for codebooks, etc.) is not fully specified.\n5. The paper claims \"state-of-the-art\" performance but the comparison in Figure 2 seems to show RDcomm at a specific operating point compared to baselines at their own operating points, which may not be a fair apples-to-apples comparison.\n6. The \"lossless bit-rate\" experiment (Table 4) uses a loose definition of lossless (5% performance drop), and the comparison to the theoretical 2 bpp bound is suggestive but not rigorous.\n7. The paper doesn't deeply discuss the computational overhead of the mutual information estimator during inference, though it does report some inference costs.\n\nOriginality: High. The information-theoretic formulation for pragmatic communication in multi-agent collaboration is novel and extends prior work in a meaningful direction.\n\nQuality: Good. The theory is mostly sound but has some gaps in the derivation and justification. The experiments are extensive and well-executed, though some comparisons could be fairer.\n\nClarity: Good. The paper is well-structured and the main ideas are clearly presented. Some technical details (especially in the theory section) could be clearer.\n\nSignificance: High. The theoretical framework provides a principled foundation for communication-efficient collaborative perception, which is an important problem. The practical method (RDcomm) achieves strong empirical results.\n\nQuestions for authors:\n1. In the proof of Theorem 1, the inequality chain involves multiple steps. Can you clarify under what conditions all these inequalities are simultaneously tight? Is it possible to achieve all equality conditions at once in practice?\n2. The pragmatic distortion for 3D detection involves exponential terms. How sensitive is the theory to the approximations made (first-order Taylor expansion, independence assumptions)?\n3. How exactly is the communication volume measured? Are codebook indices transmitted losslessly? What is the overhead for transmitting the Huffman codebook itself?\n4. In Figure 2, are all methods evaluated at their respective optimal operating points, or is RDcomm shown at a specific point that may not be directly comparable?\n5. The mutual information estimator is trained to distinguish joint vs. marginal samples. How does this relate to the actual mutual information value? Is the ranking property theoretically guaranteed?\n\nLimitations:\n- The paper focuses on perception tasks only and doesn't discuss generalization to other multi-agent tasks.\n- The theoretical analysis assumes ideal conditions (e.g., Markov chains) that may not hold in practice.\n- The paper doesn't address potential negative societal impacts of collaborative perception systems (e.g., privacy concerns, safety implications of communication failures).\n\nEthical concerns: No significant ethical issues identified. The work is on autonomous driving perception, which has safety implications but no direct ethical concerns.\n\nSoundness: 3 (Good). The theory is mostly sound with some gaps, and the experiments are well-executed.\n\nPresentation: 3 (Good). Well-organized and clear, with some areas for improvement in technical clarity.\n\nContribution: 3 (Good). Novel theoretical contribution with strong experimental validation.\n\nOverall: I would lean towards accept. The paper makes a novel theoretical contribution with practical implications, backed by extensive experiments. The weaknesses are mostly in the rigor of some theoretical derivations and minor experimental methodology issues, but these don't fundamentally undermine the work. However, the theoretical gaps and the loose connection between the theory and the practical implementation (e.g., the MI estimator not being a true MI estimator) give me some pause. I'd rate this as a solid paper that should be accepted but with room for improvement.\n\nDecision: Accept\n\nConfidence: 4 (Confident, but not absolutely certain - the theory section has some subtle points I may not have fully grasped)REVIEW JSON:\n```json\n{\n\"Summary\": \"This paper introduces a pragmatic rate-distortion theory for multi-agent collaborative perception, extending classical rate-distortion theory to account for task-specific (pragmatic) distortion and inter-agent redundancy. The theory derives two optimality conditions for communication strategies: pragmatic-relevant (transmit only task-relevant information) and redundancy-less (avoid information already available at the receiver). Based on these conditions, the authors propose RDcomm, a communication-efficient collaborative perception framework with two key innovations: (i) task entropy discrete coding using layered vector quantization and confidence-weighted Huffman coding, and (ii) mutual-information-driven message selection using a neural MI estimator to identify and suppress redundant regions. Extensive experiments on 3D detection and BEV segmentation across DAIR-V2X, OPV2V, V2XSeq, and V2V4Real datasets demonstrate superior performance-communication trade-offs, with up to 108× communication reduction compared to baselines.\",\n\"Strengths\": [\n\"The theoretical contribution is novel and well-motivated, extending rate-distortion theory to pragmatic (task-specific) distortion in multi-agent settings—a gap in the literature.\",\n\"The two derived optimality conditions (pragmatic-relevant and redundancy-less) provide intuitive, principled design guidance that directly connects theory to practical implementation.\",\n\"Extensive experimental evaluation covering multiple datasets (DAIR-V2X, OPV2V, V2XSeq, V2V4Real), modalities (LiDAR, camera), tasks (3D detection, BEV segmentation), and multiple baselines, with consistently superior performance-communication trade-offs.\",\n\"Comprehensive ablation studies validating the individual contributions of the coding and selection modules.\",\n\"Robustness analysis under transmission latency and pose noise demonstrates practical applicability.\",\n\"The paper is generally well-written and organized, with detailed mathematical derivations provided in the appendix.\",\n\"The approximation of optimal conditions (Fig. 5) provides empirical evidence connecting the theory to the method's behavior.\"\n],\n\"Weaknesses\": [\n\"The proof of Theorem 1 involves an inequality chain (equations 59-64) where the equality conditions are not simultaneously guaranteed. The claim that Rate(δ) equals the expression in (10) requires all inequalities to be tight, which may not be achievable in practice.\",\n\"The pragmatic distortion for 3D detection (Table 1, equation 8) uses first-order approximations and independence assumptions (Appendix A.6.4) that may not hold in real scenarios, weakening the theoretical rigor.\",\n\"The mutual information estimator is used as a GAN-style discriminator rather than a true MI estimator. The paper argues that relative ordering is sufficient, but this claim is not rigorously justified theoretically.\",\n\"The communication volume measurement methodology is not fully specified: overhead for Huffman codebook transmission, codebook index encoding, and the exact bit-counting procedure are unclear.\",\n\"Comparisons in Figure 2 may not be fully apples-to-apples: it's unclear whether all methods are evaluated at their optimal operating points or if RDcomm is shown at a specific bandwidth setting that favors it.\",\n\"The 'lossless bit-rate' experiment (Table 4) uses a loose definition of lossless (5% performance drop), and the comparison to the theoretical 2 bpp bound is suggestive but not rigorous.\",\n\"The paper doesn't deeply analyze the computational overhead of the MI estimator during inference beyond reporting one inference time number.\"\n],\n\"Originality\": 4,\n\"Quality\": 3,\n\"Clarity\": 3,\n\"Significance\": 4,\n\"Questions\": [\n\"In the proof of Theorem 1, the inequality chain (equations 59-64) involves multiple steps. Can you clarify under what conditions all these inequalities are simultaneously tight? Is it practically achievable to satisfy both equality conditions (pragmatic-relevant and redundancy-less) at once?\",\n\"The pragmatic distortion for 3D detection involves exponential terms with first-order approximations. How sensitive is the derived Rate(δ) to these approximations? Would higher-order corrections change the qualitative conclusions?\",\n\"Could you specify the exact communication volume measurement methodology? Specifically, how are Huffman codebooks transmitted (one-time vs. per-frame overhead), and how are codebook indices encoded in practice?\",\n\"In Figure 2, are all baseline methods evaluated at their respective optimal operating points, or is RDcomm shown at a specific bandwidth setting that may not be directly comparable to baselines at different settings?\",\n\"The MI estimator is trained to distinguish joint vs. marginal samples. Is there a theoretical guarantee that the ranking of features by this discriminator corresponds to the ranking by true mutual information? If not, what empirical evidence supports this assumption?\",\n\"Does the smoothing module (UNet) affect the reported communication volume? If the smoothed message is transmitted, does this increase the actual bandwidth usage?\",\n\"The paper mentions 'reducing communication volume by up to 108×'—could you clarify the exact comparison baseline for this claim?\"\n],\n\"Limitations\": [\n\"The theoretical framework is developed specifically for perception tasks (detection and segmentation). Extension to other multi-agent tasks (navigation, manipulation, language) is mentioned as future work but not analyzed.\",\n\"The theory assumes ideal conditions (e.g., Markov chains Y↔Xs↔Zs and Xr↔Xs↔Zs) that may not hold exactly in practical systems with non-deterministic encoders.\",\n\"The paper does not discuss potential negative societal impacts, such as privacy concerns in collaborative sensing (e.g., sharing visual data from public spaces) or safety implications of communication failures in autonomous driving.\",\n\"The computational and memory overhead of the MI estimator during inference is only briefly mentioned; a more detailed analysis would strengthen the practical claims.\",\n\"The experimental evaluation focuses on performance-communication trade-offs but does not analyze the impact of varying network topologies or dynamic agent counts beyond the reported ranges.\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 3,\n\"Contribution\": 3,\n\"Overall\": 7,\n\"Confidence\": 4,\n\"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 24173,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 22381,
+        "completion_tokens": 2532,
+        "reasoning_tokens": 0,
+        "total_tokens": 26705
+      },
+      "attempts": 1,
+      "response_id": "2d9c4f9c-6510-4909-ada6-64ed804b7a7e"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "This paper introduces a pragmatic rate-distortion theory for multi-agent collaborative perception, extending classical rate-distortion analysis with task-specific pragmatic distortion and inter-agent redundancy considerations. The theory derives two optimal conditions for communication: pragmatic-relevant (transmit only task-relevant information) and redundancy-less (avoid transmitting information already available at the receiver). Based on these conditions, the authors propose RDcomm, a communication-efficient framework with two key innovations: (1) task entropy discrete coding that assigns variable-length codewords based on task relevance, and (2) mutual-information-driven message selection that identifies and removes redundant information. The method is evaluated on 3D object detection and BEV semantic segmentation across four datasets (DAIR-V2X, OPV2V, V2XSeq, V2V4Real) with both LiDAR and camera modalities, achieving state-of-the-art performance-communication trade-offs with up to 108× communication reduction.",
+        "Strengths": [
+          "Novel theoretical contribution: Extends classical rate-distortion theory to multi-agent collaboration with pragmatic distortion, providing principled guidance for communication strategy design",
+          "Comprehensive experimental validation across multiple datasets, modalities, and tasks",
+          "Impressive communication reduction (up to 108×) while maintaining competitive performance",
+          "Well-designed ablations validating both theoretical conditions and practical components",
+          "Clear connection between theory and practice through the two derived optimal conditions",
+          "Honest discussion of limitations and detailed appendices with proofs and additional experiments"
+        ],
+        "Weaknesses": [
+          "The theoretical derivation involves several approximations and inequalities (e.g., first-order approximation of exponential terms) that may not be rigorously tight in all cases",
+          "The mutual information estimation uses a GAN-style divergence approximation rather than exact MI, and the paper doesn't fully justify why this approximation is sufficient for the redundancy selection task",
+          "The method requires a complex three-stage training pipeline, which may limit practical adoption",
+          "Some baseline comparisons may not be entirely fair due to different backbone configurations or training procedures",
+          "The paper doesn't deeply analyze the computational overhead of the MI estimator during inference in real-time scenarios",
+          "The improvements over some baselines are modest in certain settings (e.g., V2V4Real dataset)"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 4,
+        "Questions": [
+          "In Theorem 1, the equality condition for the first inequality requires I(Zs; Xr) = 0. How closely does the practical method approach this condition, and what is the impact of not fully satisfying it?",
+          "The paper uses a GAN-style divergence for MI estimation instead of the KL-based MINE. Could you provide more theoretical justification for why this approximation is sufficient for ranking redundancy, and what are the failure modes of this approximation?",
+          "How sensitive is the method to the choice of τfilter = 0.2? Have you studied the impact of this hyperparameter on performance?",
+          "The three-stage training pipeline seems complex. Have you considered end-to-end training, and what would be the trade-offs?",
+          "In Table 4, the 'lossless' condition is defined as less than 5% performance drop. Could you clarify how this threshold was chosen and whether it aligns with practical requirements?",
+          "How does the method scale to scenarios with more than 5 agents? Are there computational bottlenecks in the MI estimation step?"
+        ],
+        "Limitations": [
+          "The theoretical framework assumes certain Markov chain conditions and independence assumptions that may not hold in all real-world scenarios",
+          "The method is evaluated primarily on perception tasks; extension to other tasks (navigation, manipulation) is left as future work",
+          "The MI estimator may not generalize well to significantly different sensor configurations or environmental conditions",
+          "The paper doesn't address potential negative societal impacts, such as privacy concerns in collaborative sensing or potential misuse in surveillance applications",
+          "The computational overhead of the MI estimator during inference is not thoroughly analyzed for real-time deployment scenarios"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 4,
+        "Overall": 8,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper presents a theoretical framework (pragmatic rate-distortion theory) for communication-efficient collaborative perception, along with a practical method (RDcomm) that implements two derived optimal conditions. The paper is well-structured with clear contributions: theoretical analysis extending rate-distortion theory to multi-agent collaboration, and a practical framework with two novel components (task entropy discrete coding and mutual-information-driven message selection).\n\nStrengths:\n- Strong theoretical contribution: The paper provides a principled information-theoretic framework for collaborative perception, extending classical rate-distortion theory with pragmatic distortion and inter-agent redundancy considerations.\n- Comprehensive experimental validation across multiple datasets (DAIR-V2X, OPV2V, V2XSeq, V2V4Real), modalities (LiDAR, camera), and tasks (3D detection, BEV segmentation).\n- Impressive communication reduction (up to 108×) while maintaining competitive performance.\n- Well-designed ablations validating both theoretical conditions and practical components.\n- The paper is honest about limitations and provides detailed appendices with proofs and additional experiments.\n\nWeaknesses:\n- The theoretical derivation involves several approximations and inequalities that may not be rigorously tight. The equality conditions are stated but not always clearly demonstrated to be achievable in practice.\n- The mutual information estimation approach uses a GAN-style divergence rather than true MI, and the paper acknowledges this but could provide more justification for why this is sufficient.\n- The method requires multiple training stages, which may be complex to implement in practice.\n- Some baseline comparisons may not be entirely fair (e.g., different backbone configurations).\n- The paper doesn't deeply analyze the computational overhead of the MI estimator during inference.\n- The claim of \"state-of-the-art\" is supported but the improvements over some baselines are modest in certain settings.\n\nThe paper is technically sound overall, with clear presentation and significant contributions to the field. The theoretical framework is novel and could inspire future work. The experimental results are comprehensive and support the claims. However, there are some concerns about the tightness of the theoretical bounds and the practical complexity of the method.\n\nI would rate this as a strong accept - the theoretical contribution is significant, the experimental validation is thorough, and the practical method shows clear improvements over existing approaches. The paper is well-written and the limitations are honestly addressed.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper introduces a pragmatic rate-distortion theory for multi-agent collaborative perception, extending classical rate-distortion analysis with task-specific pragmatic distortion and inter-agent redundancy considerations. The theory derives two optimal conditions for communication: pragmatic-relevant (transmit only task-relevant information) and redundancy-less (avoid transmitting information already available at the receiver). Based on these conditions, the authors propose RDcomm, a communication-efficient framework with two key innovations: (1) task entropy discrete coding that assigns variable-length codewords based on task relevance, and (2) mutual-information-driven message selection that identifies and removes redundant information. The method is evaluated on 3D object detection and BEV semantic segmentation across four datasets (DAIR-V2X, OPV2V, V2XSeq, V2V4Real) with both LiDAR and camera modalities, achieving state-of-the-art performance-communication trade-offs with up to 108× communication reduction.\",\n    \"Strengths\": [\n        \"Novel theoretical contribution: Extends classical rate-distortion theory to multi-agent collaboration with pragmatic distortion, providing principled guidance for communication strategy design\",\n        \"Comprehensive experimental validation across multiple datasets, modalities, and tasks\",\n        \"Impressive communication reduction (up to 108×) while maintaining competitive performance\",\n        \"Well-designed ablations validating both theoretical conditions and practical components\",\n        \"Clear connection between theory and practice through the two derived optimal conditions\",\n        \"Honest discussion of limitations and detailed appendices with proofs and additional experiments\"\n    ],\n    \"Weaknesses\": [\n        \"The theoretical derivation involves several approximations and inequalities (e.g., first-order approximation of exponential terms) that may not be rigorously tight in all cases\",\n        \"The mutual information estimation uses a GAN-style divergence approximation rather than exact MI, and the paper doesn't fully justify why this approximation is sufficient for the redundancy selection task\",\n        \"The method requires a complex three-stage training pipeline, which may limit practical adoption\",\n        \"Some baseline comparisons may not be entirely fair due to different backbone configurations or training procedures\",\n        \"The paper doesn't deeply analyze the computational overhead of the MI estimator during inference in real-time scenarios\",\n        \"The improvements over some baselines are modest in certain settings (e.g., V2V4Real dataset)\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 4,\n    \"Significance\": 4,\n    \"Questions\": [\n        \"In Theorem 1, the equality condition for the first inequality requires I(Zs; Xr) = 0. How closely does the practical method approach this condition, and what is the impact of not fully satisfying it?\",\n        \"The paper uses a GAN-style divergence for MI estimation instead of the KL-based MINE. Could you provide more theoretical justification for why this approximation is sufficient for ranking redundancy, and what are the failure modes of this approximation?\",\n        \"How sensitive is the method to the choice of τfilter = 0.2? Have you studied the impact of this hyperparameter on performance?\",\n        \"The three-stage training pipeline seems complex. Have you considered end-to-end training, and what would be the trade-offs?\",\n        \"In Table 4, the 'lossless' condition is defined as less than 5% performance drop. Could you clarify how this threshold was chosen and whether it aligns with practical requirements?\",\n        \"How does the method scale to scenarios with more than 5 agents? Are there computational bottlenecks in the MI estimation step?\"\n    ],\n    \"Limitations\": [\n        \"The theoretical framework assumes certain Markov chain conditions and independence assumptions that may not hold in all real-world scenarios\",\n        \"The method is evaluated primarily on perception tasks; extension to other tasks (navigation, manipulation) is left as future work\",\n        \"The MI estimator may not generalize well to significantly different sensor configurations or environmental conditions\",\n        \"The paper doesn't address potential negative societal impacts, such as privacy concerns in collaborative sensing or potential misuse in surveillance applications\",\n        \"The computational overhead of the MI estimator during inference is not thoroughly analyzed for real-time deployment scenarios\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 4,\n    \"Contribution\": 4,\n    \"Overall\": 8,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 24173,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 22381,
+        "completion_tokens": 1383,
+        "reasoning_tokens": 0,
+        "total_tokens": 25556
+      },
+      "attempts": 1,
+      "response_id": "35089b44-02eb-4f9e-815a-e8a43a8369b8"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "This paper introduces a pragmatic rate-distortion theory for multi-agent collaborative perception, extending classical rate-distortion analysis to task-oriented multi-agent settings with pragmatic distortion and inter-agent redundancy. The theory derives two optimality conditions: (1) pragmatic-relevant (transmitted messages should contain only task-relevant information) and (2) redundancy-less (messages should avoid duplicating receiver's local observations). Based on these conditions, the authors propose RDcomm, a communication-efficient collaborative perception framework with two key innovations: task entropy discrete coding (variable-length coding guided by task confidence) and mutual-information-driven message selection (using neural MI estimation to identify complementary information). Experiments on 3D detection (DAIR-V2X, OPV2V, V2XSeq, V2V4Real) and BEV segmentation (OPV2V) demonstrate state-of-the-art performance-communication trade-offs, achieving up to 108× communication reduction while maintaining or improving accuracy.",
+        "Strengths": [
+          "Novel theoretical contribution extending rate-distortion theory to multi-agent collaborative perception with pragmatic distortion, providing principled guidance beyond heuristic approaches",
+          "The two derived optimality conditions (pragmatic-relevant and redundancy-less) are intuitive and directly motivate the practical design",
+          "Comprehensive experimental evaluation across multiple datasets, modalities (LiDAR/camera), tasks (detection/segmentation), and bandwidth regimes",
+          "Consistent improvements over prior methods with significant communication reduction (up to 108×)",
+          "Thorough ablation studies validating each component's contribution",
+          "Robustness analysis under transmission latency and pose noise, important for practical deployment",
+          "Detailed theoretical proofs in appendix with careful discussion of assumptions",
+          "Lightweight inference (3.75 MB, 14.88 ms) suitable for real-time applications"
+        ],
+        "Weaknesses": [
+          "Theoretical derivation relies on several approximations (first-order expansion of exponential terms, independence assumptions between classification and regression components) that may limit generality",
+          "Connection between theory and implementation is somewhat loose - the task entropy coding approximates H(Z|Y) via confidence-based prioritization, which is heuristic",
+          "The comparison with theoretical optimal rate in Table 4 is simplified (excludes receiver information) and may be misleading",
+          "Sensitivity to mutual information estimator quality is not deeply analyzed",
+          "Multi-stage training procedure is complex and may hinder reproducibility",
+          "No theoretical guarantees on the practical implementation's convergence or optimality"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 4,
+        "Questions": [
+          "How sensitive is the method to the quality of the mutual information estimator? What happens if the estimator is poorly trained or the distribution shifts?",
+          "The UNet smoothing module - how is it trained and what is its parameter overhead? Is it trained jointly with the task decoder?",
+          "How does the method handle dynamic bandwidth constraints during inference? Is threshold adjustment done online or pre-configured?",
+          "The theory assumes Markov chains Y↔Xs↔Zs and Xr↔Xs↔Zs - are these assumptions validated empirically? How would violations affect the derived conditions?",
+          "How does RDcomm compare with neural compression-based approaches (e.g., learned compression with entropy models) rather than VQ-based methods?",
+          "In Table 4, the 'optimal' rate is computed as H(Y)≈2 bpp. How was this entropy estimated and what's the confidence interval?",
+          "What is the computational overhead of the three-stage training compared to end-to-end approaches? Is the staged training necessary or could joint training work?"
+        ],
+        "Limitations": [
+          "The framework is validated only on perception tasks; extension to navigation, manipulation, or language tasks is left as future work",
+          "Theoretical approximations (first-order expansion, independence assumptions) may not hold in all collaborative scenarios",
+          "The multi-stage training pipeline is complex and may require careful hyperparameter tuning",
+          "The method relies on pre-defined collaboration graph (which agents communicate with whom), and doesn't address dynamic topology",
+          "Potential negative societal impact: deployment in autonomous driving systems could have safety implications if failures occur, though the paper doesn't discuss this explicitly"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 4,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces a pragmatic rate-distortion theory for multi-agent collaborative perception and proposes RDcomm, a communication-efficient framework. The theory derives two optimality conditions (pragmatic-relevant and redundancy-less) and the method implements these via task entropy discrete coding and mutual-information-driven message selection.\n\nStrengths:\n1. The theoretical contribution is novel - extending rate-distortion theory to multi-agent collaboration with pragmatic distortion is a meaningful contribution that goes beyond heuristic approaches in prior work.\n2. The two derived conditions (pragmatic-relevant and redundancy-less) provide principled guidance for designing communication strategies.\n3. Comprehensive experiments across multiple datasets (DAIR-V2X, OPV2V, V2XSeq, V2V4Real), modalities (LiDAR/camera), and tasks (3D detection, BEV segmentation) demonstrate consistent improvements.\n4. The paper addresses robustness to latency and pose noise, which is important for practical deployment.\n5. The ablation studies are thorough and validate each component's contribution.\n6. The method achieves impressive communication reduction (up to 108×) while maintaining or improving performance.\n\nWeaknesses:\n1. The theoretical derivation has some approximations that could be questioned. For instance, the first-order approximation of the exponential term in equation (8) may not always hold, and the independence assumption between localization and classification components in the detection loss is questionable.\n2. The paper claims the theory \"concretizes\" conditions, but the connection between the theory and the implementation is somewhat loose. The task entropy coding minimizes H(Z|Y) indirectly through confidence-based prioritization, which is a heuristic approximation.\n3. The mutual information estimator is trained in a separate stage and its quality directly impacts performance, but the paper doesn't deeply analyze the sensitivity to estimator quality.\n4. The comparison with Rate(δ) in Table 4 is somewhat misleading since they exclude the receiver's information and use a simplified upper bound (H(Y)≈2 bpp), making the \"close to optimal\" claim less convincing.\n5. The paper doesn't provide theoretical guarantees on the convergence or optimality of the proposed practical implementation.\n6. The training is multi-stage and complex, which might limit reproducibility.\n\nOriginality: The theoretical framework is novel and the practical implementation is well-motivated by the theory. The combination of variable-length coding with task relevance and MI-based selection is new.\n\nQuality: The experimental evaluation is thorough and the paper is technically sound overall, though some theoretical approximations need more careful justification.\n\nClarity: The paper is well-written and organized. The theoretical derivations are presented clearly, and the method description is detailed enough for reproduction.\n\nSignificance: This work addresses an important problem (communication-efficient collaborative perception) with a novel theoretical framework that could inspire future work. The practical gains are substantial and demonstrated across multiple benchmarks.\n\nQuestions:\n1. How sensitive is the method to the quality of the mutual information estimator? What happens if the estimator is poorly trained?\n2. The paper uses a UNet for message smoothing - how was this trained and what's its parameter overhead?\n3. How does the method handle dynamic bandwidth constraints during inference? Is the threshold adjustment done online?\n4. The theory assumes Markov chains Y↔Xs↔Zs and Xr↔Xs↔Zs - are these assumptions valid in practice?\n5. How does RDcomm compare with methods that use learned compressed representations (e.g., neural compression) rather than VQ-based approaches?\n\nLimitations:\n1. The paper focuses on perception tasks only - extension to other tasks (navigation, manipulation) is left as future work.\n2. Theoretical approximations (first-order expansion, independence assumptions) may limit the generality of the derived conditions.\n3. The multi-stage training is complex and may be difficult to tune in practice.\n4. Potential negative societal impact: the method could be used in autonomous driving systems where failures could have safety implications, though the paper doesn't discuss this.\n\nEthical concerns: No significant ethical issues detected. The work is on collaborative perception for autonomous driving, which is a standard research area.\n\nSoundness: 3 (good) - The theoretical derivations are mostly sound but have some approximations. The experimental methodology is solid with comprehensive evaluations.\n\nPresentation: 4 (excellent) - The paper is well-written, clearly organized, and provides sufficient details for reproduction.\n\nContribution: 4 (excellent) - The theoretical framework is a significant contribution, and the practical method demonstrates clear improvements.\n\nOverall: 7 (Accept) - This is a technically solid paper with a novel theoretical contribution and strong experimental results. The theoretical approximations and practical implementation gaps are minor concerns that don't undermine the overall contribution.\n\nConfidence: 4 (confident) - I have good understanding of the related work and checked the theoretical derivations carefully.\n\nDecision: Accept```json\n{\n    \"Summary\": \"This paper introduces a pragmatic rate-distortion theory for multi-agent collaborative perception, extending classical rate-distortion analysis to task-oriented multi-agent settings with pragmatic distortion and inter-agent redundancy. The theory derives two optimality conditions: (1) pragmatic-relevant (transmitted messages should contain only task-relevant information) and (2) redundancy-less (messages should avoid duplicating receiver's local observations). Based on these conditions, the authors propose RDcomm, a communication-efficient collaborative perception framework with two key innovations: task entropy discrete coding (variable-length coding guided by task confidence) and mutual-information-driven message selection (using neural MI estimation to identify complementary information). Experiments on 3D detection (DAIR-V2X, OPV2V, V2XSeq, V2V4Real) and BEV segmentation (OPV2V) demonstrate state-of-the-art performance-communication trade-offs, achieving up to 108× communication reduction while maintaining or improving accuracy.\",\n    \"Strengths\": [\n        \"Novel theoretical contribution extending rate-distortion theory to multi-agent collaborative perception with pragmatic distortion, providing principled guidance beyond heuristic approaches\",\n        \"The two derived optimality conditions (pragmatic-relevant and redundancy-less) are intuitive and directly motivate the practical design\",\n        \"Comprehensive experimental evaluation across multiple datasets, modalities (LiDAR/camera), tasks (detection/segmentation), and bandwidth regimes\",\n        \"Consistent improvements over prior methods with significant communication reduction (up to 108×)\",\n        \"Thorough ablation studies validating each component's contribution\",\n        \"Robustness analysis under transmission latency and pose noise, important for practical deployment\",\n        \"Detailed theoretical proofs in appendix with careful discussion of assumptions\",\n        \"Lightweight inference (3.75 MB, 14.88 ms) suitable for real-time applications\"\n    ],\n    \"Weaknesses\": [\n        \"Theoretical derivation relies on several approximations (first-order expansion of exponential terms, independence assumptions between classification and regression components) that may limit generality\",\n        \"Connection between theory and implementation is somewhat loose - the task entropy coding approximates H(Z|Y) via confidence-based prioritization, which is heuristic\",\n        \"The comparison with theoretical optimal rate in Table 4 is simplified (excludes receiver information) and may be misleading\",\n        \"Sensitivity to mutual information estimator quality is not deeply analyzed\",\n        \"Multi-stage training procedure is complex and may hinder reproducibility\",\n        \"No theoretical guarantees on the practical implementation's convergence or optimality\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 4,\n    \"Significance\": 4,\n    \"Questions\": [\n        \"How sensitive is the method to the quality of the mutual information estimator? What happens if the estimator is poorly trained or the distribution shifts?\",\n        \"The UNet smoothing module - how is it trained and what is its parameter overhead? Is it trained jointly with the task decoder?\",\n        \"How does the method handle dynamic bandwidth constraints during inference? Is threshold adjustment done online or pre-configured?\",\n        \"The theory assumes Markov chains Y↔Xs↔Zs and Xr↔Xs↔Zs - are these assumptions validated empirically? How would violations affect the derived conditions?\",\n        \"How does RDcomm compare with neural compression-based approaches (e.g., learned compression with entropy models) rather than VQ-based methods?\",\n        \"In Table 4, the 'optimal' rate is computed as H(Y)≈2 bpp. How was this entropy estimated and what's the confidence interval?\",\n        \"What is the computational overhead of the three-stage training compared to end-to-end approaches? Is the staged training necessary or could joint training work?\"\n    ],\n    \"Limitations\": [\n        \"The framework is validated only on perception tasks; extension to navigation, manipulation, or language tasks is left as future work\",\n        \"Theoretical approximations (first-order expansion, independence assumptions) may not hold in all collaborative scenarios\",\n        \"The multi-stage training pipeline is complex and may require careful hyperparameter tuning\",\n        \"The method relies on pre-defined collaboration graph (which agents communicate with whom), and doesn't address dynamic topology\",\n        \"Potential negative societal impact: deployment in autonomous driving systems could have safety implications if failures occur, though the paper doesn't discuss this explicitly\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 4,\n    \"Contribution\": 4,\n    \"Overall\": 7,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 24173,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 22381,
+        "completion_tokens": 1939,
+        "reasoning_tokens": 0,
+        "total_tokens": 26112
+      },
+      "attempts": 1,
+      "response_id": "b9e8dab2-37d3-4b07-9f26-ebe3e0e4fab9"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper introduces a pragmatic rate-distortion theory for multi-agent collaborative perception, extending Shannon's classical rate-distortion framework to handle task-specific pragmatic distortion and inter-agent redundancy. The theory derives two optimal conditions for communication: pragmatic-relevant (transmitting only task-relevant information) and redundancy-less (avoiding inter-agent redundancy). Based on these conditions, the authors propose RDcomm, a communication-efficient collaborative perception framework with two key components: (i) task entropy discrete coding that assigns codewords based on task relevance, and (ii) mutual-information-driven message selection that identifies and removes redundant information. The method is evaluated on 3D object detection and BEV segmentation tasks across multiple datasets (DAIR-V2X, OPV2V, V2XSeq, V2V4Real), demonstrating superior performance-communication trade-offs with up to 108× communication reduction compared to prior methods.",
+        "Strengths": [
+          "Novel theoretical framework connecting rate-distortion theory to collaborative perception, providing principled guidance for communication strategy design",
+          "Well-designed method where both components (task entropy coding and MI-driven selection) are directly motivated by theoretical conditions",
+          "Comprehensive experimental evaluation across multiple datasets (real and simulated), modalities (LiDAR and camera), and tasks (detection and segmentation)",
+          "Strong empirical results showing significant communication reduction (up to 108×) while maintaining or improving task performance",
+          "Good ablation studies demonstrating the individual contribution of each proposed component",
+          "Robustness analysis under transmission latency and pose noise",
+          "Theoretical analysis provides insights into the fundamental limits of communication-efficient collaborative perception"
+        ],
+        "Weaknesses": [
+          "The theoretical derivation has some questionable steps, particularly in the decomposition of mutual information and the achievability of the derived bound",
+          "The pragmatic-relevant condition H(Z|Y)=0 seems overly strong and may not be practically achievable in real scenarios",
+          "The mutual information estimation uses a GAN-style divergence (Jensen-Shannon) rather than true MI, which may not accurately reflect the redundancy-less condition I(Z;Xr)=0",
+          "Lack of comparison with theoretical optimality bounds in experiments",
+          "The communication volume calculation is not always transparent; it's unclear how the abstract bits and total bits are computed in different settings",
+          "The paper claims 'lossless pragmatic compression' with 5% performance drop, which may be misleading",
+          "Limited analysis of the scalability of the method to very large-scale multi-agent systems"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "In the derivation of Theorem 1, can you clarify the conditions under which the equality in equation (59) is achieved? Specifically, how does the Markov chain assumption Xr↔Xs↔Zs hold in practice?",
+          "The pragmatic-relevant condition H(Zs→r|Y)=0 seems to require a deterministic mapping from Y to Z. How is this approximated in practice, and what are the theoretical implications if this condition is only approximately satisfied?",
+          "The paper uses a GAN-style divergence (Jensen-Shannon) for MI estimation. How does this relate to the actual mutual information I(Zs→r; Xr) that appears in the redundancy-less condition? Is there a theoretical justification for using this divergence?",
+          "Can you provide more details on how the communication volume is calculated in different experiments? Specifically, how are the abstract bits (Dbase) and total bits computed, and how do they relate to the actual bandwidth usage?",
+          "In Table 4, the 'lossless' setting is defined as a performance drop of less than 5%. What is the actual performance drop for RDcomm at 4 bpp, and how does this compare to the theoretical bound of 2 bpp?",
+          "How sensitive is the method to the choice of codebook size and the number of quantization layers? Is there a systematic way to determine these hyperparameters?",
+          "The paper mentions that the MI estimator is only used to rank features relatively. Could you provide more analysis on the stability and reliability of this ranking across different scenarios?"
+        ],
+        "Limitations": [
+          "The theoretical framework assumes certain Markov chain properties and independence conditions that may not hold in all collaborative perception scenarios",
+          "The method's performance is evaluated on specific perception tasks (detection and segmentation); its applicability to other tasks (e.g., prediction, planning) is not explored",
+          "The paper acknowledges that the framework focuses on perception tasks and suggests future extensions to navigation, manipulation, and scene captioning",
+          "Potential negative societal impact: The method could be used to enable more efficient surveillance systems, raising privacy concerns. The paper does not discuss this aspect.",
+          "The training process involves three stages, which adds complexity and potential training instability",
+          "The method requires a handshake process between agents to estimate mutual information, which may introduce additional communication overhead in dynamic scenarios"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 4,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces a pragmatic rate-distortion theory for collaborative perception and proposes RDcomm, a communication-efficient framework. The theoretical contribution extends Shannon's rate-distortion framework to multi-agent collaboration with pragmatic distortion and inter-agent redundancy. The proposed method includes task entropy discrete coding and mutual-information-driven message selection.\n\nStrengths:\n- Novel theoretical framework connecting rate-distortion theory to collaborative perception\n- Well-designed method guided by theoretical conditions\n- Comprehensive experiments across multiple datasets, modalities, and tasks\n- Strong empirical results with significant communication reduction (up to 108×)\n- Good ablation studies demonstrating the contribution of each component\n\nWeaknesses:\n- The theoretical derivation has some questionable steps (e.g., the decomposition of mutual information and the achievability of the bound)\n- The \"pragmatic-relevant condition\" H(Z|Y)=0 seems overly strong and may not be practically achievable\n- The mutual information estimation uses a GAN-style divergence rather than true MI, which may not accurately reflect the redundancy-less condition\n- The paper lacks a rigorous comparison with theoretical optimality\n- Some experimental details are missing (e.g., exact communication volume calculations)\n- The robustness experiments are limited in scope\n\nOriginality: High - The theoretical framework is novel and the method design is well-motivated by theory.\n\nQuality: Good - The paper is technically sound overall, though some theoretical claims need more careful justification.\n\nClarity: Good - The paper is well-written but some sections (especially theory) could be clearer.\n\nSignificance: High - The work addresses an important problem and provides both theoretical insights and practical improvements.\n\nOverall: This is a strong paper with novel theoretical contributions and solid empirical validation. The main concerns are about the theoretical rigor and some experimental details. I would lean towards acceptance.\n\nSoundness: 3 (good)\nPresentation: 3 (good)\nContribution: 4 (excellent)\nOverall: 7 (Accept)\nConfidence: 4 (confident)\n\nThe paper makes a significant contribution to the field of collaborative perception by providing a theoretical foundation for communication-efficient methods. The proposed RDcomm framework is well-designed and empirically validated across multiple benchmarks. While there are some theoretical concerns that could be addressed in the rebuttal, the overall contribution is strong and valuable to the community.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper introduces a pragmatic rate-distortion theory for multi-agent collaborative perception, extending Shannon's classical rate-distortion framework to handle task-specific pragmatic distortion and inter-agent redundancy. The theory derives two optimal conditions for communication: pragmatic-relevant (transmitting only task-relevant information) and redundancy-less (avoiding inter-agent redundancy). Based on these conditions, the authors propose RDcomm, a communication-efficient collaborative perception framework with two key components: (i) task entropy discrete coding that assigns codewords based on task relevance, and (ii) mutual-information-driven message selection that identifies and removes redundant information. The method is evaluated on 3D object detection and BEV segmentation tasks across multiple datasets (DAIR-V2X, OPV2V, V2XSeq, V2V4Real), demonstrating superior performance-communication trade-offs with up to 108× communication reduction compared to prior methods.\",\n    \"Strengths\": [\n        \"Novel theoretical framework connecting rate-distortion theory to collaborative perception, providing principled guidance for communication strategy design\",\n        \"Well-designed method where both components (task entropy coding and MI-driven selection) are directly motivated by theoretical conditions\",\n        \"Comprehensive experimental evaluation across multiple datasets (real and simulated), modalities (LiDAR and camera), and tasks (detection and segmentation)\",\n        \"Strong empirical results showing significant communication reduction (up to 108×) while maintaining or improving task performance\",\n        \"Good ablation studies demonstrating the individual contribution of each proposed component\",\n        \"Robustness analysis under transmission latency and pose noise\",\n        \"Theoretical analysis provides insights into the fundamental limits of communication-efficient collaborative perception\"\n    ],\n    \"Weaknesses\": [\n        \"The theoretical derivation has some questionable steps, particularly in the decomposition of mutual information and the achievability of the derived bound\",\n        \"The pragmatic-relevant condition H(Z|Y)=0 seems overly strong and may not be practically achievable in real scenarios\",\n        \"The mutual information estimation uses a GAN-style divergence (Jensen-Shannon) rather than true MI, which may not accurately reflect the redundancy-less condition I(Z;Xr)=0\",\n        \"Lack of comparison with theoretical optimality bounds in experiments\",\n        \"The communication volume calculation is not always transparent; it's unclear how the abstract bits and total bits are computed in different settings\",\n        \"The paper claims 'lossless pragmatic compression' with 5% performance drop, which may be misleading\",\n        \"Limited analysis of the scalability of the method to very large-scale multi-agent systems\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 4,\n    \"Questions\": [\n        \"In the derivation of Theorem 1, can you clarify the conditions under which the equality in equation (59) is achieved? Specifically, how does the Markov chain assumption Xr↔Xs↔Zs hold in practice?\",\n        \"The pragmatic-relevant condition H(Zs→r|Y)=0 seems to require a deterministic mapping from Y to Z. How is this approximated in practice, and what are the theoretical implications if this condition is only approximately satisfied?\",\n        \"The paper uses a GAN-style divergence (Jensen-Shannon) for MI estimation. How does this relate to the actual mutual information I(Zs→r; Xr) that appears in the redundancy-less condition? Is there a theoretical justification for using this divergence?\",\n        \"Can you provide more details on how the communication volume is calculated in different experiments? Specifically, how are the abstract bits (Dbase) and total bits computed, and how do they relate to the actual bandwidth usage?\",\n        \"In Table 4, the 'lossless' setting is defined as a performance drop of less than 5%. What is the actual performance drop for RDcomm at 4 bpp, and how does this compare to the theoretical bound of 2 bpp?\",\n        \"How sensitive is the method to the choice of codebook size and the number of quantization layers? Is there a systematic way to determine these hyperparameters?\",\n        \"The paper mentions that the MI estimator is only used to rank features relatively. Could you provide more analysis on the stability and reliability of this ranking across different scenarios?\"\n    ],\n    \"Limitations\": [\n        \"The theoretical framework assumes certain Markov chain properties and independence conditions that may not hold in all collaborative perception scenarios\",\n        \"The method's performance is evaluated on specific perception tasks (detection and segmentation); its applicability to other tasks (e.g., prediction, planning) is not explored\",\n        \"The paper acknowledges that the framework focuses on perception tasks and suggests future extensions to navigation, manipulation, and scene captioning\",\n        \"Potential negative societal impact: The method could be used to enable more efficient surveillance systems, raising privacy concerns. The paper does not discuss this aspect.\",\n        \"The training process involves three stages, which adds complexity and potential training instability\",\n        \"The method requires a handshake process between agents to estimate mutual information, which may introduce additional communication overhead in dynamic scenarios\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 4,\n    \"Overall\": 7,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 24173,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 22381,
+        "completion_tokens": 1579,
+        "reasoning_tokens": 0,
+        "total_tokens": 25752
+      },
+      "attempts": 1,
+      "response_id": "04314bfc-98c4-4f11-b9c7-894861d6bb08"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 5,
+      "Reject": 0
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          3,
+          4,
+          4,
+          3
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Significance": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          3,
+          4,
+          4,
+          3
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Contribution": {
+        "values": [
+          4,
+          3,
+          4,
+          4,
+          4
+        ],
+        "mean": 3.8,
+        "rounded_mean": 4,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Overall": {
+        "values": [
+          7,
+          7,
+          8,
+          7,
+          7
+        ],
+        "mean": 7.2,
+        "rounded_mean": 7,
+        "population_sd": 0.4,
+        "min": 7,
+        "max": 8
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "This paper introduces a pragmatic rate-distortion theory for multi-agent collaborative perception, extending classical rate-distortion analysis to account for task-specific (pragmatic) distortion and inter-agent redundancy. The theory derives two optimal conditions for communication strategies: (1) pragmatic-relevant (transmit only task-relevant information, H(Z|Y)=0) and (2) redundancy-less (avoid information already available at the receiver, I(Z;Xr)=0). Based on these conditions, the authors propose RDcomm, a communication-efficient collaborative perception framework with two key components: task entropy discrete coding (using layered vector quantization and confidence-weighted Huffman coding) and mutual-information-driven message selection (using a neural MI estimator to identify and filter redundant features). Extensive experiments on 3D detection (DAIR-V2X, OPV2V, V2XSeq, V2V4Real) and BEV segmentation (OPV2V) demonstrate state-of-the-art performance-communication trade-offs, achieving up to 108× communication reduction compared to prior methods. The paper includes ablation studies, robustness analysis under latency and pose noise, and evaluation of the approximation to the theoretical optimal conditions.",
+      "Strengths": [
+        "Novel theoretical contribution: Extends classical rate-distortion theory to multi-agent collaborative perception with pragmatic (task-specific) distortion, filling a gap in the literature where prior approaches were largely heuristic.",
+        "Actionable theoretical conditions: The two derived optimality conditions (pragmatic-relevant and redundancy-less) provide clear, intuitive design principles that directly motivate the algorithmic components, creating a strong theory-to-practice connection.",
+        "Comprehensive experimental validation: Evaluation spans multiple datasets (real-world and simulated), tasks (3D detection, BEV segmentation), modalities (LiDAR, camera), and varying numbers of agents, providing robust evidence of effectiveness.",
+        "Strong empirical results: RDcomm consistently achieves the best performance-communication trade-offs across all settings, with up to 108× communication reduction while maintaining or improving task performance.",
+        "Thorough ablation studies: The paper isolates the contributions of the coding and selection modules, demonstrating the effectiveness of each component and superiority over alternatives.",
+        "Robustness analysis: Evaluates performance under transmission latency and pose noise, showing practical applicability in realistic disturbed scenarios.",
+        "Transparency: Provides detailed training cost analysis, code release, and honest discussion of limitations, enhancing reproducibility and credibility."
+      ],
+      "Weaknesses": [
+        "Theoretical rigor: The proof of Theorem 1 relies on several inequalities and Markov chain assumptions (e.g., Y↔Xs↔Zs, Xr↔Xs↔Zs) that are not fully justified, and the achievability of all equality conditions simultaneously is not thoroughly discussed.",
+        "Theory-practice gap: The connection between theoretical conditions and practical implementation is somewhat loose. For example, task entropy coding uses confidence scores as a proxy for p(Y|Z), but the justification is heuristic rather than rigorous.",
+        "MI estimator divergence: The paper uses a GAN-style divergence (Jensen-Shannon) for MI estimation rather than the KL divergence in the original formulation. The relationship between these objectives and implications for theoretical guarantees are not fully analyzed.",
+        "Evaluation of optimal condition approximation: Fig. 5 uses kNN-based estimators for mutual information and conditional entropy, which are known to be biased in high-dimensional spaces (64-dim features), potentially undermining claims about approaching optimal conditions.",
+        "Baseline fairness: Some baselines may use different backbone architectures or training procedures, making comparisons not strictly apples-to-apples; the paper does not fully discuss potential confounding factors.",
+        "Communication volume measurement: The exact methodology for calculating communication volume (e.g., Huffman codebook overhead, codebook index encoding, abstraction bits) is not fully transparent.",
+        "Computational overhead: The inference cost of the MI estimator is only briefly reported; a more detailed analysis of computational overhead in real-time scenarios is needed."
+      ],
+      "Originality": 4,
+      "Quality": 3,
+      "Clarity": 3,
+      "Significance": 4,
+      "Questions": [
+        "In Theorem 1, the proof relies on Markov chains Y↔Xs↔Zs and Xr↔Xs↔Zs. Can you elaborate on the validity of these assumptions in the context of collaborative perception? Are there scenarios where these break down, and how would that affect the derived bit-rate?",
+        "The equality condition for the first inequality (I(Zs;Xr)=0) is the redundancy-less condition. In practice, you only approximately achieve this via MI selection. Can you quantify the suboptimality introduced by this approximation?",
+        "For task entropy coding, you use confidence scores as a proxy for p(Y|Z). How sensitive is performance to the choice of confidence threshold τfilter? Is there a principled way to set this hyperparameter?",
+        "The MI estimator uses a GAN-style divergence instead of KL divergence. What is the theoretical justification for this choice? Does the GAN-style estimator provide a valid lower bound on true mutual information, and does the relative ranking of features by this discriminator correspond to ranking by true MI?",
+        "In Fig. 5, kNN-based estimators are used for I(Zs→r;Xr) and H(Zs→r|Y). Given known bias of kNN estimators in high dimensions, how reliable are these estimates? Have you considered neural estimators (e.g., MINE) for these evaluations?",
+        "Could you specify the exact communication volume measurement methodology? Specifically, how are Huffman codebooks transmitted (one-time vs. per-frame overhead), and how are codebook indices encoded in practice?",
+        "In Figure 2, are all baseline methods evaluated at their respective optimal operating points, or is RDcomm shown at a specific bandwidth setting that may favor it?",
+        "Does the smoothing module (UNet) affect the reported communication volume? If the smoothed message is transmitted, does this increase actual bandwidth usage?",
+        "In Table 4, the 'lossless' condition is defined as less than 5% performance drop. How was this threshold chosen, and what is the actual performance drop for RDcomm at 4 bpp? How is the 2 bpp theoretical bound computed?",
+        "How does the method scale to scenarios with more than 5 agents? Are there computational bottlenecks in the MI estimation step?",
+        "How does the MI estimator generalize across different datasets or environmental conditions? Is it trained per-dataset, and does it require retraining when collaboration topology changes?"
+      ],
+      "Limitations": [
+        "The theoretical framework is specifically formulated for perception tasks (detection and segmentation); extension to navigation, manipulation, and scene captioning is mentioned as future work but not analyzed.",
+        "The theory assumes ideal conditions (e.g., Markov chain properties, independence assumptions between classification and regression) that may not hold exactly in practical systems with non-deterministic encoders.",
+        "The paper does not address potential negative societal impacts, such as privacy concerns in multi-agent communication (e.g., sharing visual data from public spaces) or the potential for adversarial attacks on the communication channel.",
+        "The experimental evaluation focuses on autonomous driving scenarios; applicability to other collaborative perception settings (e.g., robotics, surveillance) is not demonstrated.",
+        "The paper assumes a relatively clean communication environment (no packet loss or bit errors); real-world wireless channels may introduce additional distortions not modeled in the framework.",
+        "The training process is multi-stage and requires careful tuning of multiple hyperparameters (τc, τMI, τfilter, codebook sizes), which may limit practical deployment without significant engineering effort.",
+        "The computational and memory overhead of the MI estimator during inference is only briefly mentioned; a more detailed analysis would strengthen practical claims.",
+        "The method relies on a pre-defined collaboration graph and does not address dynamic topology or varying agent counts beyond the reported ranges."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 3,
+      "Contribution": 4,
+      "Overall": 7,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "THOUGHT:\nThe paper presents a novel theory extending rate-distortion to multi-agent collaborative perception, deriving two optimality conditions and proposing RDcomm with task-entropy coding and MI-driven selection. All five reviewers recommend accept with overall scores of 7, 7, 8, 7, 7, showing strong consensus for acceptance.\n\nCommon strengths across reviews: novel theoretical contribution, comprehensive experiments across multiple datasets/tasks/modalities, strong communication reduction (up to 108×), well-designed ablations, robustness analysis, and clear theory-to-practice connection.\n\nCommon weaknesses and concerns:\n1. Theoretical rigor: Several reviewers question the Markov chain assumptions, inequality tightness, and first-order approximations in Theorem 1\n2. MI estimator: The GAN-style divergence approximation to true MI is not rigorously justified\n3. Theory-practice gap: The connection between theoretical conditions (e.g., H(Z|Y)=0) and practical heuristics (confidence-based coding) is loose\n4. Evaluation of optimal condition approximation: kNN-based estimators in Fig. 5 may be biased in high dimensions\n5. Baseline fairness: Unclear if comparisons are apples-to-apples\n6. Communication volume measurement methodology is not fully transparent\n7. Multi-stage training complexity\n\nThe consensus is clear: this is a technically solid paper with a meaningful theoretical contribution and strong empirical validation. The weaknesses are mostly about rigor of certain theoretical derivations and clarity of some implementation details, but these don't undermine the overall contribution. All reviewers rated soundness as 3 (good), which seems appropriate.\n\nMy decision: Accept. The paper makes a novel contribution with strong experimental support. The theoretical concerns are legitimate but the paper provides a useful framework even if some assumptions are idealized. The practical method demonstrates clear improvements over baselines.\n\nI'll set my ratings consistent with the reviewers: Originality 4, Quality 3, Clarity 3, Significance 4, Soundness 3, Presentation 3, Contribution 4, Overall 7, Confidence 4.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper introduces a pragmatic rate-distortion theory for multi-agent collaborative perception, extending classical rate-distortion analysis to account for task-specific (pragmatic) distortion and inter-agent redundancy. The theory derives two optimal conditions for communication strategies: (1) pragmatic-relevant (transmit only task-relevant information, H(Z|Y)=0) and (2) redundancy-less (avoid information already available at the receiver, I(Z;Xr)=0). Based on these conditions, the authors propose RDcomm, a communication-efficient collaborative perception framework with two key components: task entropy discrete coding (using layered vector quantization and confidence-weighted Huffman coding) and mutual-information-driven message selection (using a neural MI estimator to identify and filter redundant features). Extensive experiments on 3D detection (DAIR-V2X, OPV2V, V2XSeq, V2V4Real) and BEV segmentation (OPV2V) demonstrate state-of-the-art performance-communication trade-offs, achieving up to 108× communication reduction compared to prior methods. The paper includes ablation studies, robustness analysis under latency and pose noise, and evaluation of the approximation to the theoretical optimal conditions.\",\n    \"Strengths\": [\n        \"Novel theoretical contribution: Extends classical rate-distortion theory to multi-agent collaborative perception with pragmatic (task-specific) distortion, filling a gap in the literature where prior approaches were largely heuristic.\",\n        \"Actionable theoretical conditions: The two derived optimality conditions (pragmatic-relevant and redundancy-less) provide clear, intuitive design principles that directly motivate the algorithmic components, creating a strong theory-to-practice connection.\",\n        \"Comprehensive experimental validation: Evaluation spans multiple datasets (real-world and simulated), tasks (3D detection, BEV segmentation), modalities (LiDAR, camera), and varying numbers of agents, providing robust evidence of effectiveness.\",\n        \"Strong empirical results: RDcomm consistently achieves the best performance-communication trade-offs across all settings, with up to 108× communication reduction while maintaining or improving task performance.\",\n        \"Thorough ablation studies: The paper isolates the contributions of the coding and selection modules, demonstrating the effectiveness of each component and superiority over alternatives.\",\n        \"Robustness analysis: Evaluates performance under transmission latency and pose noise, showing practical applicability in realistic disturbed scenarios.\",\n        \"Transparency: Provides detailed training cost analysis, code release, and honest discussion of limitations, enhancing reproducibility and credibility.\"\n    ],\n    \"Weaknesses\": [\n        \"Theoretical rigor: The proof of Theorem 1 relies on several inequalities and Markov chain assumptions (e.g., Y↔Xs↔Zs, Xr↔Xs↔Zs) that are not fully justified, and the achievability of all equality conditions simultaneously is not thoroughly discussed.\",\n        \"Theory-practice gap: The connection between theoretical conditions and practical implementation is somewhat loose. For example, task entropy coding uses confidence scores as a proxy for p(Y|Z), but the justification is heuristic rather than rigorous.\",\n        \"MI estimator divergence: The paper uses a GAN-style divergence (Jensen-Shannon) for MI estimation rather than the KL divergence in the original formulation. The relationship between these objectives and implications for theoretical guarantees are not fully analyzed.\",\n        \"Evaluation of optimal condition approximation: Fig. 5 uses kNN-based estimators for mutual information and conditional entropy, which are known to be biased in high-dimensional spaces (64-dim features), potentially undermining claims about approaching optimal conditions.\",\n        \"Baseline fairness: Some baselines may use different backbone architectures or training procedures, making comparisons not strictly apples-to-apples; the paper does not fully discuss potential confounding factors.\",\n        \"Communication volume measurement: The exact methodology for calculating communication volume (e.g., Huffman codebook overhead, codebook index encoding, abstraction bits) is not fully transparent.\",\n        \"Computational overhead: The inference cost of the MI estimator is only briefly reported; a more detailed analysis of computational overhead in real-time scenarios is needed.\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 4,\n    \"Questions\": [\n        \"In Theorem 1, the proof relies on Markov chains Y↔Xs↔Zs and Xr↔Xs↔Zs. Can you elaborate on the validity of these assumptions in the context of collaborative perception? Are there scenarios where these break down, and how would that affect the derived bit-rate?\",\n        \"The equality condition for the first inequality (I(Zs;Xr)=0) is the redundancy-less condition. In practice, you only approximately achieve this via MI selection. Can you quantify the suboptimality introduced by this approximation?\",\n        \"For task entropy coding, you use confidence scores as a proxy for p(Y|Z). How sensitive is performance to the choice of confidence threshold τfilter? Is there a principled way to set this hyperparameter?\",\n        \"The MI estimator uses a GAN-style divergence instead of KL divergence. What is the theoretical justification for this choice? Does the GAN-style estimator provide a valid lower bound on true mutual information, and does the relative ranking of features by this discriminator correspond to ranking by true MI?\",\n        \"In Fig. 5, kNN-based estimators are used for I(Zs→r;Xr) and H(Zs→r|Y). Given known bias of kNN estimators in high dimensions, how reliable are these estimates? Have you considered neural estimators (e.g., MINE) for these evaluations?\",\n        \"Could you specify the exact communication volume measurement methodology? Specifically, how are Huffman codebooks transmitted (one-time vs. per-frame overhead), and how are codebook indices encoded in practice?\",\n        \"In Figure 2, are all baseline methods evaluated at their respective optimal operating points, or is RDcomm shown at a specific bandwidth setting that may favor it?\",\n        \"Does the smoothing module (UNet) affect the reported communication volume? If the smoothed message is transmitted, does this increase actual bandwidth usage?\",\n        \"In Table 4, the 'lossless' condition is defined as less than 5% performance drop. How was this threshold chosen, and what is the actual performance drop for RDcomm at 4 bpp? How is the 2 bpp theoretical bound computed?\",\n        \"How does the method scale to scenarios with more than 5 agents? Are there computational bottlenecks in the MI estimation step?\",\n        \"How does the MI estimator generalize across different datasets or environmental conditions? Is it trained per-dataset, and does it require retraining when collaboration topology changes?\"\n    ],\n    \"Limitations\": [\n        \"The theoretical framework is specifically formulated for perception tasks (detection and segmentation); extension to navigation, manipulation, and scene captioning is mentioned as future work but not analyzed.\",\n        \"The theory assumes ideal conditions (e.g., Markov chain properties, independence assumptions between classification and regression) that may not hold exactly in practical systems with non-deterministic encoders.\",\n        \"The paper does not address potential negative societal impacts, such as privacy concerns in multi-agent communication (e.g., sharing visual data from public spaces) or the potential for adversarial attacks on the communication channel.\",\n        \"The experimental evaluation focuses on autonomous driving scenarios; applicability to other collaborative perception settings (e.g., robotics, surveillance) is not demonstrated.\",\n        \"The paper assumes a relatively clean communication environment (no packet loss or bit errors); real-world wireless channels may introduce additional distortions not modeled in the framework.\",\n        \"The training process is multi-stage and requires careful tuning of multiple hyperparameters (τc, τMI, τfilter, codebook sizes), which may limit practical deployment without significant engineering effort.\",\n        \"The computational and memory overhead of the MI estimator during inference is only briefly mentioned; a more detailed analysis would strengthen practical claims.\",\n        \"The method relies on a pre-defined collaboration graph and does not address dynamic topology or varying agent counts beyond the reported ranges.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 4,\n    \"Overall\": 7,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 7503,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 7503,
+      "completion_tokens": 2122,
+      "reasoning_tokens": 0,
+      "total_tokens": 9625
+    },
+    "attempts": 1,
+    "response_id": "ec8525f5-4234-47a2-a877-c3147eaba648"
+  },
+  "final_review": {
+    "Summary": "This paper introduces a pragmatic rate-distortion theory for multi-agent collaborative perception, extending classical rate-distortion analysis to account for task-specific (pragmatic) distortion and inter-agent redundancy. The theory derives two optimal conditions for communication strategies: (1) pragmatic-relevant (transmit only task-relevant information, H(Z|Y)=0) and (2) redundancy-less (avoid information already available at the receiver, I(Z;Xr)=0). Based on these conditions, the authors propose RDcomm, a communication-efficient collaborative perception framework with two key components: task entropy discrete coding (using layered vector quantization and confidence-weighted Huffman coding) and mutual-information-driven message selection (using a neural MI estimator to identify and filter redundant features). Extensive experiments on 3D detection (DAIR-V2X, OPV2V, V2XSeq, V2V4Real) and BEV segmentation (OPV2V) demonstrate state-of-the-art performance-communication trade-offs, achieving up to 108× communication reduction compared to prior methods. The paper includes ablation studies, robustness analysis under latency and pose noise, and evaluation of the approximation to the theoretical optimal conditions.",
+    "Strengths": [
+      "Novel theoretical contribution: Extends classical rate-distortion theory to multi-agent collaborative perception with pragmatic (task-specific) distortion, filling a gap in the literature where prior approaches were largely heuristic.",
+      "Actionable theoretical conditions: The two derived optimality conditions (pragmatic-relevant and redundancy-less) provide clear, intuitive design principles that directly motivate the algorithmic components, creating a strong theory-to-practice connection.",
+      "Comprehensive experimental validation: Evaluation spans multiple datasets (real-world and simulated), tasks (3D detection, BEV segmentation), modalities (LiDAR, camera), and varying numbers of agents, providing robust evidence of effectiveness.",
+      "Strong empirical results: RDcomm consistently achieves the best performance-communication trade-offs across all settings, with up to 108× communication reduction while maintaining or improving task performance.",
+      "Thorough ablation studies: The paper isolates the contributions of the coding and selection modules, demonstrating the effectiveness of each component and superiority over alternatives.",
+      "Robustness analysis: Evaluates performance under transmission latency and pose noise, showing practical applicability in realistic disturbed scenarios.",
+      "Transparency: Provides detailed training cost analysis, code release, and honest discussion of limitations, enhancing reproducibility and credibility."
+    ],
+    "Weaknesses": [
+      "Theoretical rigor: The proof of Theorem 1 relies on several inequalities and Markov chain assumptions (e.g., Y↔Xs↔Zs, Xr↔Xs↔Zs) that are not fully justified, and the achievability of all equality conditions simultaneously is not thoroughly discussed.",
+      "Theory-practice gap: The connection between theoretical conditions and practical implementation is somewhat loose. For example, task entropy coding uses confidence scores as a proxy for p(Y|Z), but the justification is heuristic rather than rigorous.",
+      "MI estimator divergence: The paper uses a GAN-style divergence (Jensen-Shannon) for MI estimation rather than the KL divergence in the original formulation. The relationship between these objectives and implications for theoretical guarantees are not fully analyzed.",
+      "Evaluation of optimal condition approximation: Fig. 5 uses kNN-based estimators for mutual information and conditional entropy, which are known to be biased in high-dimensional spaces (64-dim features), potentially undermining claims about approaching optimal conditions.",
+      "Baseline fairness: Some baselines may use different backbone architectures or training procedures, making comparisons not strictly apples-to-apples; the paper does not fully discuss potential confounding factors.",
+      "Communication volume measurement: The exact methodology for calculating communication volume (e.g., Huffman codebook overhead, codebook index encoding, abstraction bits) is not fully transparent.",
+      "Computational overhead: The inference cost of the MI estimator is only briefly reported; a more detailed analysis of computational overhead in real-time scenarios is needed."
+    ],
+    "Originality": 4,
+    "Quality": 3,
+    "Clarity": 3,
+    "Significance": 4,
+    "Questions": [
+      "In Theorem 1, the proof relies on Markov chains Y↔Xs↔Zs and Xr↔Xs↔Zs. Can you elaborate on the validity of these assumptions in the context of collaborative perception? Are there scenarios where these break down, and how would that affect the derived bit-rate?",
+      "The equality condition for the first inequality (I(Zs;Xr)=0) is the redundancy-less condition. In practice, you only approximately achieve this via MI selection. Can you quantify the suboptimality introduced by this approximation?",
+      "For task entropy coding, you use confidence scores as a proxy for p(Y|Z). How sensitive is performance to the choice of confidence threshold τfilter? Is there a principled way to set this hyperparameter?",
+      "The MI estimator uses a GAN-style divergence instead of KL divergence. What is the theoretical justification for this choice? Does the GAN-style estimator provide a valid lower bound on true mutual information, and does the relative ranking of features by this discriminator correspond to ranking by true MI?",
+      "In Fig. 5, kNN-based estimators are used for I(Zs→r;Xr) and H(Zs→r|Y). Given known bias of kNN estimators in high dimensions, how reliable are these estimates? Have you considered neural estimators (e.g., MINE) for these evaluations?",
+      "Could you specify the exact communication volume measurement methodology? Specifically, how are Huffman codebooks transmitted (one-time vs. per-frame overhead), and how are codebook indices encoded in practice?",
+      "In Figure 2, are all baseline methods evaluated at their respective optimal operating points, or is RDcomm shown at a specific bandwidth setting that may favor it?",
+      "Does the smoothing module (UNet) affect the reported communication volume? If the smoothed message is transmitted, does this increase actual bandwidth usage?",
+      "In Table 4, the 'lossless' condition is defined as less than 5% performance drop. How was this threshold chosen, and what is the actual performance drop for RDcomm at 4 bpp? How is the 2 bpp theoretical bound computed?",
+      "How does the method scale to scenarios with more than 5 agents? Are there computational bottlenecks in the MI estimation step?",
+      "How does the MI estimator generalize across different datasets or environmental conditions? Is it trained per-dataset, and does it require retraining when collaboration topology changes?"
+    ],
+    "Limitations": [
+      "The theoretical framework is specifically formulated for perception tasks (detection and segmentation); extension to navigation, manipulation, and scene captioning is mentioned as future work but not analyzed.",
+      "The theory assumes ideal conditions (e.g., Markov chain properties, independence assumptions between classification and regression) that may not hold exactly in practical systems with non-deterministic encoders.",
+      "The paper does not address potential negative societal impacts, such as privacy concerns in multi-agent communication (e.g., sharing visual data from public spaces) or the potential for adversarial attacks on the communication channel.",
+      "The experimental evaluation focuses on autonomous driving scenarios; applicability to other collaborative perception settings (e.g., robotics, surveillance) is not demonstrated.",
+      "The paper assumes a relatively clean communication environment (no packet loss or bit errors); real-world wireless channels may introduce additional distortions not modeled in the framework.",
+      "The training process is multi-stage and requires careful tuning of multiple hyperparameters (τc, τMI, τfilter, codebook sizes), which may limit practical deployment without significant engineering effort.",
+      "The computational and memory overhead of the MI estimator during inference is only briefly mentioned; a more detailed analysis would strengthen practical claims.",
+      "The method relies on a pre-defined collaboration graph and does not address dynamic topology or varying agent counts beyond the reported ranges."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 3,
+    "Contribution": 4,
+    "Overall": 7,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 128368,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 119408,
+    "completion_tokens": 11848,
+    "reasoning_tokens": 0,
+    "total_tokens": 140216,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.01671712,
+    "output_usd": 0.00331744,
+    "total_usd": 0.02005965
+  },
+  "elapsed_seconds": 41.682,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Accept",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B081",
+    "filename": "B081.txt",
+    "blind_text_sha256": "95e74f24bae53178fb413ab1d59bfbed88e6a3bbf17acf6085c01e044b72ce36",
+    "characters": 80081,
+    "full_text_saved": false
+  }
+}

@@ -1,0 +1,719 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:50:27.093457+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "This paper proposes SpecPrune-VLA, a training-free token pruning method for Vision-Language-Action (VLA) models. The key insight is that consecutive action generations share high visual redundancy, so global information from previous steps can complement local information from the current generation for more reliable token selection. The method combines three components: (1) static token pruning at the action level using global attention scores from previous generations, dynamic token detection via frame comparison, and local attention from early LLM layers; (2) dynamic token pruning at the layer level using rank-based and confidence-based importance scoring with exponential moving average updates; (3) a lightweight action-aware controller that identifies fine-grained vs. coarse-grained actions based on end-effector velocity and adjusts pruning aggressiveness accordingly. Experiments on LIBERO benchmarks with OpenVLA-OFT show average speedups of 1.46× on A800 and 1.57× on RTX 3090 GPUs with negligible success rate degradation (<0.7%).",
+        "Strengths": [
+          "Novel and well-motivated insight about temporal redundancy across consecutive action generations in VLA models",
+          "Training-free approach that is practical for deployment without additional fine-tuning",
+          "Comprehensive evaluation across four LIBERO task suites and two hardware platforms",
+          "Clear ablation study demonstrating the contribution of each technical component",
+          "Well-written and organized paper with good contextualization of related work",
+          "The action-aware controller provides an interesting adaptive mechanism for balancing speed and accuracy"
+        ],
+        "Weaknesses": [
+          "Modest speedup gains (1.46×) that are comparable to some baselines (EfficientVLA achieves 1.55×) but with better success rate retention",
+          "All experiments are conducted in simulation only; real-world deployment challenges are acknowledged but not addressed",
+          "Several hyperparameters (τ, K_D, β, velocity thresholds) appear manually tuned without sensitivity analysis, raising questions about generalizability",
+          "The action-aware controller relies on heuristic thresholds that may not transfer well across different robot platforms or task distributions",
+          "Limited analysis of the computational overhead of the pruning mechanisms themselves (frame comparison, attention computation for early layers)",
+          "The theoretical analysis in the appendix is superficial and does not fully account for the overhead of the pruning process",
+          "No comparison with other acceleration techniques like quantization or early exit that could potentially be combined with pruning"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How sensitive are the results to the hyperparameters τ (similarity threshold), K_D (number of dynamic tokens), and β (EMA update rate)? Have you conducted sensitivity analysis for these parameters?",
+          "What is the additional computational overhead of the pruning mechanisms themselves (frame comparison, attention computation for the first two layers, velocity-based controller)? How does this overhead factor into the reported end-to-end latency?",
+          "The velocity-based frame sampling strategy uses a heuristic formula T = floor(-16/3 * v/6 + 22/3) + 4. How was this formula derived? Does it generalize to different control frequencies or robot platforms?",
+          "How do the thresholds for the action-aware controller (v_t^th, v_r^th, v_z^th) scale with different robot arm specifications or action space normalizations?",
+          "Could the proposed method be combined with other acceleration techniques such as quantization or KV-cache compression for further speedup? Have you explored such combinations?",
+          "The paper reports that EfficientVLA achieves higher speedup but with significant success rate drop on LIBERO-Long. Could you analyze why your method is more robust in this scenario?",
+          "How does the pruning ratio α interact with the action-aware controller? Is there an optimal balance between static pruning aggressiveness and dynamic adjustment?",
+          "What happens when the environment changes rapidly (e.g., moving objects not related to the task)? Does the dynamic token detection effectively capture these changes without retaining too many irrelevant tokens?"
+        ],
+        "Limitations": [
+          "All experiments are conducted in simulated environments (LIBERO), and real-world deployment may introduce sensor noise, environmental dynamics, and hardware latency not captured in simulation",
+          "The method relies on several heuristic thresholds and manually tuned parameters that may not generalize across different robot platforms, camera setups, or task distributions",
+          "The speedup gains are modest (1.46×-1.57×), and the method does not address the vision encoder or action head latency, which may become bottlenecks in different model architectures",
+          "The temporal consistency assumption may break down in highly dynamic environments or tasks requiring rapid adaptation to changing goals",
+          "No analysis of the memory overhead or energy consumption of the pruning approach",
+          "The evaluation is limited to a single VLA model (OpenVLA-OFT); generalizability to other architectures (e.g., diffusion-based action heads) is not demonstrated"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes SpecPrune-VLA, a training-free token pruning method for Vision-Language-Action (VLA) models. The key insight is combining global information from previous action generations with local information from the current generation for token selection. The method includes three components: (1) static token pruning at action level using global attention from previous steps, dynamic token detection via frame comparison, and local attention from early layers; (2) dynamic token pruning at layer level using rank-based and confidence-based importance scoring; (3) a lightweight action-aware controller that adjusts pruning aggressiveness based on action granularity (coarse vs. fine-grained).\n\nThe paper addresses a relevant problem (VLA model inference acceleration) and demonstrates meaningful speedups (1.46× on A800, 1.57× on RTX 3090) with negligible success rate loss on LIBERO benchmarks. The temporal redundancy insight across consecutive actions is well-motivated and empirically supported.\n\nStrengths:\n- Novel insight combining temporal (global) and current-step (local) information for pruning\n- Training-free approach, practical for deployment\n- Comprehensive evaluation on multiple benchmarks and hardware platforms\n- Good ablation study showing contribution of each component\n- Clear writing and well-organized structure\n\nWeaknesses:\n- The speedup gains (1.46×) are modest compared to some baselines (EfficientVLA achieves 1.55×)\n- Limited evaluation on real-world scenarios (only simulation)\n- The action-aware controller adds complexity with heuristic thresholds that may not generalize well\n- Some hyperparameters (e.g., τ, K_D, β) appear manually tuned without sensitivity analysis\n- The comparison with EfficientVLA shows similar speedup but better success rate retention for the proposed method, but the paper doesn't deeply analyze why\n- The theoretical analysis in the appendix is somewhat superficial\n- No analysis of memory overhead or additional computational costs of the pruning mechanisms themselves\n\nThe paper is technically sound with reasonable experimental validation. The results are meaningful but not groundbreaking. The temporal consistency insight is valuable and could inspire future work. The main concerns are the modest speedup, limited evaluation scope, and potential overfitting of hyperparameters to specific benchmarks.\n\nI would rate this as a borderline accept. The work is solid but not exceptional. The speedup is modest, and while the insight is novel, the practical impact may be limited. The paper would benefit from more thorough analysis of hyperparameter sensitivity and broader evaluation.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper proposes SpecPrune-VLA, a training-free token pruning method for Vision-Language-Action (VLA) models. The key insight is that consecutive action generations share high visual redundancy, so global information from previous steps can complement local information from the current generation for more reliable token selection. The method combines three components: (1) static token pruning at the action level using global attention scores from previous generations, dynamic token detection via frame comparison, and local attention from early LLM layers; (2) dynamic token pruning at the layer level using rank-based and confidence-based importance scoring with exponential moving average updates; (3) a lightweight action-aware controller that identifies fine-grained vs. coarse-grained actions based on end-effector velocity and adjusts pruning aggressiveness accordingly. Experiments on LIBERO benchmarks with OpenVLA-OFT show average speedups of 1.46× on A800 and 1.57× on RTX 3090 GPUs with negligible success rate degradation (<0.7%).\",\n    \"Strengths\": [\n        \"Novel and well-motivated insight about temporal redundancy across consecutive action generations in VLA models\",\n        \"Training-free approach that is practical for deployment without additional fine-tuning\",\n        \"Comprehensive evaluation across four LIBERO task suites and two hardware platforms\",\n        \"Clear ablation study demonstrating the contribution of each technical component\",\n        \"Well-written and organized paper with good contextualization of related work\",\n        \"The action-aware controller provides an interesting adaptive mechanism for balancing speed and accuracy\"\n    ],\n    \"Weaknesses\": [\n        \"Modest speedup gains (1.46×) that are comparable to some baselines (EfficientVLA achieves 1.55×) but with better success rate retention\",\n        \"All experiments are conducted in simulation only; real-world deployment challenges are acknowledged but not addressed\",\n        \"Several hyperparameters (τ, K_D, β, velocity thresholds) appear manually tuned without sensitivity analysis, raising questions about generalizability\",\n        \"The action-aware controller relies on heuristic thresholds that may not transfer well across different robot platforms or task distributions\",\n        \"Limited analysis of the computational overhead of the pruning mechanisms themselves (frame comparison, attention computation for early layers)\",\n        \"The theoretical analysis in the appendix is superficial and does not fully account for the overhead of the pruning process\",\n        \"No comparison with other acceleration techniques like quantization or early exit that could potentially be combined with pruning\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"How sensitive are the results to the hyperparameters τ (similarity threshold), K_D (number of dynamic tokens), and β (EMA update rate)? Have you conducted sensitivity analysis for these parameters?\",\n        \"What is the additional computational overhead of the pruning mechanisms themselves (frame comparison, attention computation for the first two layers, velocity-based controller)? How does this overhead factor into the reported end-to-end latency?\",\n        \"The velocity-based frame sampling strategy uses a heuristic formula T = floor(-16/3 * v/6 + 22/3) + 4. How was this formula derived? Does it generalize to different control frequencies or robot platforms?\",\n        \"How do the thresholds for the action-aware controller (v_t^th, v_r^th, v_z^th) scale with different robot arm specifications or action space normalizations?\",\n        \"Could the proposed method be combined with other acceleration techniques such as quantization or KV-cache compression for further speedup? Have you explored such combinations?\",\n        \"The paper reports that EfficientVLA achieves higher speedup but with significant success rate drop on LIBERO-Long. Could you analyze why your method is more robust in this scenario?\",\n        \"How does the pruning ratio α interact with the action-aware controller? Is there an optimal balance between static pruning aggressiveness and dynamic adjustment?\",\n        \"What happens when the environment changes rapidly (e.g., moving objects not related to the task)? Does the dynamic token detection effectively capture these changes without retaining too many irrelevant tokens?\"\n    ],\n    \"Limitations\": [\n        \"All experiments are conducted in simulated environments (LIBERO), and real-world deployment may introduce sensor noise, environmental dynamics, and hardware latency not captured in simulation\",\n        \"The method relies on several heuristic thresholds and manually tuned parameters that may not generalize across different robot platforms, camera setups, or task distributions\",\n        \"The speedup gains are modest (1.46×-1.57×), and the method does not address the vision encoder or action head latency, which may become bottlenecks in different model architectures\",\n        \"The temporal consistency assumption may break down in highly dynamic environments or tasks requiring rapid adaptation to changing goals\",\n        \"No analysis of the memory overhead or energy consumption of the pruning approach\",\n        \"The evaluation is limited to a single VLA model (OpenVLA-OFT); generalizability to other architectures (e.g., diffusion-based action heads) is not demonstrated\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 14187,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 12395,
+        "completion_tokens": 1605,
+        "reasoning_tokens": 0,
+        "total_tokens": 15792
+      },
+      "attempts": 1,
+      "response_id": "18958c9b-32a6-4ccb-a30e-82c649ab184d"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "This paper proposes SpecPrune-VLA, a training-free token pruning method for Vision-Language-Action (VLA) models. The key insight is that consecutive action generations share high visual redundancy, so global information from previous generations can be combined with local information from current generation for more reliable token selection. The method includes: (1) static token pruning at action level using global attention from previous steps, (2) dynamic token pruning at layer level, and (3) a lightweight action-aware controller that adjusts pruning based on action granularity. Experiments on LIBERO benchmark show 1.46x speedup on A800 GPU and 1.57x on RTX 3090 with negligible success rate loss compared to OpenVLA-OFT baseline.",
+        "Strengths": [
+          "Novel and well-motivated insight about temporal redundancy across consecutive action generations in VLA models",
+          "Training-free approach that is practical for real-world deployment",
+          "Comprehensive evaluation on multiple LIBERO task suites and two hardware platforms",
+          "Clear ablation study demonstrating the contribution of each component",
+          "Good visualization of retained tokens showing task-relevant selection",
+          "Well-written with clear figures and tables"
+        ],
+        "Weaknesses": [
+          "Modest speedup (1.46x-1.57x) compared to some baselines like EfficientVLA (1.55x), though with better success rate preservation",
+          "All experiments conducted in simulation only; real-world validation is missing",
+          "Action-aware controller relies on manually tuned velocity thresholds that may not generalize across tasks",
+          "Limited baseline comparison (only 3 methods), missing recent approaches",
+          "Dynamic layer pruning adds 1.6ms latency while reducing tokens, raising questions about its efficiency benefit",
+          "The connection to 'self-speculative' decoding is not clearly established"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How sensitive is the action-aware controller to the velocity thresholds? Have you tested different threshold values and their impact on success rate vs speedup trade-off?",
+          "The dynamic layer pruning adds 1.6ms latency. Can you provide a breakdown of where this overhead comes from? Is the layer-level pruning worth the added complexity given the modest latency reduction?",
+          "How does the method perform on tasks with significant viewpoint changes or object appearance changes between consecutive frames?",
+          "The paper mentions 'self-speculative' but doesn't clearly explain how this relates to speculative decoding. Can you clarify the connection?",
+          "Have you considered evaluating on real-world robotic platforms or more diverse simulation environments beyond LIBERO?",
+          "What is the computational overhead of the frame comparison and similarity computation for dynamic token identification? Is this included in the reported latency?"
+        ],
+        "Limitations": [
+          "All experiments are in simulation; real-world deployment may face additional challenges like sensor noise and environmental dynamics",
+          "The method relies on temporal consistency assumption that may not hold in highly dynamic environments",
+          "Manual tuning of pruning ratios (alpha) per dataset may limit generalizability",
+          "The action-aware controller's thresholds are task-specific and may need re-tuning",
+          "No analysis of failure cases or error propagation over long horizons"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThe paper proposes SpecPrune-VLA, a training-free token pruning method for Vision-Language-Action (VLA) models. The key insight is that consecutive action generations share high visual redundancy, so global information from previous generations can be combined with local information from current generation for more reliable token selection. The method has three components: static token pruning at action level using global attention from previous steps, dynamic token pruning at layer level, and a lightweight action-aware controller that adjusts pruning based on action granularity (coarse vs fine).\n\nThe paper is well-motivated with clear profiling showing LLM is the bottleneck. The experiments on LIBERO benchmark show 1.46x speedup on A800 and 1.57x on RTX 3090 with negligible success rate loss. The ablation study confirms each component contributes.\n\nStrengths:\n- Novel insight about temporal redundancy across consecutive actions\n- Training-free approach, practical for deployment\n- Comprehensive evaluation on multiple datasets and hardware\n- Good ablation study\n- Clear writing and visualization\n\nWeaknesses:\n- The speedup is modest (1.46x-1.57x) compared to some baselines\n- All experiments in simulation only\n- The action-aware controller relies on velocity thresholds that may need tuning per task\n- Limited comparison with recent methods (only 3 baselines)\n- The dynamic layer pruning seems to add latency (1.6ms) while reducing tokens, raising questions about its efficiency benefit\n- The paper claims \"self-speculative\" but doesn't clearly connect to speculative decoding literature\n\nOverall, this is a solid paper with a practical contribution. The insight about temporal redundancy is interesting and the method is well-engineered. However, the speedup is modest and the evaluation is limited to simulation. I would rate this as a borderline accept - the technical soundness is good but the significance is moderate.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper proposes SpecPrune-VLA, a training-free token pruning method for Vision-Language-Action (VLA) models. The key insight is that consecutive action generations share high visual redundancy, so global information from previous generations can be combined with local information from current generation for more reliable token selection. The method includes: (1) static token pruning at action level using global attention from previous steps, (2) dynamic token pruning at layer level, and (3) a lightweight action-aware controller that adjusts pruning based on action granularity. Experiments on LIBERO benchmark show 1.46x speedup on A800 GPU and 1.57x on RTX 3090 with negligible success rate loss compared to OpenVLA-OFT baseline.\",\n    \"Strengths\": [\n        \"Novel and well-motivated insight about temporal redundancy across consecutive action generations in VLA models\",\n        \"Training-free approach that is practical for real-world deployment\",\n        \"Comprehensive evaluation on multiple LIBERO task suites and two hardware platforms\",\n        \"Clear ablation study demonstrating the contribution of each component\",\n        \"Good visualization of retained tokens showing task-relevant selection\",\n        \"Well-written with clear figures and tables\"\n    ],\n    \"Weaknesses\": [\n        \"Modest speedup (1.46x-1.57x) compared to some baselines like EfficientVLA (1.55x), though with better success rate preservation\",\n        \"All experiments conducted in simulation only; real-world validation is missing\",\n        \"Action-aware controller relies on manually tuned velocity thresholds that may not generalize across tasks\",\n        \"Limited baseline comparison (only 3 methods), missing recent approaches\",\n        \"Dynamic layer pruning adds 1.6ms latency while reducing tokens, raising questions about its efficiency benefit\",\n        \"The connection to 'self-speculative' decoding is not clearly established\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"How sensitive is the action-aware controller to the velocity thresholds? Have you tested different threshold values and their impact on success rate vs speedup trade-off?\",\n        \"The dynamic layer pruning adds 1.6ms latency. Can you provide a breakdown of where this overhead comes from? Is the layer-level pruning worth the added complexity given the modest latency reduction?\",\n        \"How does the method perform on tasks with significant viewpoint changes or object appearance changes between consecutive frames?\",\n        \"The paper mentions 'self-speculative' but doesn't clearly explain how this relates to speculative decoding. Can you clarify the connection?\",\n        \"Have you considered evaluating on real-world robotic platforms or more diverse simulation environments beyond LIBERO?\",\n        \"What is the computational overhead of the frame comparison and similarity computation for dynamic token identification? Is this included in the reported latency?\"\n    ],\n    \"Limitations\": [\n        \"All experiments are in simulation; real-world deployment may face additional challenges like sensor noise and environmental dynamics\",\n        \"The method relies on temporal consistency assumption that may not hold in highly dynamic environments\",\n        \"Manual tuning of pruning ratios (alpha) per dataset may limit generalizability\",\n        \"The action-aware controller's thresholds are task-specific and may need re-tuning\",\n        \"No analysis of failure cases or error propagation over long horizons\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 14187,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 12395,
+        "completion_tokens": 1143,
+        "reasoning_tokens": 0,
+        "total_tokens": 15330
+      },
+      "attempts": 1,
+      "response_id": "8674a1ba-0e52-4441-9f4e-66ac1ee4edcf"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper proposes SpecPrune-VLA, a training-free token pruning method for accelerating Vision-Language-Action (VLA) models. The key insight is that consecutive action generations exhibit high visual similarity, enabling the use of global information from previous actions combined with local information from the current generation for more reliable token selection. The method comprises three components: (1) static token pruning at the action level using attention scores from prior inference, dynamic token detection via frame comparison, and self-speculative selection from early layers; (2) dynamic token pruning at the layer level using importance scores with rank-based weighting and layer confidence across select transformer layers; and (3) a lightweight action-aware controller that categorizes actions as coarse-grained or fine-grained based on end-effector velocity and adjusts pruning aggressiveness accordingly. Experiments on the LIBERO benchmark show an average 1.46× speedup on NVIDIA A800 and 1.57× on RTX 3090 with negligible success rate degradation compared to OpenVLA-OFT.",
+        "Strengths": [
+          "Clear problem motivation with latency breakdown analysis showing LLM backbone as the dominant bottleneck in VLA inference",
+          "Novel insight about temporal consistency across consecutive action generations, well-supported by empirical observations (e.g., 85-95% hit rate of top-k tokens between early and final layers)",
+          "Well-structured method with three complementary components that address different aspects of token redundancy",
+          "Comprehensive evaluation across four LIBERO task suites and two hardware platforms",
+          "Training-free approach is practical and can be applied to existing models without fine-tuning",
+          "Good ablation study demonstrating the contribution of each component",
+          "Includes design space exploration for pruning ratio selection"
+        ],
+        "Weaknesses": [
+          "Modest speedup (1.46×) compared to some baselines (EfficientVLA achieves 1.55×), and the paper's comparison with EfficientVLA may be unfair since it notes the baseline is designed for diffusion action experts and was re-implemented",
+          "Success rate degradation on LIBERO-Long (94.5% to 94.0%) could be significant in safety-critical robotic applications, despite being labeled 'negligible'",
+          "The action-aware controller relies on hand-crafted thresholds (v_t^th, v_r^th, v_z^th) and an arbitrary velocity-based frame sampling formula (T = floor(-16/3 * v/6 + 22/3) + 4) that lack clear justification and may not generalize across tasks or environments",
+          "Dynamic token pruning is only applied to 4 specific layers (5, 10, 15, 20) with a fixed 10% extra pruning, which seems limited given the claim of 'layer-level' pruning",
+          "The term 'self-speculative' is used but the method does not implement actual speculative decoding—it merely uses early layers for token selection, which may be misleading",
+          "The FLOPs analysis in the appendix is approximate and does not account for overheads from frame comparison, attention score computation, or the action-aware controller",
+          "Lack of real-world validation (acknowledged as a limitation) limits confidence in practical applicability"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How were the thresholds for the action-aware controller (v_t^th, v_r^th, v_z^th) determined? Are they fixed across all LIBERO tasks or tuned per dataset? What is the sensitivity of the method to these values?",
+          "Can you provide more detail on the derivation of the velocity-based frame sampling formula T = floor(-16/3 * v/6 + 22/3) + 4? What motivated this specific functional form and coefficients?",
+          "Why were layers 5, 10, 15, and 20 chosen for dynamic token pruning? Would applying pruning at more layers improve speedup or hurt accuracy?",
+          "What is the computational overhead of the action-aware controller and the frame comparison step? How much of the measured latency includes these components?",
+          "How does the method perform with other VLA base models such as CogACT or pi0, which have different architectures and action heads?",
+          "The success rate drop on LIBERO-Long is 0.5%—is this statistically significant given the number of trials (40-50 per task)? Could you provide confidence intervals?",
+          "In Figure 3(e), the success rate drops sharply when more than 50% of tokens are pruned. What is the maximum safe pruning ratio before performance degrades unacceptably?",
+          "How does the method handle cases where the environment changes abruptly (e.g., a new object appears)? Is the dynamic token supplementation sufficient in such scenarios?"
+        ],
+        "Limitations": [
+          "All experiments are conducted in simulated environments (LIBERO); real-world deployment may introduce sensor noise, environmental dynamics, and hardware latency not captured in simulation",
+          "Success rate degradation on long-horizon tasks (LIBERO-Long) suggests the method may not be suitable for all robotic applications, particularly safety-critical ones",
+          "The method relies on several hand-crafted heuristics (thresholds, frame sampling formula, layer selection) that may not generalize to diverse tasks and environments without manual tuning",
+          "The speedup gains are modest compared to some existing methods, and the practical impact may be limited for applications requiring real-time control with strict latency requirements",
+          "The paper does not provide a thorough analysis of failure cases or scenarios where the pruning strategy fails to preserve task-critical information",
+          "No evaluation of the method's robustness to different camera viewpoints, lighting conditions, or object appearances beyond the LIBERO benchmark"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThe paper proposes SpecPrune-VLA, a training-free token pruning method for Vision-Language-Action (VLA) models. The key insight is that consecutive action generations share high visual similarity, so global information from previous actions can be combined with local information from the current generation for more reliable token selection. The method has three components: (1) static token pruning at action level using attention scores from previous inference plus dynamic token detection via frame comparison, (2) dynamic token pruning at layer level using importance scores with rank-based weighting and layer confidence, and (3) a lightweight action-aware controller that adjusts pruning aggressiveness based on whether actions are coarse-grained (high velocity) or fine-grained (low velocity, e.g., grasping).\n\nThe paper addresses a relevant problem—LLM backbone latency in VLA models is a bottleneck. The idea of leveraging temporal consistency across actions is novel and well-motivated with empirical observations. The method is training-free and achieves 1.46× speedup on A800 and 1.57× on RTX 3090 with negligible success rate loss on LIBERO.\n\nStrengths:\n- Clear problem motivation with latency breakdown analysis showing LLM dominance\n- Novel insight about temporal redundancy across consecutive actions\n- Well-structured method with clear components\n- Comprehensive experiments on multiple LIBERO suites and hardware platforms\n- Good ablation study showing contribution of each component\n- Training-free approach is practical\n\nWeaknesses:\n- The speedup is modest (1.46×) compared to some baselines (EfficientVLA achieves 1.55×)\n- The success rate on LIBERO-Long drops from 94.5% to 94.0%, which may be concerning for safety-critical applications\n- The action-aware controller uses hand-crafted thresholds (v_t^th, v_r^th, v_z^th) and a velocity-based frame sampling formula that seems arbitrary and may not generalize\n- The dynamic token pruning at layer level only applies to 4 layers (5,10,15,20) with 10% extra pruning—this seems limited\n- The paper claims \"negligible loss\" but shows up to 0.7% drop in success rate, which could be significant in robotics\n- Lack of real-world experiments (acknowledged as limitation)\n- The comparison with EfficientVLA is somewhat unfair—they note it's for diffusion action experts and they re-implemented it\n- The FLOPs analysis in appendix seems approximate and doesn't account for all overheads\n- The \"self-speculative\" terminology is used but the method doesn't really use speculative decoding—it just uses early layers for token selection\n\nQuestions:\n1. How were the thresholds (v_t^th, v_r^th, v_z^th) determined? Are they dataset-specific?\n2. The velocity-based frame sampling formula T = floor(-16/3 * v/6 + 22/3) + 4 seems arbitrary—can you explain its derivation?\n3. Why only 4 layers for dynamic pruning? Would more layers help?\n4. What is the actual overhead of the action-aware controller and frame comparison?\n5. How does the method perform with different base models (e.g., CogACT)?\n6. The success rate drop on LIBERO-Long (0.5%)—is this statistically significant given the number of trials?\n\nLimitations:\n- Only simulated environments tested\n- Success rate degradation on long-horizon tasks\n- Hand-crafted heuristics may not generalize\n- Modest speedup compared to some baselines\n- No real-world validation\n\nEthical concerns: None apparent—this is about efficiency optimization for robotic control. No obvious negative societal impacts.\n\nOverall assessment: This is a solid paper with a novel insight and reasonable experimental validation. The method is practical (training-free) and addresses an important problem. However, the speedup gains are modest and the heuristics seem somewhat ad-hoc. The paper would benefit from clearer justification of design choices and more thorough analysis of failure cases. I'd rate this as a borderline accept—the technical soundness is good, the presentation is adequate, but the contribution is moderate given the incremental speedup. I'll go with Overall=6 (Weak Accept) but since the decision field only allows Accept/Reject, I'll choose Accept with the rationale that the paper makes a meaningful contribution to VLA acceleration despite its limitations.\n\nLet me formalize the ratings:\n- Originality: 3 (High)—novel temporal insight, but combines known techniques\n- Quality: 3 (Good)—sound experiments, but some arbitrary design choices\n- Clarity: 3 (Good)—well-organized, but some sections could be clearer\n- Significance: 3 (High)—addresses important problem with practical solution\n- Soundness: 3 (Good)\n- Presentation: 3 (Good)\n- Contribution: 3 (Good)\n- Overall: 6 (Weak Accept)\n- Confidence: 4 (Confident)\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper proposes SpecPrune-VLA, a training-free token pruning method for accelerating Vision-Language-Action (VLA) models. The key insight is that consecutive action generations exhibit high visual similarity, enabling the use of global information from previous actions combined with local information from the current generation for more reliable token selection. The method comprises three components: (1) static token pruning at the action level using attention scores from prior inference, dynamic token detection via frame comparison, and self-speculative selection from early layers; (2) dynamic token pruning at the layer level using importance scores with rank-based weighting and layer confidence across select transformer layers; and (3) a lightweight action-aware controller that categorizes actions as coarse-grained or fine-grained based on end-effector velocity and adjusts pruning aggressiveness accordingly. Experiments on the LIBERO benchmark show an average 1.46× speedup on NVIDIA A800 and 1.57× on RTX 3090 with negligible success rate degradation compared to OpenVLA-OFT.\",\n    \"Strengths\": [\n        \"Clear problem motivation with latency breakdown analysis showing LLM backbone as the dominant bottleneck in VLA inference\",\n        \"Novel insight about temporal consistency across consecutive action generations, well-supported by empirical observations (e.g., 85-95% hit rate of top-k tokens between early and final layers)\",\n        \"Well-structured method with three complementary components that address different aspects of token redundancy\",\n        \"Comprehensive evaluation across four LIBERO task suites and two hardware platforms\",\n        \"Training-free approach is practical and can be applied to existing models without fine-tuning\",\n        \"Good ablation study demonstrating the contribution of each component\",\n        \"Includes design space exploration for pruning ratio selection\"\n    ],\n    \"Weaknesses\": [\n        \"Modest speedup (1.46×) compared to some baselines (EfficientVLA achieves 1.55×), and the paper's comparison with EfficientVLA may be unfair since it notes the baseline is designed for diffusion action experts and was re-implemented\",\n        \"Success rate degradation on LIBERO-Long (94.5% to 94.0%) could be significant in safety-critical robotic applications, despite being labeled 'negligible'\",\n        \"The action-aware controller relies on hand-crafted thresholds (v_t^th, v_r^th, v_z^th) and an arbitrary velocity-based frame sampling formula (T = floor(-16/3 * v/6 + 22/3) + 4) that lack clear justification and may not generalize across tasks or environments\",\n        \"Dynamic token pruning is only applied to 4 specific layers (5, 10, 15, 20) with a fixed 10% extra pruning, which seems limited given the claim of 'layer-level' pruning\",\n        \"The term 'self-speculative' is used but the method does not implement actual speculative decoding—it merely uses early layers for token selection, which may be misleading\",\n        \"The FLOPs analysis in the appendix is approximate and does not account for overheads from frame comparison, attention score computation, or the action-aware controller\",\n        \"Lack of real-world validation (acknowledged as a limitation) limits confidence in practical applicability\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"How were the thresholds for the action-aware controller (v_t^th, v_r^th, v_z^th) determined? Are they fixed across all LIBERO tasks or tuned per dataset? What is the sensitivity of the method to these values?\",\n        \"Can you provide more detail on the derivation of the velocity-based frame sampling formula T = floor(-16/3 * v/6 + 22/3) + 4? What motivated this specific functional form and coefficients?\",\n        \"Why were layers 5, 10, 15, and 20 chosen for dynamic token pruning? Would applying pruning at more layers improve speedup or hurt accuracy?\",\n        \"What is the computational overhead of the action-aware controller and the frame comparison step? How much of the measured latency includes these components?\",\n        \"How does the method perform with other VLA base models such as CogACT or pi0, which have different architectures and action heads?\",\n        \"The success rate drop on LIBERO-Long is 0.5%—is this statistically significant given the number of trials (40-50 per task)? Could you provide confidence intervals?\",\n        \"In Figure 3(e), the success rate drops sharply when more than 50% of tokens are pruned. What is the maximum safe pruning ratio before performance degrades unacceptably?\",\n        \"How does the method handle cases where the environment changes abruptly (e.g., a new object appears)? Is the dynamic token supplementation sufficient in such scenarios?\"\n    ],\n    \"Limitations\": [\n        \"All experiments are conducted in simulated environments (LIBERO); real-world deployment may introduce sensor noise, environmental dynamics, and hardware latency not captured in simulation\",\n        \"Success rate degradation on long-horizon tasks (LIBERO-Long) suggests the method may not be suitable for all robotic applications, particularly safety-critical ones\",\n        \"The method relies on several hand-crafted heuristics (thresholds, frame sampling formula, layer selection) that may not generalize to diverse tasks and environments without manual tuning\",\n        \"The speedup gains are modest compared to some existing methods, and the practical impact may be limited for applications requiring real-time control with strict latency requirements\",\n        \"The paper does not provide a thorough analysis of failure cases or scenarios where the pruning strategy fails to preserve task-critical information\",\n        \"No evaluation of the method's robustness to different camera viewpoints, lighting conditions, or object appearances beyond the LIBERO benchmark\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 14187,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 12395,
+        "completion_tokens": 2305,
+        "reasoning_tokens": 0,
+        "total_tokens": 16492
+      },
+      "attempts": 1,
+      "response_id": "97aef356-a58b-4077-b8e7-ea04e0ac5a60"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "This paper proposes SpecPrune-VLA, a training-free token pruning method for Vision-Language-Action (VLA) models. The key insight is that consecutive action generations share significant visual overlap, allowing global information from previous actions to be combined with local information from the current generation for more reliable token selection. The method consists of three components: (1) static token pruning at the action level that combines global attention from previous inference, dynamic token detection via frame comparison, and local attention from the first two layers; (2) dynamic token pruning at specific layers using rank-based importance scores and layer confidence; and (3) a lightweight action-aware controller that adjusts pruning aggressiveness based on whether actions are coarse-grained (tolerant to errors) or fine-grained (sensitive to errors). The method achieves 1.46x average speedup on A800 GPU and 1.57x on RTX 3090 with negligible success rate degradation on the LIBERO benchmark.",
+        "Strengths": [
+          "The core insight about temporal redundancy across consecutive action generations is well-motivated and validated through preliminary experiments",
+          "Training-free approach is practical and reduces deployment overhead compared to methods requiring fine-tuning",
+          "Comprehensive evaluation on LIBERO benchmark with multiple baselines including SparseVLM, VLA-Cache, and EfficientVLA",
+          "Good ablation studies demonstrating each component's contribution to the overall performance",
+          "The action-aware controller is a novel and thoughtful addition that addresses real failure modes observed in fine-grained manipulation tasks",
+          "Evaluation on multiple hardware platforms (A800 and RTX 3090) demonstrates generalizability"
+        ],
+        "Weaknesses": [
+          "The speedup gains (1.46x) are modest compared to EfficientVLA (1.55x), though with better success rate preservation",
+          "The method requires per-dataset tuning of pruning ratios and thresholds, which may limit generalizability to new tasks without extensive hyperparameter search",
+          "The frame comparison for dynamic token detection adds computational overhead that isn't fully accounted for in reported latency measurements",
+          "Limited analysis of why the method performs differently across the four LIBERO task suites",
+          "The 'self-speculative' terminology is somewhat misleading as the method doesn't involve traditional speculative decoding",
+          "Some figures and tables are referenced but not clearly visible or explained in the text, making it difficult to fully understand the method's details",
+          "The method's reliance on attention scores from previous inference assumes temporal consistency that may not hold in rapidly changing environments"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 2,
+        "Significance": 3,
+        "Questions": [
+          "How does the frame comparison overhead for dynamic token detection factor into the reported latency numbers? Is the latency measured including this overhead?",
+          "The paper mentions setting different pruning ratios alpha for different datasets. How sensitive is the method to these hyperparameters? Could adaptive ratio selection be automated?",
+          "How does the method perform when the environment changes rapidly between consecutive actions (e.g., objects being moved by external forces)? Does the global information from previous actions become less reliable?",
+          "The action-aware controller uses velocity thresholds. How were these thresholds determined? Are they task-specific or generalizable across different robot platforms?",
+          "What is the memory overhead of storing global attention information from previous inference steps?",
+          "The paper shows EfficientVLA achieves higher speedup (1.55x) but with significant success rate drops on some tasks. Could the proposed method be combined with EfficientVLA's layer skipping approach for further speedup?",
+          "How does the method handle the first inference step when there is no previous global information available?"
+        ],
+        "Limitations": [
+          "All experiments are conducted in simulation (LIBERO), and real-world deployment may introduce additional challenges such as sensor noise and environmental dynamics",
+          "The method requires careful hyperparameter tuning per dataset, which may not be feasible in real-world deployment scenarios",
+          "The speedup gains are limited to 1.4-1.6x, which may not be sufficient for real-time control applications that require very low latency",
+          "The method assumes temporal consistency in visual scenes, which may not hold in highly dynamic environments",
+          "The paper does not address potential negative societal impacts, though as a robotic control acceleration method, the risks are relatively low"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 2,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes SpecPrune-VLA, a training-free token pruning method for Vision-Language-Action (VLA) models. The key insight is that consecutive action generations share significant visual overlap, so global information from previous actions can be combined with local information from the current generation for more reliable token selection. The method includes: (1) static token pruning at the action level using global attention from previous inference, dynamic token detection via frame comparison, and local attention from first two layers; (2) dynamic token pruning at specific layers using importance scores; and (3) a lightweight action-aware controller that adjusts pruning aggressiveness based on action granularity (coarse vs. fine).\n\nStrengths:\n- The core insight about temporal redundancy across consecutive action generations is well-motivated and validated through experiments\n- The method is training-free, which is practical and reduces deployment overhead\n- Comprehensive evaluation on LIBERO benchmark with multiple baselines\n- Good ablation studies showing each component's contribution\n- The action-aware controller is a novel and thoughtful addition that addresses real failure modes\n\nWeaknesses:\n- The paper has some presentation issues with figures/tables being referenced but not clearly visible in text\n- The speedup (1.46x) is modest compared to EfficientVLA (1.55x) which achieves higher speedup, though with more success rate degradation\n- The method requires tuning multiple hyperparameters (pruning ratios, thresholds) per dataset, which may limit generalizability\n- Limited analysis of why the method works better on some datasets than others\n- The \"self-speculative\" terminology is somewhat misleading as it doesn't involve speculative decoding in the traditional sense\n- The frame comparison for dynamic token detection adds computational overhead that isn't fully accounted for in latency measurements\n\nThe paper is technically sound with good experimental validation. The main contribution is the temporal consistency insight applied to token pruning for VLA models, which is novel and practical. However, the improvements over existing methods are incremental, and there are questions about the generalizability of the hyperparameter tuning approach.\n\nI would rate this as a borderline accept. The work is solid and addresses a relevant problem (VLA inference acceleration), with good experimental validation. The main concerns are the modest speedup gains, the need for per-dataset hyperparameter tuning, and some presentation issues. The core insight is valuable and the method is well-executed.\n\nOverall score: 6 (Weak Accept) - technically solid with moderate impact, but with some concerns about generalizability and incremental improvements over existing methods.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper proposes SpecPrune-VLA, a training-free token pruning method for Vision-Language-Action (VLA) models. The key insight is that consecutive action generations share significant visual overlap, allowing global information from previous actions to be combined with local information from the current generation for more reliable token selection. The method consists of three components: (1) static token pruning at the action level that combines global attention from previous inference, dynamic token detection via frame comparison, and local attention from the first two layers; (2) dynamic token pruning at specific layers using rank-based importance scores and layer confidence; and (3) a lightweight action-aware controller that adjusts pruning aggressiveness based on whether actions are coarse-grained (tolerant to errors) or fine-grained (sensitive to errors). The method achieves 1.46x average speedup on A800 GPU and 1.57x on RTX 3090 with negligible success rate degradation on the LIBERO benchmark.\",\n    \"Strengths\": [\n        \"The core insight about temporal redundancy across consecutive action generations is well-motivated and validated through preliminary experiments\",\n        \"Training-free approach is practical and reduces deployment overhead compared to methods requiring fine-tuning\",\n        \"Comprehensive evaluation on LIBERO benchmark with multiple baselines including SparseVLM, VLA-Cache, and EfficientVLA\",\n        \"Good ablation studies demonstrating each component's contribution to the overall performance\",\n        \"The action-aware controller is a novel and thoughtful addition that addresses real failure modes observed in fine-grained manipulation tasks\",\n        \"Evaluation on multiple hardware platforms (A800 and RTX 3090) demonstrates generalizability\"\n    ],\n    \"Weaknesses\": [\n        \"The speedup gains (1.46x) are modest compared to EfficientVLA (1.55x), though with better success rate preservation\",\n        \"The method requires per-dataset tuning of pruning ratios and thresholds, which may limit generalizability to new tasks without extensive hyperparameter search\",\n        \"The frame comparison for dynamic token detection adds computational overhead that isn't fully accounted for in reported latency measurements\",\n        \"Limited analysis of why the method performs differently across the four LIBERO task suites\",\n        \"The 'self-speculative' terminology is somewhat misleading as the method doesn't involve traditional speculative decoding\",\n        \"Some figures and tables are referenced but not clearly visible or explained in the text, making it difficult to fully understand the method's details\",\n        \"The method's reliance on attention scores from previous inference assumes temporal consistency that may not hold in rapidly changing environments\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 3,\n    \"Clarity\": 2,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"How does the frame comparison overhead for dynamic token detection factor into the reported latency numbers? Is the latency measured including this overhead?\",\n        \"The paper mentions setting different pruning ratios alpha for different datasets. How sensitive is the method to these hyperparameters? Could adaptive ratio selection be automated?\",\n        \"How does the method perform when the environment changes rapidly between consecutive actions (e.g., objects being moved by external forces)? Does the global information from previous actions become less reliable?\",\n        \"The action-aware controller uses velocity thresholds. How were these thresholds determined? Are they task-specific or generalizable across different robot platforms?\",\n        \"What is the memory overhead of storing global attention information from previous inference steps?\",\n        \"The paper shows EfficientVLA achieves higher speedup (1.55x) but with significant success rate drops on some tasks. Could the proposed method be combined with EfficientVLA's layer skipping approach for further speedup?\",\n        \"How does the method handle the first inference step when there is no previous global information available?\"\n    ],\n    \"Limitations\": [\n        \"All experiments are conducted in simulation (LIBERO), and real-world deployment may introduce additional challenges such as sensor noise and environmental dynamics\",\n        \"The method requires careful hyperparameter tuning per dataset, which may not be feasible in real-world deployment scenarios\",\n        \"The speedup gains are limited to 1.4-1.6x, which may not be sufficient for real-time control applications that require very low latency\",\n        \"The method assumes temporal consistency in visual scenes, which may not hold in highly dynamic environments\",\n        \"The paper does not address potential negative societal impacts, though as a robotic control acceleration method, the risks are relatively low\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 2,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 14187,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 12395,
+        "completion_tokens": 1496,
+        "reasoning_tokens": 0,
+        "total_tokens": 15683
+      },
+      "attempts": 1,
+      "response_id": "e7311806-95dd-4bd3-8727-55b3da52d97f"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "This paper proposes SpecPrune-VLA, a training-free token pruning method for accelerating Vision-Language-Action (VLA) models. The key insight is that consecutive action generations share high visual similarity, so global information from previous generations can be combined with local attention information from the current generation for more reliable token selection. The method consists of three components: (1) static token pruning at the action level using global attention scores from previous inference, dynamic token detection via frame comparison, and local attention from first two layers; (2) dynamic token pruning at the layer level with an importance scoring mechanism; and (3) a lightweight action-aware controller that adjusts pruning aggressiveness based on whether actions are coarse-grained or fine-grained. Experiments on LIBERO benchmarks show 1.46× speedup on A800 GPU and 1.57× on RTX 3090 with negligible success rate degradation compared to OpenVLA-OFT.",
+        "Strengths": [
+          "Novel insight combining global temporal information with local attention-based pruning for VLA models",
+          "Well-motivated approach with clear observations about temporal redundancy in consecutive action frames",
+          "Training-free method that is practical and easy to deploy",
+          "Comprehensive ablation study demonstrating contribution of each component",
+          "Evaluation across multiple LIBERO benchmarks and two different GPU platforms",
+          "Thoughtful design of action-aware controller based on task granularity"
+        ],
+        "Weaknesses": [
+          "Modest speedup of 1.46× compared to EfficientVLA's 1.55×, which achieves higher acceleration",
+          "Evaluation limited to simulation only, no real-world validation",
+          "Manual tuning of pruning ratios per dataset raises generalization concerns",
+          "Theoretical FLOPs analysis in appendix appears oversimplified and doesn't account for overhead of pruning mechanisms",
+          "No analysis of memory overhead or computational cost of the pruning operations themselves",
+          "Frame comparison and controller add latency that is not well quantified",
+          "Hyperparameters (thresholds, K values) are dataset-specific, limiting practical applicability"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How much additional latency is introduced by the frame comparison and controller computations? What is the overhead breakdown?",
+          "How sensitive is the method to the various thresholds (τ, velocity thresholds, K values)? Have you performed sensitivity analysis?",
+          "How would the method perform on real-world robotic tasks with sensor noise and environmental dynamics?",
+          "What is the memory overhead of storing global attention information from previous generations?",
+          "How does the method compare with EfficientVLA under identical conditions (same base model, same hardware)?",
+          "Could you provide more details on the layer confidence score and why exponential moving average with β=0.2 was chosen?",
+          "How does the method handle scenarios where the environment changes drastically between consecutive frames?"
+        ],
+        "Limitations": [
+          "All experiments conducted in simulated environments (LIBERO), limiting generalizability to real-world scenarios with sensor noise and hardware variations",
+          "Method requires tuning multiple hyperparameters per dataset (pruning ratios, thresholds), which may not transfer well to new tasks",
+          "The speedup gains are moderate and may not justify the added complexity for all use cases",
+          "No analysis of failure cases or scenarios where the method might degrade performance",
+          "Potential negative impact: aggressive pruning could lead to unsafe robot behavior in safety-critical applications if important visual information is lost"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper presents SpecPrune-VLA, a training-free token pruning method for Vision-Language-Action (VLA) models. The key insight is leveraging both global information from previous action generations and local information from current generation for more effective token selection. The method includes static token pruning at action level, dynamic token pruning at layer level, and a lightweight action-aware controller.\n\nStrengths:\n1. Novel insight combining global temporal information with local attention-based pruning, which is well-motivated by the observation of high similarity between consecutive action frames\n2. Comprehensive evaluation on multiple LIBERO benchmarks with consistent speedup gains\n3. Training-free approach that is practical and easy to deploy\n4. Good ablation study showing contribution of each component\n5. Thoughtful design of the action-aware controller based on task granularity\n\nWeaknesses:\n1. Limited evaluation - only tested on LIBERO simulation, no real-world validation\n2. The speedup of 1.46× is modest compared to EfficientVLA's 1.55×\n3. The method introduces additional latency from frame comparison and controller overhead\n4. Some hyperparameters (e.g., thresholds, pruning ratios) are manually tuned per dataset, raising questions about generalization\n5. The theoretical analysis in the appendix seems incomplete - the FLOPs calculation appears oversimplified\n6. No analysis of memory overhead or additional computational costs of the pruning mechanisms themselves\n7. The comparison with EfficientVLA seems unfair as they use different base models or settings\n\nThe paper is technically sound overall, with clear motivation and reasonable experimental validation. However, the modest speedup gains and limited evaluation scope prevent it from being a strong contribution. The idea is interesting but the practical impact is somewhat limited.\n\nI would rate this as a borderline accept - the technical approach is sound and the insight is valuable, but the experimental validation could be stronger and the speedup gains are not transformative.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper proposes SpecPrune-VLA, a training-free token pruning method for accelerating Vision-Language-Action (VLA) models. The key insight is that consecutive action generations share high visual similarity, so global information from previous generations can be combined with local attention information from the current generation for more reliable token selection. The method consists of three components: (1) static token pruning at the action level using global attention scores from previous inference, dynamic token detection via frame comparison, and local attention from first two layers; (2) dynamic token pruning at the layer level with an importance scoring mechanism; and (3) a lightweight action-aware controller that adjusts pruning aggressiveness based on whether actions are coarse-grained or fine-grained. Experiments on LIBERO benchmarks show 1.46× speedup on A800 GPU and 1.57× on RTX 3090 with negligible success rate degradation compared to OpenVLA-OFT.\",\n    \"Strengths\": [\n        \"Novel insight combining global temporal information with local attention-based pruning for VLA models\",\n        \"Well-motivated approach with clear observations about temporal redundancy in consecutive action frames\",\n        \"Training-free method that is practical and easy to deploy\",\n        \"Comprehensive ablation study demonstrating contribution of each component\",\n        \"Evaluation across multiple LIBERO benchmarks and two different GPU platforms\",\n        \"Thoughtful design of action-aware controller based on task granularity\"\n    ],\n    \"Weaknesses\": [\n        \"Modest speedup of 1.46× compared to EfficientVLA's 1.55×, which achieves higher acceleration\",\n        \"Evaluation limited to simulation only, no real-world validation\",\n        \"Manual tuning of pruning ratios per dataset raises generalization concerns\",\n        \"Theoretical FLOPs analysis in appendix appears oversimplified and doesn't account for overhead of pruning mechanisms\",\n        \"No analysis of memory overhead or computational cost of the pruning operations themselves\",\n        \"Frame comparison and controller add latency that is not well quantified\",\n        \"Hyperparameters (thresholds, K values) are dataset-specific, limiting practical applicability\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"How much additional latency is introduced by the frame comparison and controller computations? What is the overhead breakdown?\",\n        \"How sensitive is the method to the various thresholds (τ, velocity thresholds, K values)? Have you performed sensitivity analysis?\",\n        \"How would the method perform on real-world robotic tasks with sensor noise and environmental dynamics?\",\n        \"What is the memory overhead of storing global attention information from previous generations?\",\n        \"How does the method compare with EfficientVLA under identical conditions (same base model, same hardware)?\",\n        \"Could you provide more details on the layer confidence score and why exponential moving average with β=0.2 was chosen?\",\n        \"How does the method handle scenarios where the environment changes drastically between consecutive frames?\"\n    ],\n    \"Limitations\": [\n        \"All experiments conducted in simulated environments (LIBERO), limiting generalizability to real-world scenarios with sensor noise and hardware variations\",\n        \"Method requires tuning multiple hyperparameters per dataset (pruning ratios, thresholds), which may not transfer well to new tasks\",\n        \"The speedup gains are moderate and may not justify the added complexity for all use cases\",\n        \"No analysis of failure cases or scenarios where the method might degrade performance\",\n        \"Potential negative impact: aggressive pruning could lead to unsafe robot behavior in safety-critical applications if important visual information is lost\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 14187,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 12395,
+        "completion_tokens": 1195,
+        "reasoning_tokens": 0,
+        "total_tokens": 15382
+      },
+      "attempts": 1,
+      "response_id": "b0da8fc4-aee3-41b3-b855-135ae170d42f"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 5,
+      "Reject": 0
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          3,
+          3,
+          2,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          3,
+          3,
+          2,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          6,
+          6,
+          6,
+          6,
+          6
+        ],
+        "mean": 6,
+        "rounded_mean": 6,
+        "population_sd": 0.0,
+        "min": 6,
+        "max": 6
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "This paper proposes SpecPrune-VLA, a training-free token pruning method for accelerating Vision-Language-Action (VLA) models. The key insight is that consecutive action generations share high visual redundancy, enabling global information from previous inference steps to complement local attention from the current generation for more reliable token selection. The method combines three components: (1) static action-level token pruning using global attention scores from previous generations, dynamic token detection via frame comparison, and local attention from early LLM layers; (2) dynamic layer-level token pruning using rank-based and confidence-based importance scoring with exponential moving average updates; and (3) a lightweight action-aware controller that adjusts pruning aggressiveness based on end-effector velocity, distinguishing coarse-grained from fine-grained actions. Experiments on the LIBERO benchmark with OpenVLA-OFT report average speedups of 1.46× on A800 and 1.57× on RTX 3090 GPUs with negligible success rate degradation (<0.7%).",
+      "Strengths": [
+        "Novel and well-motivated insight about temporal redundancy across consecutive action generations in VLA models, supported by empirical observations.",
+        "Training-free approach that is practical and can be applied to existing models without fine-tuning.",
+        "Comprehensive evaluation across four LIBERO task suites and two hardware platforms (A800 and RTX 3090).",
+        "Clear ablation study demonstrating the contribution of each technical component.",
+        "The action-aware controller provides an interesting adaptive mechanism for balancing speed and accuracy.",
+        "Well-written and organized paper with good contextualization of related work and useful design space exploration."
+      ],
+      "Weaknesses": [
+        "Modest speedup gains (1.46×–1.57×) that are comparable to some baselines (e.g., EfficientVLA achieves 1.55×), though with better success rate retention.",
+        "All experiments are conducted in simulation (LIBERO) only; real-world deployment challenges (sensor noise, environmental dynamics, hardware latency) are acknowledged but not addressed.",
+        "The method relies on several manually tuned hyperparameters (similarity threshold τ, dynamic token count K_D, EMA update rate β, velocity thresholds, pruning ratios per dataset) without sensitivity analysis, raising questions about generalizability.",
+        "The action-aware controller and velocity-based frame sampling formula (T = floor(-16/3 * v/6 + 22/3) + 4) appear heuristic and may not transfer across robot platforms, control frequencies, or task distributions.",
+        "Limited analysis of the computational overhead of the pruning mechanisms themselves (frame comparison, early-layer attention computation, controller), which may not be fully accounted for in reported latency.",
+        "Dynamic layer pruning is applied only to four specific layers with a fixed extra pruning ratio, which seems limited given the claim of 'layer-level' pruning.",
+        "The term 'self-speculative' is somewhat misleading; the method uses early layers for token selection but does not implement actual speculative decoding.",
+        "No comparison with other acceleration techniques (e.g., quantization, early exit, KV-cache compression) that could potentially be combined with pruning.",
+        "The theoretical FLOPs analysis in the appendix is approximate and does not account for pruning overheads."
+      ],
+      "Originality": 3,
+      "Quality": 3,
+      "Clarity": 3,
+      "Significance": 3,
+      "Questions": [
+        "How sensitive are the results to hyperparameters such as τ, K_D, β, and the velocity thresholds? Have you conducted a systematic sensitivity analysis?",
+        "What is the additional computational overhead of the pruning mechanisms (frame comparison, early-layer attention computation, action-aware controller), and is this included in the reported end-to-end latency?",
+        "How was the velocity-based frame sampling formula T = floor(-16/3 * v/6 + 22/3) + 4 derived? Does it generalize to different control frequencies or robot platforms?",
+        "How were the velocity thresholds for the action-aware controller determined? Are they fixed across tasks or tuned per dataset?",
+        "Could the method be combined with other acceleration techniques such as quantization, early exit, or layer skipping (e.g., EfficientVLA) for further speedup? Have you explored such combinations?",
+        "Why were layers 5, 10, 15, and 20 chosen for dynamic token pruning? Would applying pruning at more layers improve speedup or hurt accuracy?",
+        "How does the method perform on other VLA base models (e.g., CogACT, pi0) with different architectures and action heads?",
+        "How does the method handle scenarios where the environment changes drastically between consecutive frames (e.g., moving objects or viewpoint changes)? Is the dynamic token supplementation sufficient?",
+        "What is the memory overhead of storing global attention information from previous inference steps?",
+        "Is the success rate drop on LIBERO-Long (0.5%) statistically significant given the number of trials? Could confidence intervals be provided?"
+      ],
+      "Limitations": [
+        "All experiments are conducted in simulated environments (LIBERO); real-world deployment may introduce sensor noise, environmental dynamics, and hardware latency not captured in simulation.",
+        "The method relies on several hand-crafted heuristics (thresholds, pruning ratios, frame sampling formula, layer selection) that may require per-task tuning and may not generalize to diverse robot platforms or task distributions.",
+        "The speedup gains are moderate (1.4–1.6×) and may not be sufficient for real-time control applications with strict latency requirements.",
+        "The temporal consistency assumption may break down in highly dynamic environments or tasks requiring rapid adaptation to changing goals.",
+        "No analysis of memory overhead, energy consumption, or failure cases/error propagation over long horizons.",
+        "Evaluation is limited to a single VLA model (OpenVLA-OFT); generalizability to other architectures (e.g., diffusion-based action heads) is not demonstrated."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 3,
+      "Contribution": 3,
+      "Overall": 6,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "THOUGHT:\nThe paper proposes a training-free token pruning method for VLA models, with a novel temporal redundancy insight and three complementary components. All 5 reviewers agree on the core strengths: the insight is well-motivated, the approach is practical (training-free), the evaluation is reasonably comprehensive across 4 LIBERO suites and 2 GPUs, and the ablations are clear. All reviewers also consistently note: modest speedup (1.46-1.57×), simulation-only evaluation, hand-tuned hyperparameters/thresholds that may not generalize, and insufficient accounting of pruning overhead. All 5 reviewers gave overall 6 (Weak Accept) and Decision \"Accept\". There is strong consensus.\n\nHowever, as Area Chair, I must be critical. The speedup is modest and comparable to baselines. The method relies on multiple heuristic thresholds and a velocity-based frame sampling formula that appears arbitrary. The \"self-speculative\" terminology is misleading. The overhead of pruning mechanisms is not fully quantified. The lack of real-world validation and limited generalization claims are concerning. Yet, the paper is technically sound, well-written, and the contribution is useful for the VLA acceleration community. The reviewers all lean accept. I will respect that consensus and issue an Accept, but with a meta-review that highlights the key weaknesses and questions for the authors to address in the rebuttal.\n\nDecision: Accept.\n\nI'll write the meta-review in the required JSON format, aggregating the common points from the 5 reviews.REVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper proposes SpecPrune-VLA, a training-free token pruning method for accelerating Vision-Language-Action (VLA) models. The key insight is that consecutive action generations share high visual redundancy, enabling global information from previous inference steps to complement local attention from the current generation for more reliable token selection. The method combines three components: (1) static action-level token pruning using global attention scores from previous generations, dynamic token detection via frame comparison, and local attention from early LLM layers; (2) dynamic layer-level token pruning using rank-based and confidence-based importance scoring with exponential moving average updates; and (3) a lightweight action-aware controller that adjusts pruning aggressiveness based on end-effector velocity, distinguishing coarse-grained from fine-grained actions. Experiments on the LIBERO benchmark with OpenVLA-OFT report average speedups of 1.46× on A800 and 1.57× on RTX 3090 GPUs with negligible success rate degradation (<0.7%).\",\n  \"Strengths\": [\n    \"Novel and well-motivated insight about temporal redundancy across consecutive action generations in VLA models, supported by empirical observations.\",\n    \"Training-free approach that is practical and can be applied to existing models without fine-tuning.\",\n    \"Comprehensive evaluation across four LIBERO task suites and two hardware platforms (A800 and RTX 3090).\",\n    \"Clear ablation study demonstrating the contribution of each technical component.\",\n    \"The action-aware controller provides an interesting adaptive mechanism for balancing speed and accuracy.\",\n    \"Well-written and organized paper with good contextualization of related work and useful design space exploration.\"\n  ],\n  \"Weaknesses\": [\n    \"Modest speedup gains (1.46×–1.57×) that are comparable to some baselines (e.g., EfficientVLA achieves 1.55×), though with better success rate retention.\",\n    \"All experiments are conducted in simulation (LIBERO) only; real-world deployment challenges (sensor noise, environmental dynamics, hardware latency) are acknowledged but not addressed.\",\n    \"The method relies on several manually tuned hyperparameters (similarity threshold τ, dynamic token count K_D, EMA update rate β, velocity thresholds, pruning ratios per dataset) without sensitivity analysis, raising questions about generalizability.\",\n    \"The action-aware controller and velocity-based frame sampling formula (T = floor(-16/3 * v/6 + 22/3) + 4) appear heuristic and may not transfer across robot platforms, control frequencies, or task distributions.\",\n    \"Limited analysis of the computational overhead of the pruning mechanisms themselves (frame comparison, early-layer attention computation, controller), which may not be fully accounted for in reported latency.\",\n    \"Dynamic layer pruning is applied only to four specific layers with a fixed extra pruning ratio, which seems limited given the claim of 'layer-level' pruning.\",\n    \"The term 'self-speculative' is somewhat misleading; the method uses early layers for token selection but does not implement actual speculative decoding.\",\n    \"No comparison with other acceleration techniques (e.g., quantization, early exit, KV-cache compression) that could potentially be combined with pruning.\",\n    \"The theoretical FLOPs analysis in the appendix is approximate and does not account for pruning overheads.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How sensitive are the results to hyperparameters such as τ, K_D, β, and the velocity thresholds? Have you conducted a systematic sensitivity analysis?\",\n    \"What is the additional computational overhead of the pruning mechanisms (frame comparison, early-layer attention computation, action-aware controller), and is this included in the reported end-to-end latency?\",\n    \"How was the velocity-based frame sampling formula T = floor(-16/3 * v/6 + 22/3) + 4 derived? Does it generalize to different control frequencies or robot platforms?\",\n    \"How were the velocity thresholds for the action-aware controller determined? Are they fixed across tasks or tuned per dataset?\",\n    \"Could the method be combined with other acceleration techniques such as quantization, early exit, or layer skipping (e.g., EfficientVLA) for further speedup? Have you explored such combinations?\",\n    \"Why were layers 5, 10, 15, and 20 chosen for dynamic token pruning? Would applying pruning at more layers improve speedup or hurt accuracy?\",\n    \"How does the method perform on other VLA base models (e.g., CogACT, pi0) with different architectures and action heads?\",\n    \"How does the method handle scenarios where the environment changes drastically between consecutive frames (e.g., moving objects or viewpoint changes)? Is the dynamic token supplementation sufficient?\",\n    \"What is the memory overhead of storing global attention information from previous inference steps?\",\n    \"Is the success rate drop on LIBERO-Long (0.5%) statistically significant given the number of trials? Could confidence intervals be provided?\"\n  ],\n  \"Limitations\": [\n    \"All experiments are conducted in simulated environments (LIBERO); real-world deployment may introduce sensor noise, environmental dynamics, and hardware latency not captured in simulation.\",\n    \"The method relies on several hand-crafted heuristics (thresholds, pruning ratios, frame sampling formula, layer selection) that may require per-task tuning and may not generalize to diverse robot platforms or task distributions.\",\n    \"The speedup gains are moderate (1.4–1.6×) and may not be sufficient for real-time control applications with strict latency requirements.\",\n    \"The temporal consistency assumption may break down in highly dynamic environments or tasks requiring rapid adaptation to changing goals.\",\n    \"No analysis of memory overhead, energy consumption, or failure cases/error propagation over long horizons.\",\n    \"Evaluation is limited to a single VLA model (OpenVLA-OFT); generalizability to other architectures (e.g., diffusion-based action heads) is not demonstrated.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 6544,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 6544,
+      "completion_tokens": 1607,
+      "reasoning_tokens": 0,
+      "total_tokens": 8151
+    },
+    "attempts": 1,
+    "response_id": "c627724d-8108-405b-b68d-1c9229b25a2b"
+  },
+  "final_review": {
+    "Summary": "This paper proposes SpecPrune-VLA, a training-free token pruning method for accelerating Vision-Language-Action (VLA) models. The key insight is that consecutive action generations share high visual redundancy, enabling global information from previous inference steps to complement local attention from the current generation for more reliable token selection. The method combines three components: (1) static action-level token pruning using global attention scores from previous generations, dynamic token detection via frame comparison, and local attention from early LLM layers; (2) dynamic layer-level token pruning using rank-based and confidence-based importance scoring with exponential moving average updates; and (3) a lightweight action-aware controller that adjusts pruning aggressiveness based on end-effector velocity, distinguishing coarse-grained from fine-grained actions. Experiments on the LIBERO benchmark with OpenVLA-OFT report average speedups of 1.46× on A800 and 1.57× on RTX 3090 GPUs with negligible success rate degradation (<0.7%).",
+    "Strengths": [
+      "Novel and well-motivated insight about temporal redundancy across consecutive action generations in VLA models, supported by empirical observations.",
+      "Training-free approach that is practical and can be applied to existing models without fine-tuning.",
+      "Comprehensive evaluation across four LIBERO task suites and two hardware platforms (A800 and RTX 3090).",
+      "Clear ablation study demonstrating the contribution of each technical component.",
+      "The action-aware controller provides an interesting adaptive mechanism for balancing speed and accuracy.",
+      "Well-written and organized paper with good contextualization of related work and useful design space exploration."
+    ],
+    "Weaknesses": [
+      "Modest speedup gains (1.46×–1.57×) that are comparable to some baselines (e.g., EfficientVLA achieves 1.55×), though with better success rate retention.",
+      "All experiments are conducted in simulation (LIBERO) only; real-world deployment challenges (sensor noise, environmental dynamics, hardware latency) are acknowledged but not addressed.",
+      "The method relies on several manually tuned hyperparameters (similarity threshold τ, dynamic token count K_D, EMA update rate β, velocity thresholds, pruning ratios per dataset) without sensitivity analysis, raising questions about generalizability.",
+      "The action-aware controller and velocity-based frame sampling formula (T = floor(-16/3 * v/6 + 22/3) + 4) appear heuristic and may not transfer across robot platforms, control frequencies, or task distributions.",
+      "Limited analysis of the computational overhead of the pruning mechanisms themselves (frame comparison, early-layer attention computation, controller), which may not be fully accounted for in reported latency.",
+      "Dynamic layer pruning is applied only to four specific layers with a fixed extra pruning ratio, which seems limited given the claim of 'layer-level' pruning.",
+      "The term 'self-speculative' is somewhat misleading; the method uses early layers for token selection but does not implement actual speculative decoding.",
+      "No comparison with other acceleration techniques (e.g., quantization, early exit, KV-cache compression) that could potentially be combined with pruning.",
+      "The theoretical FLOPs analysis in the appendix is approximate and does not account for pruning overheads."
+    ],
+    "Originality": 3,
+    "Quality": 3,
+    "Clarity": 3,
+    "Significance": 3,
+    "Questions": [
+      "How sensitive are the results to hyperparameters such as τ, K_D, β, and the velocity thresholds? Have you conducted a systematic sensitivity analysis?",
+      "What is the additional computational overhead of the pruning mechanisms (frame comparison, early-layer attention computation, action-aware controller), and is this included in the reported end-to-end latency?",
+      "How was the velocity-based frame sampling formula T = floor(-16/3 * v/6 + 22/3) + 4 derived? Does it generalize to different control frequencies or robot platforms?",
+      "How were the velocity thresholds for the action-aware controller determined? Are they fixed across tasks or tuned per dataset?",
+      "Could the method be combined with other acceleration techniques such as quantization, early exit, or layer skipping (e.g., EfficientVLA) for further speedup? Have you explored such combinations?",
+      "Why were layers 5, 10, 15, and 20 chosen for dynamic token pruning? Would applying pruning at more layers improve speedup or hurt accuracy?",
+      "How does the method perform on other VLA base models (e.g., CogACT, pi0) with different architectures and action heads?",
+      "How does the method handle scenarios where the environment changes drastically between consecutive frames (e.g., moving objects or viewpoint changes)? Is the dynamic token supplementation sufficient?",
+      "What is the memory overhead of storing global attention information from previous inference steps?",
+      "Is the success rate drop on LIBERO-Long (0.5%) statistically significant given the number of trials? Could confidence intervals be provided?"
+    ],
+    "Limitations": [
+      "All experiments are conducted in simulated environments (LIBERO); real-world deployment may introduce sensor noise, environmental dynamics, and hardware latency not captured in simulation.",
+      "The method relies on several hand-crafted heuristics (thresholds, pruning ratios, frame sampling formula, layer selection) that may require per-task tuning and may not generalize to diverse robot platforms or task distributions.",
+      "The speedup gains are moderate (1.4–1.6×) and may not be sufficient for real-time control applications with strict latency requirements.",
+      "The temporal consistency assumption may break down in highly dynamic environments or tasks requiring rapid adaptation to changing goals.",
+      "No analysis of memory overhead, energy consumption, or failure cases/error propagation over long horizons.",
+      "Evaluation is limited to a single VLA model (OpenVLA-OFT); generalizability to other architectures (e.g., diffusion-based action heads) is not demonstrated."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 3,
+    "Contribution": 3,
+    "Overall": 6,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 77479,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 68519,
+    "completion_tokens": 9351,
+    "reasoning_tokens": 0,
+    "total_tokens": 86830,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.00959266,
+    "output_usd": 0.00261828,
+    "total_usd": 0.01223603
+  },
+  "elapsed_seconds": 34.572,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Accept",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B165",
+    "filename": "B165.txt",
+    "blind_text_sha256": "e8c8da75512ed2b1c8301eb661b24529d3a92a80d6f7f7e25ca84e3ad106912f",
+    "characters": 48957,
+    "full_text_saved": false
+  }
+}

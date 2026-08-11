@@ -1,0 +1,709 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:43:40.303971+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper addresses the challenge of post-training generative models in extremely sparse reward settings where (1) the base model receives near-zero reward signal and (2) reward oracle evaluations are expensive. The authors propose BaNEL (Bayesian Negative Evidence Learning), which trains a separate generative model on failed (zero-reward) samples and uses it to define a rejection region that filters out samples similar to previously seen failures before querying the reward oracle. The method uses Bayesian-style updates (multiplying the prior by an indicator over the complement of the rejection region) and a distillation step to make sequential filtering practical. The paper provides theoretical analysis of why existing methods (policy gradient, GFlowNets, intrinsic reward methods) fail in this setting, and evaluates BaNEL on MNIST digit transformation, adversarial attacks on a toy language model, and GSM8K reasoning tasks, showing improvements over count-based methods and random network distillation baselines.",
+        "Strengths": [
+          "The problem setting is important and well-motivated: learning from purely negative samples with expensive reward oracles is a real challenge in domains like theorem proving, drug discovery, and algorithmic problem solving.",
+          "The conceptual analysis of why existing methods (policy gradient, GFlowNets, intrinsic rewards) fail in extreme sparsity is clear and insightful, providing good context for the proposed approach.",
+          "The method is elegant and novel: using a generative failure model to define rejection regions and applying Bayesian-style updates to steer away from failures is a creative combination of ideas.",
+          "The experimental evaluation covers diverse domains (MNIST, adversarial attacks, GSM8K reasoning) with appropriate baselines (RND, count-based methods).",
+          "The paper includes useful ablations (filter factor, number of epochs, likelihood ratio choice) that provide insight into design choices.",
+          "The method demonstrates a form of compute scaling: performance improves with more training epochs for the failure model, unlike intrinsic reward baselines."
+        ],
+        "Weaknesses": [
+          "The absolute improvements on MNIST are extremely small (from 8e-26 to 1e-21), raising questions about practical significance despite the large relative gains.",
+          "The GSM8K results are mixed: BaNEL outperforms RND on 4/6 problems but underperforms on one, and the improvements are not consistently dramatic.",
+          "The method requires maintaining and training an additional generative model (p_phi) at each round, which could be computationally prohibitive for large models. The paper mentions this but doesn't provide a clear scalability roadmap.",
+          "The theoretical analysis of the rejection region is informal; conditions for guaranteed improvement of the posterior success rate are not rigorously characterized.",
+          "The comparison with GFlowNets is limited to a toy appendix experiment, which doesn't fully validate the claims about GFlowNet failure in the main text.",
+          "The success rate peaks and then declines during training (as acknowledged in limitations), but no clear stopping criterion is provided, which is a practical concern for deployment.",
+          "The method requires likelihood-based generative models, limiting applicability to architectures where exact likelihood computation is feasible."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How does BaNEL compare to a discriminative approach that trains a failure classifier and uses its confidence to filter samples? The paper's reliance on generative models for both p_theta and p_phi seems potentially more complex than necessary.",
+          "The paper notes that success rate cannot be reliably estimated until high-reward samples are found. What practical stopping criterion would you recommend for deploying BaNEL in real applications?",
+          "For the GSM8K experiments, what is the exact NRE budget, and how does BaNEL's performance compare to RND at equal NRE rather than at the end of training?",
+          "How sensitive is BaNEL to the filter factor f? The paper uses different values for different tasks (2, 1.032, 16) - is there a principled way to set this hyperparameter?",
+          "Does BaNEL require a reasonably good pre-trained model to work? Would it fail with a randomly initialized policy? This would help understand the method's applicability.",
+          "Could you provide more details on the computational cost of BaNEL compared to baselines in terms of wall-clock time and GPU hours?"
+        ],
+        "Limitations": [
+          "The method requires likelihood-based generative models, which limits its applicability to architectures where exact likelihoods are computable.",
+          "Training an additional generative model at each round is computationally expensive, especially for large language models. The paper suggests LoRA as future work but doesn't explore it.",
+          "The success rate peaks and then declines, and no clear stopping criterion is provided.",
+          "The absolute success rates in some experiments (especially MNIST) are extremely small, limiting practical impact.",
+          "The adversarial attack experiment, while in a toy setting, demonstrates techniques that could potentially be scaled to real models, raising dual-use concerns.",
+          "The paper doesn't address continuous or non-token-based generation spaces, which limits the generality of the approach."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes BaNEL, a method for post-training generative models in extremely sparse reward settings where the model only receives negative (zero-reward) samples and reward evaluations are expensive. The key idea is to train a separate generative model on failed samples and use it to define a rejection region, filtering out samples similar to previously seen failures before querying the reward oracle. The method uses Bayesian-style updates and distillation to make the approach practical.\n\nStrengths:\n1. The problem setting is well-motivated and clearly defined - learning from purely negative samples with expensive reward oracles is an important and under-addressed challenge.\n2. The theoretical analysis of why existing methods fail (policy gradient, GFlowNets, intrinsic reward methods) is sound and provides good intuition.\n3. The proposed method is conceptually clean - using a generative failure model to define rejection regions is an elegant idea.\n4. The experimental evaluation covers multiple domains (MNIST, adversarial attacks, GSM8K reasoning) with appropriate baselines.\n5. The paper includes good ablations and analysis of design choices.\n\nWeaknesses:\n1. The improvement on MNIST, while large in relative terms (13,500x), is still extremely small in absolute terms (1e-21 vs 1e-26). This raises questions about practical significance.\n2. The GSM8K experiments show mixed results - BaNEL outperforms RND on some problems but not others, and the improvements seem modest in some cases.\n3. The method requires training an additional generative model (p_phi), which could be computationally expensive for large models. The paper mentions this but doesn't fully address scalability concerns.\n4. The theoretical analysis of the rejection region is somewhat informal - the conditions for when the posterior success rate improves are not rigorously characterized.\n5. The comparison to GFlowNets in the experiments is limited to a toy setting (Appendix B.4), which doesn't fully validate the claims about GFlowNet failure.\n6. The success rate declines after peaking (as noted in limitations), which is a practical concern for deployment.\n\nQuestions:\n1. How does BaNEL compare to simply using the negative examples to train a classifier that predicts failure probability, and then using that to filter samples? The paper seems to require generative models for both p_theta and p_phi, but a discriminative approach might be simpler.\n2. The paper mentions that \"the success rate cannot be reliably estimated until we discover high-reward samples\" - how does BaNEL handle the stopping problem in practice? Are there heuristics for when to stop training?\n3. For the GSM8K experiments, what is the specific NRE budget used, and how does BaNEL's performance compare at equal NRE to RND?\n4. The paper uses a fixed filtering factor f in each round. How sensitive is the method to this hyperparameter, and is there a principled way to set it?\n5. Does BaNEL's performance depend on the quality of the pre-trained model? Would it work with a randomly initialized model, or does it require a reasonable prior?\n\nLimitations:\n1. The method requires likelihood-based generative models for both the policy and the failure model, which limits its applicability to certain model architectures.\n2. The computational cost of training an additional generative model at each round could be prohibitive for large language models.\n3. The paper doesn't address how to handle continuous or non-token-based generation spaces.\n4. The adversarial attack experiment, while interesting, may raise dual-use concerns even in a toy setting.\n5. The method's success rate peaks and then declines, which is not addressed with a clear stopping criterion.\n\nEthical concerns: The adversarial attack experiment (Section 5.2) demonstrates how to find inputs that cause a language model to fail. While conducted in a toy setting, the techniques could potentially be scaled to real models. However, the paper acknowledges this and the setting is quite controlled. I don't think this rises to the level of requiring ethics review, but it's worth noting.\n\nOverall assessment: This is a solid paper with a novel and interesting approach to a challenging problem. The problem formulation is important, the method is well-motivated, and the experiments provide evidence of improvement over baselines. However, there are some concerns about practical significance (especially the extremely small absolute success rates in MNIST), scalability, and the mixed results on GSM8K. The paper is technically sound overall, though the theoretical analysis could be more rigorous. I would rate this as a borderline accept - the ideas are valuable and the work is technically solid, but the evaluation could be stronger and the practical impact is not fully demonstrated.\n\nSoundness: 3 (good) - The technical claims are generally well-supported, though the theoretical analysis of the rejection region could be more rigorous.\nPresentation: 3 (good) - The paper is well-written and clearly organized, though some sections (especially the algorithm descriptions) could be clearer.\nContribution: 3 (good) - The problem is important and the method is novel, but the practical impact is not fully demonstrated.\nOverall: 6 (Weak Accept) - Technically solid with moderate-to-high impact potential, but with some concerns about evaluation and practical significance.\n\nConfidence: 4 - I'm confident in my assessment, having carefully read the paper and thought through the arguments.REVIEW JSON:\n```json\n{\n\"Summary\": \"The paper addresses the challenge of post-training generative models in extremely sparse reward settings where (1) the base model receives near-zero reward signal and (2) reward oracle evaluations are expensive. The authors propose BaNEL (Bayesian Negative Evidence Learning), which trains a separate generative model on failed (zero-reward) samples and uses it to define a rejection region that filters out samples similar to previously seen failures before querying the reward oracle. The method uses Bayesian-style updates (multiplying the prior by an indicator over the complement of the rejection region) and a distillation step to make sequential filtering practical. The paper provides theoretical analysis of why existing methods (policy gradient, GFlowNets, intrinsic reward methods) fail in this setting, and evaluates BaNEL on MNIST digit transformation, adversarial attacks on a toy language model, and GSM8K reasoning tasks, showing improvements over count-based methods and random network distillation baselines.\",\n\"Strengths\": [\n\"The problem setting is important and well-motivated: learning from purely negative samples with expensive reward oracles is a real challenge in domains like theorem proving, drug discovery, and algorithmic problem solving.\",\n\"The conceptual analysis of why existing methods (policy gradient, GFlowNets, intrinsic rewards) fail in extreme sparsity is clear and insightful, providing good context for the proposed approach.\",\n\"The method is elegant and novel: using a generative failure model to define rejection regions and applying Bayesian-style updates to steer away from failures is a creative combination of ideas.\",\n\"The experimental evaluation covers diverse domains (MNIST, adversarial attacks, GSM8K reasoning) with appropriate baselines (RND, count-based methods).\",\n\"The paper includes useful ablations (filter factor, number of epochs, likelihood ratio choice) that provide insight into design choices.\",\n\"The method demonstrates a form of compute scaling: performance improves with more training epochs for the failure model, unlike intrinsic reward baselines.\"\n],\n\"Weaknesses\": [\n\"The absolute improvements on MNIST are extremely small (from 8e-26 to 1e-21), raising questions about practical significance despite the large relative gains.\",\n\"The GSM8K results are mixed: BaNEL outperforms RND on 4/6 problems but underperforms on one, and the improvements are not consistently dramatic.\",\n\"The method requires maintaining and training an additional generative model (p_phi) at each round, which could be computationally prohibitive for large models. The paper mentions this but doesn't provide a clear scalability roadmap.\",\n\"The theoretical analysis of the rejection region is informal; conditions for guaranteed improvement of the posterior success rate are not rigorously characterized.\",\n\"The comparison with GFlowNets is limited to a toy appendix experiment, which doesn't fully validate the claims about GFlowNet failure in the main text.\",\n\"The success rate peaks and then declines during training (as acknowledged in limitations), but no clear stopping criterion is provided, which is a practical concern for deployment.\",\n\"The method requires likelihood-based generative models, limiting applicability to architectures where exact likelihood computation is feasible.\"\n],\n\"Originality\": 4,\n\"Quality\": 3,\n\"Clarity\": 3,\n\"Significance\": 3,\n\"Questions\": [\n\"How does BaNEL compare to a discriminative approach that trains a failure classifier and uses its confidence to filter samples? The paper's reliance on generative models for both p_theta and p_phi seems potentially more complex than necessary.\",\n\"The paper notes that success rate cannot be reliably estimated until high-reward samples are found. What practical stopping criterion would you recommend for deploying BaNEL in real applications?\",\n\"For the GSM8K experiments, what is the exact NRE budget, and how does BaNEL's performance compare to RND at equal NRE rather than at the end of training?\",\n\"How sensitive is BaNEL to the filter factor f? The paper uses different values for different tasks (2, 1.032, 16) - is there a principled way to set this hyperparameter?\",\n\"Does BaNEL require a reasonably good pre-trained model to work? Would it fail with a randomly initialized policy? This would help understand the method's applicability.\",\n\"Could you provide more details on the computational cost of BaNEL compared to baselines in terms of wall-clock time and GPU hours?\"\n],\n\"Limitations\": [\n\"The method requires likelihood-based generative models, which limits its applicability to architectures where exact likelihoods are computable.\",\n\"Training an additional generative model at each round is computationally expensive, especially for large language models. The paper suggests LoRA as future work but doesn't explore it.\",\n\"The success rate peaks and then declines, and no clear stopping criterion is provided.\",\n\"The absolute success rates in some experiments (especially MNIST) are extremely small, limiting practical impact.\",\n\"The adversarial attack experiment, while in a toy setting, demonstrates techniques that could potentially be scaled to real models, raising dual-use concerns.\",\n\"The paper doesn't address continuous or non-token-based generation spaces, which limits the generality of the approach.\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 3,\n\"Contribution\": 3,\n\"Overall\": 6,\n\"Confidence\": 4,\n\"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 17070,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 15278,
+        "completion_tokens": 2170,
+        "reasoning_tokens": 0,
+        "total_tokens": 19240
+      },
+      "attempts": 1,
+      "response_id": "8ef55bc4-4823-436e-8bbe-375011cee7e8"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "This paper addresses the challenge of post-training generative models in extremely sparse-reward settings where the model receives only zero-reward (negative) feedback and reward evaluations are expensive. The authors propose BaNEL (Bayesian Negative Evidence Learning), which trains a separate generative model on failed attempts and uses it to define a rejection region based on likelihood ratios, effectively steering the main model away from known failure modes. The method allows multiple parameter updates per reward evaluation and uses distillation to make sequential filtering practical. Experiments on MNIST digit transformation, adversarial attack on a toy language model, and GSM8K-Hard reasoning tasks demonstrate that BaNEL outperforms existing sparse-RL baselines (RND, count-based methods) in terms of success rate for the same number of reward evaluations, often by orders of magnitude.",
+        "Strengths": [
+          "The problem setting is well-motivated and important, addressing a realistic challenge in applications like theorem proving and drug discovery where positive feedback is rare and reward evaluation is costly.",
+          "The algorithmic idea is novel - using a generative failure model as a Bayesian-style prior update for rejection sampling is creative and differs from existing sparse-RL approaches.",
+          "The experimental evaluation is reasonably thorough, covering multiple tasks with different characteristics and including ablations on key hyperparameters.",
+          "The paper is honest about limitations, including the non-monotonic success rate behavior and computational costs, which is commendable.",
+          "The method demonstrates significant improvements over baselines across multiple tasks, with improvements of several orders of magnitude in some cases.",
+          "The paper provides useful qualitative insights (e.g., discovering leading zeros and carry-chain stressors in the adversarial attack task) that demonstrate the method's ability to extract meaningful patterns from failures."
+        ],
+        "Weaknesses": [
+          "The theoretical analysis is relatively shallow - the success rate decomposition in Section 4.1 provides intuition but no strong guarantees about convergence, sample complexity, or robustness to misclassification.",
+          "The claim that BaNEL 'scales with compute' is only weakly supported by a limited epoch sweep on MNIST; the scaling behavior on more complex tasks is not thoroughly investigated.",
+          "The comparison to RND and count-based methods may be somewhat unfair since these methods were designed for RL environments and may require significant adaptation for generative model post-training.",
+          "The non-monotonic success rate behavior is a practical concern - it's unclear how to determine the optimal stopping point without additional reward evaluations, which somewhat undermines the NRE efficiency claim.",
+          "The method requires maintaining multiple models (base model, current generator, negative model), which is computationally expensive and may limit applicability to very large models.",
+          "The GSM8K-Hard results show mixed performance, with BaNEL underperforming RND on one of six problems, suggesting the method may not be universally superior."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "Can you provide theoretical guarantees on the sample complexity or convergence rate of BaNEL? Under what conditions on the failure model p_phi can you guarantee improvement over the prior?",
+          "How does the method perform when the failure distribution is multi-modal or has complex structure that the generative failure model cannot capture well?",
+          "The non-monotonic success rate behavior is concerning. Is there a principled way to determine the optimal stopping point without additional reward evaluations?",
+          "How sensitive is the method to the choice of filter factor f and the number of training epochs? The ablation shows performance varies significantly with these hyperparameters.",
+          "Could the method be extended to continuous or non-token-based generation spaces (e.g., images, continuous control)?",
+          "How does the computational cost of maintaining multiple models compare to the savings in reward evaluations? Is there a trade-off analysis?",
+          "Have you considered using the negative model for more than just rejection sampling, e.g., for generating diverse exploration candidates?"
+        ],
+        "Limitations": [
+          "The method requires maintaining a separate generative model for failures, which is computationally expensive and may limit scalability to very large models.",
+          "The success rate does not increase monotonically with training, making it difficult to determine when to stop training without additional reward evaluations.",
+          "The theoretical understanding is limited - there are no strong guarantees about when the method will improve success rate or by how much.",
+          "The method may be sensitive to hyperparameters (filter factor, number of epochs), which need to be tuned per task.",
+          "The adversarial attack experiment, while conducted in a toy setting, demonstrates potential misuse of the method for generating inputs that exploit model weaknesses.",
+          "The method assumes that failures exhibit learnable regularities; for tasks where failures are essentially random, the method may not provide benefits."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes BaNEL, a method for post-training generative models in extremely sparse reward settings where the model receives only negative (zero-reward) feedback. The key idea is to train a separate generative model on failed attempts and use it as a likelihood-based rejection filter to steer the main model away from known failure regions. The method is evaluated on MNIST digit transformation, adversarial attack on a toy language model, and GSM8K-Hard reasoning tasks.\n\nStrengths:\n1. The problem setting is well-motivated and important - learning from purely negative feedback with expensive reward oracles is a realistic and underexplored challenge.\n2. The theoretical analysis in Section 4.1 provides useful insights into the success rate decomposition and conditions for improvement.\n3. The experimental results show significant improvements over baselines (RND, count-based methods) across multiple tasks.\n4. The paper includes thoughtful ablations (filter factor, epochs, likelihood ratio choice) and addresses limitations honestly.\n5. The algorithmic contribution is novel - using a generative failure model as a Bayesian prior update is a creative approach.\n\nWeaknesses:\n1. The theoretical justification is somewhat limited. The success rate analysis in Section 4.1 is straightforward and doesn't provide strong guarantees about convergence or sample complexity.\n2. The claim that BaNEL \"scales with compute\" is demonstrated only through a limited epoch sweep on MNIST; the scaling behavior on more complex tasks is not thoroughly investigated.\n3. The comparison to RND and count-based methods may be unfair in some settings since these methods were designed for RL environments with different characteristics, not specifically for generative model post-training.\n4. The GSM8K-Hard results show mixed performance - BaNEL underperforms RND on one of six problems, and the non-monotonic success rate behavior raises questions about practical usability.\n5. The paper lacks a clear theoretical framework for why the likelihood ratio thresholding should work beyond intuition, and the connection to Bayesian inference is somewhat loose.\n\nOriginality: The idea of training a generative model on failures and using it for rejection sampling is novel in the context of sparse-reward generative model post-training. The combination of Bayesian-style updates with distillation is creative. However, the individual components (generative modeling, rejection sampling, distillation) are well-known techniques.\n\nQuality: The experiments are reasonably thorough with multiple tasks and ablations. The paper is honest about limitations (non-monotonic success rates, computational costs). However, the theoretical analysis is relatively shallow and doesn't provide strong guarantees. The scaling with compute claim is only weakly supported.\n\nClarity: The paper is well-written and clearly organized. The algorithms are presented clearly, and the figures help illustrate the approach. The related work discussion is adequate.\n\nSignificance: The problem of learning from purely negative feedback is important and timely, especially for applications like theorem proving and drug discovery. The method shows promise, but the practical impact is limited by the non-monotonic success rate behavior and the need for careful hyperparameter tuning. The results are encouraging but not transformative.\n\nOverall assessment: This is a solid paper with a novel approach to an important problem. The experimental results are promising, and the paper is well-written. However, the theoretical foundations are somewhat weak, and the practical limitations (non-monotonic behavior, computational costs) are not fully addressed. The contribution is valuable but not groundbreaking. I would lean toward acceptance given the novelty and potential impact, but with reservations about the robustness of the method.\n\nDecision: Accept (with reservations about practical robustness and theoretical depth)\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper addresses the challenge of post-training generative models in extremely sparse-reward settings where the model receives only zero-reward (negative) feedback and reward evaluations are expensive. The authors propose BaNEL (Bayesian Negative Evidence Learning), which trains a separate generative model on failed attempts and uses it to define a rejection region based on likelihood ratios, effectively steering the main model away from known failure modes. The method allows multiple parameter updates per reward evaluation and uses distillation to make sequential filtering practical. Experiments on MNIST digit transformation, adversarial attack on a toy language model, and GSM8K-Hard reasoning tasks demonstrate that BaNEL outperforms existing sparse-RL baselines (RND, count-based methods) in terms of success rate for the same number of reward evaluations, often by orders of magnitude.\",\n    \"Strengths\": [\n        \"The problem setting is well-motivated and important, addressing a realistic challenge in applications like theorem proving and drug discovery where positive feedback is rare and reward evaluation is costly.\",\n        \"The algorithmic idea is novel - using a generative failure model as a Bayesian-style prior update for rejection sampling is creative and differs from existing sparse-RL approaches.\",\n        \"The experimental evaluation is reasonably thorough, covering multiple tasks with different characteristics and including ablations on key hyperparameters.\",\n        \"The paper is honest about limitations, including the non-monotonic success rate behavior and computational costs, which is commendable.\",\n        \"The method demonstrates significant improvements over baselines across multiple tasks, with improvements of several orders of magnitude in some cases.\",\n        \"The paper provides useful qualitative insights (e.g., discovering leading zeros and carry-chain stressors in the adversarial attack task) that demonstrate the method's ability to extract meaningful patterns from failures.\"\n    ],\n    \"Weaknesses\": [\n        \"The theoretical analysis is relatively shallow - the success rate decomposition in Section 4.1 provides intuition but no strong guarantees about convergence, sample complexity, or robustness to misclassification.\",\n        \"The claim that BaNEL 'scales with compute' is only weakly supported by a limited epoch sweep on MNIST; the scaling behavior on more complex tasks is not thoroughly investigated.\",\n        \"The comparison to RND and count-based methods may be somewhat unfair since these methods were designed for RL environments and may require significant adaptation for generative model post-training.\",\n        \"The non-monotonic success rate behavior is a practical concern - it's unclear how to determine the optimal stopping point without additional reward evaluations, which somewhat undermines the NRE efficiency claim.\",\n        \"The method requires maintaining multiple models (base model, current generator, negative model), which is computationally expensive and may limit applicability to very large models.\",\n        \"The GSM8K-Hard results show mixed performance, with BaNEL underperforming RND on one of six problems, suggesting the method may not be universally superior.\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 4,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"Can you provide theoretical guarantees on the sample complexity or convergence rate of BaNEL? Under what conditions on the failure model p_phi can you guarantee improvement over the prior?\",\n        \"How does the method perform when the failure distribution is multi-modal or has complex structure that the generative failure model cannot capture well?\",\n        \"The non-monotonic success rate behavior is concerning. Is there a principled way to determine the optimal stopping point without additional reward evaluations?\",\n        \"How sensitive is the method to the choice of filter factor f and the number of training epochs? The ablation shows performance varies significantly with these hyperparameters.\",\n        \"Could the method be extended to continuous or non-token-based generation spaces (e.g., images, continuous control)?\",\n        \"How does the computational cost of maintaining multiple models compare to the savings in reward evaluations? Is there a trade-off analysis?\",\n        \"Have you considered using the negative model for more than just rejection sampling, e.g., for generating diverse exploration candidates?\"\n    ],\n    \"Limitations\": [\n        \"The method requires maintaining a separate generative model for failures, which is computationally expensive and may limit scalability to very large models.\",\n        \"The success rate does not increase monotonically with training, making it difficult to determine when to stop training without additional reward evaluations.\",\n        \"The theoretical understanding is limited - there are no strong guarantees about when the method will improve success rate or by how much.\",\n        \"The method may be sensitive to hyperparameters (filter factor, number of epochs), which need to be tuned per task.\",\n        \"The adversarial attack experiment, while conducted in a toy setting, demonstrates potential misuse of the method for generating inputs that exploit model weaknesses.\",\n        \"The method assumes that failures exhibit learnable regularities; for tasks where failures are essentially random, the method may not provide benefits.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 4,\n    \"Contribution\": 3,\n    \"Overall\": 7,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 17070,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 15278,
+        "completion_tokens": 1787,
+        "reasoning_tokens": 0,
+        "total_tokens": 18857
+      },
+      "attempts": 1,
+      "response_id": "e19d949d-8cde-4616-b9a2-63760b78b5b5"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper addresses the problem of post-training generative models in extremely sparse reward settings where the base model rarely or never encounters positive-reward samples and reward oracle calls are expensive. The authors propose BaNEL (Bayesian Negative Evidence Learning), which trains a generative model on failed (zero-reward) samples and uses it to define a rejection region, filtering out samples similar to previously seen failures before querying the expensive reward oracle. The method allows multiple parameter updates per reward evaluation and scales with compute. Experiments on MNIST digit generation, adversarial attacks on a toy language model, and GSM8K reasoning tasks show that BaNEL outperforms existing sparse-RL baselines (count-based methods and RND) by several orders of magnitude in success rate while using fewer reward evaluations.",
+        "Strengths": [
+          "The paper addresses a genuinely important and underexplored problem: learning from failures only in extremely sparse reward settings with expensive reward oracles",
+          "The proposed method is conceptually novel, combining Bayesian updates with generative modeling of failures to define rejection regions",
+          "The theoretical analysis of why existing methods (policy gradient, negative RL, count-based methods, RND, GFlowNets) fail in this setting is thoughtful and well-motivated",
+          "The experimental evaluation spans multiple domains (MNIST, adversarial attacks, GSM8K reasoning) and shows substantial improvements over baselines",
+          "The authors are honest about limitations, including non-monotonic success rates and computational costs",
+          "The paper is well-written and clearly organized, with good reproducibility details provided"
+        ],
+        "Weaknesses": [
+          "The theoretical justification for the claimed equivalence between Algorithm 1 and Algorithm 2 is not rigorously proven",
+          "The experimental evaluation uses somewhat contrived settings (especially the MNIST 0→6 task where success rates are around 1e-21), and the baseline comparisons may not be entirely fair (e.g., RND with KL regularization)",
+          "The practical applicability to large-scale LLMs is unclear - maintaining a separate generative model p_φ can be prohibitively expensive for large models",
+          "The paper doesn't deeply explore the relationship between the filtering factor f and the quality of the rejection region, nor the sensitivity of results to this hyperparameter",
+          "The absolute success rates achieved are still extremely low (e.g., 1e-21 on MNIST), raising questions about practical significance",
+          "The method's performance is non-monotonic and peaks at intermediate stages, making it difficult to know when to stop training"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "Can you provide a more rigorous theoretical analysis of the equivalence between the sequential filtering algorithm (Algorithm 1) and the distillation-based algorithm (Algorithm 2)? Under what conditions does this equivalence hold exactly versus approximately?",
+          "How sensitive is BaNEL's performance to the choice of filtering factor f? Is there a principled way to select this hyperparameter, or does it require task-specific tuning?",
+          "The success rates achieved on MNIST are around 1e-21 - what is the practical significance of such improvements? How would the method perform on tasks with more realistic success rates (e.g., 1e-3 to 1e-5)?",
+          "Could you discuss the computational overhead of maintaining a separate generative model p_φ for large language models? Are there efficient approximations or parameter-efficient approaches (e.g., LoRA) that could make this practical?",
+          "How does the method handle the trade-off between exploration and exploitation? The non-monotonic success rate suggests the model may overfit to failures over time - what mechanisms could prevent this?",
+          "For the GSM8K experiments, why did RND outperform BaNEL on problem 510? What characteristics of this problem made it more amenable to RND's exploration strategy?"
+        ],
+        "Limitations": [
+          "The method requires likelihood-based generative models for both the policy p_θ and the failure model p_φ, which limits applicability to models where exact likelihood computation is tractable",
+          "Maintaining a separate failure model doubles the memory and computational requirements, which may be prohibitive for large-scale models",
+          "The success rate improvements, while significant relative to baselines, remain extremely low in absolute terms, suggesting the method may not yet be practical for real-world applications",
+          "The non-monotonic behavior of success rates makes it difficult to determine optimal stopping criteria in practice",
+          "The adversarial attack experiments, while demonstrating the method's ability to discover failure modes, could potentially be misused for generating harmful content, though the authors acknowledge this in their ethics statement"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper presents BaNEL, a method for post-training generative models in extremely sparse reward settings where the base model rarely or never encounters positive examples. The key idea is to train a generative model on failed (zero-reward) samples and use it to define a rejection region, filtering out samples similar to previously seen failures before querying the expensive reward oracle.\n\nThe paper has several strengths:\n1. It addresses a genuinely important and underexplored problem: learning from failures only in extremely sparse reward settings with expensive reward oracles\n2. The proposed method is conceptually novel, combining Bayesian updates with generative modeling of failures\n3. The theoretical analysis of why existing methods fail is thoughtful and provides clear motivation\n4. The experimental evaluation spans multiple domains (MNIST, adversarial attacks, GSM8K reasoning) and shows substantial improvements over baselines\n5. The authors are honest about limitations, including non-monotonic success rates and computational costs\n\nHowever, there are several weaknesses:\n1. The theoretical justification is somewhat incomplete - the claim that BaNEL is \"theoretically equivalent\" to Algorithm 1 needs more rigorous treatment\n2. The experimental evaluation, while showing improvements, uses somewhat contrived settings (especially the MNIST 0→6 task) and the baseline comparisons may not be entirely fair (e.g., RND with KL regularization)\n3. The practical applicability to large-scale LLMs is unclear - maintaining a separate generative model p_φ can be prohibitively expensive\n4. The paper doesn't deeply explore the relationship between the filtering factor f and the quality of the rejection region\n5. The success rate improvements, while significant, are still extremely small in absolute terms (e.g., 1e-21 on MNIST)\n\nThe paper is well-written and clearly organized. The conceptual contributions are solid, and the empirical results support the main claims, though the absolute success rates remain very low. The method shows promise for the specific setting described, but its broader applicability to real-world problems needs more investigation.\n\nI would rate this as a borderline accept - the ideas are novel and the problem is important, but the evaluation is somewhat limited and the practical significance is not fully demonstrated.\n\nREVIEW JSON:\n```json\n{\n\"Summary\": \"The paper addresses the problem of post-training generative models in extremely sparse reward settings where the base model rarely or never encounters positive-reward samples and reward oracle calls are expensive. The authors propose BaNEL (Bayesian Negative Evidence Learning), which trains a generative model on failed (zero-reward) samples and uses it to define a rejection region, filtering out samples similar to previously seen failures before querying the expensive reward oracle. The method allows multiple parameter updates per reward evaluation and scales with compute. Experiments on MNIST digit generation, adversarial attacks on a toy language model, and GSM8K reasoning tasks show that BaNEL outperforms existing sparse-RL baselines (count-based methods and RND) by several orders of magnitude in success rate while using fewer reward evaluations.\",\n\"Strengths\": [\n\"The paper addresses a genuinely important and underexplored problem: learning from failures only in extremely sparse reward settings with expensive reward oracles\",\n\"The proposed method is conceptually novel, combining Bayesian updates with generative modeling of failures to define rejection regions\",\n\"The theoretical analysis of why existing methods (policy gradient, negative RL, count-based methods, RND, GFlowNets) fail in this setting is thoughtful and well-motivated\",\n\"The experimental evaluation spans multiple domains (MNIST, adversarial attacks, GSM8K reasoning) and shows substantial improvements over baselines\",\n\"The authors are honest about limitations, including non-monotonic success rates and computational costs\",\n\"The paper is well-written and clearly organized, with good reproducibility details provided\"\n],\n\"Weaknesses\": [\n\"The theoretical justification for the claimed equivalence between Algorithm 1 and Algorithm 2 is not rigorously proven\",\n\"The experimental evaluation uses somewhat contrived settings (especially the MNIST 0→6 task where success rates are around 1e-21), and the baseline comparisons may not be entirely fair (e.g., RND with KL regularization)\",\n\"The practical applicability to large-scale LLMs is unclear - maintaining a separate generative model p_φ can be prohibitively expensive for large models\",\n\"The paper doesn't deeply explore the relationship between the filtering factor f and the quality of the rejection region, nor the sensitivity of results to this hyperparameter\",\n\"The absolute success rates achieved are still extremely low (e.g., 1e-21 on MNIST), raising questions about practical significance\",\n\"The method's performance is non-monotonic and peaks at intermediate stages, making it difficult to know when to stop training\"\n],\n\"Originality\": 4,\n\"Quality\": 3,\n\"Clarity\": 3,\n\"Significance\": 3,\n\"Questions\": [\n\"Can you provide a more rigorous theoretical analysis of the equivalence between the sequential filtering algorithm (Algorithm 1) and the distillation-based algorithm (Algorithm 2)? Under what conditions does this equivalence hold exactly versus approximately?\",\n\"How sensitive is BaNEL's performance to the choice of filtering factor f? Is there a principled way to select this hyperparameter, or does it require task-specific tuning?\",\n\"The success rates achieved on MNIST are around 1e-21 - what is the practical significance of such improvements? How would the method perform on tasks with more realistic success rates (e.g., 1e-3 to 1e-5)?\",\n\"Could you discuss the computational overhead of maintaining a separate generative model p_φ for large language models? Are there efficient approximations or parameter-efficient approaches (e.g., LoRA) that could make this practical?\",\n\"How does the method handle the trade-off between exploration and exploitation? The non-monotonic success rate suggests the model may overfit to failures over time - what mechanisms could prevent this?\",\n\"For the GSM8K experiments, why did RND outperform BaNEL on problem 510? What characteristics of this problem made it more amenable to RND's exploration strategy?\"\n],\n\"Limitations\": [\n\"The method requires likelihood-based generative models for both the policy p_θ and the failure model p_φ, which limits applicability to models where exact likelihood computation is tractable\",\n\"Maintaining a separate failure model doubles the memory and computational requirements, which may be prohibitive for large-scale models\",\n\"The success rate improvements, while significant relative to baselines, remain extremely low in absolute terms, suggesting the method may not yet be practical for real-world applications\",\n\"The non-monotonic behavior of success rates makes it difficult to determine optimal stopping criteria in practice\",\n\"The adversarial attack experiments, while demonstrating the method's ability to discover failure modes, could potentially be misused for generating harmful content, though the authors acknowledge this in their ethics statement\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 3,\n\"Contribution\": 3,\n\"Overall\": 6,\n\"Confidence\": 4,\n\"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 17070,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 15278,
+        "completion_tokens": 1437,
+        "reasoning_tokens": 0,
+        "total_tokens": 18507
+      },
+      "attempts": 1,
+      "response_id": "ec3ae87e-ea4c-4d2f-9361-0186a2bd1a56"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper addresses the problem of post-training generative models in extremely sparse reward settings, where the base model attains near-zero reward signal and calls to the reward oracle are expensive. The authors propose BaNEL (Bayesian Negative Evidence Learning), which trains a separate generative model on failed (zero-reward) samples and uses it to define a rejection region. The policy is then updated via Bayesian posterior filtering, steering generation away from previously seen failures. The method is evaluated on MNIST digit transformation (0→6), an adversarial attack task on a toy language model, and a challenging subset of GSM8K reasoning problems. Results show BaNEL outperforms baselines (RND, count-based methods) in success rate improvement per number of reward evaluations (NREs), and its performance scales with additional compute.",
+        "Strengths": [
+          "The problem setting is well-motivated and clearly distinct from standard reward-based post-training, addressing an important gap in the literature.",
+          "The conceptual analysis in Section 3 provides clear reasoning for why existing methods (policy gradient, negative RL, intrinsic rewards, GFlowNets) fail in this extreme sparsity regime.",
+          "The core idea of training a generative model on failures and using it for Bayesian filtering is novel and intuitive.",
+          "The method naturally supports multiple parameter updates per reward evaluation, which is a key advantage over existing exploration methods.",
+          "Experimental results demonstrate consistent improvements over baselines across multiple tasks, with clear visualization of learned behavior.",
+          "The paper includes useful ablations (filter factor, training epochs, likelihood ratio choices, high-temperature sampling) that provide insight into design choices.",
+          "The writing is clear and well-organized, with helpful algorithm pseudocode and figures."
+        ],
+        "Weaknesses": [
+          "The theoretical analysis is limited; the success rate decomposition in Section 4.1 is straightforward and doesn't provide strong convergence guarantees or error bounds.",
+          "The claim that Algorithm 2 is 'theoretically equivalent' to Algorithm 1 is not rigorously proven; the equivalence relies on ideal distillation which may not hold in practice.",
+          "Experimental evaluation is somewhat narrow: MNIST 0→6 is a toy task, and GSM8K-Hard uses only 6 questions. More diverse and realistic tasks would strengthen the claims.",
+          "The method requires maintaining multiple models (base, current, negative), which is computationally expensive. The paper doesn't provide a thorough complexity analysis.",
+          "The non-monotonic success rate behavior (peaking then declining) is a significant limitation that isn't fully resolved; the paper mentions it but doesn't offer a concrete remedy.",
+          "Baselines may not be optimally tuned across all tasks, and the paper doesn't provide sensitivity analysis for baseline hyperparameters.",
+          "The method's applicability to very large language models (e.g., 7B+ parameters) is not discussed, which is where the problem setting is most relevant in practice."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "Could you provide a more rigorous theoretical analysis of the convergence properties of BaNEL, particularly under what conditions the success rate is guaranteed to improve?",
+          "The paper claims Algorithm 2 is theoretically equivalent to Algorithm 1. Under what assumptions does this equivalence hold, and what happens when distillation is imperfect?",
+          "How does the method scale to larger models (e.g., 7B+ parameters)? What are the computational overheads in terms of FLOPs and memory?",
+          "For the GSM8K-Hard experiments, why were only 6 questions selected? How representative are these of the broader distribution of hard reasoning problems?",
+          "The success rate peaks and then declines. Have you considered early stopping criteria or adaptive learning rate schedules to mitigate this?",
+          "How sensitive are the results to the choice of filter factor f? The paper shows f=16 works best for GSM8K, but is there a principled way to select this hyperparameter?",
+          "Could you compare against additional baselines such as reward shaping, curriculum learning, or hindsight experience replay adapted to this setting?",
+          "The negative model p_phi is trained on failures. How does the quality of this model (e.g., its likelihood on held-out failures) correlate with the final success rate improvement?"
+        ],
+        "Limitations": [
+          "The method does not guarantee monotonic improvement in success rate; performance can decline after peaking, making it difficult to determine when to stop training.",
+          "Maintaining multiple models (base, current generator, negative model) is computationally expensive, limiting scalability to very large models.",
+          "The method assumes the failure set has learnable regularities; if failures are essentially random noise, training a generative model on them may not help.",
+          "The rejection region defined via likelihood ratio may misclassify positive samples, especially as training progresses and the model moves closer to success regions.",
+          "The experiments are conducted in controlled settings; real-world applications (drug discovery, theorem proving) may present additional challenges not captured here.",
+          "The adversarial attack experiment (Section 5.2) demonstrates potential misuse, though in a controlled toy setting. The paper should more thoroughly discuss the ethical implications of using this method to discover model vulnerabilities.",
+          "The method requires likelihood-based generative models (e.g., autoregressive or flow-based), which limits its applicability to models where likelihood is not tractable."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes BaNEL, a method for post-training generative models in extremely sparse reward settings where positive samples are never encountered and reward evaluations are expensive. The core idea is to train a generative model on negative (zero-reward) samples and use it to define a rejection region, filtering out samples similar to previously seen failures before querying the reward oracle. The method combines Bayesian posterior updates with distillation to make it practical.\n\nStrengths:\n- The problem setting is well-motivated and clearly distinct from standard reward-based post-training. The paper correctly identifies a gap: many real-world tasks have near-zero initial success rates and expensive reward oracles.\n- The conceptual analysis in Section 3 (why existing methods fail) is thoughtful and provides good intuition. The GFlowNet analysis showing it reduces to variance minimization is particularly insightful.\n- The method is novel: using a generative model of failures to define a rejection region and performing Bayesian updates is an interesting combination of ideas.\n- The experimental results demonstrate clear improvements over baselines (RND, count-based) in terms of success rate improvement per reward evaluation.\n- The paper is generally well-written and organized, with clear algorithm pseudocode and helpful figures.\n\nWeaknesses:\n- The theoretical analysis is limited. The success rate decomposition in Section 4.1 is straightforward and doesn't provide strong guarantees. The claim that Algorithm 2 is \"theoretically equivalent\" to Algorithm 1 is not rigorously proven.\n- The experimental evaluation is somewhat limited in scope. The MNIST task is quite toy-like, and the GSM8K-Hard experiments use only 6 questions. More diverse and challenging tasks would strengthen the claims.\n- The method requires maintaining multiple models (base model, current generator, negative model), which is computationally expensive. The paper acknowledges this but doesn't provide a thorough analysis of the computational overhead.\n- The non-monotonic success rate behavior (peaking then declining) is a significant limitation that isn't fully addressed. The paper mentions it but doesn't propose a concrete solution.\n- The comparison to baselines could be more thorough. For instance, the RND and count-based baselines may not be optimally tuned for all tasks.\n- The paper doesn't discuss how the method scales to very large language models (e.g., 7B+ parameters), which is where the problem setting is most relevant.\n\nOriginality: The idea of training a generative model on failures and using it for Bayesian filtering is novel. The combination of these ideas with distillation for practical implementation is also original.\n\nQuality: The paper is technically sound overall, though the theoretical analysis is not deep. The experiments are appropriately designed for the problem setting, though more extensive evaluation would be beneficial.\n\nClarity: The paper is well-written and clear. The algorithms are presented clearly, and the figures help illustrate the method.\n\nSignificance: The problem setting is important and relevant to real-world applications (drug discovery, theorem proving, etc.). The method shows promising results and could inspire further work in this area.\n\nOverall assessment: This is a solid paper with a novel approach to an important problem. The main weaknesses are the limited theoretical analysis and somewhat narrow experimental evaluation. However, the core idea is interesting and the results are promising. I would lean toward acceptance with the expectation that the authors address some of the concerns in the rebuttal.\n\nDecision: Accept (borderline, but the novelty and potential impact justify acceptance)\n\nConfidence: 4 (confident in assessment, though the experimental evaluation could be more extensive)REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper addresses the problem of post-training generative models in extremely sparse reward settings, where the base model attains near-zero reward signal and calls to the reward oracle are expensive. The authors propose BaNEL (Bayesian Negative Evidence Learning), which trains a separate generative model on failed (zero-reward) samples and uses it to define a rejection region. The policy is then updated via Bayesian posterior filtering, steering generation away from previously seen failures. The method is evaluated on MNIST digit transformation (0→6), an adversarial attack task on a toy language model, and a challenging subset of GSM8K reasoning problems. Results show BaNEL outperforms baselines (RND, count-based methods) in success rate improvement per number of reward evaluations (NREs), and its performance scales with additional compute.\",\n  \"Strengths\": [\n    \"The problem setting is well-motivated and clearly distinct from standard reward-based post-training, addressing an important gap in the literature.\",\n    \"The conceptual analysis in Section 3 provides clear reasoning for why existing methods (policy gradient, negative RL, intrinsic rewards, GFlowNets) fail in this extreme sparsity regime.\",\n    \"The core idea of training a generative model on failures and using it for Bayesian filtering is novel and intuitive.\",\n    \"The method naturally supports multiple parameter updates per reward evaluation, which is a key advantage over existing exploration methods.\",\n    \"Experimental results demonstrate consistent improvements over baselines across multiple tasks, with clear visualization of learned behavior.\",\n    \"The paper includes useful ablations (filter factor, training epochs, likelihood ratio choices, high-temperature sampling) that provide insight into design choices.\",\n    \"The writing is clear and well-organized, with helpful algorithm pseudocode and figures.\"\n  ],\n  \"Weaknesses\": [\n    \"The theoretical analysis is limited; the success rate decomposition in Section 4.1 is straightforward and doesn't provide strong convergence guarantees or error bounds.\",\n    \"The claim that Algorithm 2 is 'theoretically equivalent' to Algorithm 1 is not rigorously proven; the equivalence relies on ideal distillation which may not hold in practice.\",\n    \"Experimental evaluation is somewhat narrow: MNIST 0→6 is a toy task, and GSM8K-Hard uses only 6 questions. More diverse and realistic tasks would strengthen the claims.\",\n    \"The method requires maintaining multiple models (base, current, negative), which is computationally expensive. The paper doesn't provide a thorough complexity analysis.\",\n    \"The non-monotonic success rate behavior (peaking then declining) is a significant limitation that isn't fully resolved; the paper mentions it but doesn't offer a concrete remedy.\",\n    \"Baselines may not be optimally tuned across all tasks, and the paper doesn't provide sensitivity analysis for baseline hyperparameters.\",\n    \"The method's applicability to very large language models (e.g., 7B+ parameters) is not discussed, which is where the problem setting is most relevant in practice.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 4,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"Could you provide a more rigorous theoretical analysis of the convergence properties of BaNEL, particularly under what conditions the success rate is guaranteed to improve?\",\n    \"The paper claims Algorithm 2 is theoretically equivalent to Algorithm 1. Under what assumptions does this equivalence hold, and what happens when distillation is imperfect?\",\n    \"How does the method scale to larger models (e.g., 7B+ parameters)? What are the computational overheads in terms of FLOPs and memory?\",\n    \"For the GSM8K-Hard experiments, why were only 6 questions selected? How representative are these of the broader distribution of hard reasoning problems?\",\n    \"The success rate peaks and then declines. Have you considered early stopping criteria or adaptive learning rate schedules to mitigate this?\",\n    \"How sensitive are the results to the choice of filter factor f? The paper shows f=16 works best for GSM8K, but is there a principled way to select this hyperparameter?\",\n    \"Could you compare against additional baselines such as reward shaping, curriculum learning, or hindsight experience replay adapted to this setting?\",\n    \"The negative model p_phi is trained on failures. How does the quality of this model (e.g., its likelihood on held-out failures) correlate with the final success rate improvement?\"\n  ],\n  \"Limitations\": [\n    \"The method does not guarantee monotonic improvement in success rate; performance can decline after peaking, making it difficult to determine when to stop training.\",\n    \"Maintaining multiple models (base, current generator, negative model) is computationally expensive, limiting scalability to very large models.\",\n    \"The method assumes the failure set has learnable regularities; if failures are essentially random noise, training a generative model on them may not help.\",\n    \"The rejection region defined via likelihood ratio may misclassify positive samples, especially as training progresses and the model moves closer to success regions.\",\n    \"The experiments are conducted in controlled settings; real-world applications (drug discovery, theorem proving) may present additional challenges not captured here.\",\n    \"The adversarial attack experiment (Section 5.2) demonstrates potential misuse, though in a controlled toy setting. The paper should more thoroughly discuss the ethical implications of using this method to discover model vulnerabilities.\",\n    \"The method requires likelihood-based generative models (e.g., autoregressive or flow-based), which limits its applicability to models where likelihood is not tractable.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 4,\n  \"Contribution\": 3,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 17070,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 15278,
+        "completion_tokens": 1916,
+        "reasoning_tokens": 0,
+        "total_tokens": 18986
+      },
+      "attempts": 1,
+      "response_id": "516adc86-5a1c-46b5-ade0-39fd932b5154"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper addresses the problem of post-training generative models in extremely sparse reward settings where the model receives only negative (zero-reward) samples and reward evaluations are expensive. The authors propose BaNEL (Bayesian Negative Evidence Learning), which trains a separate generative model on failed attempts and uses the likelihood ratio between the base model and the failure model to define a rejection region. This allows the model to filter out samples similar to previously seen failures before querying the expensive reward oracle. The method is evaluated on MNIST digit transformation (0→6), an adversarial attack task on a toy language model, and GSM8K-Hard reasoning tasks. Results show significant improvements over baselines like RND and count-based methods, with BaNEL achieving success rates several orders of magnitude higher for the same number of reward evaluations. The paper also demonstrates a compute-scaling property where BaNEL can improve performance with additional computation even for fixed reward evaluation budgets.",
+        "Strengths": [
+          "Novel problem formulation addressing the intersection of extreme reward sparsity and expensive reward evaluation, which is practically important",
+          "Clean conceptual approach with theoretical grounding through Bayesian posterior derivation",
+          "Thorough comparison with existing methods and clear explanation of why they fail in this setting",
+          "Diverse experimental evaluation across image, language, and reasoning tasks",
+          "Demonstration of compute-scaling property, which is a valuable contribution",
+          "Good ablation studies and analysis of design choices"
+        ],
+        "Weaknesses": [
+          "Absolute success rates remain extremely low (e.g., 1e-21 on MNIST), raising questions about practical significance despite large relative improvements",
+          "Mixed results on GSM8K-Hard with performance degradation on one problem (510) without deep analysis",
+          "Computational overhead of training a separate failure model may be prohibitive for large language models",
+          "Filter factor f requires task-specific tuning with high variance across tasks (f=2 to f=16)",
+          "Lack of rigorous theoretical analysis of convergence or sample complexity",
+          "Potential unfairness in baseline comparison - BaNEL's failure model gets significantly more training epochs than baseline internal models"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How would the method perform on tasks where the failure space is not well-structured or does not exhibit learnable regularities? The paper assumes failures have underlying patterns, but this may not hold for all problems.",
+          "What is the computational cost of training p_phi for large language models, and how does this scale? The paper mentions LoRA as future work but doesn't quantify the current overhead.",
+          "Why does the method fail on GSM8K problem 510? Is there something specific about this problem that makes the failure model less effective?",
+          "How sensitive is the method to the choice of filter factor f? The paper shows f=16 works best for GSM8K but f=2 for MNIST - is there a principled way to select this hyperparameter?",
+          "The paper uses cumulative best success rate for evaluation - how would the results look if using the final model's success rate, given the observed non-monotonic behavior?",
+          "Can the method be combined with other exploration techniques (e.g., RND) to further improve performance, or are they fundamentally incompatible?"
+        ],
+        "Limitations": [
+          "The method assumes failures exhibit learnable regularities, which may not hold for all tasks",
+          "Computational cost of training a separate failure model may be prohibitive for large-scale applications",
+          "Success rate is not monotonically increasing during training, making it difficult to determine when to stop",
+          "The paper's adversarial attack experiment demonstrates potential misuse, though in a controlled toy setting",
+          "The method requires likelihood-based generative models, limiting applicability to models where likelihood computation is tractable",
+          "No theoretical guarantees on the improvement of success rate or convergence to the optimal distribution"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes BaNEL, a method for post-training generative models in extremely sparse reward settings where the model receives only negative (zero-reward) samples. The key idea is to train a separate generative model on failed attempts and use the likelihood ratio between the base model and this failure model to define a rejection region, effectively filtering out samples similar to previously seen failures. The method is evaluated on MNIST digit transformation, adversarial attack on a toy language model, and GSM8K-Hard reasoning tasks.\n\nStrengths:\n1. The problem formulation is novel and well-motivated - addressing the intersection of extreme reward sparsity and expensive reward evaluation is an important and underexplored setting.\n2. The method is conceptually clean and theoretically grounded with the Bayesian posterior derivation.\n3. The paper provides a thorough comparison with existing methods (policy gradient, negative RL, RND, count-based, GFlowNets) and clearly explains why they fail in this setting.\n4. The experimental evaluation covers diverse tasks (image, language, reasoning) and shows significant improvements over baselines.\n5. The compute-scaling property is an interesting and valuable contribution.\n\nWeaknesses:\n1. The main concern is the practical significance of the results. While the improvements are large in relative terms (e.g., 13,500x on MNIST), the absolute success rates remain extremely low (1e-21). The paper doesn't clearly demonstrate that these improvements translate to practically useful performance.\n2. The GSM8K-Hard results show mixed performance - BaNEL outperforms RND on 4/6 problems but loses on one problem. The paper doesn't deeply analyze why the method fails on problem 510.\n3. The method requires training a separate generative model (p_phi) which can be computationally expensive, especially for large language models. The paper acknowledges this but doesn't provide a comprehensive analysis of the computational overhead.\n4. The adaptive threshold selection (filter factor f) requires tuning, and the optimal value varies significantly across tasks (f=2 for MNIST, f=1.032 for adversarial attack, f=16 for GSM8K).\n5. The paper doesn't provide a rigorous theoretical analysis of convergence or sample complexity guarantees.\n6. The comparison with baselines may not be entirely fair - the baselines are given limited training budgets for their internal models, while BaNEL's failure model gets 50-100 epochs of training.\n\nOverall, this is a solid paper with an interesting and novel approach to an important problem. The experimental results are promising but not conclusive. The main questions are about practical applicability and the robustness of the method across different settings.\n\nI would rate this as a borderline accept - the idea is novel and the experiments are reasonably thorough, but there are concerns about practical significance and the method's sensitivity to hyperparameters.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper addresses the problem of post-training generative models in extremely sparse reward settings where the model receives only negative (zero-reward) samples and reward evaluations are expensive. The authors propose BaNEL (Bayesian Negative Evidence Learning), which trains a separate generative model on failed attempts and uses the likelihood ratio between the base model and the failure model to define a rejection region. This allows the model to filter out samples similar to previously seen failures before querying the expensive reward oracle. The method is evaluated on MNIST digit transformation (0→6), an adversarial attack task on a toy language model, and GSM8K-Hard reasoning tasks. Results show significant improvements over baselines like RND and count-based methods, with BaNEL achieving success rates several orders of magnitude higher for the same number of reward evaluations. The paper also demonstrates a compute-scaling property where BaNEL can improve performance with additional computation even for fixed reward evaluation budgets.\",\n    \"Strengths\": [\n        \"Novel problem formulation addressing the intersection of extreme reward sparsity and expensive reward evaluation, which is practically important\",\n        \"Clean conceptual approach with theoretical grounding through Bayesian posterior derivation\",\n        \"Thorough comparison with existing methods and clear explanation of why they fail in this setting\",\n        \"Diverse experimental evaluation across image, language, and reasoning tasks\",\n        \"Demonstration of compute-scaling property, which is a valuable contribution\",\n        \"Good ablation studies and analysis of design choices\"\n    ],\n    \"Weaknesses\": [\n        \"Absolute success rates remain extremely low (e.g., 1e-21 on MNIST), raising questions about practical significance despite large relative improvements\",\n        \"Mixed results on GSM8K-Hard with performance degradation on one problem (510) without deep analysis\",\n        \"Computational overhead of training a separate failure model may be prohibitive for large language models\",\n        \"Filter factor f requires task-specific tuning with high variance across tasks (f=2 to f=16)\",\n        \"Lack of rigorous theoretical analysis of convergence or sample complexity\",\n        \"Potential unfairness in baseline comparison - BaNEL's failure model gets significantly more training epochs than baseline internal models\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"How would the method perform on tasks where the failure space is not well-structured or does not exhibit learnable regularities? The paper assumes failures have underlying patterns, but this may not hold for all problems.\",\n        \"What is the computational cost of training p_phi for large language models, and how does this scale? The paper mentions LoRA as future work but doesn't quantify the current overhead.\",\n        \"Why does the method fail on GSM8K problem 510? Is there something specific about this problem that makes the failure model less effective?\",\n        \"How sensitive is the method to the choice of filter factor f? The paper shows f=16 works best for GSM8K but f=2 for MNIST - is there a principled way to select this hyperparameter?\",\n        \"The paper uses cumulative best success rate for evaluation - how would the results look if using the final model's success rate, given the observed non-monotonic behavior?\",\n        \"Can the method be combined with other exploration techniques (e.g., RND) to further improve performance, or are they fundamentally incompatible?\"\n    ],\n    \"Limitations\": [\n        \"The method assumes failures exhibit learnable regularities, which may not hold for all tasks\",\n        \"Computational cost of training a separate failure model may be prohibitive for large-scale applications\",\n        \"Success rate is not monotonically increasing during training, making it difficult to determine when to stop\",\n        \"The paper's adversarial attack experiment demonstrates potential misuse, though in a controlled toy setting\",\n        \"The method requires likelihood-based generative models, limiting applicability to models where likelihood computation is tractable\",\n        \"No theoretical guarantees on the improvement of success rate or convergence to the optimal distribution\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 17070,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 15278,
+        "completion_tokens": 1478,
+        "reasoning_tokens": 0,
+        "total_tokens": 18548
+      },
+      "attempts": 1,
+      "response_id": "be550501-6ec9-4a40-b8fb-70a4384cdcb2"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 5,
+      "Reject": 0
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          4,
+          3,
+          4,
+          3
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Significance": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          4,
+          3,
+          4,
+          3
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Contribution": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          6,
+          7,
+          6,
+          7,
+          6
+        ],
+        "mean": 6.4,
+        "rounded_mean": 6,
+        "population_sd": 0.49,
+        "min": 6,
+        "max": 7
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper addresses the problem of post-training generative models in extremely sparse reward settings, where the base model receives near-zero reward signal and reward oracle evaluations are expensive. The authors propose BaNEL (Bayesian Negative Evidence Learning), which trains a separate generative model on failed (zero-reward) samples and uses it to define a rejection region via likelihood ratios, filtering out samples similar to previously seen failures before querying the reward oracle. The method allows multiple parameter updates per reward evaluation and uses distillation to make sequential filtering practical. The paper provides conceptual analysis of why existing methods (policy gradient, GFlowNets, intrinsic reward methods) fail in this regime, and evaluates BaNEL on MNIST digit transformation, adversarial attacks on a toy language model, and GSM8K reasoning tasks, showing improvements over count-based and RND baselines in terms of success rate per number of reward evaluations.",
+      "Strengths": [
+        "The problem setting is important, well-motivated, and underexplored: learning from purely negative samples with expensive reward oracles is highly relevant to applications like theorem proving, drug discovery, and algorithmic reasoning.",
+        "The core idea of training a generative model on failures and using it for Bayesian-style rejection filtering is novel and conceptually elegant.",
+        "The paper provides clear reasoning for why existing sparse-RL methods (policy gradient, negative RL, intrinsic rewards, GFlowNets) fail in this extreme sparsity regime.",
+        "Experimental evaluation spans diverse domains (images, adversarial attacks, reasoning), with consistent improvements over baselines and useful ablations.",
+        "The method demonstrates a compute-scaling property, improving with additional training epochs for the failure model, which is a valuable insight.",
+        "The authors are honest about limitations, including non-monotonic success rates and computational costs."
+      ],
+      "Weaknesses": [
+        "Theoretical analysis is informal; no strong guarantees on convergence, sample complexity, or robustness to misclassification of the rejection region are provided.",
+        "Absolute success rates remain extremely low (e.g., 1e-21 on MNIST), raising questions about practical significance despite large relative gains.",
+        "GSM8K-Hard results are mixed, with BaNEL underperforming RND on one of six problems without deep analysis.",
+        "Maintaining a separate generative model p_phi at each round is computationally expensive; scalability to very large language models is not demonstrated.",
+        "The filter factor f requires task-specific tuning (ranging from 2 to 16), and no principled selection method is provided.",
+        "The success rate peaks and then declines, with no clear stopping criterion, which undermines the NRE efficiency claim in practice.",
+        "The claimed equivalence between the sequential filtering algorithm and the distillation-based algorithm is not rigorously proven."
+      ],
+      "Originality": 4,
+      "Quality": 3,
+      "Clarity": 3,
+      "Significance": 3,
+      "Questions": [
+        "Can you provide theoretical guarantees on the convergence or sample complexity of BaNEL? Under what conditions on the failure model p_phi is improvement in success rate guaranteed?",
+        "What is a principled way to select the filter factor f, given its high variance across tasks (f=2 for MNIST, f=16 for GSM8K)?",
+        "How does the method perform when failures do not exhibit learnable regularities (e.g., essentially random failures)?",
+        "Given the non-monotonic success rate, what practical stopping criterion would you recommend for deployment?",
+        "How does the computational cost of training p_phi compare to the savings in reward evaluations, especially for large models? Could LoRA or other parameter-efficient methods make this practical?",
+        "Why does BaNEL underperform RND on GSM8K problem 510, and what does this reveal about the method's limitations?",
+        "How would the results differ if using the final model's success rate instead of the cumulative best?",
+        "Could BaNEL be combined with other exploration methods (e.g., RND) for further gains, or are they fundamentally incompatible?"
+      ],
+      "Limitations": [
+        "The method requires likelihood-based generative models, limiting applicability to architectures where exact likelihood computation is tractable.",
+        "Training an additional generative model at each round is computationally expensive and may be prohibitive for large-scale models.",
+        "Success rate is not monotonically increasing, making stopping criteria unclear without additional reward evaluations.",
+        "The absolute success rates achieved in some experiments (especially MNIST) are extremely small, limiting immediate practical impact.",
+        "The method assumes failures have learnable regularities; for tasks where failures are essentially random, the method may not provide benefits.",
+        "The adversarial attack experiment, while in a toy setting, demonstrates potential misuse of the method for discovering model vulnerabilities, which should be considered in broader deployment contexts."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 3,
+      "Contribution": 3,
+      "Overall": 6,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "THOUGHT:\nAll five reviewers agree that the paper addresses an important and underexplored problem, proposes a novel method (BaNEL), and provides reasonable experimental evidence across multiple domains. The overall scores are 6, 7, 6, 7, 6 — all leaning toward acceptance, with no reviewer recommending rejection. Common strengths: clear problem motivation, novel conceptual approach (Bayesian negative evidence learning), honest discussion of limitations, and consistent improvements over baselines. Common weaknesses: limited theoretical rigor, concerns about practical scalability (additional generative model), non-monotonic success rates with no clear stopping criterion, extremely low absolute success rates (especially on MNIST), and task-specific hyperparameter sensitivity (filter factor f). The reviewers also note that the GSM8K results are mixed, and the comparison to GFlowNets is limited to a toy appendix.\n\nAs Area Chair, I should weigh the consensus: this is a solid, interesting contribution with clear novelty and honest evaluation, but it is not flawless. The main risks are the lack of strong theoretical guarantees and the practical limitations for large models. However, these are acknowledged by the authors and are typical for a first paper on a new problem setting. The reviewers uniformly see the contribution as worthwhile for the community. I will recommend acceptance, with a meta-review that highlights the shared concerns and encourages the authors to address them in a rebuttal or camera-ready version.\n\nThe meta-review should aggregate the reviews, note the consensus on strengths and weaknesses, and give a final decision. I will set Overall to 6 (Weak Accept) and Decision to Accept, consistent with the reviewers' leanings. Confidence is high (4) given the agreement across reviewers.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper addresses the problem of post-training generative models in extremely sparse reward settings, where the base model receives near-zero reward signal and reward oracle evaluations are expensive. The authors propose BaNEL (Bayesian Negative Evidence Learning), which trains a separate generative model on failed (zero-reward) samples and uses it to define a rejection region via likelihood ratios, filtering out samples similar to previously seen failures before querying the reward oracle. The method allows multiple parameter updates per reward evaluation and uses distillation to make sequential filtering practical. The paper provides conceptual analysis of why existing methods (policy gradient, GFlowNets, intrinsic reward methods) fail in this regime, and evaluates BaNEL on MNIST digit transformation, adversarial attacks on a toy language model, and GSM8K reasoning tasks, showing improvements over count-based and RND baselines in terms of success rate per number of reward evaluations.\",\n  \"Strengths\": [\n    \"The problem setting is important, well-motivated, and underexplored: learning from purely negative samples with expensive reward oracles is highly relevant to applications like theorem proving, drug discovery, and algorithmic reasoning.\",\n    \"The core idea of training a generative model on failures and using it for Bayesian-style rejection filtering is novel and conceptually elegant.\",\n    \"The paper provides clear reasoning for why existing sparse-RL methods (policy gradient, negative RL, intrinsic rewards, GFlowNets) fail in this extreme sparsity regime.\",\n    \"Experimental evaluation spans diverse domains (images, adversarial attacks, reasoning), with consistent improvements over baselines and useful ablations.\",\n    \"The method demonstrates a compute-scaling property, improving with additional training epochs for the failure model, which is a valuable insight.\",\n    \"The authors are honest about limitations, including non-monotonic success rates and computational costs.\"\n  ],\n  \"Weaknesses\": [\n    \"Theoretical analysis is informal; no strong guarantees on convergence, sample complexity, or robustness to misclassification of the rejection region are provided.\",\n    \"Absolute success rates remain extremely low (e.g., 1e-21 on MNIST), raising questions about practical significance despite large relative gains.\",\n    \"GSM8K-Hard results are mixed, with BaNEL underperforming RND on one of six problems without deep analysis.\",\n    \"Maintaining a separate generative model p_phi at each round is computationally expensive; scalability to very large language models is not demonstrated.\",\n    \"The filter factor f requires task-specific tuning (ranging from 2 to 16), and no principled selection method is provided.\",\n    \"The success rate peaks and then declines, with no clear stopping criterion, which undermines the NRE efficiency claim in practice.\",\n    \"The claimed equivalence between the sequential filtering algorithm and the distillation-based algorithm is not rigorously proven.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"Can you provide theoretical guarantees on the convergence or sample complexity of BaNEL? Under what conditions on the failure model p_phi is improvement in success rate guaranteed?\",\n    \"What is a principled way to select the filter factor f, given its high variance across tasks (f=2 for MNIST, f=16 for GSM8K)?\",\n    \"How does the method perform when failures do not exhibit learnable regularities (e.g., essentially random failures)?\",\n    \"Given the non-monotonic success rate, what practical stopping criterion would you recommend for deployment?\",\n    \"How does the computational cost of training p_phi compare to the savings in reward evaluations, especially for large models? Could LoRA or other parameter-efficient methods make this practical?\",\n    \"Why does BaNEL underperform RND on GSM8K problem 510, and what does this reveal about the method's limitations?\",\n    \"How would the results differ if using the final model's success rate instead of the cumulative best?\",\n    \"Could BaNEL be combined with other exploration methods (e.g., RND) for further gains, or are they fundamentally incompatible?\"\n  ],\n  \"Limitations\": [\n    \"The method requires likelihood-based generative models, limiting applicability to architectures where exact likelihood computation is tractable.\",\n    \"Training an additional generative model at each round is computationally expensive and may be prohibitive for large-scale models.\",\n    \"Success rate is not monotonically increasing, making stopping criteria unclear without additional reward evaluations.\",\n    \"The absolute success rates achieved in some experiments (especially MNIST) are extremely small, limiting immediate practical impact.\",\n    \"The method assumes failures have learnable regularities; for tasks where failures are essentially random, the method may not provide benefits.\",\n    \"The adversarial attack experiment, while in a toy setting, demonstrates potential misuse of the method for discovering model vulnerabilities, which should be considered in broader deployment contexts.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 7000,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 7000,
+      "completion_tokens": 1420,
+      "reasoning_tokens": 0,
+      "total_tokens": 8420
+    },
+    "attempts": 1,
+    "response_id": "5af6d283-ddd9-4620-92f4-986c03a7c228"
+  },
+  "final_review": {
+    "Summary": "The paper addresses the problem of post-training generative models in extremely sparse reward settings, where the base model receives near-zero reward signal and reward oracle evaluations are expensive. The authors propose BaNEL (Bayesian Negative Evidence Learning), which trains a separate generative model on failed (zero-reward) samples and uses it to define a rejection region via likelihood ratios, filtering out samples similar to previously seen failures before querying the reward oracle. The method allows multiple parameter updates per reward evaluation and uses distillation to make sequential filtering practical. The paper provides conceptual analysis of why existing methods (policy gradient, GFlowNets, intrinsic reward methods) fail in this regime, and evaluates BaNEL on MNIST digit transformation, adversarial attacks on a toy language model, and GSM8K reasoning tasks, showing improvements over count-based and RND baselines in terms of success rate per number of reward evaluations.",
+    "Strengths": [
+      "The problem setting is important, well-motivated, and underexplored: learning from purely negative samples with expensive reward oracles is highly relevant to applications like theorem proving, drug discovery, and algorithmic reasoning.",
+      "The core idea of training a generative model on failures and using it for Bayesian-style rejection filtering is novel and conceptually elegant.",
+      "The paper provides clear reasoning for why existing sparse-RL methods (policy gradient, negative RL, intrinsic rewards, GFlowNets) fail in this extreme sparsity regime.",
+      "Experimental evaluation spans diverse domains (images, adversarial attacks, reasoning), with consistent improvements over baselines and useful ablations.",
+      "The method demonstrates a compute-scaling property, improving with additional training epochs for the failure model, which is a valuable insight.",
+      "The authors are honest about limitations, including non-monotonic success rates and computational costs."
+    ],
+    "Weaknesses": [
+      "Theoretical analysis is informal; no strong guarantees on convergence, sample complexity, or robustness to misclassification of the rejection region are provided.",
+      "Absolute success rates remain extremely low (e.g., 1e-21 on MNIST), raising questions about practical significance despite large relative gains.",
+      "GSM8K-Hard results are mixed, with BaNEL underperforming RND on one of six problems without deep analysis.",
+      "Maintaining a separate generative model p_phi at each round is computationally expensive; scalability to very large language models is not demonstrated.",
+      "The filter factor f requires task-specific tuning (ranging from 2 to 16), and no principled selection method is provided.",
+      "The success rate peaks and then declines, with no clear stopping criterion, which undermines the NRE efficiency claim in practice.",
+      "The claimed equivalence between the sequential filtering algorithm and the distillation-based algorithm is not rigorously proven."
+    ],
+    "Originality": 4,
+    "Quality": 3,
+    "Clarity": 3,
+    "Significance": 3,
+    "Questions": [
+      "Can you provide theoretical guarantees on the convergence or sample complexity of BaNEL? Under what conditions on the failure model p_phi is improvement in success rate guaranteed?",
+      "What is a principled way to select the filter factor f, given its high variance across tasks (f=2 for MNIST, f=16 for GSM8K)?",
+      "How does the method perform when failures do not exhibit learnable regularities (e.g., essentially random failures)?",
+      "Given the non-monotonic success rate, what practical stopping criterion would you recommend for deployment?",
+      "How does the computational cost of training p_phi compare to the savings in reward evaluations, especially for large models? Could LoRA or other parameter-efficient methods make this practical?",
+      "Why does BaNEL underperform RND on GSM8K problem 510, and what does this reveal about the method's limitations?",
+      "How would the results differ if using the final model's success rate instead of the cumulative best?",
+      "Could BaNEL be combined with other exploration methods (e.g., RND) for further gains, or are they fundamentally incompatible?"
+    ],
+    "Limitations": [
+      "The method requires likelihood-based generative models, limiting applicability to architectures where exact likelihood computation is tractable.",
+      "Training an additional generative model at each round is computationally expensive and may be prohibitive for large-scale models.",
+      "Success rate is not monotonically increasing, making stopping criteria unclear without additional reward evaluations.",
+      "The absolute success rates achieved in some experiments (especially MNIST) are extremely small, limiting immediate practical impact.",
+      "The method assumes failures have learnable regularities; for tasks where failures are essentially random, the method may not provide benefits.",
+      "The adversarial attack experiment, while in a toy setting, demonstrates potential misuse of the method for discovering model vulnerabilities, which should be considered in broader deployment contexts."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 3,
+    "Contribution": 3,
+    "Overall": 6,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 92350,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 83390,
+    "completion_tokens": 10208,
+    "reasoning_tokens": 0,
+    "total_tokens": 102558,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.0116746,
+    "output_usd": 0.00285824,
+    "total_usd": 0.01455793
+  },
+  "elapsed_seconds": 33.251,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Accept",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B049",
+    "filename": "B049.txt",
+    "blind_text_sha256": "d8af1d7040fbb19165e0951fb2dbedd72124b66a36214acde110574838cf3f57",
+    "characters": 60858,
+    "full_text_saved": false
+  }
+}

@@ -1,0 +1,702 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:38:57.160330+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper proposes STaMP (Sequence Transformation and Mixed Precision), a novel post-training quantization method that applies invertible linear transformations along the sequence dimension of activations (rather than the feature dimension, as in prior work) to exploit local correlations in language and visual data. The method concentrates activation energy into a small set of tokens using transforms like DCT, WHT, or DWT, and then allocates higher bit-widths to these high-energy tokens while using lower precision for the rest. This mixed-precision scheme is shown to reduce quantization error under a fixed average bit-width budget. The authors provide theoretical analysis (an upper bound on quantization error and optimal bit allocation) and comprehensive experiments on LVMs (PixArt-Σ, SANA) and LLMs (Llama 3, Llama 3.2, Qwen 2.5), demonstrating consistent improvements when combined with existing feature-transform methods like QuaRot, SmoothQuant, ViDiT-Q, SVDQuant, and FlatQuant. The method is complementary to existing approaches and adds minimal computational overhead.",
+        "Strengths": [
+          "Novel and well-motivated approach: applying sequence-dimensional transforms for activation quantization is a fresh perspective that complements existing feature-transform methods",
+          "Solid theoretical foundation: provides an upper bound on quantization error and derives optimal bit allocation strategies",
+          "Comprehensive experimental evaluation across multiple architectures (LVMs and LLMs), datasets (COCO, MJHQ, Wikitext-2), and metrics (SQNR, perplexity, CLIP scores, few-shot tasks)",
+          "Consistent and significant improvements when combined with existing state-of-the-art methods, demonstrating orthogonality",
+          "Practical considerations addressed: overhead estimates, mixed-precision kernel implementation, and discussion of hardware implications",
+          "Clear connection to classical signal processing techniques (JPEG, JPEG2000, audio codecs) that strengthens the motivation"
+        ],
+        "Weaknesses": [
+          "The theoretical analysis, while useful, is somewhat limited - the upper bound may not tightly capture practical quantization behavior, and the analysis of optimal bit allocation assumes idealized conditions",
+          "The LLM application is restricted to prompt processing (not token generation), which is acknowledged but could be more thoroughly discussed in terms of practical impact (e.g., what fraction of workloads benefit)",
+          "The choice of 64 high-precision tokens seems somewhat arbitrary and is not thoroughly justified - more analysis on this hyperparameter would strengthen the paper",
+          "The paper would benefit from a more detailed comparison with potential alternative approaches (e.g., per-block quantization, learned transforms) to better contextualize the gains",
+          "Some experimental details are in the appendix (e.g., specific kernel implementations) which makes reproduction more challenging",
+          "The paper does not discuss potential limitations of the method for very long sequences or different data modalities beyond text and images"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "How sensitive is the performance to the number of high-precision tokens (currently fixed at 64)? Have you explored a more principled way to determine this hyperparameter based on the energy distribution?",
+          "For LLMs, since STaMP only applies to the prompt processing phase, what fraction of real-world inference workloads does this benefit? Could you provide more context on the practical impact given that generation is often latency-bound?",
+          "The paper uses DWT as the primary transform. How does the performance of DWT compare to DCT/WHT in the LLM setting specifically? Are there scenarios where DCT would be preferable despite higher computational cost?",
+          "Have you considered applying sequence transforms to the KV cache as well as activations? If so, what were the results?",
+          "How does the method perform on longer sequences (e.g., 8192 or 16384 tokens) where local correlation patterns might differ?",
+          "Could you elaborate on the interaction between STaMP and weight quantization methods? The paper mentions orthogonality, but does the sequence transform affect the optimal weight quantization scheme?"
+        ],
+        "Limitations": [
+          "The method is only applicable to prompt processing in LLMs, not token-by-token generation, which limits its applicability to a subset of inference workloads",
+          "The mixed-precision scheme requires hardware support for multiple bit-widths (4 and 8 bits), which may not be available on all deployment platforms",
+          "The paper does not explore the interaction of STaMP with other quantization granularities (e.g., per-head KV quantization) or with more advanced weight-only quantization methods",
+          "Potential negative societal impact: while quantization reduces computational requirements (which can be positive for accessibility), it could also enable more powerful models to be deployed in resource-constrained environments without adequate safety measures",
+          "The method assumes a fixed sequence length and may require adaptation for variable-length inputs in real-world deployment"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 4,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces STaMP, a novel approach to low-precision activation quantization that applies invertible linear transformations along the sequence dimension (rather than the feature dimension) to exploit local correlations in language and visual data. The method combines energy concentration via transforms like DCT/DWT with a mixed-precision scheme that allocates more bits to high-energy tokens. The paper demonstrates consistent improvements when combined with existing feature-transform methods (QuaRot, SmoothQuant, ViDiT-Q, SVDQuant, FlatQuant) on both LVMs (PixArt-Σ, SANA) and LLMs (Llama 3, Llama 3.2, Qwen 2.5).\n\nKey strengths:\n- Novel and well-motivated idea: applying sequence transforms is a fresh perspective compared to the feature-transform-dominated literature\n- Solid theoretical foundation: provides an upper bound on quantization error and analyzes optimal bit allocation\n- Comprehensive experimental evaluation across multiple architectures, datasets, and metrics\n- The method is complementary to existing approaches, which is clearly demonstrated\n- Practical considerations are addressed (overhead estimates, hardware implications)\n\nKey weaknesses:\n- The paper is a bit dense and could benefit from clearer exposition of the method in the main text\n- The theoretical analysis is somewhat limited - the upper bound analysis may not fully capture practical behavior\n- The LLM application is limited to prompt processing (not generation), which is acknowledged but could be more thoroughly discussed\n- Some experimental details could be expanded (e.g., how the number of high-precision tokens was chosen)\n- The comparisons could be stronger in some places - e.g., more baselines or ablations\n\nOriginality: High - sequence-dimensional transforms for quantization is a novel contribution\nQuality: Good - technically sound with solid experiments, though some theoretical aspects could be deeper\nClarity: Good - well-organized but occasionally dense\nSignificance: High - addresses a challenging problem (W4A4 quantization) with a practical, complementary approach\n\nOverall assessment: This is a solid paper with a novel contribution that demonstrably improves upon existing methods. The theoretical grounding, comprehensive experiments, and practical considerations make it a valuable contribution to the quantization literature. I would lean toward acceptance, though I have some questions about the generalizability and practical deployment aspects.\n\nFor the review, I'll rate:\n- Originality: 4 (very high)\n- Quality: 3 (good)\n- Clarity: 3 (good)\n- Significance: 4 (very high)\n- Soundness: 3 (good)\n- Presentation: 3 (good)\n- Contribution: 4 (very high)\n- Overall: 7 (Accept)\n\nI'm fairly confident in this assessment, as the paper is well-written and the experimental results are convincing, though I haven't checked all the math details.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper proposes STaMP (Sequence Transformation and Mixed Precision), a novel post-training quantization method that applies invertible linear transformations along the sequence dimension of activations (rather than the feature dimension, as in prior work) to exploit local correlations in language and visual data. The method concentrates activation energy into a small set of tokens using transforms like DCT, WHT, or DWT, and then allocates higher bit-widths to these high-energy tokens while using lower precision for the rest. This mixed-precision scheme is shown to reduce quantization error under a fixed average bit-width budget. The authors provide theoretical analysis (an upper bound on quantization error and optimal bit allocation) and comprehensive experiments on LVMs (PixArt-Σ, SANA) and LLMs (Llama 3, Llama 3.2, Qwen 2.5), demonstrating consistent improvements when combined with existing feature-transform methods like QuaRot, SmoothQuant, ViDiT-Q, SVDQuant, and FlatQuant. The method is complementary to existing approaches and adds minimal computational overhead.\",\n    \"Strengths\": [\n        \"Novel and well-motivated approach: applying sequence-dimensional transforms for activation quantization is a fresh perspective that complements existing feature-transform methods\",\n        \"Solid theoretical foundation: provides an upper bound on quantization error and derives optimal bit allocation strategies\",\n        \"Comprehensive experimental evaluation across multiple architectures (LVMs and LLMs), datasets (COCO, MJHQ, Wikitext-2), and metrics (SQNR, perplexity, CLIP scores, few-shot tasks)\",\n        \"Consistent and significant improvements when combined with existing state-of-the-art methods, demonstrating orthogonality\",\n        \"Practical considerations addressed: overhead estimates, mixed-precision kernel implementation, and discussion of hardware implications\",\n        \"Clear connection to classical signal processing techniques (JPEG, JPEG2000, audio codecs) that strengthens the motivation\"\n    ],\n    \"Weaknesses\": [\n        \"The theoretical analysis, while useful, is somewhat limited - the upper bound may not tightly capture practical quantization behavior, and the analysis of optimal bit allocation assumes idealized conditions\",\n        \"The LLM application is restricted to prompt processing (not token generation), which is acknowledged but could be more thoroughly discussed in terms of practical impact (e.g., what fraction of workloads benefit)\",\n        \"The choice of 64 high-precision tokens seems somewhat arbitrary and is not thoroughly justified - more analysis on this hyperparameter would strengthen the paper\",\n        \"The paper would benefit from a more detailed comparison with potential alternative approaches (e.g., per-block quantization, learned transforms) to better contextualize the gains\",\n        \"Some experimental details are in the appendix (e.g., specific kernel implementations) which makes reproduction more challenging\",\n        \"The paper does not discuss potential limitations of the method for very long sequences or different data modalities beyond text and images\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 4,\n    \"Questions\": [\n        \"How sensitive is the performance to the number of high-precision tokens (currently fixed at 64)? Have you explored a more principled way to determine this hyperparameter based on the energy distribution?\",\n        \"For LLMs, since STaMP only applies to the prompt processing phase, what fraction of real-world inference workloads does this benefit? Could you provide more context on the practical impact given that generation is often latency-bound?\",\n        \"The paper uses DWT as the primary transform. How does the performance of DWT compare to DCT/WHT in the LLM setting specifically? Are there scenarios where DCT would be preferable despite higher computational cost?\",\n        \"Have you considered applying sequence transforms to the KV cache as well as activations? If so, what were the results?\",\n        \"How does the method perform on longer sequences (e.g., 8192 or 16384 tokens) where local correlation patterns might differ?\",\n        \"Could you elaborate on the interaction between STaMP and weight quantization methods? The paper mentions orthogonality, but does the sequence transform affect the optimal weight quantization scheme?\"\n    ],\n    \"Limitations\": [\n        \"The method is only applicable to prompt processing in LLMs, not token-by-token generation, which limits its applicability to a subset of inference workloads\",\n        \"The mixed-precision scheme requires hardware support for multiple bit-widths (4 and 8 bits), which may not be available on all deployment platforms\",\n        \"The paper does not explore the interaction of STaMP with other quantization granularities (e.g., per-head KV quantization) or with more advanced weight-only quantization methods\",\n        \"Potential negative societal impact: while quantization reduces computational requirements (which can be positive for accessibility), it could also enable more powerful models to be deployed in resource-constrained environments without adequate safety measures\",\n        \"The method assumes a fixed sequence length and may require adaptation for variable-length inputs in real-world deployment\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 4,\n    \"Overall\": 7,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 19874,
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 19874,
+        "completion_tokens": 1667,
+        "reasoning_tokens": 0,
+        "total_tokens": 21541
+      },
+      "attempts": 1,
+      "response_id": "65681842-8f82-44c3-99a8-249d00cef20b"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper proposes STaMP (Sequence Transformation and Mixed Precision), a novel post-training quantization method that applies invertible linear transformations (e.g., DCT, DWT, WHT) along the sequence dimension of activations in generative models (LLMs and LVMs). The key idea is to exploit local correlations between adjacent tokens to concentrate activation energy into a small number of tokens, which are then quantized at higher bit-widths (8-bit) while the remaining tokens are quantized at 4-bit, achieving better accuracy under a fixed average bit budget. The paper provides theoretical analysis (Theorem 1) bounding quantization error and deriving optimal bit allocation. Experiments on PixArt-Σ, SANA, Llama 3, Llama 3.2, and Qwen 2.5 demonstrate consistent improvements when STaMP is combined with existing feature-transform methods (SmoothQuant, QuaRot, FlatQuant, ViDiT-Q, SVDQuant) for W4A4 quantization. The method is training-free, has minimal overhead, and code is released.",
+        "Strengths": [
+          "Novel and well-motivated idea: applying sequence transforms (from signal processing) to activation quantization is a fresh perspective that complements existing feature-transform methods.",
+          "Solid theoretical foundation: Theorem 1 provides an upper bound on quantization error, and the optimal bit allocation is derived. The connection between autocorrelation structure and KLT/DCT/DWT is well-reasoned.",
+          "Comprehensive experimental evaluation: Consistent improvements across multiple LLM and LVM architectures and multiple baselines (RTN, SmoothQuant, QuaRot, FlatQuant, ViDiT-Q, SVDQuant).",
+          "Practical and hardware-friendly: The mixed-precision scheme uses only 4-bit and 8-bit, and DWT is efficient (O(ds) complexity). Overhead measurements are provided.",
+          "Ablations and analysis: The paper explores the number of high-precision tokens, combination with feature transforms, and per-activation effects, providing useful insights.",
+          "Code is released for reproducibility."
+        ],
+        "Weaknesses": [
+          "Limited applicability to LLM generation: STaMP is only applicable to prompt processing, not token-by-token generation. While the authors argue prompt processing is compute-bound, this is a significant limitation for many deployment scenarios.",
+          "The practical bit allocation (64 tokens at 8-bit) is heuristic and not deeply optimized across models; sensitivity analysis is limited.",
+          "The mixed-precision matrix multiplication overhead (10-30% on CUDA) is non-trivial and may limit practical adoption, especially on edge devices where int4 support is limited.",
+          "No comparison to potential sequence-transform baselines (if any exist), though STaMP appears to be the first in this direction.",
+          "The paper does not discuss potential negative societal impacts, though this is a minor concern for a quantization method.",
+          "Some clarity issues: Figure 4a is not explicitly referenced in the main text, and the notation 'STaMP*' in Figure 4b is not immediately clear."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "The paper states that STaMP is only applicable to prompt processing in LLMs. Could you elaborate on the potential for extending this to generation (e.g., by using a sliding window or chunked approaches)?",
+          "How sensitive is the performance to the choice of 64 high-precision tokens? Is there a systematic way to determine this number for different models or sequence lengths?",
+          "The overhead measurements in Table 3 are for CUDA. Have you considered or measured the overhead on edge hardware (e.g., mobile GPUs or NPUs) where int4 support may be different?",
+          "In Figure 4b, what is the 'STaMP*' variant? The caption mentions varying the number of high-precision tokens, but it would be helpful to clarify the difference between STaMP and STaMP*.",
+          "Could you provide more details on the calibration process for the DWT? Is the transform fixed or adapted to the model?",
+          "The paper mentions that STaMP does not affect weights. Could it be combined with more advanced weight quantization methods like GPTQ or vector quantization to further improve results? If so, what gains might be expected?"
+        ],
+        "Limitations": [
+          "STaMP is primarily effective for prompt processing in LLMs, not for autoregressive token generation, limiting its applicability to certain inference scenarios.",
+          "The method introduces additional computational overhead (DWT and mixed-precision matmul), which may be non-negligible on hardware without native int4/int8 support.",
+          "The optimal bit allocation is derived under simplified assumptions (min-max quantization, no clipping), and the practical scheme may not be optimal for all models or data distributions.",
+          "The paper does not address potential negative societal impacts, such as increased energy consumption from mixed-precision operations or bias in generated outputs, though these are indirect."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 4,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThe paper introduces STaMP (Sequence Transformation and Mixed Precision) for low-precision activation quantization. The core idea is to apply invertible linear transformations along the sequence dimension (rather than only the feature dimension as in prior work like QuaRot) to exploit local correlations in token activations. By concentrating energy into a few tokens via transforms like DWT/DCT, they allocate higher bit-widths to those tokens and lower bit-widths to others, achieving better quantization error under a fixed average bit budget.\n\nStrengths:\n- Novel and well-motivated idea: applying sequence transforms (borrowed from signal processing) to activation quantization is a fresh perspective that complements existing feature-transform methods.\n- Solid theoretical analysis: Theorem 1 provides an upper bound on quantization error, and the optimal bit allocation is derived. The connection to KLT/DCT/DWT is well-reasoned.\n- Comprehensive experiments: Evaluation on both LVMs (PixArt-Σ, SANA) and LLMs (Llama 3, Llama 3.2, Qwen 2.5) demonstrates consistent improvements over strong baselines (RTN, SmoothQuant, QuaRot, FlatQuant, ViDiT-Q, SVDQuant). The ablations on number of high-precision tokens and combination with feature transforms are informative.\n- Practical considerations: The paper addresses overhead (flops and latency), and the DWT choice is justified for efficiency. The code is released.\n- The mixed-precision scheme is simple and hardware-friendly (only 4 and 8 bits), making it practical.\n\nWeaknesses:\n- The applicability of STaMP is limited to prompt processing in LLMs (not token generation), which the authors acknowledge. While they argue prompt processing is compute-bound, this is a significant limitation for deployment scenarios where generation dominates.\n- The paper does not compare against more recent or specialized sequence-transform methods (if any exist), though this may be because STaMP is the first in this direction.\n- The \"optimal bit allocation\" is derived under simplified assumptions (e.g., min-max quantization, ignoring clipping). The practical scheme (64 tokens at 8-bit, rest 4-bit) is heuristic, and the paper does not deeply explore the sensitivity to the number of high-precision tokens across different models.\n- The overhead measurements (Table 3) are only for CUDA, and the mixed-precision matrix multiplication overhead (10-30%) is non-trivial. The paper suggests this could be reduced with better kernels, but this remains a practical concern.\n- The paper does not discuss potential negative societal impacts (e.g., energy consumption, bias in generated content), though this is minor for a quantization method.\n- Some clarity issues: Figure 4a is not referenced in the main text flow, and the notation for \"STaMP*\" in Figure 4b is not immediately clear until reading the caption.\n\nOverall, this is a solid paper with a novel contribution that is well-supported by theory and experiments. The limitations (especially LLM generation) are acknowledged but may temper the significance. The paper is likely to be accepted at a strong venue, but the practical overhead and limited applicability to LLM decoding are concerns.\n\nI'll rate:\n- Originality: 4 (very high) - novel idea, new direction\n- Quality: 3 (good) - solid theory and experiments, but some gaps\n- Clarity: 3 (good) - generally well-written, minor issues\n- Significance: 3 (high) - important for low-bit quantization, but with limitations\n- Soundness: 4 (excellent) - theory and experiments are sound\n- Presentation: 3 (good) - clear but could be improved\n- Contribution: 3 (good) - valuable contribution to quantization field\n- Overall: 7 (Accept) - technically solid, moderate-to-high impact\n\nConfidence: 4 (confident, familiar with the area)\n\nDecision: Accept\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper proposes STaMP (Sequence Transformation and Mixed Precision), a novel post-training quantization method that applies invertible linear transformations (e.g., DCT, DWT, WHT) along the sequence dimension of activations in generative models (LLMs and LVMs). The key idea is to exploit local correlations between adjacent tokens to concentrate activation energy into a small number of tokens, which are then quantized at higher bit-widths (8-bit) while the remaining tokens are quantized at 4-bit, achieving better accuracy under a fixed average bit budget. The paper provides theoretical analysis (Theorem 1) bounding quantization error and deriving optimal bit allocation. Experiments on PixArt-Σ, SANA, Llama 3, Llama 3.2, and Qwen 2.5 demonstrate consistent improvements when STaMP is combined with existing feature-transform methods (SmoothQuant, QuaRot, FlatQuant, ViDiT-Q, SVDQuant) for W4A4 quantization. The method is training-free, has minimal overhead, and code is released.\",\n  \"Strengths\": [\n    \"Novel and well-motivated idea: applying sequence transforms (from signal processing) to activation quantization is a fresh perspective that complements existing feature-transform methods.\",\n    \"Solid theoretical foundation: Theorem 1 provides an upper bound on quantization error, and the optimal bit allocation is derived. The connection between autocorrelation structure and KLT/DCT/DWT is well-reasoned.\",\n    \"Comprehensive experimental evaluation: Consistent improvements across multiple LLM and LVM architectures and multiple baselines (RTN, SmoothQuant, QuaRot, FlatQuant, ViDiT-Q, SVDQuant).\",\n    \"Practical and hardware-friendly: The mixed-precision scheme uses only 4-bit and 8-bit, and DWT is efficient (O(ds) complexity). Overhead measurements are provided.\",\n    \"Ablations and analysis: The paper explores the number of high-precision tokens, combination with feature transforms, and per-activation effects, providing useful insights.\",\n    \"Code is released for reproducibility.\"\n  ],\n  \"Weaknesses\": [\n    \"Limited applicability to LLM generation: STaMP is only applicable to prompt processing, not token-by-token generation. While the authors argue prompt processing is compute-bound, this is a significant limitation for many deployment scenarios.\",\n    \"The practical bit allocation (64 tokens at 8-bit) is heuristic and not deeply optimized across models; sensitivity analysis is limited.\",\n    \"The mixed-precision matrix multiplication overhead (10-30% on CUDA) is non-trivial and may limit practical adoption, especially on edge devices where int4 support is limited.\",\n    \"No comparison to potential sequence-transform baselines (if any exist), though STaMP appears to be the first in this direction.\",\n    \"The paper does not discuss potential negative societal impacts, though this is a minor concern for a quantization method.\",\n    \"Some clarity issues: Figure 4a is not explicitly referenced in the main text, and the notation 'STaMP*' in Figure 4b is not immediately clear.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"The paper states that STaMP is only applicable to prompt processing in LLMs. Could you elaborate on the potential for extending this to generation (e.g., by using a sliding window or chunked approaches)?\",\n    \"How sensitive is the performance to the choice of 64 high-precision tokens? Is there a systematic way to determine this number for different models or sequence lengths?\",\n    \"The overhead measurements in Table 3 are for CUDA. Have you considered or measured the overhead on edge hardware (e.g., mobile GPUs or NPUs) where int4 support may be different?\",\n    \"In Figure 4b, what is the 'STaMP*' variant? The caption mentions varying the number of high-precision tokens, but it would be helpful to clarify the difference between STaMP and STaMP*.\",\n    \"Could you provide more details on the calibration process for the DWT? Is the transform fixed or adapted to the model?\",\n    \"The paper mentions that STaMP does not affect weights. Could it be combined with more advanced weight quantization methods like GPTQ or vector quantization to further improve results? If so, what gains might be expected?\"\n  ],\n  \"Limitations\": [\n    \"STaMP is primarily effective for prompt processing in LLMs, not for autoregressive token generation, limiting its applicability to certain inference scenarios.\",\n    \"The method introduces additional computational overhead (DWT and mixed-precision matmul), which may be non-negligible on hardware without native int4/int8 support.\",\n    \"The optimal bit allocation is derived under simplified assumptions (min-max quantization, no clipping), and the practical scheme may not be optimal for all models or data distributions.\",\n    \"The paper does not address potential negative societal impacts, such as increased energy consumption from mixed-precision operations or bias in generated outputs, though these are indirect.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 4,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 19874,
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 19874,
+        "completion_tokens": 1945,
+        "reasoning_tokens": 0,
+        "total_tokens": 21819
+      },
+      "attempts": 1,
+      "response_id": "d7ba66d7-3173-4c08-a53b-e16c54e972ae"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper introduces STaMP (Sequence Transformation and Mixed Precision), a post-training quantization method that applies invertible linear transformations along the sequence dimension of activations to exploit local correlations in language and visual data. By concentrating activation energy into a small number of tokens (using DCT, DWT, or WHT transforms) and allocating higher bit precision to those energy-dense tokens, STaMP reduces quantization error at low average bit widths. The method is complementary to existing feature-dimension transforms (QuaRot, SmoothQuant, etc.) and weight quantization methods. The paper provides theoretical analysis (upper bound on quantization error, optimal bit allocation), and extensive experiments on LVMs (PixArt-Σ, SANA) and LLMs (Llama 3, Llama 3.2, Qwen 2.5) showing consistent improvements when combined with existing quantization techniques. The approach is inspired by classical media compression (JPEG, JPEG2000) and offers a training-free solution for W4A4 quantization.",
+        "Strengths": [
+          "Novel and well-motivated idea: applying sequence-dimension transforms for activation quantization is a fresh perspective that complements existing feature-dimension approaches",
+          "Solid theoretical foundation: Theorem 1 provides a clear upper bound on quantization error, and the optimal bit allocation is derived from rate-distortion principles",
+          "Comprehensive experimental evaluation on both LVMs (PixArt-Σ, SANA) and LLMs (Llama 3, Llama 3.2, Qwen 2.5) with multiple baselines (RTN, SmoothQuant, QuaRot, FlatQuant, ViDiT-Q, SVDQuant)",
+          "Clear demonstration of orthogonality/complementarity with existing weight quantization and feature transform methods",
+          "Practical considerations addressed: overhead estimates, hardware limitations, and the limitation for autoregressive generation are honestly acknowledged",
+          "Code is provided for reproducibility",
+          "Good visualization of energy distribution and transform components (Figure 3) that helps intuition"
+        ],
+        "Weaknesses": [
+          "The practical gains for LLMs are often modest when combined with strong baselines like FlatQuant (e.g., perplexity improvements of ~0.1-0.2 for Llama 3 8B)",
+          "The method is only applicable during prompt processing for LLMs, significantly limiting its impact on token generation which is the dominant phase in many applications",
+          "The bit allocation scheme (64 tokens at 8 bits, rest at 4 bits) appears somewhat ad-hoc and not clearly derived from the theoretical optimal allocation; the connection between the theory and this practical choice is not fully explored",
+          "No empirical comparison with the theoretically optimal KLT transform is provided, making it difficult to assess how much performance is lost by using DCT/DWT approximations",
+          "The overhead analysis is limited to a single GPU (A100) and may not generalize to edge devices where quantization benefits are most critical",
+          "The claim about 'strong local correlation' in text data is less well-supported than for images; the autocorrelation analysis for LLMs is brief",
+          "The interaction between sequence length and the optimal number of high-precision tokens is not thoroughly investigated"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How does the performance of STaMP vary with different numbers of high-precision tokens (e.g., 16, 32, 128, 256)? Is there an optimal value that depends on sequence length or model architecture?",
+          "The paper states that 'the first token in most LLMs acts as an attention sink and typically contains massive outliers.' How does STaMP interact with attention sinks? Is it necessary to exclude the first token from the transform, and what happens if it's included?",
+          "For the LLM experiments, why is the improvement more pronounced for smaller models (Llama 3.2 1B/3B) compared to larger ones (Llama 3 8B)? Is this related to the degree of autocorrelation in the activations?",
+          "The paper mentions that STaMP can be applied only for prompt processing in LLMs. Could the method be extended to generation by processing tokens in small blocks (e.g., 64 tokens at a time)? What would be the latency implications?",
+          "How sensitive is the method to the choice of calibration data used to estimate the autocorrelation matrix? Would the energy concentration pattern change significantly with different data distributions?",
+          "The theoretical optimal bit allocation assumes continuous bit widths. How close is the practical 4-8 bit scheme to the theoretical optimum? Could a 4-6-8 bit scheme provide better trade-offs?"
+        ],
+        "Limitations": [
+          "The method is limited to prompt processing in LLMs, not applicable during autoregressive token generation",
+          "The improvements are often modest when combined with already-strong baselines like FlatQuant",
+          "The overhead analysis is limited to a single GPU architecture (A100) and may not generalize to edge devices",
+          "The paper does not explore the interaction between sequence length and the number of high-precision tokens",
+          "No empirical comparison with the theoretically optimal KLT transform is provided",
+          "Potential negative societal impact is not discussed, though this is a general issue with quantization papers that enable more efficient deployment of potentially harmful generative models"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces STaMP, a quantization method that applies linear transformations along the sequence dimension (rather than the feature dimension) to exploit local correlations in activations, combined with a mixed-precision scheme that allocates more bits to energy-concentrated tokens. The approach is well-motivated by classical signal processing (JPEG, JPEG2000) and is complementary to existing feature-transform methods like QuaRot and SmoothQuant.\n\nKey strengths:\n1. Novel and well-motivated idea: applying sequence transforms (DCT, DWT, WHT) for activation quantization is a fresh perspective that complements existing feature-dimension approaches\n2. Solid theoretical foundation: Theorem 1 provides an upper bound on quantization error, and the optimal bit allocation is derived from rate-distortion theory\n3. Comprehensive experiments on both LVMs (PixArt-Σ, SANA) and LLMs (Llama 3, Llama 3.2, Qwen 2.5) with multiple baselines\n4. Orthogonality to weight quantization methods is clearly demonstrated\n5. Practical considerations addressed: overhead estimates, hardware limitations, and the limitation for autoregressive generation are acknowledged\n6. Code is provided for reproducibility\n\nWeaknesses:\n1. The paper claims improvements are \"consistent\" but the gains for LLMs are often modest (e.g., FlatQuant+STaMP vs FlatQuant alone shows small perplexity improvements)\n2. The method is only applicable during prompt processing for LLMs, limiting its overall impact on generative inference\n3. The bit allocation scheme (64 tokens at 8 bits, rest at 4 bits) seems somewhat ad-hoc and not clearly derived from the theoretical optimal allocation\n4. The comparison with KLT is theoretical only; no empirical comparison with the optimal transform is provided\n5. The overhead analysis is limited to a single GPU (A100) and may not generalize to edge devices where quantization benefits are most needed\n6. The paper doesn't thoroughly explore the interaction between sequence length and the number of high-precision tokens\n7. Some claims about \"strong local correlation\" in text data seem less well-supported than for images\n\nOverall, this is a solid contribution with a novel idea, good theory, and comprehensive experiments. The main concerns are about the practical significance (especially for LLM generation) and the ad-hoc nature of some design choices. I would lean toward acceptance given the novelty and thorough evaluation.\n\nDecision: Accept (borderline, but the novelty and thoroughness justify acceptance)\n\nRatings:\n- Originality: 4 (very high - novel approach to sequence-dimension transforms)\n- Quality: 3 (good - solid theory and experiments, but some gaps)\n- Clarity: 3 (good - well-written but some sections could be clearer)\n- Significance: 3 (good - useful for low-bit quantization, but limited LLM generation applicability)\n- Soundness: 3 (good)\n- Presentation: 3 (good)\n- Contribution: 3 (good)\n- Overall: 6 (Weak Accept)\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper introduces STaMP (Sequence Transformation and Mixed Precision), a post-training quantization method that applies invertible linear transformations along the sequence dimension of activations to exploit local correlations in language and visual data. By concentrating activation energy into a small number of tokens (using DCT, DWT, or WHT transforms) and allocating higher bit precision to those energy-dense tokens, STaMP reduces quantization error at low average bit widths. The method is complementary to existing feature-dimension transforms (QuaRot, SmoothQuant, etc.) and weight quantization methods. The paper provides theoretical analysis (upper bound on quantization error, optimal bit allocation), and extensive experiments on LVMs (PixArt-Σ, SANA) and LLMs (Llama 3, Llama 3.2, Qwen 2.5) showing consistent improvements when combined with existing quantization techniques. The approach is inspired by classical media compression (JPEG, JPEG2000) and offers a training-free solution for W4A4 quantization.\",\n    \"Strengths\": [\n        \"Novel and well-motivated idea: applying sequence-dimension transforms for activation quantization is a fresh perspective that complements existing feature-dimension approaches\",\n        \"Solid theoretical foundation: Theorem 1 provides a clear upper bound on quantization error, and the optimal bit allocation is derived from rate-distortion principles\",\n        \"Comprehensive experimental evaluation on both LVMs (PixArt-Σ, SANA) and LLMs (Llama 3, Llama 3.2, Qwen 2.5) with multiple baselines (RTN, SmoothQuant, QuaRot, FlatQuant, ViDiT-Q, SVDQuant)\",\n        \"Clear demonstration of orthogonality/complementarity with existing weight quantization and feature transform methods\",\n        \"Practical considerations addressed: overhead estimates, hardware limitations, and the limitation for autoregressive generation are honestly acknowledged\",\n        \"Code is provided for reproducibility\",\n        \"Good visualization of energy distribution and transform components (Figure 3) that helps intuition\"\n    ],\n    \"Weaknesses\": [\n        \"The practical gains for LLMs are often modest when combined with strong baselines like FlatQuant (e.g., perplexity improvements of ~0.1-0.2 for Llama 3 8B)\",\n        \"The method is only applicable during prompt processing for LLMs, significantly limiting its impact on token generation which is the dominant phase in many applications\",\n        \"The bit allocation scheme (64 tokens at 8 bits, rest at 4 bits) appears somewhat ad-hoc and not clearly derived from the theoretical optimal allocation; the connection between the theory and this practical choice is not fully explored\",\n        \"No empirical comparison with the theoretically optimal KLT transform is provided, making it difficult to assess how much performance is lost by using DCT/DWT approximations\",\n        \"The overhead analysis is limited to a single GPU (A100) and may not generalize to edge devices where quantization benefits are most critical\",\n        \"The claim about 'strong local correlation' in text data is less well-supported than for images; the autocorrelation analysis for LLMs is brief\",\n        \"The interaction between sequence length and the optimal number of high-precision tokens is not thoroughly investigated\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"How does the performance of STaMP vary with different numbers of high-precision tokens (e.g., 16, 32, 128, 256)? Is there an optimal value that depends on sequence length or model architecture?\",\n        \"The paper states that 'the first token in most LLMs acts as an attention sink and typically contains massive outliers.' How does STaMP interact with attention sinks? Is it necessary to exclude the first token from the transform, and what happens if it's included?\",\n        \"For the LLM experiments, why is the improvement more pronounced for smaller models (Llama 3.2 1B/3B) compared to larger ones (Llama 3 8B)? Is this related to the degree of autocorrelation in the activations?\",\n        \"The paper mentions that STaMP can be applied only for prompt processing in LLMs. Could the method be extended to generation by processing tokens in small blocks (e.g., 64 tokens at a time)? What would be the latency implications?\",\n        \"How sensitive is the method to the choice of calibration data used to estimate the autocorrelation matrix? Would the energy concentration pattern change significantly with different data distributions?\",\n        \"The theoretical optimal bit allocation assumes continuous bit widths. How close is the practical 4-8 bit scheme to the theoretical optimum? Could a 4-6-8 bit scheme provide better trade-offs?\"\n    ],\n    \"Limitations\": [\n        \"The method is limited to prompt processing in LLMs, not applicable during autoregressive token generation\",\n        \"The improvements are often modest when combined with already-strong baselines like FlatQuant\",\n        \"The overhead analysis is limited to a single GPU architecture (A100) and may not generalize to edge devices\",\n        \"The paper does not explore the interaction between sequence length and the number of high-precision tokens\",\n        \"No empirical comparison with the theoretically optimal KLT transform is provided\",\n        \"Potential negative societal impact is not discussed, though this is a general issue with quantization papers that enable more efficient deployment of potentially harmful generative models\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 19874,
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 19874,
+        "completion_tokens": 1824,
+        "reasoning_tokens": 0,
+        "total_tokens": 21698
+      },
+      "attempts": 1,
+      "response_id": "95eb2fa9-93a4-4f6e-9793-33e8a3cde67f"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper introduces STaMP (Sequence Transformation and Mixed Precision), a novel post-training quantization method that applies invertible linear transformations along the sequence dimension of activations to exploit local correlations between tokens in language and vision models. The approach concentrates activation energy into a small number of tokens using transforms like DCT, DWT, or WHT, then allocates higher bit precision (8-bit) to these energy-dense tokens while using 4-bit precision for the rest, maintaining a fixed average bit-width budget. The authors provide theoretical analysis (an upper bound on quantization error and optimal bit allocation), demonstrate that the autocorrelation matrices of intermediate activations in LLMs and LVMs exhibit Toeplitz-like structure (making DCT/DWT good approximations to the optimal KLT), and show that STaMP consistently improves accuracy when combined with existing feature transformation methods (SmoothQuant, QuaRot, FlatQuant, SVDQuant, ViDiT-Q) across both LLMs (Llama 3, Llama 3.2, Qwen 2.5) and LVMs (PixArt-Σ, SANA). The method adds minimal computational overhead (<5% latency) and is orthogonal to weight quantization techniques.",
+        "Strengths": [
+          "Novel approach: Applying sequence transformations for activation quantization is innovative, drawing inspiration from classical media compression (JPEG, JPEG2000) which is a fresh perspective in the quantization literature.",
+          "Solid theoretical foundation: The paper provides a formal upper bound on quantization error (Theorem 1) and derives the optimal bit allocation strategy based on energy concentration, giving the method a principled basis.",
+          "Comprehensive evaluation: Experiments cover multiple LLM and LVM architectures with several baselines and metrics (perplexity, SQNR, CLIP Score, Image Reward), demonstrating consistent improvements across all settings.",
+          "Orthogonality to existing methods: The paper clearly shows that STaMP is complementary to feature transformations and weight quantization, making it a valuable add-on that can be combined with existing quantization pipelines.",
+          "Practical considerations: The authors address computational overhead with specialized CUDA kernels, report latency measurements, and provide code, making the method easy to adopt.",
+          "Clear visualization: Figures effectively illustrate the autocorrelation structure, energy concentration properties, and the orthogonality of STaMP with feature transforms."
+        ],
+        "Weaknesses": [
+          "The mixed-precision aspect itself is not fundamentally new; the novelty primarily lies in the sequence transformation component. The paper could more clearly delineate the contribution of each component.",
+          "The choice of 64 high-precision tokens appears somewhat heuristic. While the paper shows the impact of varying this number (Figure 4b), a more principled selection criterion or sensitivity analysis across different models/architectures would strengthen the work.",
+          "The method only applies to prompt processing in LLMs (not token-by-token generation), which is a significant limitation acknowledged but not deeply explored. The paper could discuss potential extensions or alternative approaches for the generation phase.",
+          "The theoretical analysis provides an upper bound, but the tightness of this bound for practical activation distributions is not thoroughly analyzed. A comparison of the bound to empirical quantization error across layers would be informative.",
+          "The paper doesn't compare against sequence-dimension approaches from other domains (e.g., token merging or pruning) that might also exploit sequence correlations, which could provide additional context for the claimed novelty."
+        ],
+        "Originality": 4,
+        "Quality": 4,
+        "Clarity": 4,
+        "Significance": 4,
+        "Questions": [
+          "1. How sensitive is the performance of STaMP to the number of high-precision tokens (64)? Is there a principled way to determine this hyperparameter for different models or sequence lengths?",
+          "2. For LLMs, could STaMP be extended to the token-generation phase by using a streaming or chunked approach, or is the limitation to prompt processing fundamental?",
+          "3. The paper mentions that DWT with 2 precision levels is the main focus. How would performance change with more precision levels (e.g., 3 or 4 levels) and what would be the trade-off in terms of computational overhead?",
+          "4. In Figure 7, why does the Identity sequence transform with SmoothQuant perform worse than Identity-Identity? What causes this degradation, and does STaMP help mitigate it?",
+          "5. Could the sequence transformation be learned (rather than using fixed transforms like DCT/DWT) to better adapt to specific model activations, and what would be the computational cost of such an approach?",
+          "6. For the LLM experiments, the paper uses 64 high-precision tokens for all baselines (even without STaMP). What is the impact of this choice on the baselines' performance compared to using uniform 4-bit quantization?"
+        ],
+        "Limitations": [
+          "The method is only applicable to prompt processing in LLMs, not to token-by-token generation, limiting its utility for decode-phase optimization.",
+          "The approach relies on the assumption of local correlation in the sequence dimension, which may not hold for all types of data or model architectures (e.g., pooled embeddings in cross-attention).",
+          "The computational overhead of sequence transforms, while small, may still be non-negligible for very small models or edge deployments with tight latency budgets.",
+          "The method requires storing activations in mixed precision, which may complicate hardware implementations that expect uniform data types.",
+          "The paper primarily evaluates on generative models; the effectiveness on other types of models (e.g., BERT-style encoders, CNNs) is not explored."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 4,
+        "Presentation": 4,
+        "Contribution": 4,
+        "Overall": 8,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces STaMP, a novel activation quantization method that applies invertible linear transformations along the sequence dimension (rather than the feature dimension) to exploit local correlations in tokens. The key insight is to concentrate activation energy into a small number of tokens using transforms like DCT, DWT, or WHT, then allocate higher bit precision to those energy-dense tokens while using lower precision elsewhere. This is analogous to classical signal compression techniques like JPEG.\n\nThe paper is technically sound with a clear theoretical foundation (Theorem 1 provides an upper bound on quantization error, and the optimal bit allocation is derived). The experimental evaluation is quite comprehensive, covering both LVMs (PixArt-Σ, SANA) and LLMs (Llama 3, Llama 3.2, Qwen 2.5), with consistent improvements across multiple baselines (RTN, SmoothQuant, QuaRot, FlatQuant, SVDQuant, ViDiT-Q). The authors also provide overhead estimates showing minimal computational cost.\n\nStrengths:\n1. Novel approach: Applying sequence transformations (rather than feature transformations) for activation quantization is a fresh perspective, drawing inspiration from classical signal processing.\n2. Solid theoretical grounding: The paper provides a formal upper bound on quantization error and derives the optimal bit allocation strategy.\n3. Comprehensive evaluation: Extensive experiments across both vision and language models, with multiple baselines and metrics.\n4. Complementary to existing methods: The paper clearly demonstrates that STaMP is orthogonal to feature transformations and weight quantization, making it a valuable addition to the quantization toolbox.\n5. Practical considerations: The authors address computational overhead and provide specialized CUDA kernels for efficient implementation.\n\nWeaknesses:\n1. Limited novelty in the mixed-precision aspect: The concept of mixed-precision quantization itself is well-established; the novelty lies primarily in the sequence transformation part.\n2. The paper doesn't deeply explore the limitations of the approach for autoregressive generation (only prompt processing), which is acknowledged but could be discussed more.\n3. The choice of 64 high-precision tokens seems somewhat arbitrary; while the paper shows results for varying numbers, the reasoning for this specific value could be clearer.\n4. The theoretical analysis (Theorem 1) provides an upper bound, but the tightness of this bound for practical cases isn't thoroughly analyzed.\n\nThe paper is well-written and clearly organized. The figures effectively illustrate the key concepts. The experimental methodology is sound, with proper baselines and ablation studies.\n\nOriginality: High - sequence transformations for quantization is a novel angle.\nQuality: High - technically sound, thorough evaluation.\nClarity: High - well-written and organized.\nSignificance: High - this could be widely adopted as a complementary technique to existing quantization methods.\n\nOverall, this is a solid paper that makes a meaningful contribution to the quantization literature. The approach is novel, well-motivated, and demonstrates consistent improvements. I would lean toward acceptance.\n\nSoundness: 4 (excellent)\nPresentation: 4 (excellent)\nContribution: 4 (excellent)\nOverall: 8 (Strong Accept)\n\nConfidence: 4 (confident, but not absolutely certain - I'm familiar with quantization literature but didn't verify all mathematical details independently)\n\nDecision: Accept\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper introduces STaMP (Sequence Transformation and Mixed Precision), a novel post-training quantization method that applies invertible linear transformations along the sequence dimension of activations to exploit local correlations between tokens in language and vision models. The approach concentrates activation energy into a small number of tokens using transforms like DCT, DWT, or WHT, then allocates higher bit precision (8-bit) to these energy-dense tokens while using 4-bit precision for the rest, maintaining a fixed average bit-width budget. The authors provide theoretical analysis (an upper bound on quantization error and optimal bit allocation), demonstrate that the autocorrelation matrices of intermediate activations in LLMs and LVMs exhibit Toeplitz-like structure (making DCT/DWT good approximations to the optimal KLT), and show that STaMP consistently improves accuracy when combined with existing feature transformation methods (SmoothQuant, QuaRot, FlatQuant, SVDQuant, ViDiT-Q) across both LLMs (Llama 3, Llama 3.2, Qwen 2.5) and LVMs (PixArt-Σ, SANA). The method adds minimal computational overhead (<5% latency) and is orthogonal to weight quantization techniques.\",\n  \"Strengths\": [\n    \"Novel approach: Applying sequence transformations for activation quantization is innovative, drawing inspiration from classical media compression (JPEG, JPEG2000) which is a fresh perspective in the quantization literature.\",\n    \"Solid theoretical foundation: The paper provides a formal upper bound on quantization error (Theorem 1) and derives the optimal bit allocation strategy based on energy concentration, giving the method a principled basis.\",\n    \"Comprehensive evaluation: Experiments cover multiple LLM and LVM architectures with several baselines and metrics (perplexity, SQNR, CLIP Score, Image Reward), demonstrating consistent improvements across all settings.\",\n    \"Orthogonality to existing methods: The paper clearly shows that STaMP is complementary to feature transformations and weight quantization, making it a valuable add-on that can be combined with existing quantization pipelines.\",\n    \"Practical considerations: The authors address computational overhead with specialized CUDA kernels, report latency measurements, and provide code, making the method easy to adopt.\",\n    \"Clear visualization: Figures effectively illustrate the autocorrelation structure, energy concentration properties, and the orthogonality of STaMP with feature transforms.\"\n  ],\n  \"Weaknesses\": [\n    \"The mixed-precision aspect itself is not fundamentally new; the novelty primarily lies in the sequence transformation component. The paper could more clearly delineate the contribution of each component.\",\n    \"The choice of 64 high-precision tokens appears somewhat heuristic. While the paper shows the impact of varying this number (Figure 4b), a more principled selection criterion or sensitivity analysis across different models/architectures would strengthen the work.\",\n    \"The method only applies to prompt processing in LLMs (not token-by-token generation), which is a significant limitation acknowledged but not deeply explored. The paper could discuss potential extensions or alternative approaches for the generation phase.\",\n    \"The theoretical analysis provides an upper bound, but the tightness of this bound for practical activation distributions is not thoroughly analyzed. A comparison of the bound to empirical quantization error across layers would be informative.\",\n    \"The paper doesn't compare against sequence-dimension approaches from other domains (e.g., token merging or pruning) that might also exploit sequence correlations, which could provide additional context for the claimed novelty.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 4,\n  \"Clarity\": 4,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"1. How sensitive is the performance of STaMP to the number of high-precision tokens (64)? Is there a principled way to determine this hyperparameter for different models or sequence lengths?\",\n    \"2. For LLMs, could STaMP be extended to the token-generation phase by using a streaming or chunked approach, or is the limitation to prompt processing fundamental?\",\n    \"3. The paper mentions that DWT with 2 precision levels is the main focus. How would performance change with more precision levels (e.g., 3 or 4 levels) and what would be the trade-off in terms of computational overhead?\",\n    \"4. In Figure 7, why does the Identity sequence transform with SmoothQuant perform worse than Identity-Identity? What causes this degradation, and does STaMP help mitigate it?\",\n    \"5. Could the sequence transformation be learned (rather than using fixed transforms like DCT/DWT) to better adapt to specific model activations, and what would be the computational cost of such an approach?\",\n    \"6. For the LLM experiments, the paper uses 64 high-precision tokens for all baselines (even without STaMP). What is the impact of this choice on the baselines' performance compared to using uniform 4-bit quantization?\"\n  ],\n  \"Limitations\": [\n    \"The method is only applicable to prompt processing in LLMs, not to token-by-token generation, limiting its utility for decode-phase optimization.\",\n    \"The approach relies on the assumption of local correlation in the sequence dimension, which may not hold for all types of data or model architectures (e.g., pooled embeddings in cross-attention).\",\n    \"The computational overhead of sequence transforms, while small, may still be non-negligible for very small models or edge deployments with tight latency budgets.\",\n    \"The method requires storing activations in mixed precision, which may complicate hardware implementations that expect uniform data types.\",\n    \"The paper primarily evaluates on generative models; the effectiveness on other types of models (e.g., BERT-style encoders, CNNs) is not explored.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 4,\n  \"Presentation\": 4,\n  \"Contribution\": 4,\n  \"Overall\": 8,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 19874,
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 19874,
+        "completion_tokens": 1910,
+        "reasoning_tokens": 0,
+        "total_tokens": 21784
+      },
+      "attempts": 1,
+      "response_id": "0d3082b6-3e50-47cd-8608-3325aae72e2a"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper introduces STaMP (Sequence Transformation and Mixed Precision), a novel post-training quantization method that applies invertible linear transformations (such as DCT, WHT, or DWT) along the sequence dimension of activations to exploit local correlations in language and visual data. This allows concentrating activation energy into a small number of tokens, which are then allocated higher precision (8-bit) while the remaining tokens use 4-bit, achieving lower average bit-widths with improved accuracy. The method is designed to complement existing feature-dimension transformations (e.g., QuaRot, SmoothQuant) and weight quantization methods. Extensive experiments on LLMs (Llama 3, Llama 3.2, Qwen) and LVMs (PixArt-Σ, SANA) demonstrate consistent improvements across various baselines in perplexity, SQNR, and image quality metrics, with minimal computational overhead.",
+        "Strengths": [
+          "Novel contribution: Addresses a gap in quantization literature by applying transformations along the sequence dimension rather than only the feature dimension, drawing inspiration from classical signal processing (JPEG, JPEG2000).",
+          "Solid theoretical foundation: Provides a formal analysis of quantization error bounds for sequence transformations and derives optimal bit allocation strategies.",
+          "Comprehensive experimental evaluation: Tests on multiple LLM and LVM architectures across various quantization methods (RTN, SmoothQuant, QuaRot, FlatQuant, ViDiT-Q, SVDQuant), showing consistent improvements.",
+          "Orthogonality demonstrated: Shows STaMP is complementary to existing feature transformations and weight quantization methods, providing additive benefits.",
+          "Practical considerations: Addresses computational overhead with efficient DWT implementation and provides CUDA kernel measurements.",
+          "Clear writing and helpful visualizations: Autocorrelation matrices and energy distribution plots effectively illustrate the key insights.",
+          "Code availability: Open-source implementation provided for reproducibility."
+        ],
+        "Weaknesses": [
+          "Limited applicability to LLM generation phase: STaMP can only be applied during prompt processing, not during autoregressive token generation, which limits its usefulness for decode-heavy workloads.",
+          "The choice of 64 high-precision tokens appears somewhat arbitrary and not rigorously justified per-layer.",
+          "The bit allocation scheme (8-bit for first 64 tokens, 4-bit for rest) is simple but may not be optimal for all layers or models.",
+          "Improvements on some baselines are modest (e.g., FlatQuant on Llama 3 8B: 6.89 to 6.77), though more significant for harder cases.",
+          "The theoretical analysis provides an upper bound but doesn't fully explain why sequence transforms work better than random rotations in practice.",
+          "No comparison with potential alternative approaches that might also exploit sequence structure, such as learned sequence transforms."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 4,
+        "Questions": [
+          "1. How does STaMP perform with even lower bit widths (e.g., 3-bit or 2-bit activations)? Does the benefit increase or decrease?",
+          "2. Is there a theoretical or empirical justification for choosing exactly 64 high-precision tokens? How does this number scale with sequence length?",
+          "3. How sensitive is the method to the number of DWT levels used? Is there an optimal level for different architectures?",
+          "4. Could STaMP be extended to work during autoregressive generation, perhaps using a sliding window or chunked approach? If not, what are the fundamental obstacles?",
+          "5. What is the end-to-end speedup on real hardware (not just CUDA latency) when accounting for the mixed-precision matrix multiplication overhead?",
+          "6. How does STaMP interact with other quantization granularities, such as per-block or per-group quantization?",
+          "7. Does the method work for encoder-decoder architectures or other sequence-to-sequence models beyond the ones tested?"
+        ],
+        "Limitations": [
+          "The method is primarily applicable to prompt processing in LLMs and not during token generation, which may limit its practical impact for latency-critical decode-heavy applications.",
+          "The paper focuses on 4-bit and 8-bit precision levels; performance at other precision levels (e.g., 3-bit, 6-bit) is not thoroughly explored.",
+          "The choice of DWT over DCT or KLT is justified empirically but may not be optimal for all types of data or architectures.",
+          "The overhead of the mixed-precision matrix multiplication can be significant for small batch sizes (up to 30% for batch size 2) on some layers.",
+          "The approach relies on the assumption that sequence autocorrelation has a strong Toeplitz-like structure, which may not hold for all types of data or model architectures.",
+          "Potential negative societal impact: More efficient quantization could enable deployment of powerful generative models on edge devices, which could be misused for generating misleading content. However, this is not specific to this work and applies to quantization in general."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 4,
+        "Presentation": 4,
+        "Contribution": 4,
+        "Overall": 8,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces STaMP, a novel quantization method that applies invertible linear transformations (like DCT, WHT, DWT) along the sequence dimension of activations, combined with mixed precision allocation where high-energy tokens get more bits. The key insight is that adjacent tokens in language and vision data are highly correlated, allowing energy concentration in a few tokens that can be quantized at higher precision.\n\nStrengths:\n1. Novel approach: The paper identifies a gap in existing quantization literature which focuses on feature dimension transformations (like Hadamard rotations) but ignores sequence dimension correlations. This is a genuinely new direction.\n2. Strong theoretical foundation: The paper provides a rigorous analysis of quantization error bounds and derives optimal bit allocation strategies.\n3. Comprehensive experiments: Evaluation on multiple LLM architectures (Llama 3, Llama 3.2, Qwen) and LVM architectures (PixArt-Σ, SANA) with multiple baselines (RTN, SmoothQuant, QuaRot, FlatQuant, ViDiT-Q, SVDQuant).\n4. Practical considerations: The paper addresses computational overhead, showing DWT is efficient, and provides CUDA kernel implementations.\n5. Orthogonality: STaMP is shown to be complementary to existing feature transformations, providing additive improvements.\n6. Clear writing: The paper is well-structured with helpful visualizations (autocorrelation matrices, energy distributions).\n\nWeaknesses:\n1. Limited theoretical depth: While Theorem 1 provides an upper bound, the analysis is relatively straightforward and the practical benefits are mostly empirical.\n2. LLM limitation: STaMP only works for prompt processing in LLMs, not during token generation (autoregressive decoding). This is acknowledged but limits applicability.\n3. The bit allocation scheme (64 tokens at 8-bit, rest at 4-bit) seems somewhat ad-hoc rather than rigorously optimized per-layer.\n4. Missing comparison with more recent sequence-aware methods if any exist (though this may not be a weakness if none exist).\n5. The improvement in perplexity for the best baseline (FlatQuant on Llama 3 8B) is modest (6.89 → 6.77), though larger for harder cases.\n\nQuestions:\n1. How does STaMP perform with even lower bit widths (e.g., 3-bit or 2-bit activations)?\n2. Is there a theoretical justification for choosing 64 high-precision tokens specifically?\n3. How sensitive is the method to the choice of number of DWT levels?\n4. Could the approach be extended to work during autoregressive generation, perhaps with a sliding window approach?\n5. What is the actual end-to-end speedup on real hardware when considering the mixed precision matmul overhead?\n\nEthical concerns: No significant ethical concerns. The paper uses standard benchmark datasets and models. The computational overhead analysis is honest.\n\nOverall assessment: This is a solid paper with a novel contribution that addresses a real gap in quantization literature. The experiments are comprehensive and show consistent improvements. The main limitations (LLM generation phase, modest gains on some baselines) are acknowledged. The paper is likely to be of interest to the quantization community and could inspire further work on sequence-aware quantization methods.\n\nI would rate this as a strong accept (7-8 range) due to the novelty, thorough evaluation, and practical relevance.\n\nREVIEW JSON:\n```json\n{\n\"Summary\": \"The paper introduces STaMP (Sequence Transformation and Mixed Precision), a novel post-training quantization method that applies invertible linear transformations (such as DCT, WHT, or DWT) along the sequence dimension of activations to exploit local correlations in language and visual data. This allows concentrating activation energy into a small number of tokens, which are then allocated higher precision (8-bit) while the remaining tokens use 4-bit, achieving lower average bit-widths with improved accuracy. The method is designed to complement existing feature-dimension transformations (e.g., QuaRot, SmoothQuant) and weight quantization methods. Extensive experiments on LLMs (Llama 3, Llama 3.2, Qwen) and LVMs (PixArt-Σ, SANA) demonstrate consistent improvements across various baselines in perplexity, SQNR, and image quality metrics, with minimal computational overhead.\",\n\"Strengths\": [\n\"Novel contribution: Addresses a gap in quantization literature by applying transformations along the sequence dimension rather than only the feature dimension, drawing inspiration from classical signal processing (JPEG, JPEG2000).\",\n\"Solid theoretical foundation: Provides a formal analysis of quantization error bounds for sequence transformations and derives optimal bit allocation strategies.\",\n\"Comprehensive experimental evaluation: Tests on multiple LLM and LVM architectures across various quantization methods (RTN, SmoothQuant, QuaRot, FlatQuant, ViDiT-Q, SVDQuant), showing consistent improvements.\",\n\"Orthogonality demonstrated: Shows STaMP is complementary to existing feature transformations and weight quantization methods, providing additive benefits.\",\n\"Practical considerations: Addresses computational overhead with efficient DWT implementation and provides CUDA kernel measurements.\",\n\"Clear writing and helpful visualizations: Autocorrelation matrices and energy distribution plots effectively illustrate the key insights.\",\n\"Code availability: Open-source implementation provided for reproducibility.\"\n],\n\"Weaknesses\": [\n\"Limited applicability to LLM generation phase: STaMP can only be applied during prompt processing, not during autoregressive token generation, which limits its usefulness for decode-heavy workloads.\",\n\"The choice of 64 high-precision tokens appears somewhat arbitrary and not rigorously justified per-layer.\",\n\"The bit allocation scheme (8-bit for first 64 tokens, 4-bit for rest) is simple but may not be optimal for all layers or models.\",\n\"Improvements on some baselines are modest (e.g., FlatQuant on Llama 3 8B: 6.89 to 6.77), though more significant for harder cases.\",\n\"The theoretical analysis provides an upper bound but doesn't fully explain why sequence transforms work better than random rotations in practice.\",\n\"No comparison with potential alternative approaches that might also exploit sequence structure, such as learned sequence transforms.\"\n],\n\"Originality\": 4,\n\"Quality\": 3,\n\"Clarity\": 4,\n\"Significance\": 4,\n\"Questions\": [\n\"1. How does STaMP perform with even lower bit widths (e.g., 3-bit or 2-bit activations)? Does the benefit increase or decrease?\",\n\"2. Is there a theoretical or empirical justification for choosing exactly 64 high-precision tokens? How does this number scale with sequence length?\",\n\"3. How sensitive is the method to the number of DWT levels used? Is there an optimal level for different architectures?\",\n\"4. Could STaMP be extended to work during autoregressive generation, perhaps using a sliding window or chunked approach? If not, what are the fundamental obstacles?\",\n\"5. What is the end-to-end speedup on real hardware (not just CUDA latency) when accounting for the mixed-precision matrix multiplication overhead?\",\n\"6. How does STaMP interact with other quantization granularities, such as per-block or per-group quantization?\",\n\"7. Does the method work for encoder-decoder architectures or other sequence-to-sequence models beyond the ones tested?\"\n],\n\"Limitations\": [\n\"The method is primarily applicable to prompt processing in LLMs and not during token generation, which may limit its practical impact for latency-critical decode-heavy applications.\",\n\"The paper focuses on 4-bit and 8-bit precision levels; performance at other precision levels (e.g., 3-bit, 6-bit) is not thoroughly explored.\",\n\"The choice of DWT over DCT or KLT is justified empirically but may not be optimal for all types of data or architectures.\",\n\"The overhead of the mixed-precision matrix multiplication can be significant for small batch sizes (up to 30% for batch size 2) on some layers.\",\n\"The approach relies on the assumption that sequence autocorrelation has a strong Toeplitz-like structure, which may not hold for all types of data or model architectures.\",\n\"Potential negative societal impact: More efficient quantization could enable deployment of powerful generative models on edge devices, which could be misused for generating misleading content. However, this is not specific to this work and applies to quantization in general.\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 4,\n\"Presentation\": 4,\n\"Contribution\": 4,\n\"Overall\": 8,\n\"Confidence\": 4,\n\"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 19874,
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 19874,
+        "completion_tokens": 1748,
+        "reasoning_tokens": 0,
+        "total_tokens": 21622
+      },
+      "attempts": 1,
+      "response_id": "df272879-ca84-489a-bfaf-af5e07881281"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 5,
+      "Reject": 0
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          3,
+          4,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Clarity": {
+        "values": [
+          3,
+          3,
+          3,
+          4,
+          4
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Significance": {
+        "values": [
+          4,
+          3,
+          3,
+          4,
+          4
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Soundness": {
+        "values": [
+          3,
+          4,
+          3,
+          4,
+          4
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Presentation": {
+        "values": [
+          3,
+          3,
+          3,
+          4,
+          4
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Contribution": {
+        "values": [
+          4,
+          3,
+          3,
+          4,
+          4
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Overall": {
+        "values": [
+          7,
+          7,
+          6,
+          8,
+          8
+        ],
+        "mean": 7.2,
+        "rounded_mean": 7,
+        "population_sd": 0.748,
+        "min": 6,
+        "max": 8
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper proposes STaMP (Sequence Transformation and Mixed Precision), a novel post-training quantization method that applies invertible linear transformations (e.g., DCT, DWT, WHT) along the sequence dimension of activations to exploit local correlations between tokens in language and visual models. By concentrating activation energy into a small number of tokens, STaMP allocates higher bit-widths (8-bit) to these energy-dense tokens and lower precision (4-bit) to the rest, achieving improved quantization accuracy under a fixed average bit-width budget. The method is designed to complement existing feature-dimension transforms (e.g., QuaRot, SmoothQuant) and weight quantization techniques. The paper provides theoretical analysis (an upper bound on quantization error and optimal bit allocation), demonstrates that autocorrelation matrices of intermediate activations exhibit Toeplitz-like structure (justifying DCT/DWT as approximations to the optimal KLT), and validates the method through extensive experiments on LLMs (Llama 3, Llama 3.2, Qwen 2.5) and LVMs (PixArt-Σ, SANA) across multiple baselines and metrics. The method adds minimal computational overhead and is training-free, with code released.",
+      "Strengths": [
+        "Novel and well-motivated approach: applying sequence-dimension transforms for activation quantization is a fresh perspective that complements existing feature-transform methods.",
+        "Solid theoretical foundation: provides an upper bound on quantization error and derives optimal bit allocation strategies, with a reasoned connection between autocorrelation structure and DCT/DWT.",
+        "Comprehensive experimental evaluation: consistent improvements across multiple LLM and LVM architectures and several strong baselines (RTN, SmoothQuant, QuaRot, FlatQuant, ViDiT-Q, SVDQuant), demonstrating orthogonality with existing methods.",
+        "Practical considerations addressed: overhead estimates, mixed-precision kernel implementation, and honest discussion of limitations such as applicability to prompt processing only.",
+        "Clear writing and helpful visualizations: autocorrelation matrices and energy distribution plots effectively illustrate the key insights.",
+        "Code availability for reproducibility."
+      ],
+      "Weaknesses": [
+        "Limited applicability to LLM generation: STaMP is only applicable during prompt processing, not token-by-token generation, which limits its impact for decode-heavy workloads.",
+        "The choice of 64 high-precision tokens appears heuristic and not rigorously justified across different models or sequence lengths; sensitivity analysis is limited.",
+        "The practical bit allocation (64 tokens at 8-bit, rest at 4-bit) is a simplification of the theoretical optimal allocation, and the connection between theory and practice is not fully explored.",
+        "Improvements on some strong baselines (e.g., FlatQuant) are modest, though more significant for harder cases.",
+        "No empirical comparison with the theoretically optimal KLT transform or learned sequence transforms is provided, making it difficult to assess how much performance is lost by using fixed transforms.",
+        "The overhead analysis is limited to a single GPU (A100) and may not generalize to edge devices where quantization benefits are most critical."
+      ],
+      "Originality": 4,
+      "Quality": 3,
+      "Clarity": 4,
+      "Significance": 4,
+      "Questions": [
+        "How sensitive is the performance of STaMP to the number of high-precision tokens (currently fixed at 64)? Is there a principled way to determine this hyperparameter based on energy distribution or sequence length?",
+        "For LLMs, since STaMP only applies to prompt processing, what fraction of real-world inference workloads benefit? Could the method be extended to generation via a sliding window or chunked approach?",
+        "How does the performance of DWT compare to DCT/WHT specifically in the LLM setting? Are there scenarios where DCT would be preferable despite higher computational cost?",
+        "Could STaMP be extended to the KV cache as well as activations, and if so, what results would be expected?",
+        "How does the method perform on longer sequences (e.g., 8192 or 16384 tokens) where local correlation patterns might differ?",
+        "Could the sequence transformation be learned (rather than fixed) to better adapt to specific model activations, and what would be the computational cost?",
+        "How does STaMP interact with attention sinks (e.g., the first token often containing outliers)? Is it necessary to exclude such tokens from the transform?",
+        "What is the end-to-end speedup on real hardware when accounting for mixed-precision matrix multiplication overhead, especially on edge devices?"
+      ],
+      "Limitations": [
+        "The method is only applicable to prompt processing in LLMs, not autoregressive token generation, limiting its utility for decode-phase optimization.",
+        "The mixed-precision scheme (4-bit and 8-bit) requires hardware support for multiple bit-widths, which may not be available on all deployment platforms.",
+        "The bit allocation and number of high-precision tokens are chosen heuristically; a more principled selection criterion would strengthen the work.",
+        "The theoretical analysis provides an upper bound but does not fully characterize how tight it is for practical activation distributions.",
+        "The paper does not explore interaction with other quantization granularities (e.g., per-block, per-group) or more advanced weight-quantization methods.",
+        "The approach relies on the assumption of local correlation in the sequence dimension, which may not hold for all data types or architectures (e.g., pooled embeddings).",
+        "Potential negative societal impact: more efficient quantization could enable deployment of powerful generative models on resource-constrained devices, potentially increasing misuse; however, this is not specific to this work and applies to quantization in general."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 4,
+      "Contribution": 4,
+      "Overall": 7,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "THOUGHT:\nThe paper introduces STaMP, a post-training quantization technique that applies invertible sequence-dimension transforms to activations, enabling mixed-precision allocation (8-bit for high-energy tokens, 4-bit for the rest) under a fixed bit budget. All five reviewers are positive, with overall scores of 7, 7, 6, 8, and 8, and all recommend Accept. The consensus is that the idea is novel, theoretically motivated, and empirically validated across multiple LLM and LVM architectures, with consistent improvements when combined with existing quantization methods. The main limitations identified across reviews are: (1) applicability limited to prompt processing in LLMs (not autoregressive generation), (2) the choice of 64 high-precision tokens is heuristic, (3) modest gains on some strong baselines, (4) hardware overhead for mixed-precision matmul, and (5) lack of comparison with learned transforms or KLT. No reviewer raised ethical concerns. The reviewers agree on originality (4), quality (3-4), clarity (3-4), significance (3-4), and soundness (3-4). Given the strong consensus for acceptance and the generally positive assessments, I will recommend Accept. The meta-review should acknowledge the strengths while noting the shared limitations, particularly the generation-phase restriction and heuristic hyperparameter choice, which are the most commonly cited concerns. I will set overall at 7 (Accept), reflecting a solid technical contribution with clear impact, but not flawless. Confidence is high (4) given the consistent reviewer opinions.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper proposes STaMP (Sequence Transformation and Mixed Precision), a novel post-training quantization method that applies invertible linear transformations (e.g., DCT, DWT, WHT) along the sequence dimension of activations to exploit local correlations between tokens in language and visual models. By concentrating activation energy into a small number of tokens, STaMP allocates higher bit-widths (8-bit) to these energy-dense tokens and lower precision (4-bit) to the rest, achieving improved quantization accuracy under a fixed average bit-width budget. The method is designed to complement existing feature-dimension transforms (e.g., QuaRot, SmoothQuant) and weight quantization techniques. The paper provides theoretical analysis (an upper bound on quantization error and optimal bit allocation), demonstrates that autocorrelation matrices of intermediate activations exhibit Toeplitz-like structure (justifying DCT/DWT as approximations to the optimal KLT), and validates the method through extensive experiments on LLMs (Llama 3, Llama 3.2, Qwen 2.5) and LVMs (PixArt-Σ, SANA) across multiple baselines and metrics. The method adds minimal computational overhead and is training-free, with code released.\",\n    \"Strengths\": [\n        \"Novel and well-motivated approach: applying sequence-dimension transforms for activation quantization is a fresh perspective that complements existing feature-transform methods.\",\n        \"Solid theoretical foundation: provides an upper bound on quantization error and derives optimal bit allocation strategies, with a reasoned connection between autocorrelation structure and DCT/DWT.\",\n        \"Comprehensive experimental evaluation: consistent improvements across multiple LLM and LVM architectures and several strong baselines (RTN, SmoothQuant, QuaRot, FlatQuant, ViDiT-Q, SVDQuant), demonstrating orthogonality with existing methods.\",\n        \"Practical considerations addressed: overhead estimates, mixed-precision kernel implementation, and honest discussion of limitations such as applicability to prompt processing only.\",\n        \"Clear writing and helpful visualizations: autocorrelation matrices and energy distribution plots effectively illustrate the key insights.\",\n        \"Code availability for reproducibility.\"\n    ],\n    \"Weaknesses\": [\n        \"Limited applicability to LLM generation: STaMP is only applicable during prompt processing, not token-by-token generation, which limits its impact for decode-heavy workloads.\",\n        \"The choice of 64 high-precision tokens appears heuristic and not rigorously justified across different models or sequence lengths; sensitivity analysis is limited.\",\n        \"The practical bit allocation (64 tokens at 8-bit, rest at 4-bit) is a simplification of the theoretical optimal allocation, and the connection between theory and practice is not fully explored.\",\n        \"Improvements on some strong baselines (e.g., FlatQuant) are modest, though more significant for harder cases.\",\n        \"No empirical comparison with the theoretically optimal KLT transform or learned sequence transforms is provided, making it difficult to assess how much performance is lost by using fixed transforms.\",\n        \"The overhead analysis is limited to a single GPU (A100) and may not generalize to edge devices where quantization benefits are most critical.\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 4,\n    \"Significance\": 4,\n    \"Questions\": [\n        \"How sensitive is the performance of STaMP to the number of high-precision tokens (currently fixed at 64)? Is there a principled way to determine this hyperparameter based on energy distribution or sequence length?\",\n        \"For LLMs, since STaMP only applies to prompt processing, what fraction of real-world inference workloads benefit? Could the method be extended to generation via a sliding window or chunked approach?\",\n        \"How does the performance of DWT compare to DCT/WHT specifically in the LLM setting? Are there scenarios where DCT would be preferable despite higher computational cost?\",\n        \"Could STaMP be extended to the KV cache as well as activations, and if so, what results would be expected?\",\n        \"How does the method perform on longer sequences (e.g., 8192 or 16384 tokens) where local correlation patterns might differ?\",\n        \"Could the sequence transformation be learned (rather than fixed) to better adapt to specific model activations, and what would be the computational cost?\",\n        \"How does STaMP interact with attention sinks (e.g., the first token often containing outliers)? Is it necessary to exclude such tokens from the transform?\",\n        \"What is the end-to-end speedup on real hardware when accounting for mixed-precision matrix multiplication overhead, especially on edge devices?\"\n    ],\n    \"Limitations\": [\n        \"The method is only applicable to prompt processing in LLMs, not autoregressive token generation, limiting its utility for decode-phase optimization.\",\n        \"The mixed-precision scheme (4-bit and 8-bit) requires hardware support for multiple bit-widths, which may not be available on all deployment platforms.\",\n        \"The bit allocation and number of high-precision tokens are chosen heuristically; a more principled selection criterion would strengthen the work.\",\n        \"The theoretical analysis provides an upper bound but does not fully characterize how tight it is for practical activation distributions.\",\n        \"The paper does not explore interaction with other quantization granularities (e.g., per-block, per-group) or more advanced weight-quantization methods.\",\n        \"The approach relies on the assumption of local correlation in the sequence dimension, which may not hold for all data types or architectures (e.g., pooled embeddings).\",\n        \"Potential negative societal impact: more efficient quantization could enable deployment of powerful generative models on resource-constrained devices, potentially increasing misuse; however, this is not specific to this work and applies to quantization in general.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 4,\n    \"Contribution\": 4,\n    \"Overall\": 7,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 7440,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 7440,
+      "completion_tokens": 1570,
+      "reasoning_tokens": 0,
+      "total_tokens": 9010
+    },
+    "attempts": 1,
+    "response_id": "53d5bea5-e04b-4c4d-9173-21379aafb07a"
+  },
+  "final_review": {
+    "Summary": "The paper proposes STaMP (Sequence Transformation and Mixed Precision), a novel post-training quantization method that applies invertible linear transformations (e.g., DCT, DWT, WHT) along the sequence dimension of activations to exploit local correlations between tokens in language and visual models. By concentrating activation energy into a small number of tokens, STaMP allocates higher bit-widths (8-bit) to these energy-dense tokens and lower precision (4-bit) to the rest, achieving improved quantization accuracy under a fixed average bit-width budget. The method is designed to complement existing feature-dimension transforms (e.g., QuaRot, SmoothQuant) and weight quantization techniques. The paper provides theoretical analysis (an upper bound on quantization error and optimal bit allocation), demonstrates that autocorrelation matrices of intermediate activations exhibit Toeplitz-like structure (justifying DCT/DWT as approximations to the optimal KLT), and validates the method through extensive experiments on LLMs (Llama 3, Llama 3.2, Qwen 2.5) and LVMs (PixArt-Σ, SANA) across multiple baselines and metrics. The method adds minimal computational overhead and is training-free, with code released.",
+    "Strengths": [
+      "Novel and well-motivated approach: applying sequence-dimension transforms for activation quantization is a fresh perspective that complements existing feature-transform methods.",
+      "Solid theoretical foundation: provides an upper bound on quantization error and derives optimal bit allocation strategies, with a reasoned connection between autocorrelation structure and DCT/DWT.",
+      "Comprehensive experimental evaluation: consistent improvements across multiple LLM and LVM architectures and several strong baselines (RTN, SmoothQuant, QuaRot, FlatQuant, ViDiT-Q, SVDQuant), demonstrating orthogonality with existing methods.",
+      "Practical considerations addressed: overhead estimates, mixed-precision kernel implementation, and honest discussion of limitations such as applicability to prompt processing only.",
+      "Clear writing and helpful visualizations: autocorrelation matrices and energy distribution plots effectively illustrate the key insights.",
+      "Code availability for reproducibility."
+    ],
+    "Weaknesses": [
+      "Limited applicability to LLM generation: STaMP is only applicable during prompt processing, not token-by-token generation, which limits its impact for decode-heavy workloads.",
+      "The choice of 64 high-precision tokens appears heuristic and not rigorously justified across different models or sequence lengths; sensitivity analysis is limited.",
+      "The practical bit allocation (64 tokens at 8-bit, rest at 4-bit) is a simplification of the theoretical optimal allocation, and the connection between theory and practice is not fully explored.",
+      "Improvements on some strong baselines (e.g., FlatQuant) are modest, though more significant for harder cases.",
+      "No empirical comparison with the theoretically optimal KLT transform or learned sequence transforms is provided, making it difficult to assess how much performance is lost by using fixed transforms.",
+      "The overhead analysis is limited to a single GPU (A100) and may not generalize to edge devices where quantization benefits are most critical."
+    ],
+    "Originality": 4,
+    "Quality": 3,
+    "Clarity": 3,
+    "Significance": 4,
+    "Questions": [
+      "How sensitive is the performance of STaMP to the number of high-precision tokens (currently fixed at 64)? Is there a principled way to determine this hyperparameter based on energy distribution or sequence length?",
+      "For LLMs, since STaMP only applies to prompt processing, what fraction of real-world inference workloads benefit? Could the method be extended to generation via a sliding window or chunked approach?",
+      "How does the performance of DWT compare to DCT/WHT specifically in the LLM setting? Are there scenarios where DCT would be preferable despite higher computational cost?",
+      "Could STaMP be extended to the KV cache as well as activations, and if so, what results would be expected?",
+      "How does the method perform on longer sequences (e.g., 8192 or 16384 tokens) where local correlation patterns might differ?",
+      "Could the sequence transformation be learned (rather than fixed) to better adapt to specific model activations, and what would be the computational cost?",
+      "How does STaMP interact with attention sinks (e.g., the first token often containing outliers)? Is it necessary to exclude such tokens from the transform?",
+      "What is the end-to-end speedup on real hardware when accounting for mixed-precision matrix multiplication overhead, especially on edge devices?"
+    ],
+    "Limitations": [
+      "The method is only applicable to prompt processing in LLMs, not autoregressive token generation, limiting its utility for decode-phase optimization.",
+      "The mixed-precision scheme (4-bit and 8-bit) requires hardware support for multiple bit-widths, which may not be available on all deployment platforms.",
+      "The bit allocation and number of high-precision tokens are chosen heuristically; a more principled selection criterion would strengthen the work.",
+      "The theoretical analysis provides an upper bound but does not fully characterize how tight it is for practical activation distributions.",
+      "The paper does not explore interaction with other quantization granularities (e.g., per-block, per-group) or more advanced weight-quantization methods.",
+      "The approach relies on the assumption of local correlation in the sequence dimension, which may not hold for all data types or architectures (e.g., pooled embeddings).",
+      "Potential negative societal impact: more efficient quantization could enable deployment of powerful generative models on resource-constrained devices, potentially increasing misuse; however, this is not specific to this work and applies to quantization in general."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 4,
+    "Presentation": 3,
+    "Contribution": 4,
+    "Overall": 7,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 106810,
+    "prompt_cache_hit_tokens": 0,
+    "prompt_cache_miss_tokens": 106810,
+    "completion_tokens": 10664,
+    "reasoning_tokens": 0,
+    "total_tokens": 117474,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 0.0,
+    "cache_miss_input_usd": 0.0149534,
+    "output_usd": 0.00298592,
+    "total_usd": 0.01793932
+  },
+  "elapsed_seconds": 30.209,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Accept",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B003",
+    "filename": "B003.txt",
+    "blind_text_sha256": "5ab483df89255e7da0e22175259eed9caac451ba660d5e013ce16464a8379dd8",
+    "characters": 59932,
+    "full_text_saved": false
+  }
+}

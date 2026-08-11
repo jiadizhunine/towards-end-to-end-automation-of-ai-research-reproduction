@@ -1,0 +1,604 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T09:50:25.200741+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "max",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "meta",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper proposes K-step GUI Transition, an inverse-dynamics task where a VLM receives two screenshots separated by k actions and predicts the first action that causes the transition, using the future screen as a visual goal instead of natural-language instructions. Building on this, GUI-Shift applies GRPO with rule-based rewards (format + action type/parameter correctness) and a prediction-based data filtering step. Experiments fine-tune four VLM backbones on 2K samples per k from AndroidControl and evaluate on AndroidControl, GUI Odyssey, ScreenSpot-v2, and ScreenSpot-Pro, reporting gains up to 11.2% exact match on AndroidControl-High and competitive grounding performance.",
+        "Strengths": [
+          "The K-step GUI Transition task is a simple and elegant way to use future screenshots as visual supervision, avoiding the need for natural-language task instructions.",
+          "The GRPO-based training with a rule-based reward is well motivated for GUI action multiplicity, e.g., treating any click within a target bounding box as correct rather than requiring exact coordinates.",
+          "Experiments are broad: four VLM backbones, four benchmarks, and ablations covering data filtering, task formulation, reasoning traces, and SFT vs GRPO.",
+          "The method is data- and compute-efficient: only 2K samples per k are used, and removing explicit reasoning traces roughly halves training time (17 to 9 hours).",
+          "The data filtering pipeline based on the model's own prediction consistency is an interesting adaptive-curriculum idea."
+        ],
+        "Weaknesses": [
+          "Despite being described as 'self-supervised' and using 'unlabeled GUI trajectories', the method requires ground-truth action annotations for every transition; AndroidControl trajectories are human-annotated demonstrations, so the approach does not eliminate annotation cost, only instruction-annotation cost. This is a central and potentially misleading claim.",
+          "Performance gains are inconsistent across settings: for example, GUI-Shift-Intern decreases EM on AndroidControl-Low (-2.0), and both GUI-Shift-Mimo-SFT and GUI-Shift-Mimo-RL show declines on GUI Odyssey (up to -3.6 EM). Many ScreenSpot-Pro gains are under 1%. The headline 11.2% improvement is cherry-picked from the best model and best k.",
+          "The novelty is incremental: one-step GUI action prediction between screenshots already exists (MobileVLM), and rule-based RL has been applied to GUI agents in UI-R1, GUI-R1, InfiGUI-R1, and UI-Venus. The main differences are using a future state as a visual instruction and omitting reasoning traces, which is a modest extension.",
+          "SFT on the same K-step GUI Transition data is reported to hurt performance dramatically (up to 65.1% relative drop in one case), but no analysis or explanation is provided. This raises concerns about whether the SFT baseline is fairly configured (e.g., same answer format, same reward-oriented targets).",
+          "Data filtering is applied selectively: Qwen2.5-VL-7B uses unfiltered data because its prediction outcomes were 'exceptionally high' in some category, which weakens the generality of the filtering claim and introduces potential selection bias.",
+          "Training data and one of the main evaluation benchmarks are both from AndroidControl, so the substantial gains on AndroidControl may partly reflect in-distribution overfitting; the transfer gains to GUI Odyssey and ScreenSpot-Pro are much smaller or negative."
+        ],
+        "Originality": 2,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 2,
+        "Questions": [
+          "How is ground truth obtained when applying GUI-Shift to truly 'unlabeled' trajectories? If a trajectory lacks action labels, what is the reward function based on, and how is the data filtering pipeline run?",
+          "For each k, 2K samples are selected; are the selected samples disjoint across different k, or can the same trajectory contribute overlapping pairs? Are models trained on one k at a time or on all k jointly, and how is the best k per model chosen?",
+          "Why was data filtering not used for Qwen2.5-VL-7B? What threshold or criterion determines 'exceptionally high' correct/incorrect proportions, and does this choice confound the filtering ablation?",
+          "What is the run-to-run variance of the reported results? Are the small gains (e.g., <1% on ScreenSpot-Pro) statistically significant over multiple seeds?",
+          "For k>1, the first action is not uniquely determined by the pair (S_t, S_t+k); can different first actions lead to the same future state? How often does the reward signal disagree with plausible alternatives, and how does the model resolve this ambiguity?",
+          "Can the authors provide a detailed analysis of why SFT collapses on this task? Specifically, was the SFT training given the same <answer> format, same unified action space, and same bounding-box-based target smoothing? If not, the SFT vs GRPO comparison may be unfair."
+        ],
+        "Limitations": [
+          "The method still depends on trajectories with action labels; it does not work with fully unlabeled screen sequences unless actions are inferred by some external mechanism.",
+          "The action space is limited to eight types (click, long_press, scroll, open_app, input_text, navigate_back, navigate_home, wait) and does not cover drag, pinch, or other common mobile gestures.",
+          "Training is performed exclusively on AndroidControl data; generalization to tablets, desktop applications with high-resolution screens (ScreenSpot-Pro), and different platforms is limited or inconsistent.",
+          "All experiments use 7B-8B VLMs; scaling behavior to larger models is unknown.",
+          "The paper does not analyze failure cases or discuss the safety/privacy implications of deploying GUI agents trained with this method.",
+          "Static benchmarks may not reflect real-device robustness, such as dynamic content, network latency, or unexpected UI changes."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes K-step GUI Transition, an inverse-dynamics task where a VLM receives two screenshots separated by k actions and predicts the first action that causes the transition, using the future screen as a visual goal instead of natural-language instructions. Building on this, GUI-Shift applies GRPO with rule-based rewards (format + action type/parameter correctness) and a prediction-based data filtering step. Experiments fine-tune four VLM backbones on 2K samples per k from AndroidControl and evaluate on AndroidControl, GUI Odyssey, ScreenSpot-v2, and ScreenSpot-Pro, reporting gains up to 11.2% exact match on AndroidControl-High and competitive grounding performance.\",\n  \"Strengths\": [\n    \"The K-step GUI Transition task is a simple and elegant way to use future screenshots as visual supervision, avoiding the need for natural-language task instructions.\",\n    \"The GRPO-based training with a rule-based reward is well motivated for GUI action multiplicity, e.g., treating any click within a target bounding box as correct rather than requiring exact coordinates.\",\n    \"Experiments are broad: four VLM backbones, four benchmarks, and ablations covering data filtering, task formulation, reasoning traces, and SFT vs GRPO.\",\n    \"The method is data- and compute-efficient: only 2K samples per k are used, and removing explicit reasoning traces roughly halves training time (17 to 9 hours).\",\n    \"The data filtering pipeline based on the model's own prediction consistency is an interesting adaptive-curriculum idea.\"\n  ],\n  \"Weaknesses\": [\n    \"Despite being described as 'self-supervised' and using 'unlabeled GUI trajectories', the method requires ground-truth action annotations for every transition; AndroidControl trajectories are human-annotated demonstrations, so the approach does not eliminate annotation cost, only instruction-annotation cost. This is a central and potentially misleading claim.\",\n    \"Performance gains are inconsistent across settings: for example, GUI-Shift-Intern decreases EM on AndroidControl-Low (-2.0), and both GUI-Shift-Mimo-SFT and GUI-Shift-Mimo-RL show declines on GUI Odyssey (up to -3.6 EM). Many ScreenSpot-Pro gains are under 1%. The headline 11.2% improvement is cherry-picked from the best model and best k.\",\n    \"The novelty is incremental: one-step GUI action prediction between screenshots already exists (MobileVLM), and rule-based RL has been applied to GUI agents in UI-R1, GUI-R1, InfiGUI-R1, and UI-Venus. The main differences are using a future state as a visual instruction and omitting reasoning traces, which is a modest extension.\",\n    \"SFT on the same K-step GUI Transition data is reported to hurt performance dramatically (up to 65.1% relative drop in one case), but no analysis or explanation is provided. This raises concerns about whether the SFT baseline is fairly configured (e.g., same answer format, same reward-oriented targets).\",\n    \"Data filtering is applied selectively: Qwen2.5-VL-7B uses unfiltered data because its prediction outcomes were 'exceptionally high' in some category, which weakens the generality of the filtering claim and introduces potential selection bias.\",\n    \"Training data and one of the main evaluation benchmarks are both from AndroidControl, so the substantial gains on AndroidControl may partly reflect in-distribution overfitting; the transfer gains to GUI Odyssey and ScreenSpot-Pro are much smaller or negative.\"\n  ],\n  \"Originality\": 2,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"How is ground truth obtained when applying GUI-Shift to truly 'unlabeled' trajectories? If a trajectory lacks action labels, what is the reward function based on, and how is the data filtering pipeline run?\",\n    \"For each k, 2K samples are selected; are the selected samples disjoint across different k, or can the same trajectory contribute overlapping pairs? Are models trained on one k at a time or on all k jointly, and how is the best k per model chosen?\",\n    \"Why was data filtering not used for Qwen2.5-VL-7B? What threshold or criterion determines 'exceptionally high' correct/incorrect proportions, and does this choice confound the filtering ablation?\",\n    \"What is the run-to-run variance of the reported results? Are the small gains (e.g., <1% on ScreenSpot-Pro) statistically significant over multiple seeds?\",\n    \"For k>1, the first action is not uniquely determined by the pair (S_t, S_t+k); can different first actions lead to the same future state? How often does the reward signal disagree with plausible alternatives, and how does the model resolve this ambiguity?\",\n    \"Can the authors provide a detailed analysis of why SFT collapses on this task? Specifically, was the SFT training given the same <answer> format, same unified action space, and same bounding-box-based target smoothing? If not, the SFT vs GRPO comparison may be unfair.\"\n  ],\n  \"Limitations\": [\n    \"The method still depends on trajectories with action labels; it does not work with fully unlabeled screen sequences unless actions are inferred by some external mechanism.\",\n    \"The action space is limited to eight types (click, long_press, scroll, open_app, input_text, navigate_back, navigate_home, wait) and does not cover drag, pinch, or other common mobile gestures.\",\n    \"Training is performed exclusively on AndroidControl data; generalization to tablets, desktop applications with high-resolution screens (ScreenSpot-Pro), and different platforms is limited or inconsistent.\",\n    \"All experiments use 7B-8B VLMs; scaling behavior to larger models is unknown.\",\n    \"The paper does not analyze failure cases or discuss the safety/privacy implications of deploying GUI agents trained with this method.\",\n    \"Static benchmarks may not reflect real-device robustness, such as dynamic content, network latency, or unexpected UI changes.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 25464,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 24696,
+        "completion_tokens": 4875,
+        "reasoning_tokens": 3557,
+        "total_tokens": 30339
+      },
+      "attempts": 1,
+      "response_id": "68155614-123f-4af9-af51-9c2747b491c0"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper proposes GUI-Shift, a self-supervised reinforcement learning framework for training vision-language models for GUI agents. It introduces K-step GUI Transition, an inverse-dynamics task where the model predicts the first action between two screenshot states without natural language instructions. The method uses GRPO with a rule-based reward and a data filtering pipeline. Experiments on four VLMs and four benchmarks (AndroidControl, GUI Odyssey, ScreenSpot-v2, ScreenSpot-Pro) show improvements in GUI automation and grounding, with up to 11.2% gains.",
+        "Strengths": [
+          "Novel combination of inverse dynamics and RL for GUI agents, using target states as visual instructions to avoid language annotation.",
+          "Comprehensive evaluation across four VLM backbones and four benchmarks, showing consistent improvements in most settings.",
+          "Data filtering based on model's own sampling (correct/incorrect predictions) is a practical way to select informative samples and is shown to help several models.",
+          "Ablation shows that omitting explicit reasoning traces during RL training reduces training time by nearly half while often improving performance.",
+          "The bounding-box reward for click actions is more tolerant than exact coordinate matching, aligning with real GUI interaction variability."
+        ],
+        "Weaknesses": [
+          "The method is not truly self-supervised: it relies on ground-truth action labels from AndroidControl trajectories to compute rewards and filter data. The paper only removes natural language instructions, not action supervision, making the 'self-supervised' claim misleading.",
+          "The inference protocol is underspecified. Models are trained on pairs of screenshots (S_t and S_{t+k}), but evaluated on standard GUI benchmarks that provide a single screenshot plus a text instruction. The paper does not explain how the trained VLM is prompted at inference, making reproduction difficult.",
+          "The best k is selected per model and per benchmark rather than using a consistent validation-based protocol. Main results cherry-pick the highest-scoring k, while other k values often show smaller gains or even drops, raising concerns about overfitting to test sets.",
+          "The SFT baseline in the training algorithm ablation leads to drastic performance drops, which the paper attributes to format mismatch. This suggests the training/evaluation protocol is not well aligned, and the comparison between GRPO and SFT may be unfair or indicate that the task formulation is not directly transferable.",
+          "The reward for input_text requires exact string matching, contradicting the paper's motivation that GUI actions have multiple valid alternatives. This limits the rule-based reward's tolerance to clicks/long presses only.",
+          "Data filtering is not applied to Qwen, and for some models filtering yields mixed or negative results (e.g., Mimo-RL on ScreenSpot-Pro with filtering, InternVL on AC-Low with filtering), making the claimed advantage of filtering inconsistent.",
+          "Generalization claims are overstated: on GUI Odyssey, Mimo models drop relative to baselines, and on ScreenSpot-Pro, InternVL barely improves or degrades. Gains are small and no statistical significance testing or variance reporting is provided.",
+          "Training data is limited to 2K samples per k from AndroidControl only (phone screens). No experiments with larger unlabeled datasets, web/desktop data, or scaling analysis are provided."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 3,
+        "Questions": [
+          "How is the model evaluated on single-screenshot benchmarks after training on paired screenshots? Please provide the exact prompt and input format at inference; is the target state omitted or replaced?",
+          "Why is Qwen not included in the data filtering experiments? Does filtering hurt Qwen? Please report filtered results for Qwen for completeness.",
+          "How was the best k selected for each model/benchmark? Was it based on a validation set or post-hoc after observing test results? Please report the average and standard deviation across k values.",
+          "Since the reward and filtering use ground-truth actions from AndroidControl, how is this considered self-supervised? Could the method work with actions from automated exploration where no human labels exist?",
+          "For input_text, does the reward use exact string matching? How are semantically equivalent but textually different inputs handled?",
+          "The SFT baseline in Figure 3 drops drastically; what is the training/evaluation format for SFT? Could this drop be avoided by using a more aligned output format?",
+          "How does the performance vary with the number of training samples (e.g., 1K, 4K, 8K) and with data from multiple platforms?"
+        ],
+        "Limitations": [
+          "The approach still requires trajectories with recorded actions, which are not fully annotation-free; it only removes language instructions.",
+          "Training data is exclusively from AndroidControl (mobile), limiting generalization to tablet, desktop, and web environments, as evidenced by mixed results on GUI Odyssey and ScreenSpot-Pro.",
+          "The method's gains are inconsistent across k, models, and benchmarks, and the paper does not identify a single best configuration or a principle for choosing k.",
+          "The paper does not report statistical significance or variance across seeds, so the magnitude of improvements is uncertain.",
+          "No analysis of failure cases or of which action types benefit most from the approach.",
+          "Potential negative societal impact: improved GUI agents could be used for automating harmful activities such as fraudulent transactions or unauthorized access, though this is not unique to the paper."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes GUI-Shift, a self-supervised reinforcement learning framework for training vision-language models for GUI agents. It introduces K-step GUI Transition, an inverse-dynamics task where the model predicts the first action between two screenshot states without natural language instructions. The method uses GRPO with a rule-based reward and a data filtering pipeline. Experiments on four VLMs and four benchmarks (AndroidControl, GUI Odyssey, ScreenSpot-v2, ScreenSpot-Pro) show improvements in GUI automation and grounding, with up to 11.2% gains.\",\n  \"Strengths\": [\n    \"Novel combination of inverse dynamics and RL for GUI agents, using target states as visual instructions to avoid language annotation.\",\n    \"Comprehensive evaluation across four VLM backbones and four benchmarks, showing consistent improvements in most settings.\",\n    \"Data filtering based on model's own sampling (correct/incorrect predictions) is a practical way to select informative samples and is shown to help several models.\",\n    \"Ablation shows that omitting explicit reasoning traces during RL training reduces training time by nearly half while often improving performance.\",\n    \"The bounding-box reward for click actions is more tolerant than exact coordinate matching, aligning with real GUI interaction variability.\"\n  ],\n  \"Weaknesses\": [\n    \"The method is not truly self-supervised: it relies on ground-truth action labels from AndroidControl trajectories to compute rewards and filter data. The paper only removes natural language instructions, not action supervision, making the 'self-supervised' claim misleading.\",\n    \"The inference protocol is underspecified. Models are trained on pairs of screenshots (S_t and S_{t+k}), but evaluated on standard GUI benchmarks that provide a single screenshot plus a text instruction. The paper does not explain how the trained VLM is prompted at inference, making reproduction difficult.\",\n    \"The best k is selected per model and per benchmark rather than using a consistent validation-based protocol. Main results cherry-pick the highest-scoring k, while other k values often show smaller gains or even drops, raising concerns about overfitting to test sets.\",\n    \"The SFT baseline in the training algorithm ablation leads to drastic performance drops, which the paper attributes to format mismatch. This suggests the training/evaluation protocol is not well aligned, and the comparison between GRPO and SFT may be unfair or indicate that the task formulation is not directly transferable.\",\n    \"The reward for input_text requires exact string matching, contradicting the paper's motivation that GUI actions have multiple valid alternatives. This limits the rule-based reward's tolerance to clicks/long presses only.\",\n    \"Data filtering is not applied to Qwen, and for some models filtering yields mixed or negative results (e.g., Mimo-RL on ScreenSpot-Pro with filtering, InternVL on AC-Low with filtering), making the claimed advantage of filtering inconsistent.\",\n    \"Generalization claims are overstated: on GUI Odyssey, Mimo models drop relative to baselines, and on ScreenSpot-Pro, InternVL barely improves or degrades. Gains are small and no statistical significance testing or variance reporting is provided.\",\n    \"Training data is limited to 2K samples per k from AndroidControl only (phone screens). No experiments with larger unlabeled datasets, web/desktop data, or scaling analysis are provided.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How is the model evaluated on single-screenshot benchmarks after training on paired screenshots? Please provide the exact prompt and input format at inference; is the target state omitted or replaced?\",\n    \"Why is Qwen not included in the data filtering experiments? Does filtering hurt Qwen? Please report filtered results for Qwen for completeness.\",\n    \"How was the best k selected for each model/benchmark? Was it based on a validation set or post-hoc after observing test results? Please report the average and standard deviation across k values.\",\n    \"Since the reward and filtering use ground-truth actions from AndroidControl, how is this considered self-supervised? Could the method work with actions from automated exploration where no human labels exist?\",\n    \"For input_text, does the reward use exact string matching? How are semantically equivalent but textually different inputs handled?\",\n    \"The SFT baseline in Figure 3 drops drastically; what is the training/evaluation format for SFT? Could this drop be avoided by using a more aligned output format?\",\n    \"How does the performance vary with the number of training samples (e.g., 1K, 4K, 8K) and with data from multiple platforms?\"\n  ],\n  \"Limitations\": [\n    \"The approach still requires trajectories with recorded actions, which are not fully annotation-free; it only removes language instructions.\",\n    \"Training data is exclusively from AndroidControl (mobile), limiting generalization to tablet, desktop, and web environments, as evidenced by mixed results on GUI Odyssey and ScreenSpot-Pro.\",\n    \"The method's gains are inconsistent across k, models, and benchmarks, and the paper does not identify a single best configuration or a principle for choosing k.\",\n    \"The paper does not report statistical significance or variance across seeds, so the magnitude of improvements is uncertain.\",\n    \"No analysis of failure cases or of which action types benefit most from the approach.\",\n    \"Potential negative societal impact: improved GUI agents could be used for automating harmful activities such as fraudulent transactions or unauthorized access, though this is not unique to the paper.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 25464,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 24696,
+        "completion_tokens": 4336,
+        "reasoning_tokens": 3144,
+        "total_tokens": 29800
+      },
+      "attempts": 1,
+      "response_id": "4cff7eaa-0395-42eb-adb8-c53553a44a2b"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper introduces GUI-Shift, a self-supervised reinforcement learning framework for training vision-language models (VLMs) for GUI agents. The core task is K-step GUI Transition, where the model predicts the first action that transforms a screenshot S_t into a later state S_{t+k}, using the future state as a visual goal instead of human-annotated instructions. Training applies GRPO with rule-based format and action rewards, plus a data filtering pipeline that selects challenging samples. Experiments on four VLMs (Qwen2.5-VL-7B, InternVL3-8B, MimoVL-7B-SFT, MimoVL-7B-RL) and four benchmarks (AndroidControl, GUI Odyssey, ScreenSpot-v2, ScreenSpot-Pro) show consistent improvements over base models, e.g., up to 11.2% exact-match gain on AndroidControl-High. The method reduces training cost by omitting reasoning traces and enables scalable data construction from unlabeled trajectories.",
+        "Strengths": [
+          "The K-step GUI Transition task is a novel and annotation-light training objective: using the future screenshot as a visual instruction avoids costly textual instruction annotation.",
+          "GRPO with bounding-box-based click rewards is a sensible way to handle action multiplicity, giving tolerant and informative training signals compared to exact-match SFT.",
+          "The data filtering pipeline, which selects samples where the model is both correct and incorrect, is a practical approach to identify challenging and informative examples.",
+          "Extensive experiments across four VLMs and four benchmarks demonstrate consistent gains, especially on AndroidControl-High (up to 11.2% EM improvement) with only 2K training samples.",
+          "Removing explicit reasoning traces during training nearly halves training time (from 17 to 9 hours) without hurting performance, which is practically valuable."
+        ],
+        "Weaknesses": [
+          "The term 'self-supervised' is misleading: the method still requires ground-truth actions for reward computation, so trajectories must contain action labels. The distinction between instruction annotation and action annotation is not clearly stated, overstating the annotation-free contribution.",
+          "Training data is limited to 2K samples per k from a single source (AndroidControl training set). The paper does not demonstrate scalability to larger datasets, and performance drops on GUI Odyssey for Mimo models suggest distribution-shift issues.",
+          "Many grounding improvements are small (0.2%-1.5%) and no statistical significance testing or confidence intervals are reported; these gains may not be robust.",
+          "The data filtering process uses the same model for both filtering and training, which could introduce selection bias, and its computational cost (8 generations per candidate) is non-trivial but not analyzed.",
+          "The SFT comparison may be unfair: SFT is applied with the same strict output format as GRPO, which the paper notes is sensitive to format mismatch; a tuned SFT baseline with relaxed matching (e.g., bounding box loss) would be more convincing.",
+          "Reproducibility is incomplete: exact prompt templates, image preprocessing for the two screenshots, and how the 'first action' is defined for k>1 are not fully specified."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "The paper claims 'unlabeled GUI trajectories,' but the reward requires ground-truth actions. Are actions always available in the trajectories, or is the method applicable only when action annotations exist? Please clarify the annotation requirements.",
+          "How exactly are the two screenshots (S_t and S_{t+k}) presented to the model? Are they concatenated horizontally, vertically, or as multiple image tokens in the prompt? Please provide the prompt template.",
+          "Why was unfiltered data used for Qwen2.5-VL-7B? Does this indicate that the filtering criterion (both correct and incorrect responses) is not universally applicable, and how does the choice affect fairness of comparisons?",
+          "For k>1, what is the ground-truth 'first action'? Is it simply the first action in the k-step sequence, and does the model ever get confused by the target state that reflects multiple actions?",
+          "What is the computational cost of the data filtering step (e.g., GPU-hours for generating 8 responses per candidate)? How would this scale to millions of samples?",
+          "Did the authors evaluate with different numbers of training samples (e.g., 1K, 4K, 8K)? The scaling behavior of GUI-Shift is a key claim but is not tested.",
+          "Could the improvements on grounding benchmarks come from the additional training data itself rather than the K-step objective? Was there a control experiment with RL on single-step screenshots or with the target state removed?",
+          "Are the reported drops on GUI Odyssey for Mimo models due to tablet screens, and if so, how does GUI-Shift handle cross-device generalization?"
+        ],
+        "Limitations": [
+          "The method is not fully annotation-free: it requires action labels in trajectories for reward computation, limiting its use to datasets with action annotations.",
+          "All training data is from AndroidControl (mobile smartphones); generalization to desktop, web, or tablet domains is limited, as evidenced by smaller gains or drops on GUI Odyssey and ScreenSpot-Pro.",
+          "The training set size (2K samples per k) is small, and no experiments demonstrate scaling to larger datasets, weakening the scalability argument.",
+          "Data filtering requires multiple model generations per sample, which may be computationally expensive for very large trajectory corpora and may introduce model-specific bias.",
+          "The evaluation metrics are accuracy-based and do not consider task completion rates in dynamic environments; the paper does not test on interactive benchmarks like AndroidWorld.",
+          "Potential negative societal impacts, such as misuse of GUI agents for automated malicious actions or privacy concerns in screen content, are not discussed."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper introduces GUI-Shift, a self-supervised reinforcement learning framework for training vision-language models (VLMs) for GUI agents. The core task is K-step GUI Transition, where the model predicts the first action that transforms a screenshot S_t into a later state S_{t+k}, using the future state as a visual goal instead of human-annotated instructions. Training applies GRPO with rule-based format and action rewards, plus a data filtering pipeline that selects challenging samples. Experiments on four VLMs (Qwen2.5-VL-7B, InternVL3-8B, MimoVL-7B-SFT, MimoVL-7B-RL) and four benchmarks (AndroidControl, GUI Odyssey, ScreenSpot-v2, ScreenSpot-Pro) show consistent improvements over base models, e.g., up to 11.2% exact-match gain on AndroidControl-High. The method reduces training cost by omitting reasoning traces and enables scalable data construction from unlabeled trajectories.\",\n  \"Strengths\": [\n    \"The K-step GUI Transition task is a novel and annotation-light training objective: using the future screenshot as a visual instruction avoids costly textual instruction annotation.\",\n    \"GRPO with bounding-box-based click rewards is a sensible way to handle action multiplicity, giving tolerant and informative training signals compared to exact-match SFT.\",\n    \"The data filtering pipeline, which selects samples where the model is both correct and incorrect, is a practical approach to identify challenging and informative examples.\",\n    \"Extensive experiments across four VLMs and four benchmarks demonstrate consistent gains, especially on AndroidControl-High (up to 11.2% EM improvement) with only 2K training samples.\",\n    \"Removing explicit reasoning traces during training nearly halves training time (from 17 to 9 hours) without hurting performance, which is practically valuable.\"\n  ],\n  \"Weaknesses\": [\n    \"The term 'self-supervised' is misleading: the method still requires ground-truth actions for reward computation, so trajectories must contain action labels. The distinction between instruction annotation and action annotation is not clearly stated, overstating the annotation-free contribution.\",\n    \"Training data is limited to 2K samples per k from a single source (AndroidControl training set). The paper does not demonstrate scalability to larger datasets, and performance drops on GUI Odyssey for Mimo models suggest distribution-shift issues.\",\n    \"Many grounding improvements are small (0.2%-1.5%) and no statistical significance testing or confidence intervals are reported; these gains may not be robust.\",\n    \"The data filtering process uses the same model for both filtering and training, which could introduce selection bias, and its computational cost (8 generations per candidate) is non-trivial but not analyzed.\",\n    \"The SFT comparison may be unfair: SFT is applied with the same strict output format as GRPO, which the paper notes is sensitive to format mismatch; a tuned SFT baseline with relaxed matching (e.g., bounding box loss) would be more convincing.\",\n    \"Reproducibility is incomplete: exact prompt templates, image preprocessing for the two screenshots, and how the 'first action' is defined for k>1 are not fully specified.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"The paper claims 'unlabeled GUI trajectories,' but the reward requires ground-truth actions. Are actions always available in the trajectories, or is the method applicable only when action annotations exist? Please clarify the annotation requirements.\",\n    \"How exactly are the two screenshots (S_t and S_{t+k}) presented to the model? Are they concatenated horizontally, vertically, or as multiple image tokens in the prompt? Please provide the prompt template.\",\n    \"Why was unfiltered data used for Qwen2.5-VL-7B? Does this indicate that the filtering criterion (both correct and incorrect responses) is not universally applicable, and how does the choice affect fairness of comparisons?\",\n    \"For k>1, what is the ground-truth 'first action'? Is it simply the first action in the k-step sequence, and does the model ever get confused by the target state that reflects multiple actions?\",\n    \"What is the computational cost of the data filtering step (e.g., GPU-hours for generating 8 responses per candidate)? How would this scale to millions of samples?\",\n    \"Did the authors evaluate with different numbers of training samples (e.g., 1K, 4K, 8K)? The scaling behavior of GUI-Shift is a key claim but is not tested.\",\n    \"Could the improvements on grounding benchmarks come from the additional training data itself rather than the K-step objective? Was there a control experiment with RL on single-step screenshots or with the target state removed?\",\n    \"Are the reported drops on GUI Odyssey for Mimo models due to tablet screens, and if so, how does GUI-Shift handle cross-device generalization?\"\n  ],\n  \"Limitations\": [\n    \"The method is not fully annotation-free: it requires action labels in trajectories for reward computation, limiting its use to datasets with action annotations.\",\n    \"All training data is from AndroidControl (mobile smartphones); generalization to desktop, web, or tablet domains is limited, as evidenced by smaller gains or drops on GUI Odyssey and ScreenSpot-Pro.\",\n    \"The training set size (2K samples per k) is small, and no experiments demonstrate scaling to larger datasets, weakening the scalability argument.\",\n    \"Data filtering requires multiple model generations per sample, which may be computationally expensive for very large trajectory corpora and may introduce model-specific bias.\",\n    \"The evaluation metrics are accuracy-based and do not consider task completion rates in dynamic environments; the paper does not test on interactive benchmarks like AndroidWorld.\",\n    \"Potential negative societal impacts, such as misuse of GUI agents for automated malicious actions or privacy concerns in screen content, are not discussed.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 25464,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 24696,
+        "completion_tokens": 3520,
+        "reasoning_tokens": 2228,
+        "total_tokens": 28984
+      },
+      "attempts": 1,
+      "response_id": "745926fc-bb67-4bc9-82fa-c3c4d33ee0c7"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper introduces GUI-Shift, a self-supervised reinforcement learning framework for training vision-language models (VLMs) for GUI agents. It proposes a K-step GUI Transition task that predicts the initial action causing a transition between two GUI states, eliminating the need for natural-language instructions. Training uses GRPO with rule-based rewards and a data filtering mechanism that selects informative state pairs. Experiments on four VLM backbones and four benchmarks (AndroidControl, GUI Odyssey, ScreenSpot-v2, ScreenSpot-Pro) show improvements over base models, with up to 11.2% accuracy gains in GUI automation and 2.5% gains in grounding, using only 2K samples per k.",
+        "Strengths": [
+          "Addresses an important and costly bottleneck in GUI agent training by proposing a transition-prediction task that does not require natural-language instructions.",
+          "Empirical evaluation covers four VLM backbones and four benchmarks, showing consistent gains on AndroidControl-High and grounding benchmarks, with up to 11.2% EM improvements.",
+          "The rule-based rewards and data filtering mechanism are simple and practical; ablations show GRPO outperforms SFT for this task formulation.",
+          "Removing explicit reasoning traces halves training time while maintaining or improving performance, which is a useful efficiency contribution."
+        ],
+        "Weaknesses": [
+          "The 'self-supervised' claim is overstated: the reward and filtering rely on ground-truth action types, coordinates, and bounding boxes from the AndroidControl dataset, which remain human-annotated. The trajectories still come from a dataset that also contains instruction labels, so the method reduces annotation dependence but does not eliminate it.",
+          "The training set is surprisingly small (2K samples per k), and the paper does not demonstrate scalability to larger unlabeled trajectory collections, which is central to the motivation.",
+          "Main results select the best k per model and benchmark (e.g., k=1 for Qwen on automation, k=4 for grounding), which may be a form of test-set selection bias; appendix results show many cases with no gains or drops, especially on GUI Odyssey and ScreenSpot-Pro.",
+          "SFT under the same transition objective is reported to hurt performance; the paper attributes this to format mismatch, but the comparison may be unfair or underspecified, and the reason for SFT failure is not thoroughly analyzed.",
+          "The k-step task can be ill-posed for k>1: the first action is not always identifiable from only the start and k-step-later states, yet the paper does not discuss this ambiguity or verify that the training samples are learnable.",
+          "Missing important details: how click coordinates are predicted/normalized, how input_text exact-match rewards are computed, how open_app/wait actions are handled in benchmarks, and how many trajectories/pairs are used after filtering."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 3,
+        "Questions": [
+          "Since the reward requires ground-truth action types, coordinates, and bounding boxes, can the method be applied to truly unlabeled GUI trajectories without any action labels? If not, what exactly is 'unlabeled' in your setup?",
+          "How were the 2K samples chosen per k from the filtered pool? Was the selection random or based on other criteria? How many trajectories are covered?",
+          "For each model, the best k differs across benchmarks and is used in the main tables. Was k selected using a validation set or the test set? If the latter, how does this affect the reported gains?",
+          "For the SFT comparison, what prompt format and training loss were used? Could the SFT performance drop be due to training/evaluation format mismatch rather than the transition task itself?",
+          "When k>1, two different first actions could lead to the same S_{t+k} (depending on intermediate actions). Have you measured the identifiability of the first action in your training samples? If ambiguity exists, how does the RL reward handle it?",
+          "The unified action space includes open_app, wait, and input_text, but the benchmarks report six action types. How are these additional actions treated at inference and evaluation?",
+          "Have you performed scaling experiments with more than 2K samples? The scalability motivation suggests larger datasets should help; is there evidence of improved performance with more data?",
+          "What is the computational cost of data filtering (e.g., model inferences per sample) relative to the training savings? Does the end-to-end pipeline actually save annotation/inference cost?"
+        ],
+        "Limitations": [
+          "The method still depends on ground-truth action labels and bounding boxes, so it is not annotation-free; instruction labels are avoided but action annotations remain.",
+          "The training data (AndroidControl) is in-domain for some benchmarks; generalization to unrelated domains (e.g., desktop, professional software) is limited, especially for ScreenSpot-Pro.",
+          "Best-k selection and lack of statistical significance testing limit the reliability of the reported improvements.",
+          "No analysis of sample ambiguity for k>1 or of failure cases is provided.",
+          "The efficiency gains from omitting reasoning are not compared against possible accuracy costs on more complex tasks."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper introduces GUI-Shift, a self-supervised reinforcement learning framework for training vision-language models (VLMs) for GUI agents. It proposes a K-step GUI Transition task that predicts the initial action causing a transition between two GUI states, eliminating the need for natural-language instructions. Training uses GRPO with rule-based rewards and a data filtering mechanism that selects informative state pairs. Experiments on four VLM backbones and four benchmarks (AndroidControl, GUI Odyssey, ScreenSpot-v2, ScreenSpot-Pro) show improvements over base models, with up to 11.2% accuracy gains in GUI automation and 2.5% gains in grounding, using only 2K samples per k.\",\n  \"Strengths\": [\n    \"Addresses an important and costly bottleneck in GUI agent training by proposing a transition-prediction task that does not require natural-language instructions.\",\n    \"Empirical evaluation covers four VLM backbones and four benchmarks, showing consistent gains on AndroidControl-High and grounding benchmarks, with up to 11.2% EM improvements.\",\n    \"The rule-based rewards and data filtering mechanism are simple and practical; ablations show GRPO outperforms SFT for this task formulation.\",\n    \"Removing explicit reasoning traces halves training time while maintaining or improving performance, which is a useful efficiency contribution.\"\n  ],\n  \"Weaknesses\": [\n    \"The 'self-supervised' claim is overstated: the reward and filtering rely on ground-truth action types, coordinates, and bounding boxes from the AndroidControl dataset, which remain human-annotated. The trajectories still come from a dataset that also contains instruction labels, so the method reduces annotation dependence but does not eliminate it.\",\n    \"The training set is surprisingly small (2K samples per k), and the paper does not demonstrate scalability to larger unlabeled trajectory collections, which is central to the motivation.\",\n    \"Main results select the best k per model and benchmark (e.g., k=1 for Qwen on automation, k=4 for grounding), which may be a form of test-set selection bias; appendix results show many cases with no gains or drops, especially on GUI Odyssey and ScreenSpot-Pro.\",\n    \"SFT under the same transition objective is reported to hurt performance; the paper attributes this to format mismatch, but the comparison may be unfair or underspecified, and the reason for SFT failure is not thoroughly analyzed.\",\n    \"The k-step task can be ill-posed for k>1: the first action is not always identifiable from only the start and k-step-later states, yet the paper does not discuss this ambiguity or verify that the training samples are learnable.\",\n    \"Missing important details: how click coordinates are predicted/normalized, how input_text exact-match rewards are computed, how open_app/wait actions are handled in benchmarks, and how many trajectories/pairs are used after filtering.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"Since the reward requires ground-truth action types, coordinates, and bounding boxes, can the method be applied to truly unlabeled GUI trajectories without any action labels? If not, what exactly is 'unlabeled' in your setup?\",\n    \"How were the 2K samples chosen per k from the filtered pool? Was the selection random or based on other criteria? How many trajectories are covered?\",\n    \"For each model, the best k differs across benchmarks and is used in the main tables. Was k selected using a validation set or the test set? If the latter, how does this affect the reported gains?\",\n    \"For the SFT comparison, what prompt format and training loss were used? Could the SFT performance drop be due to training/evaluation format mismatch rather than the transition task itself?\",\n    \"When k>1, two different first actions could lead to the same S_{t+k} (depending on intermediate actions). Have you measured the identifiability of the first action in your training samples? If ambiguity exists, how does the RL reward handle it?\",\n    \"The unified action space includes open_app, wait, and input_text, but the benchmarks report six action types. How are these additional actions treated at inference and evaluation?\",\n    \"Have you performed scaling experiments with more than 2K samples? The scalability motivation suggests larger datasets should help; is there evidence of improved performance with more data?\",\n    \"What is the computational cost of data filtering (e.g., model inferences per sample) relative to the training savings? Does the end-to-end pipeline actually save annotation/inference cost?\"\n  ],\n  \"Limitations\": [\n    \"The method still depends on ground-truth action labels and bounding boxes, so it is not annotation-free; instruction labels are avoided but action annotations remain.\",\n    \"The training data (AndroidControl) is in-domain for some benchmarks; generalization to unrelated domains (e.g., desktop, professional software) is limited, especially for ScreenSpot-Pro.\",\n    \"Best-k selection and lack of statistical significance testing limit the reliability of the reported improvements.\",\n    \"No analysis of sample ambiguity for k>1 or of failure cases is provided.\",\n    \"The efficiency gains from omitting reasoning are not compared against possible accuracy costs on more complex tasks.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 25464,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 24696,
+        "completion_tokens": 4157,
+        "reasoning_tokens": 3006,
+        "total_tokens": 29621
+      },
+      "attempts": 1,
+      "response_id": "602f7d7c-4d5c-47d1-90e4-e0154b14189d"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper introduces K-step GUI Transition, a self-supervised inverse dynamics task for training Vision-Language Models (VLMs) as mobile GUI agents. Instead of using natural-language instructions, the model predicts the first action that transforms a current screenshot S_t into a future screenshot S_{t+k} taken from existing GUI trajectories. The authors then propose GUI-Shift, a GRPO-based RL framework with rule-based rewards and a data-filtering stage, applied to four VLMs (Qwen2.5-VL-7B, InternVL3-8B, and two MimoVL variants) using 2K training samples per k. Experiments on AndroidControl, GUI Odyssey, ScreenSpot-v2, and ScreenSpot-Pro show improvements over base models, notably up to 11.2% EM accuracy increase on AndroidControl-High, and moderate gains on GUI grounding. Ablations examine data filtering, task formulation, reasoning traces, and SFT vs. GRPO.",
+        "Strengths": [
+          "The K-step inverse dynamics formulation is a simple yet effective idea: using a future GUI state as a visual goal avoids costly natural-language instruction annotation and can be constructed from existing trajectories at scale.",
+          "GUI-Shift's RL approach with rule-based rewards is a sensible way to handle action variability, especially for click/long-press coordinates, and the data-filtering component is a practical method for selecting informative training samples.",
+          "The paper provides extensive experiments across four VLM backbones and four benchmarks, showing consistent gains on AndroidControl-High and moderate gains on GUI grounding, with clear ablations on data filtering, task formulation, reasoning, and training algorithm.",
+          "The efficiency claims are concrete: removing reasoning traces nearly halves training time (e.g., 17 to 9 hours for Qwen2.5-VL-7B), and the method uses only 2K self-supervised samples to achieve competitive results.",
+          "The paper is generally well-organized and clearly positions its work relative to recent GUI RL methods like UI-R1, GUI-R1, and UI-Venus."
+        ],
+        "Weaknesses": [
+          "The training data are sourced solely from AndroidControl, and evaluation includes AndroidControl's own test set; this raises concerns about distribution overlap and whether the reported gains would transfer to unseen apps or platforms. Results on GUI Odyssey (which includes tablet/cross-app scenarios) are often negative for the Mimo models, undermining the generalization claim.",
+          "The method still relies on ground-truth actions as reward labels; it removes natural-language instruction annotation but not action supervision. The term 'self-supervised' is therefore somewhat overstated.",
+          "The reward design is tolerant only for click/long_press bounding boxes; for input_text, scroll, and open_app it requires exact matches, which contradicts the paper's motivation about action multiplicity and may introduce misleading training signals for those action types.",
+          "The data-filtering criterion (keeping samples with both correct and incorrect sampled responses) is model-dependent and unstable: Qwen2.5-VL-7B needed unfiltered data because the proportion of all-correct/all-incorrect samples was 'exceptionally high,' suggesting the filtering strategy does not generalize across base models.",
+          "Key experimental details are missing: the exact prompts and input format used for GUI grounding evaluation, how the reward parser handles malformed outputs, and the exact implementation of the 'both correct and incorrect' filter. These omissions hinder reproducibility.",
+          "There is no scaling study (only 2K samples) and no statistical significance or variance reporting; many reported gains are small (e.g., 0.3-1.5% on grounding) and the best k varies by model and benchmark, suggesting the method may be sensitive to hyperparameter choice."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "Do the apps and tasks in the AndroidControl training set overlap with those in the AndroidControl test set? How much of the reported improvement is due to in-distribution training?",
+          "How exactly is the 'both correct and incorrect' data-filtering criterion implemented? What happens when a sample has zero correct or zero incorrect predictions, and what were the filtered pool sizes for each model and k?",
+          "For the GUI grounding evaluations, what input prompt and output format are used? Do models predict a single coordinate or a bounding box, and is any post-processing applied to convert the output for metric computation?",
+          "The reward for input_text and scroll requires exact parameter match. How does this handle naturally ambiguous or multiple valid text inputs / scroll directions? Does this bias the learned policy?",
+          "In Table 3, the 'w/ reasoning' condition uses <think> tokens. How are reasoning tokens generated and decoded, and why does removing them consistently improve performance in most settings?",
+          "What are the variances across multiple training runs or evaluation seeds? Are the improvements statistically significant, especially the small gains on ScreenSpot-v2/Pro?",
+          "Have you measured performance on completely unseen apps or operating system versions? The GUI Odyssey results for Mimo models are negative; what is the breakdown between phone and tablet episodes?"
+        ],
+        "Limitations": [
+          "Training data is limited to AndroidControl, so the method is not validated on iOS, web, or desktop GUI trajectories; ScreenSpot-Pro high-resolution desktop gains are small or mixed.",
+          "The method still requires ground-truth action labels from trajectories, so it does not fully eliminate human annotation; only natural-language instruction annotation is avoided.",
+          "The data-filtering approach can select overly hard or noisy samples, and its effectiveness is model-dependent (e.g., Qwen required unfiltered data), limiting its general applicability.",
+          "The computational cost of generating 8 candidate responses per sample for filtering and training remains nontrivial, though it is lower than annotation.",
+          "Potential negative societal impact: improved GUI agents could be used to automate harmful or fraudulent actions on user devices; however, the paper does not introduce new dual-use risks beyond general VLM-based agent research.",
+          "The paper does not discuss failure cases or potential biases from the AndroidControl dataset, which may not represent diverse user populations or accessibility needs."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper introduces K-step GUI Transition, a self-supervised inverse dynamics task for training Vision-Language Models (VLMs) as mobile GUI agents. Instead of using natural-language instructions, the model predicts the first action that transforms a current screenshot S_t into a future screenshot S_{t+k} taken from existing GUI trajectories. The authors then propose GUI-Shift, a GRPO-based RL framework with rule-based rewards and a data-filtering stage, applied to four VLMs (Qwen2.5-VL-7B, InternVL3-8B, and two MimoVL variants) using 2K training samples per k. Experiments on AndroidControl, GUI Odyssey, ScreenSpot-v2, and ScreenSpot-Pro show improvements over base models, notably up to 11.2% EM accuracy increase on AndroidControl-High, and moderate gains on GUI grounding. Ablations examine data filtering, task formulation, reasoning traces, and SFT vs. GRPO.\",\n  \"Strengths\": [\n    \"The K-step inverse dynamics formulation is a simple yet effective idea: using a future GUI state as a visual goal avoids costly natural-language instruction annotation and can be constructed from existing trajectories at scale.\",\n    \"GUI-Shift's RL approach with rule-based rewards is a sensible way to handle action variability, especially for click/long-press coordinates, and the data-filtering component is a practical method for selecting informative training samples.\",\n    \"The paper provides extensive experiments across four VLM backbones and four benchmarks, showing consistent gains on AndroidControl-High and moderate gains on GUI grounding, with clear ablations on data filtering, task formulation, reasoning, and training algorithm.\",\n    \"The efficiency claims are concrete: removing reasoning traces nearly halves training time (e.g., 17 to 9 hours for Qwen2.5-VL-7B), and the method uses only 2K self-supervised samples to achieve competitive results.\",\n    \"The paper is generally well-organized and clearly positions its work relative to recent GUI RL methods like UI-R1, GUI-R1, and UI-Venus.\"\n  ],\n  \"Weaknesses\": [\n    \"The training data are sourced solely from AndroidControl, and evaluation includes AndroidControl's own test set; this raises concerns about distribution overlap and whether the reported gains would transfer to unseen apps or platforms. Results on GUI Odyssey (which includes tablet/cross-app scenarios) are often negative for the Mimo models, undermining the generalization claim.\",\n    \"The method still relies on ground-truth actions as reward labels; it removes natural-language instruction annotation but not action supervision. The term 'self-supervised' is therefore somewhat overstated.\",\n    \"The reward design is tolerant only for click/long_press bounding boxes; for input_text, scroll, and open_app it requires exact matches, which contradicts the paper's motivation about action multiplicity and may introduce misleading training signals for those action types.\",\n    \"The data-filtering criterion (keeping samples with both correct and incorrect sampled responses) is model-dependent and unstable: Qwen2.5-VL-7B needed unfiltered data because the proportion of all-correct/all-incorrect samples was 'exceptionally high,' suggesting the filtering strategy does not generalize across base models.\",\n    \"Key experimental details are missing: the exact prompts and input format used for GUI grounding evaluation, how the reward parser handles malformed outputs, and the exact implementation of the 'both correct and incorrect' filter. These omissions hinder reproducibility.\",\n    \"There is no scaling study (only 2K samples) and no statistical significance or variance reporting; many reported gains are small (e.g., 0.3-1.5% on grounding) and the best k varies by model and benchmark, suggesting the method may be sensitive to hyperparameter choice.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"Do the apps and tasks in the AndroidControl training set overlap with those in the AndroidControl test set? How much of the reported improvement is due to in-distribution training?\",\n    \"How exactly is the 'both correct and incorrect' data-filtering criterion implemented? What happens when a sample has zero correct or zero incorrect predictions, and what were the filtered pool sizes for each model and k?\",\n    \"For the GUI grounding evaluations, what input prompt and output format are used? Do models predict a single coordinate or a bounding box, and is any post-processing applied to convert the output for metric computation?\",\n    \"The reward for input_text and scroll requires exact parameter match. How does this handle naturally ambiguous or multiple valid text inputs / scroll directions? Does this bias the learned policy?\",\n    \"In Table 3, the 'w/ reasoning' condition uses <think> tokens. How are reasoning tokens generated and decoded, and why does removing them consistently improve performance in most settings?\",\n    \"What are the variances across multiple training runs or evaluation seeds? Are the improvements statistically significant, especially the small gains on ScreenSpot-v2/Pro?\",\n    \"Have you measured performance on completely unseen apps or operating system versions? The GUI Odyssey results for Mimo models are negative; what is the breakdown between phone and tablet episodes?\"\n  ],\n  \"Limitations\": [\n    \"Training data is limited to AndroidControl, so the method is not validated on iOS, web, or desktop GUI trajectories; ScreenSpot-Pro high-resolution desktop gains are small or mixed.\",\n    \"The method still requires ground-truth action labels from trajectories, so it does not fully eliminate human annotation; only natural-language instruction annotation is avoided.\",\n    \"The data-filtering approach can select overly hard or noisy samples, and its effectiveness is model-dependent (e.g., Qwen required unfiltered data), limiting its general applicability.\",\n    \"The computational cost of generating 8 candidate responses per sample for filtering and training remains nontrivial, though it is lower than annotation.\",\n    \"Potential negative societal impact: improved GUI agents could be used to automate harmful or fraudulent actions on user devices; however, the paper does not introduce new dual-use risks beyond general VLM-based agent research.\",\n    \"The paper does not discuss failure cases or potential biases from the AndroidControl dataset, which may not represent diverse user populations or accessibility needs.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 25464,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 24696,
+        "completion_tokens": 4089,
+        "reasoning_tokens": 2728,
+        "total_tokens": 29553
+      },
+      "attempts": 1,
+      "response_id": "8c933f7a-6451-44d7-8a50-8ba303fa9c29"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 2,
+      "Reject": 3
+    },
+    "unanimous_decision": false,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          2,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Quality": {
+        "values": [
+          2,
+          2,
+          3,
+          2,
+          3
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          2,
+          3,
+          2,
+          3
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          2,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Soundness": {
+        "values": [
+          2,
+          2,
+          3,
+          2,
+          3
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          2,
+          3,
+          2,
+          3
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          2,
+          2,
+          3,
+          2,
+          3
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          4,
+          4,
+          6,
+          4,
+          6
+        ],
+        "mean": 4.8,
+        "rounded_mean": 5,
+        "population_sd": 0.98,
+        "min": 4,
+        "max": 6
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper proposes K-step GUI Transition, an inverse-dynamics task where a VLM receives two screenshots separated by k actions and predicts the first action that causes the transition, using the future screen as a visual goal instead of natural-language instructions. Building on this, GUI-Shift applies GRPO with rule-based rewards (format + action type/parameter correctness) and a prediction-based data filtering step. Experiments fine-tune four VLM backbones on 2K samples per k from AndroidControl and evaluate on AndroidControl, GUI Odyssey, ScreenSpot-v2, and ScreenSpot-Pro, reporting gains up to 11.2% exact match on AndroidControl-High and competitive grounding performance.",
+      "Strengths": [
+        "The K-step GUI Transition task is a simple and elegant way to use future screenshots as visual supervision, avoiding the need for natural-language task instructions.",
+        "GRPO with bounding-box-based click rewards is sensible, tolerating action multiplicity and providing more informative training signals than exact-match SFT.",
+        "Extensive experiments across four VLM backbones and four benchmarks, with ablations covering data filtering, task formulation, reasoning traces, and SFT vs. GRPO.",
+        "Removing explicit reasoning traces during RL training nearly halves training time (e.g., 17 to 9 hours) while often improving performance, demonstrating practical efficiency.",
+        "The data filtering pipeline based on the model's own prediction consistency is an interesting adaptive-curriculum idea."
+      ],
+      "Weaknesses": [
+        "The 'self-supervised' claim is misleading: the method relies on ground-truth action annotations (types, coordinates, bounding boxes) for reward computation and filtering; it only removes natural-language instructions, not action supervision.",
+        "Performance gains are inconsistent across settings: drops on GUI Odyssey for Mimo models (-3.6 EM), decreases on AndroidControl-Low for InternVL (-2.0 EM), and many ScreenSpot-Pro gains under 1%. The headline 11.2% improvement is cherry-picked from the best model and best k.",
+        "Novelty is incremental: one-step GUI action prediction between screenshots already exists, and rule-based RL has been applied to GUI agents in recent work (UI-R1, GUI-R1, InfiGUI-R1, UI-Venus). The main differences are using a future state as a visual instruction and omitting reasoning traces.",
+        "The SFT baseline on the same transition task collapses dramatically (up to 65.1% relative drop), but the paper does not provide a thorough analysis or ensure a fair comparison (e.g., whether the SFT used the same output format, unified action space, and bounding-box tolerance).",
+        "Data filtering is applied selectively: Qwen2.5-VL-7B uses unfiltered data because its prediction outcomes were 'exceptionally high' in some category, and filtering yields mixed or negative results for other models, weakening the general claim.",
+        "Training data and a main evaluation benchmark both come from AndroidControl, so the substantial gains on AndroidControl may partly reflect in-distribution overfitting; transfer gains to other benchmarks are smaller or negative.",
+        "Key reproducibility details are missing: how the two screenshots are concatenated in the prompt, the exact inference protocol on single-screenshot benchmarks, how click coordinates are normalized, and how input_text exact matches are scored.",
+        "No scaling study beyond 2K samples, no statistical significance testing, and no variance reporting; many reported gains are small and the best k varies by model and benchmark, suggesting test-set selection bias."
+      ],
+      "Originality": 3,
+      "Quality": 2,
+      "Clarity": 2,
+      "Significance": 2,
+      "Questions": [
+        "How is the model evaluated on standard single-screenshot benchmarks after training on paired screenshots? What prompt and input format are used at inference; is the future screen omitted or replaced?",
+        "The method requires ground-truth actions for rewards and filtering. How can it be applied to truly unlabeled trajectories where no action labels exist? Please clarify the annotation requirements.",
+        "How was the best k selected for each model/benchmark? Was it based on a validation set or post-hoc on test results? Please report average and standard deviation across k.",
+        "Why was data filtering not used for Qwen2.5-VL-7B? What threshold defines 'exceptionally high' correct/incorrect proportions, and does this choice confound the filtering ablation?",
+        "For k>1, the first action may not be uniquely identifiable from the start and final states. How does the reward handle ambiguous transitions, and have you measured the identifiability of your training samples?",
+        "The SFT baseline in the ablation drops dramatically. What training format, loss, and target representation were used? Could a properly tuned SFT baseline (e.g., with bounding-box loss) avoid this collapse?",
+        "What is the computational cost of the data filtering step (e.g., 8 generations per candidate)? How does this compare to annotation savings, and how would it scale to large trajectory corpora?",
+        "Have you conducted scaling experiments with more than 2K samples, or tested on datasets with different action distributions? The scalability motivation remains unverified."
+      ],
+      "Limitations": [
+        "The method still depends on trajectories with action labels; it does not work with fully unlabeled screen sequences unless actions are inferred by some external mechanism.",
+        "Training data is exclusively from AndroidControl (mobile); generalization to tablet, desktop, and web environments is limited, as evidenced by mixed or negative results on GUI Odyssey and ScreenSpot-Pro.",
+        "The action space is limited to eight types and does not cover drag, pinch, or other common gestures.",
+        "No statistical significance testing or variance reporting, so the reliability of small gains is uncertain.",
+        "No analysis of failure cases, sample ambiguity for k>1, or safety/privacy implications of GUI agents.",
+        "The inclusion of AndroidControl's own test set may inflate gains due to distribution overlap; cross-domain generalization is weak."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 2,
+      "Presentation": 2,
+      "Contribution": 2,
+      "Overall": 4,
+      "Confidence": 4,
+      "Decision": "Reject"
+    },
+    "raw_response": "{\n  \"Summary\": \"The paper proposes K-step GUI Transition, an inverse-dynamics task where a VLM receives two screenshots separated by k actions and predicts the first action that causes the transition, using the future screen as a visual goal instead of natural-language instructions. Building on this, GUI-Shift applies GRPO with rule-based rewards (format + action type/parameter correctness) and a prediction-based data filtering step. Experiments fine-tune four VLM backbones on 2K samples per k from AndroidControl and evaluate on AndroidControl, GUI Odyssey, ScreenSpot-v2, and ScreenSpot-Pro, reporting gains up to 11.2% exact match on AndroidControl-High and competitive grounding performance.\",\n  \"Strengths\": [\n    \"The K-step GUI Transition task is a simple and elegant way to use future screenshots as visual supervision, avoiding the need for natural-language task instructions.\",\n    \"GRPO with bounding-box-based click rewards is sensible, tolerating action multiplicity and providing more informative training signals than exact-match SFT.\",\n    \"Extensive experiments across four VLM backbones and four benchmarks, with ablations covering data filtering, task formulation, reasoning traces, and SFT vs. GRPO.\",\n    \"Removing explicit reasoning traces during RL training nearly halves training time (e.g., 17 to 9 hours) while often improving performance, demonstrating practical efficiency.\",\n    \"The data filtering pipeline based on the model's own prediction consistency is an interesting adaptive-curriculum idea.\"\n  ],\n  \"Weaknesses\": [\n    \"The 'self-supervised' claim is misleading: the method relies on ground-truth action annotations (types, coordinates, bounding boxes) for reward computation and filtering; it only removes natural-language instructions, not action supervision.\",\n    \"Performance gains are inconsistent across settings: drops on GUI Odyssey for Mimo models (-3.6 EM), decreases on AndroidControl-Low for InternVL (-2.0 EM), and many ScreenSpot-Pro gains under 1%. The headline 11.2% improvement is cherry-picked from the best model and best k.\",\n    \"Novelty is incremental: one-step GUI action prediction between screenshots already exists, and rule-based RL has been applied to GUI agents in recent work (UI-R1, GUI-R1, InfiGUI-R1, UI-Venus). The main differences are using a future state as a visual instruction and omitting reasoning traces.\",\n    \"The SFT baseline on the same transition task collapses dramatically (up to 65.1% relative drop), but the paper does not provide a thorough analysis or ensure a fair comparison (e.g., whether the SFT used the same output format, unified action space, and bounding-box tolerance).\",\n    \"Data filtering is applied selectively: Qwen2.5-VL-7B uses unfiltered data because its prediction outcomes were 'exceptionally high' in some category, and filtering yields mixed or negative results for other models, weakening the general claim.\",\n    \"Training data and a main evaluation benchmark both come from AndroidControl, so the substantial gains on AndroidControl may partly reflect in-distribution overfitting; transfer gains to other benchmarks are smaller or negative.\",\n    \"Key reproducibility details are missing: how the two screenshots are concatenated in the prompt, the exact inference protocol on single-screenshot benchmarks, how click coordinates are normalized, and how input_text exact matches are scored.\",\n    \"No scaling study beyond 2K samples, no statistical significance testing, and no variance reporting; many reported gains are small and the best k varies by model and benchmark, suggesting test-set selection bias.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"How is the model evaluated on standard single-screenshot benchmarks after training on paired screenshots? What prompt and input format are used at inference; is the future screen omitted or replaced?\",\n    \"The method requires ground-truth actions for rewards and filtering. How can it be applied to truly unlabeled trajectories where no action labels exist? Please clarify the annotation requirements.\",\n    \"How was the best k selected for each model/benchmark? Was it based on a validation set or post-hoc on test results? Please report average and standard deviation across k.\",\n    \"Why was data filtering not used for Qwen2.5-VL-7B? What threshold defines 'exceptionally high' correct/incorrect proportions, and does this choice confound the filtering ablation?\",\n    \"For k>1, the first action may not be uniquely identifiable from the start and final states. How does the reward handle ambiguous transitions, and have you measured the identifiability of your training samples?\",\n    \"The SFT baseline in the ablation drops dramatically. What training format, loss, and target representation were used? Could a properly tuned SFT baseline (e.g., with bounding-box loss) avoid this collapse?\",\n    \"What is the computational cost of the data filtering step (e.g., 8 generations per candidate)? How does this compare to annotation savings, and how would it scale to large trajectory corpora?\",\n    \"Have you conducted scaling experiments with more than 2K samples, or tested on datasets with different action distributions? The scalability motivation remains unverified.\"\n  ],\n  \"Limitations\": [\n    \"The method still depends on trajectories with action labels; it does not work with fully unlabeled screen sequences unless actions are inferred by some external mechanism.\",\n    \"Training data is exclusively from AndroidControl (mobile); generalization to tablet, desktop, and web environments is limited, as evidenced by mixed or negative results on GUI Odyssey and ScreenSpot-Pro.\",\n    \"The action space is limited to eight types and does not cover drag, pinch, or other common gestures.\",\n    \"No statistical significance testing or variance reporting, so the reliability of small gains is uncertain.\",\n    \"No analysis of failure cases, sample ambiguity for k>1, or safety/privacy implications of GUI agents.\",\n    \"The inclusion of AndroidControl's own test set may inflate gains due to distribution overlap; cross-domain generalization is weak.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+    "usage": {
+      "prompt_tokens": 7129,
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 6873,
+      "completion_tokens": 2397,
+      "reasoning_tokens": 1071,
+      "total_tokens": 9526
+    },
+    "attempts": 1,
+    "response_id": "14efbed9-8a21-4104-b78d-f3668830f04e"
+  },
+  "final_review": {
+    "Summary": "The paper proposes K-step GUI Transition, an inverse-dynamics task where a VLM receives two screenshots separated by k actions and predicts the first action that causes the transition, using the future screen as a visual goal instead of natural-language instructions. Building on this, GUI-Shift applies GRPO with rule-based rewards (format + action type/parameter correctness) and a prediction-based data filtering step. Experiments fine-tune four VLM backbones on 2K samples per k from AndroidControl and evaluate on AndroidControl, GUI Odyssey, ScreenSpot-v2, and ScreenSpot-Pro, reporting gains up to 11.2% exact match on AndroidControl-High and competitive grounding performance.",
+    "Strengths": [
+      "The K-step GUI Transition task is a simple and elegant way to use future screenshots as visual supervision, avoiding the need for natural-language task instructions.",
+      "GRPO with bounding-box-based click rewards is sensible, tolerating action multiplicity and providing more informative training signals than exact-match SFT.",
+      "Extensive experiments across four VLM backbones and four benchmarks, with ablations covering data filtering, task formulation, reasoning traces, and SFT vs. GRPO.",
+      "Removing explicit reasoning traces during RL training nearly halves training time (e.g., 17 to 9 hours) while often improving performance, demonstrating practical efficiency.",
+      "The data filtering pipeline based on the model's own prediction consistency is an interesting adaptive-curriculum idea."
+    ],
+    "Weaknesses": [
+      "The 'self-supervised' claim is misleading: the method relies on ground-truth action annotations (types, coordinates, bounding boxes) for reward computation and filtering; it only removes natural-language instructions, not action supervision.",
+      "Performance gains are inconsistent across settings: drops on GUI Odyssey for Mimo models (-3.6 EM), decreases on AndroidControl-Low for InternVL (-2.0 EM), and many ScreenSpot-Pro gains under 1%. The headline 11.2% improvement is cherry-picked from the best model and best k.",
+      "Novelty is incremental: one-step GUI action prediction between screenshots already exists, and rule-based RL has been applied to GUI agents in recent work (UI-R1, GUI-R1, InfiGUI-R1, UI-Venus). The main differences are using a future state as a visual instruction and omitting reasoning traces.",
+      "The SFT baseline on the same transition task collapses dramatically (up to 65.1% relative drop), but the paper does not provide a thorough analysis or ensure a fair comparison (e.g., whether the SFT used the same output format, unified action space, and bounding-box tolerance).",
+      "Data filtering is applied selectively: Qwen2.5-VL-7B uses unfiltered data because its prediction outcomes were 'exceptionally high' in some category, and filtering yields mixed or negative results for other models, weakening the general claim.",
+      "Training data and a main evaluation benchmark both come from AndroidControl, so the substantial gains on AndroidControl may partly reflect in-distribution overfitting; transfer gains to other benchmarks are smaller or negative.",
+      "Key reproducibility details are missing: how the two screenshots are concatenated in the prompt, the exact inference protocol on single-screenshot benchmarks, how click coordinates are normalized, and how input_text exact matches are scored.",
+      "No scaling study beyond 2K samples, no statistical significance testing, and no variance reporting; many reported gains are small and the best k varies by model and benchmark, suggesting test-set selection bias."
+    ],
+    "Originality": 3,
+    "Quality": 2,
+    "Clarity": 2,
+    "Significance": 2,
+    "Questions": [
+      "How is the model evaluated on standard single-screenshot benchmarks after training on paired screenshots? What prompt and input format are used at inference; is the future screen omitted or replaced?",
+      "The method requires ground-truth actions for rewards and filtering. How can it be applied to truly unlabeled trajectories where no action labels exist? Please clarify the annotation requirements.",
+      "How was the best k selected for each model/benchmark? Was it based on a validation set or post-hoc on test results? Please report average and standard deviation across k.",
+      "Why was data filtering not used for Qwen2.5-VL-7B? What threshold defines 'exceptionally high' correct/incorrect proportions, and does this choice confound the filtering ablation?",
+      "For k>1, the first action may not be uniquely identifiable from the start and final states. How does the reward handle ambiguous transitions, and have you measured the identifiability of your training samples?",
+      "The SFT baseline in the ablation drops dramatically. What training format, loss, and target representation were used? Could a properly tuned SFT baseline (e.g., with bounding-box loss) avoid this collapse?",
+      "What is the computational cost of the data filtering step (e.g., 8 generations per candidate)? How does this compare to annotation savings, and how would it scale to large trajectory corpora?",
+      "Have you conducted scaling experiments with more than 2K samples, or tested on datasets with different action distributions? The scalability motivation remains unverified."
+    ],
+    "Limitations": [
+      "The method still depends on trajectories with action labels; it does not work with fully unlabeled screen sequences unless actions are inferred by some external mechanism.",
+      "Training data is exclusively from AndroidControl (mobile); generalization to tablet, desktop, and web environments is limited, as evidenced by mixed or negative results on GUI Odyssey and ScreenSpot-Pro.",
+      "The action space is limited to eight types and does not cover drag, pinch, or other common gestures.",
+      "No statistical significance testing or variance reporting, so the reliability of small gains is uncertain.",
+      "No analysis of failure cases, sample ambiguity for k>1, or safety/privacy implications of GUI agents.",
+      "The inclusion of AndroidControl's own test set may inflate gains due to distribution overlap; cross-domain generalization is weak."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 2,
+    "Presentation": 2,
+    "Contribution": 2,
+    "Overall": 4,
+    "Confidence": 4,
+    "Decision": "Reject"
+  },
+  "final_review_source": "Area Chair model output",
+  "usage": {
+    "prompt_tokens": 134449,
+    "prompt_cache_hit_tokens": 4096,
+    "prompt_cache_miss_tokens": 130353,
+    "completion_tokens": 23374,
+    "reasoning_tokens": 15734,
+    "total_tokens": 157823,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 1.147e-05,
+    "cache_miss_input_usd": 0.01824942,
+    "output_usd": 0.00654472,
+    "total_usd": 0.02480561
+  },
+  "elapsed_seconds": 63.006,
+  "input": {
+    "blind_id": "B179",
+    "filename": "B179.txt",
+    "blind_text_sha256": "cc64ef7c36fba10cb65a79dc8c220386f4f4bd229059253dba659cceebee29e9",
+    "characters": 68448,
+    "full_text_saved": false
+  }
+}

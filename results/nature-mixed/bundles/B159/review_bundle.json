@@ -1,0 +1,717 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:50:08.797573+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper introduces Dynadiff, a single-stage diffusion model for reconstructing images from time-resolved fMRI BOLD signals. Unlike prior multi-stage pipelines that collapse the temporal dimension of fMRI data, Dynadiff directly conditions a pretrained latent diffusion model on fMRI time-series via a brain module with subject-specific and timestep-specific layers, followed by temporal aggregation. The model is trained end-to-end with a single diffusion loss using LoRA adapters on cross-attention layers. Experiments on the Natural Scenes Dataset show that Dynadiff outperforms state-of-the-art baselines (Brain-Diffuser, MindEye1, MindEye2, WAVE) on high-level semantic metrics (CLIP, DreamSim, mIoU) when evaluated on single-trial time-series data, while remaining competitive on low-level metrics. The paper also demonstrates time-resolved decoding capabilities, showing that specialized models trained at different time offsets can decode images over extended periods, and provides extensive ablations on window duration, brain module design, and diffusion model fine-tuning strategies.",
+        "Strengths": [
+          "Novel single-stage architecture that simplifies the fMRI-to-image decoding pipeline compared to complex multi-stage baselines",
+          "First approach to systematically evaluate time-resolved fMRI decoding on NSD, addressing a significant limitation of prior work that collapses temporal information",
+          "Comprehensive evaluation with multiple metrics including novel ones (DreamSim, mIoU) and comparison to four baselines adapted to time-series input",
+          "Detailed ablation studies on window duration, brain module components, and fine-tuning strategies that provide valuable insights",
+          "Time-resolved analysis revealing that image representations evolve over time in fMRI, with implications for understanding neural dynamics",
+          "Cross-subject experiments showing transfer learning benefits and reduced data requirements with pretraining",
+          "Public code release for reproducibility"
+        ],
+        "Weaknesses": [
+          "The comparison to baselines may be somewhat unfair since MindEye1/2 were originally designed for beta-values, and the simple adaptation (flattening time dimension) may not be optimal for these models",
+          "The claim of 'single-stage' training is slightly misleading as it still relies on a pretrained diffusion model and requires LoRA fine-tuning, though this is a reasonable simplification",
+          "The time-resolved analysis interpretation about 'dynamic coding' could be overclaimed given the known hemodynamic response function properties - the observed temporal dynamics may simply reflect the HRF rather than true neural population coding changes",
+          "Limited discussion of why Dynadiff improves high-level semantic metrics but not low-level metrics (SSIM, PixCorr) compared to baselines",
+          "The paper does not provide statistical significance testing beyond SEM, making it unclear if some differences (e.g., vs MindEye2 on several metrics) are meaningful",
+          "Training requires 2.5 days on 8 A100 GPUs, which may limit reproducibility for smaller labs",
+          "The evaluation on beta-values (Table 4) shows Dynadiff underperforms MindEye2 and NeuroPictor, suggesting the approach may not generalize well to the standard preprocessing used in the field"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "1. How were the baselines (especially MindEye1/2) adapted to time-series input? The paper mentions flattening the time dimension - could this have disadvantaged them? Would a more sophisticated adaptation (e.g., using a temporal encoder) change the comparison results?",
+          "2. The paper reports that the 'General' model can decode previous/next images at extreme time shifts. Does this indicate that the model is actually decoding the wrong stimulus, or is this expected due to overlapping fMRI windows? How does this affect the interpretation of the time-resolved results?",
+          "3. What is the explanation for the performance drop on low-level metrics (SSIM, PixCorr) compared to MindEye2, while high-level metrics improve? Is this a trade-off inherent to the approach or could it be addressed?",
+          "4. The time-resolved analysis shows that specialized models outperform the general model at shifted time points. Could this simply reflect that the specialized models are trained on more diverse data (different time offsets) rather than true temporal dynamics?",
+          "5. How sensitive are the results to the choice of LoRA rank and alpha? Was any hyperparameter search conducted for these?",
+          "6. The paper mentions that replacing text embeddings with null embeddings didn't boost performance. What was the rationale for trying this, and were there any differences in training stability?",
+          "7. For the cross-subject experiments, how does the performance compare when using the multi-subject model without fine-tuning on the new subject? This would clarify the true generalization capability.",
+          "8. Could the authors provide failure case analysis - are there specific image categories or fMRI signal properties that lead to poor reconstructions?"
+        ],
+        "Limitations": [
+          "1. The approach is evaluated only on the NSD dataset, which has been noted to have stereotypical image distributions - generalization to other datasets or more naturalistic stimuli remains unclear",
+          "2. The preprocessing still requires manual steps (detrending, z-scoring, ROI selection) that could be improved with learned or foundational models of brain activity",
+          "3. The method requires substantial per-subject training data (27,000 trials), limiting applicability to scenarios with limited data availability",
+          "4. The model does not address cross-subject generalization without fine-tuning, which remains an open challenge",
+          "5. The time-resolved analysis is limited to static image decoding - extending to video decoding would require additional architectural considerations",
+          "6. The paper acknowledges potential ethical concerns about mental privacy and face generation but the face-blurring solution is only mentioned briefly and may not fully address the issue",
+          "7. The computational cost (2.5 days on 8 A100 GPUs) may hinder adoption by researchers with limited resources"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 4,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces Dynadiff, a single-stage diffusion model for reconstructing images from time-resolved fMRI data. The key contributions are: (1) simplification of the decoding pipeline compared to multi-stage baselines, (2) state-of-the-art performance on time-resolved fMRI signals from the Natural Scenes Dataset, and (3) enabling temporal analysis of image representations in brain activity.\n\nThe paper is technically solid with comprehensive experiments. The main strengths are the novel single-stage architecture, the detailed ablation studies, and the time-resolved analysis which is a significant departure from prior work that collapses the temporal dimension. The results demonstrate clear improvements over baselines on high-level semantic metrics while remaining competitive on low-level metrics.\n\nHowever, there are several concerns. First, the comparison to baselines like MindEye2 may be somewhat unfair since those models were designed for beta-values, not time-series data. While the authors adapted them, the adaptations (flattening time into input) may not be optimal. Second, the paper claims \"single-stage\" training but still uses a pretrained diffusion model and LoRA adapters, which is a reasonable simplification but should be contextualized. Third, the time-resolved analysis in Figures 4-5 is interesting but the interpretation about \"dynamic coding\" could be overclaimed given the known HRF properties.\n\nThe paper is well-written and organized, with clear methodology and thorough evaluation. The ablation studies are particularly valuable. The main weaknesses are the somewhat unfair baseline comparisons and the limited discussion of why the approach works better on semantic metrics but not low-level ones.\n\nOverall, this is a solid contribution to the brain decoding field with a novel approach and good experimental validation. I would lean toward acceptance given the technical soundness and the potential impact on time-resolved brain decoding.\n\nREVIEW JSON:\n```json\n{\n\"Summary\": \"The paper introduces Dynadiff, a single-stage diffusion model for reconstructing images from time-resolved fMRI BOLD signals. Unlike prior multi-stage pipelines that collapse the temporal dimension of fMRI data, Dynadiff directly conditions a pretrained latent diffusion model on fMRI time-series via a brain module with subject-specific and timestep-specific layers, followed by temporal aggregation. The model is trained end-to-end with a single diffusion loss using LoRA adapters on cross-attention layers. Experiments on the Natural Scenes Dataset show that Dynadiff outperforms state-of-the-art baselines (Brain-Diffuser, MindEye1, MindEye2, WAVE) on high-level semantic metrics (CLIP, DreamSim, mIoU) when evaluated on single-trial time-series data, while remaining competitive on low-level metrics. The paper also demonstrates time-resolved decoding capabilities, showing that specialized models trained at different time offsets can decode images over extended periods, and provides extensive ablations on window duration, brain module design, and diffusion model fine-tuning strategies.\",\n\"Strengths\": [\n\"Novel single-stage architecture that simplifies the fMRI-to-image decoding pipeline compared to complex multi-stage baselines\",\n\"First approach to systematically evaluate time-resolved fMRI decoding on NSD, addressing a significant limitation of prior work that collapses temporal information\",\n\"Comprehensive evaluation with multiple metrics including novel ones (DreamSim, mIoU) and comparison to four baselines adapted to time-series input\",\n\"Detailed ablation studies on window duration, brain module components, and fine-tuning strategies that provide valuable insights\",\n\"Time-resolved analysis revealing that image representations evolve over time in fMRI, with implications for understanding neural dynamics\",\n\"Cross-subject experiments showing transfer learning benefits and reduced data requirements with pretraining\",\n\"Public code release for reproducibility\"\n],\n\"Weaknesses\": [\n\"The comparison to baselines may be somewhat unfair since MindEye1/2 were originally designed for beta-values, and the simple adaptation (flattening time dimension) may not be optimal for these models\",\n\"The claim of 'single-stage' training is slightly misleading as it still relies on a pretrained diffusion model and requires LoRA fine-tuning, though this is a reasonable simplification\",\n\"The time-resolved analysis interpretation about 'dynamic coding' could be overclaimed given the known hemodynamic response function properties - the observed temporal dynamics may simply reflect the HRF rather than true neural population coding changes\",\n\"Limited discussion of why Dynadiff improves high-level semantic metrics but not low-level metrics (SSIM, PixCorr) compared to baselines\",\n\"The paper does not provide statistical significance testing beyond SEM, making it unclear if some differences (e.g., vs MindEye2 on several metrics) are meaningful\",\n\"Training requires 2.5 days on 8 A100 GPUs, which may limit reproducibility for smaller labs\",\n\"The evaluation on beta-values (Table 4) shows Dynadiff underperforms MindEye2 and NeuroPictor, suggesting the approach may not generalize well to the standard preprocessing used in the field\"\n],\n\"Originality\": 4,\n\"Quality\": 3,\n\"Clarity\": 3,\n\"Significance\": 4,\n\"Questions\": [\n\"1. How were the baselines (especially MindEye1/2) adapted to time-series input? The paper mentions flattening the time dimension - could this have disadvantaged them? Would a more sophisticated adaptation (e.g., using a temporal encoder) change the comparison results?\",\n\"2. The paper reports that the 'General' model can decode previous/next images at extreme time shifts. Does this indicate that the model is actually decoding the wrong stimulus, or is this expected due to overlapping fMRI windows? How does this affect the interpretation of the time-resolved results?\",\n\"3. What is the explanation for the performance drop on low-level metrics (SSIM, PixCorr) compared to MindEye2, while high-level metrics improve? Is this a trade-off inherent to the approach or could it be addressed?\",\n\"4. The time-resolved analysis shows that specialized models outperform the general model at shifted time points. Could this simply reflect that the specialized models are trained on more diverse data (different time offsets) rather than true temporal dynamics?\",\n\"5. How sensitive are the results to the choice of LoRA rank and alpha? Was any hyperparameter search conducted for these?\",\n\"6. The paper mentions that replacing text embeddings with null embeddings didn't boost performance. What was the rationale for trying this, and were there any differences in training stability?\",\n\"7. For the cross-subject experiments, how does the performance compare when using the multi-subject model without fine-tuning on the new subject? This would clarify the true generalization capability.\",\n\"8. Could the authors provide failure case analysis - are there specific image categories or fMRI signal properties that lead to poor reconstructions?\"\n],\n\"Limitations\": [\n\"1. The approach is evaluated only on the NSD dataset, which has been noted to have stereotypical image distributions - generalization to other datasets or more naturalistic stimuli remains unclear\",\n\"2. The preprocessing still requires manual steps (detrending, z-scoring, ROI selection) that could be improved with learned or foundational models of brain activity\",\n\"3. The method requires substantial per-subject training data (27,000 trials), limiting applicability to scenarios with limited data availability\",\n\"4. The model does not address cross-subject generalization without fine-tuning, which remains an open challenge\",\n\"5. The time-resolved analysis is limited to static image decoding - extending to video decoding would require additional architectural considerations\",\n\"6. The paper acknowledges potential ethical concerns about mental privacy and face generation but the face-blurring solution is only mentioned briefly and may not fully address the issue\",\n\"7. The computational cost (2.5 days on 8 A100 GPUs) may hinder adoption by researchers with limited resources\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 3,\n\"Contribution\": 4,\n\"Overall\": 7,\n\"Confidence\": 4,\n\"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 23017,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 21225,
+        "completion_tokens": 1634,
+        "reasoning_tokens": 0,
+        "total_tokens": 24651
+      },
+      "attempts": 1,
+      "response_id": "c66e2acf-5f4e-4665-a83a-a81be1027170"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper introduces Dynadiff, a single-stage diffusion model for reconstructing images from time-resolved fMRI signals. The approach replaces the complex multi-stage pipelines of existing brain-to-image decoders (e.g., MindEye2, WAVE) with a simple architecture: a brain module that projects fMRI time-series to conditioning embeddings, and a pretrained latent diffusion model fine-tuned with LoRA adapters on cross-attention layers. Key contributions include: (1) simplified training with a single diffusion loss, (2) state-of-the-art performance on time-resolved fMRI from the Natural Scenes Dataset (NSD), particularly on high-level semantic metrics, and (3) the ability to characterize the temporal evolution of image representations in brain activity. The paper demonstrates strong quantitative results on single-trial BOLD fMRI, outperforming MindEye2 on AlexNet(2/5), CLIP, and DreamSim, while remaining competitive on beta-value benchmarks. The temporal analysis reveals that specialized decoders can decode images at different time points, suggesting dynamic coding in fMRI.",
+        "Strengths": [
+          "Simplification: Dynadiff is a genuinely simpler pipeline compared to existing approaches (e.g., MindEye2, WAVE), requiring only a single training stage with a single loss function, which is a significant practical advantage.",
+          "Strong results on time-resolved fMRI: The model outperforms state-of-the-art baselines on single-trial BOLD fMRI data on several key metrics (AlexNet(2/5), CLIP, DreamSim, mIoU), demonstrating the value of using temporal information.",
+          "Comprehensive ablations: The paper provides thorough ablations on brain module design, diffusion model fine-tuning strategies, time window duration, and preprocessing choices, which help understand the contribution of each component.",
+          "Novel temporal analysis: The analysis of decoding performance across shifted time windows and the comparison between 'general' and 'specialized' models is novel and provides insights into the temporal dynamics of visual representations in fMRI.",
+          "Good writing and organization: The paper is well-structured, clearly explains the method, and provides sufficient details for reproduction (including code release).",
+          "Ethical considerations: The authors discuss potential negative impacts (mental privacy, face generation) and propose mitigations (face blurring), which is commendable."
+        ],
+        "Weaknesses": [
+          "Limited claim of state-of-the-art: The paper claims state-of-the-art performance, but this is only true for time-resolved fMRI. On the standard beta-value benchmark (Table 4), Dynadiff underperforms MindEye2 on low-level metrics (SSIM 0.37 vs 0.43, PixCorr 0.21 vs 0.32), which is not transparently highlighted in the main text.",
+          "Potential unfair comparison: MindEye1/2 were designed for beta values, and the adaptation to time-resolved data (flattening the time dimension) may not be optimal. WAVE was designed for a different dataset (UK Biobank) and may not be well-suited for NSD. The paper should clarify whether baselines were given comparable hyperparameter tuning and compute.",
+          "Speculative interpretation of temporal dynamics: The claim about 'dynamic coding' in fMRI is interesting but somewhat speculative given the low temporal resolution of fMRI (TR=1.3s) and the slow hemodynamic response. The observed temporal patterns could be largely driven by the HRF shape rather than true neural dynamics. The paper should be more cautious in this interpretation.",
+          "Computational cost: Training requires 2.5 days on 8 A100 GPUs, which is substantial and may limit reproducibility by other research groups. The paper doesn't discuss this limitation.",
+          "Limited comparison with recent methods on time-resolved data: The paper doesn't compare with Psychometry, NeuroPictor, or DREAM on time-resolved fMRI, only on beta values. This limits the scope of the comparison and makes it harder to assess the true state-of-the-art.",
+          "The 'General' model's performance drops sharply outside the training window, which is expected but somewhat limits the practical utility of a single model for continuous decoding. The 'Specialized' models require training multiple models, partially contradicting the simplicity claim."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "In the comparison with MindEye1/2 on time-resolved data, how were these baselines adapted and tuned? Were they given the same amount of compute and hyperparameter optimization as Dynadiff? Could the gap be reduced with more tuning?",
+          "The paper claims 'state-of-the-art' performance, but on beta values (Table 4), Dynadiff underperforms MindEye2 on SSIM and PixCorr. Could you clarify the practical implications of this trade-off? Is the improvement on time-resolved data more important than the slight decrease on beta values?",
+          "The temporal analysis shows that specialized models can decode images at various time points. Given the slow HRF, how do you disentangle neural dynamics from the hemodynamic response? Have you considered using deconvolution or other HRF-modeling techniques to support the 'dynamic coding' claim?",
+          "What is the minimal temporal resolution needed for the temporal analysis? Have you tried training with shorter time windows (e.g., 1-2 TRs) for the specialized models to see if they can still decode effectively?",
+          "The paper mentions that the training window of 6 TRs gives slightly better performance than 3 TRs. In the temporal analysis (Figure 5), have you considered using shorter windows (e.g., 3 TRs) for the specialized models to get a finer temporal resolution?",
+          "How does the model perform on images that are not well-represented in the training set (e.g., unusual compositions)? The failure cases in Figure 8 suggest this is a limitation. Have you quantified this with any metric?",
+          "The paper uses a fixed random seed for selecting one of the three test repetitions. How sensitive are the results to this choice? Would averaging across all three repetitions (as in Table 7) change the conclusions?"
+        ],
+        "Limitations": [
+          "The paper acknowledges the stereotypical image distribution in NSD and the need for validation on other datasets, which is good. However, it doesn't discuss the computational cost of training (2.5 days on 8 A100s) as a limitation for reproducibility.",
+          "The interpretation of temporal dynamics as 'dynamic coding' is speculative given the low temporal resolution of fMRI. The paper should be more cautious and consider alternative explanations (e.g., HRF convolution).",
+          "The approach requires a large amount of per-subject data (27,000 training trials), which limits its applicability to scenarios with less data. While the cross-subject fine-tuning experiment shows some transfer, the paper doesn't explore the minimum data requirements in detail.",
+          "Potential negative societal impact: The authors discuss mental privacy and face generation risks, which is good. However, they could also mention the risk of misinterpretation of brain decoding results (e.g., overclaiming 'mind reading' capabilities) and the need for responsible communication of findings."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces Dynadiff, a single-stage diffusion model for reconstructing images from time-resolved fMRI data. The key contributions are: (1) simplifying the decoding pipeline compared to multi-stage approaches like MindEye2, (2) achieving state-of-the-art performance on time-resolved fMRI signals, and (3) enabling temporal analysis of image representations in brain activity.\n\nThe paper is technically sound with comprehensive experiments on the NSD dataset. The main strengths are the simplicity of the approach (single-stage training with LoRA adapters on cross-attention layers), the strong quantitative results on time-resolved fMRI, and the interesting temporal analysis showing dynamic coding in fMRI. The authors also provide good ablations on brain module design, diffusion model finetuning, and preprocessing choices.\n\nHowever, there are some concerns:\n1. The paper claims \"state-of-the-art\" performance, but this is only true for time-resolved fMRI data. On the standard beta-values benchmark (Table 4), Dynadiff underperforms MindEye2 on some metrics (SSIM 0.37 vs 0.43, PixCorr 0.21 vs 0.32). The paper acknowledges this but frames it as \"on par or slightly below\" which is somewhat misleading given the magnitude of differences on low-level metrics.\n\n2. The comparison with baselines on time-resolved data may not be entirely fair. MindEye1 and MindEye2 were designed for beta values, and the authors adapted them by flattening the time dimension. WAVE was designed for a different dataset (though it's a reasonable baseline). The authors should clarify whether the baselines were given the same amount of tuning/compute.\n\n3. The temporal analysis (Figures 4 and 5) is interesting but somewhat under-explored. The claim about \"dynamic coding\" in fMRI is intriguing but speculative given the low temporal resolution of fMRI (TR=1.3s). The hemodynamic response function is slow, and it's unclear whether the observed temporal dynamics reflect neural coding or just the HRF convolution.\n\n4. The paper mentions \"reproducibility\" and provides code, but the training details are sparse (e.g., exact data augmentation, random seeds, etc.). The training time of 2.5 days on 8 A100s is also computationally expensive, which may limit reproducibility by other groups.\n\n5. The ablation on time window duration (Figure 6) shows that 3 TRs is almost as good as 6 TRs, but the paper doesn't explore shorter windows in the temporal analysis. This could be relevant for understanding the minimal temporal resolution needed.\n\n6. The paper doesn't compare with more recent methods like Psychometry, NeuroPictor, or DREAM on time-resolved data, only on beta values. This limits the scope of the comparison.\n\n7. The \"General\" model in Figure 5 shows a sharp drop in performance outside the training window, which is somewhat expected. The \"Specialized\" models show that performance can be maintained for longer, but this requires training multiple models, which partially defeats the simplicity claim.\n\nDespite these concerns, the paper makes a solid contribution to the field of brain-to-image decoding by demonstrating that a simple single-stage approach can work well on time-resolved fMRI data. The temporal analysis is novel and could have implications for understanding visual processing in the brain. The paper is well-written and the experiments are thorough.\n\nI would rate this as a borderline accept. The technical quality is good, the contribution is meaningful, but there are some concerns about the fairness of comparisons and the interpretation of the temporal analysis. The paper would benefit from addressing these concerns in the rebuttal.\n\nFor the decision, I'll lean towards Accept, as the paper provides a valuable contribution to the field, even if not perfect. The simplicity of the approach is a significant advantage, and the temporal analysis opens up new research directions.\n\nConfidence: 4 - I'm fairly confident in my assessment, though I'm not deeply familiar with all the recent methods in this area.\n\nOverall score: 6 (Weak Accept) - but since the decision is binary, I'll go with Accept.REVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper introduces Dynadiff, a single-stage diffusion model for reconstructing images from time-resolved fMRI signals. The approach replaces the complex multi-stage pipelines of existing brain-to-image decoders (e.g., MindEye2, WAVE) with a simple architecture: a brain module that projects fMRI time-series to conditioning embeddings, and a pretrained latent diffusion model fine-tuned with LoRA adapters on cross-attention layers. Key contributions include: (1) simplified training with a single diffusion loss, (2) state-of-the-art performance on time-resolved fMRI from the Natural Scenes Dataset (NSD), particularly on high-level semantic metrics, and (3) the ability to characterize the temporal evolution of image representations in brain activity. The paper demonstrates strong quantitative results on single-trial BOLD fMRI, outperforming MindEye2 on AlexNet(2/5), CLIP, and DreamSim, while remaining competitive on beta-value benchmarks. The temporal analysis reveals that specialized decoders can decode images at different time points, suggesting dynamic coding in fMRI.\",\n    \"Strengths\": [\n        \"Simplification: Dynadiff is a genuinely simpler pipeline compared to existing approaches (e.g., MindEye2, WAVE), requiring only a single training stage with a single loss function, which is a significant practical advantage.\",\n        \"Strong results on time-resolved fMRI: The model outperforms state-of-the-art baselines on single-trial BOLD fMRI data on several key metrics (AlexNet(2/5), CLIP, DreamSim, mIoU), demonstrating the value of using temporal information.\",\n        \"Comprehensive ablations: The paper provides thorough ablations on brain module design, diffusion model fine-tuning strategies, time window duration, and preprocessing choices, which help understand the contribution of each component.\",\n        \"Novel temporal analysis: The analysis of decoding performance across shifted time windows and the comparison between 'general' and 'specialized' models is novel and provides insights into the temporal dynamics of visual representations in fMRI.\",\n        \"Good writing and organization: The paper is well-structured, clearly explains the method, and provides sufficient details for reproduction (including code release).\",\n        \"Ethical considerations: The authors discuss potential negative impacts (mental privacy, face generation) and propose mitigations (face blurring), which is commendable.\"\n    ],\n    \"Weaknesses\": [\n        \"Limited claim of state-of-the-art: The paper claims state-of-the-art performance, but this is only true for time-resolved fMRI. On the standard beta-value benchmark (Table 4), Dynadiff underperforms MindEye2 on low-level metrics (SSIM 0.37 vs 0.43, PixCorr 0.21 vs 0.32), which is not transparently highlighted in the main text.\",\n        \"Potential unfair comparison: MindEye1/2 were designed for beta values, and the adaptation to time-resolved data (flattening the time dimension) may not be optimal. WAVE was designed for a different dataset (UK Biobank) and may not be well-suited for NSD. The paper should clarify whether baselines were given comparable hyperparameter tuning and compute.\",\n        \"Speculative interpretation of temporal dynamics: The claim about 'dynamic coding' in fMRI is interesting but somewhat speculative given the low temporal resolution of fMRI (TR=1.3s) and the slow hemodynamic response. The observed temporal patterns could be largely driven by the HRF shape rather than true neural dynamics. The paper should be more cautious in this interpretation.\",\n        \"Computational cost: Training requires 2.5 days on 8 A100 GPUs, which is substantial and may limit reproducibility by other research groups. The paper doesn't discuss this limitation.\",\n        \"Limited comparison with recent methods on time-resolved data: The paper doesn't compare with Psychometry, NeuroPictor, or DREAM on time-resolved fMRI, only on beta values. This limits the scope of the comparison and makes it harder to assess the true state-of-the-art.\",\n        \"The 'General' model's performance drops sharply outside the training window, which is expected but somewhat limits the practical utility of a single model for continuous decoding. The 'Specialized' models require training multiple models, partially contradicting the simplicity claim.\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 3,\n    \"Clarity\": 4,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"In the comparison with MindEye1/2 on time-resolved data, how were these baselines adapted and tuned? Were they given the same amount of compute and hyperparameter optimization as Dynadiff? Could the gap be reduced with more tuning?\",\n        \"The paper claims 'state-of-the-art' performance, but on beta values (Table 4), Dynadiff underperforms MindEye2 on SSIM and PixCorr. Could you clarify the practical implications of this trade-off? Is the improvement on time-resolved data more important than the slight decrease on beta values?\",\n        \"The temporal analysis shows that specialized models can decode images at various time points. Given the slow HRF, how do you disentangle neural dynamics from the hemodynamic response? Have you considered using deconvolution or other HRF-modeling techniques to support the 'dynamic coding' claim?\",\n        \"What is the minimal temporal resolution needed for the temporal analysis? Have you tried training with shorter time windows (e.g., 1-2 TRs) for the specialized models to see if they can still decode effectively?\",\n        \"The paper mentions that the training window of 6 TRs gives slightly better performance than 3 TRs. In the temporal analysis (Figure 5), have you considered using shorter windows (e.g., 3 TRs) for the specialized models to get a finer temporal resolution?\",\n        \"How does the model perform on images that are not well-represented in the training set (e.g., unusual compositions)? The failure cases in Figure 8 suggest this is a limitation. Have you quantified this with any metric?\",\n        \"The paper uses a fixed random seed for selecting one of the three test repetitions. How sensitive are the results to this choice? Would averaging across all three repetitions (as in Table 7) change the conclusions?\"\n    ],\n    \"Limitations\": [\n        \"The paper acknowledges the stereotypical image distribution in NSD and the need for validation on other datasets, which is good. However, it doesn't discuss the computational cost of training (2.5 days on 8 A100s) as a limitation for reproducibility.\",\n        \"The interpretation of temporal dynamics as 'dynamic coding' is speculative given the low temporal resolution of fMRI. The paper should be more cautious and consider alternative explanations (e.g., HRF convolution).\",\n        \"The approach requires a large amount of per-subject data (27,000 training trials), which limits its applicability to scenarios with less data. While the cross-subject fine-tuning experiment shows some transfer, the paper doesn't explore the minimum data requirements in detail.\",\n        \"Potential negative societal impact: The authors discuss mental privacy and face generation risks, which is good. However, they could also mention the risk of misinterpretation of brain decoding results (e.g., overclaiming 'mind reading' capabilities) and the need for responsible communication of findings.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 4,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 23017,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 21225,
+        "completion_tokens": 2435,
+        "reasoning_tokens": 0,
+        "total_tokens": 25452
+      },
+      "attempts": 1,
+      "response_id": "e42e4ac5-2d5c-43c2-b300-5fffdf9422e0"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper introduces Dynadiff, a single-stage diffusion model for reconstructing images from time-resolved fMRI data. Unlike existing multi-stage pipelines (e.g., MindEye2, WAVE), Dynadiff directly fine-tunes a pretrained latent diffusion model with a brain module that projects fMRI time-series into the conditioning space. The approach is trained end-to-end with a single diffusion loss. The paper demonstrates state-of-the-art performance on time-resolved fMRI signals from the Natural Scenes Dataset, particularly on high-level semantic metrics (CLIP, DreamSim, AlexNet), while remaining competitive on time-collapsed beta values. A key contribution is the temporal analysis showing that specialized models trained at specific time offsets can decode images at different points in the hemodynamic response, revealing dynamic coding of image representations in fMRI.",
+        "Strengths": [
+          "Significant simplification of the decoding pipeline to a single training stage, contrasting with the 2-4 stage pipelines of prior work",
+          "Novel time-resolved decoding approach that leverages the temporal dimension of fMRI, enabling analysis of how image representations evolve over time",
+          "Comprehensive evaluation on NSD with multiple metrics (low-level and high-level) and per-subject results",
+          "Interesting finding that specialized time-shifted models outperform a general model, suggesting dynamic neural coding",
+          "Thorough ablation studies on time window duration, brain module design, and diffusion model finetuning strategies",
+          "Cross-subject analysis showing benefits of multi-subject pretraining with limited data",
+          "Good discussion of limitations and ethical considerations including mental privacy"
+        ],
+        "Weaknesses": [
+          "Improvements over MindEye2 are modest on several metrics (SSIM, PixCorr are actually lower), making the 'state-of-the-art' claim somewhat overstated",
+          "Comparison with baselines is not entirely fair - MindEye1/2 were designed for beta values, not time-series, and the adaptation may not be optimal",
+          "The 'single-stage' claim is somewhat misleading as it still relies on pretrained components (diffusion model, CLIP encoders)",
+          "Table 1 headers are inconsistent - Eff and SwAV are marked with down arrows (lower is better) but the values don't clearly indicate this",
+          "The time-resolved split for Figures 3 and 5 differs from the standard split, which may confuse readers about comparability",
+          "No comparison with more recent methods like Psychometry or NeuroPictor in the main time-series evaluation",
+          "Computational cost is substantial (2.5 days on 8 A100 GPUs), which may limit reproducibility for smaller labs"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How does Dynadiff's performance on beta values (Table 4) compare to its time-series performance? The appendix shows it's competitive but slightly below MindEye2 - is this expected given the model was designed for time-series?",
+          "The time-resolved analysis shows specialized models outperform the general model at shifted timepoints. Does this indicate the model is memorizing time-specific patterns rather than generalizing across time?",
+          "What is the effect of using null text embeddings? The paper mentions it empirically didn't help, but what about using image captions as auxiliary conditioning?",
+          "How sensitive is the performance to the choice of LoRA rank and alpha? Were these hyperparameters tuned?",
+          "For the cross-subject results (Figure 9), what is the minimum amount of data needed for reasonable reconstruction with pretraining?",
+          "Could the time-specific layers in the brain module be replaced with a temporal attention mechanism for better generalization across time shifts?"
+        ],
+        "Limitations": [
+          "The NSD dataset has stereotypical image distributions, which may limit generalization to more diverse stimuli",
+          "The preprocessing still requires manual steps (detrending, z-scoring) that could be improved with foundation models",
+          "The approach requires substantial per-subject data, limiting applicability to new participants",
+          "The paper does not address potential negative societal impacts beyond mental privacy, such as potential misuse in surveillance or marketing",
+          "The time-resolved analysis is limited to static images; extension to video decoding is mentioned as future work but not explored"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces Dynadiff, a single-stage diffusion model for reconstructing images from time-resolved fMRI data. The key contributions are: (1) simplified training pipeline compared to multi-stage approaches like MindEye2, (2) state-of-the-art performance on time-resolved fMRI signals, and (3) ability to characterize temporal evolution of image representations in brain activity.\n\nStrengths:\n- The single-stage approach is a significant simplification over existing multi-stage pipelines\n- Strong experimental results on NSD, outperforming baselines on high-level semantic metrics\n- Comprehensive ablations (time window duration, brain module design, diffusion finetuning strategies)\n- Novel time-resolved decoding analysis with general vs. specialized models\n- Good discussion of limitations and ethical considerations\n\nWeaknesses:\n- The improvement over MindEye2 is modest on several metrics (SSIM, PixCorr are lower or comparable)\n- The paper claims \"state-of-the-art\" but the comparison is not entirely fair - MindEye2 was designed for beta values, not time-series\n- The \"single-stage\" claim is somewhat misleading - it still relies on a pretrained diffusion model and CLIP encoders\n- The time-resolved split used for Figures 3 and 5 is different from the standard split, which could confuse readers\n- Some metrics (Eff, SwAV) are reported as \"↓\" (lower is better) but the table headers are inconsistent\n- The paper doesn't compare against more recent methods like Psychometry or NeuroPictor in the main table\n- Computational cost (2.5 days on 8 A100s) is not trivial\n\nQuestions:\n1. How does Dynadiff perform when trained on beta values compared to time-series? The appendix shows it's competitive but slightly below MindEye2 - is this expected?\n2. The time-resolved analysis shows specialized models outperform the general model at shifted timepoints. Does this indicate the model is memorizing time-specific patterns rather than generalizing?\n3. What is the effect of using null text embeddings? The paper mentions it empirically didn't help, but what about using image captions as auxiliary conditioning?\n4. How sensitive is the performance to the choice of LoRA rank and alpha?\n5. The cross-subject results show improvement with pretraining - what is the minimum amount of data needed for reasonable reconstruction?\n\nLimitations:\n- The paper acknowledges the NSD dataset has stereotypical image distributions\n- Preprocessing still requires manual steps\n- The approach requires substantial per-subject data\n- Potential for misuse in decoding mental content is addressed\n\nEthical concerns: The paper addresses mental privacy and includes face blurring in the model release. No immediate red flags.\n\nOverall assessment: This is a solid paper with a meaningful simplification of the decoding pipeline and competitive results. The time-resolved analysis is novel and interesting. However, the improvements over baselines are not dramatic across all metrics, and the \"state-of-the-art\" claim needs more careful qualification. The paper is well-written and thorough. I would lean toward acceptance given the novelty of the time-resolved approach and the comprehensive evaluation.\n\nRatings:\n- Originality: 3 (high) - single-stage time-resolved decoding is novel\n- Quality: 3 (good) - solid experiments but some concerns about fair comparison\n- Clarity: 3 (good) - well-written but some confusion in tables\n- Significance: 3 (high) - important step toward time-resolved decoding\n- Soundness: 3 (good)\n- Presentation: 3 (good)\n- Contribution: 3 (good)\n- Overall: 7 (Accept)\n- Confidence: 4 (confident)\n\nDecision: Accept\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper introduces Dynadiff, a single-stage diffusion model for reconstructing images from time-resolved fMRI data. Unlike existing multi-stage pipelines (e.g., MindEye2, WAVE), Dynadiff directly fine-tunes a pretrained latent diffusion model with a brain module that projects fMRI time-series into the conditioning space. The approach is trained end-to-end with a single diffusion loss. The paper demonstrates state-of-the-art performance on time-resolved fMRI signals from the Natural Scenes Dataset, particularly on high-level semantic metrics (CLIP, DreamSim, AlexNet), while remaining competitive on time-collapsed beta values. A key contribution is the temporal analysis showing that specialized models trained at specific time offsets can decode images at different points in the hemodynamic response, revealing dynamic coding of image representations in fMRI.\",\n    \"Strengths\": [\n        \"Significant simplification of the decoding pipeline to a single training stage, contrasting with the 2-4 stage pipelines of prior work\",\n        \"Novel time-resolved decoding approach that leverages the temporal dimension of fMRI, enabling analysis of how image representations evolve over time\",\n        \"Comprehensive evaluation on NSD with multiple metrics (low-level and high-level) and per-subject results\",\n        \"Interesting finding that specialized time-shifted models outperform a general model, suggesting dynamic neural coding\",\n        \"Thorough ablation studies on time window duration, brain module design, and diffusion model finetuning strategies\",\n        \"Cross-subject analysis showing benefits of multi-subject pretraining with limited data\",\n        \"Good discussion of limitations and ethical considerations including mental privacy\"\n    ],\n    \"Weaknesses\": [\n        \"Improvements over MindEye2 are modest on several metrics (SSIM, PixCorr are actually lower), making the 'state-of-the-art' claim somewhat overstated\",\n        \"Comparison with baselines is not entirely fair - MindEye1/2 were designed for beta values, not time-series, and the adaptation may not be optimal\",\n        \"The 'single-stage' claim is somewhat misleading as it still relies on pretrained components (diffusion model, CLIP encoders)\",\n        \"Table 1 headers are inconsistent - Eff and SwAV are marked with down arrows (lower is better) but the values don't clearly indicate this\",\n        \"The time-resolved split for Figures 3 and 5 differs from the standard split, which may confuse readers about comparability\",\n        \"No comparison with more recent methods like Psychometry or NeuroPictor in the main time-series evaluation\",\n        \"Computational cost is substantial (2.5 days on 8 A100 GPUs), which may limit reproducibility for smaller labs\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"How does Dynadiff's performance on beta values (Table 4) compare to its time-series performance? The appendix shows it's competitive but slightly below MindEye2 - is this expected given the model was designed for time-series?\",\n        \"The time-resolved analysis shows specialized models outperform the general model at shifted timepoints. Does this indicate the model is memorizing time-specific patterns rather than generalizing across time?\",\n        \"What is the effect of using null text embeddings? The paper mentions it empirically didn't help, but what about using image captions as auxiliary conditioning?\",\n        \"How sensitive is the performance to the choice of LoRA rank and alpha? Were these hyperparameters tuned?\",\n        \"For the cross-subject results (Figure 9), what is the minimum amount of data needed for reasonable reconstruction with pretraining?\",\n        \"Could the time-specific layers in the brain module be replaced with a temporal attention mechanism for better generalization across time shifts?\"\n    ],\n    \"Limitations\": [\n        \"The NSD dataset has stereotypical image distributions, which may limit generalization to more diverse stimuli\",\n        \"The preprocessing still requires manual steps (detrending, z-scoring) that could be improved with foundation models\",\n        \"The approach requires substantial per-subject data, limiting applicability to new participants\",\n        \"The paper does not address potential negative societal impacts beyond mental privacy, such as potential misuse in surveillance or marketing\",\n        \"The time-resolved analysis is limited to static images; extension to video decoding is mentioned as future work but not explored\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 7,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 23017,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 21225,
+        "completion_tokens": 1729,
+        "reasoning_tokens": 0,
+        "total_tokens": 24746
+      },
+      "attempts": 1,
+      "response_id": "c3fb866d-d030-4c0f-bc24-210d2ba4eea6"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper introduces Dynadiff, a single-stage diffusion model for reconstructing images from time-resolved fMRI recordings. Unlike existing multi-stage pipelines (e.g., MindEye2, Brain-Diffuser) that collapse the temporal dimension of fMRI data, Dynadiff directly conditions a pretrained latent diffusion model on fMRI time-series using a lightweight brain module (subject-specific linear layer, timestep-specific layers, temporal aggregation) and LoRA adapters. The model is trained end-to-end with a standard diffusion loss. Experiments on the Natural Scenes Dataset show that Dynadiff outperforms state-of-the-art methods on time-resolved fMRI signals, especially on high-level semantic metrics (AlexNet(2/5), CLIP, DreamSim), while remaining competitive on beta-value inputs. The authors also demonstrate time-resolved decoding capabilities, showing that specialized models trained on specific time windows can decode images at different offsets relative to stimulus onset, providing insights into the temporal dynamics of image representations in the brain.",
+        "Strengths": [
+          "Single-stage training pipeline significantly simplifies the complex multi-stage architectures used in prior work, making the approach more accessible and reproducible.",
+          "Strong experimental results on time-resolved fMRI data, outperforming MindEye2 on several key semantic metrics (AlexNet(2/5), CLIP, DreamSim) with a simpler architecture.",
+          "The time-resolved decoding analysis (Figures 4-5) is a novel and interesting contribution, revealing how image representations evolve over time in fMRI and showing that specialized decoders can decode images at different time offsets.",
+          "Comprehensive ablation studies on brain module design, diffusion model fine-tuning strategy, and preprocessing choices provide useful insights into what matters for performance.",
+          "The authors provide code and discuss ethical considerations, including mental privacy and face blurring, which is commendable.",
+          "The model shows competitive performance even on beta-value inputs, demonstrating its flexibility."
+        ],
+        "Weaknesses": [
+          "The improvement over MindEye2 on low-level metrics (SSIM, PixCorr) is not significant or is even slightly worse, which tempers the claim of overall superiority.",
+          "The adaptation of MindEye1/2 to time-series fMRI (by simply flattening the time dimension) may not be an optimal baseline comparison, as these models were designed for beta values. A more careful adaptation or a discussion of this limitation would strengthen the comparison.",
+          "The distinction between 'General' and 'Specialized' models in the time-resolved analysis is somewhat confusing. The 'Specialized' models are essentially trained for each time offset, which is a straightforward extension of the training procedure, and the observation that they perform better at their specific offset is not surprising. The paper could better articulate the novel insight here.",
+          "The paper does not compare against the latest state-of-the-art methods (e.g., Psychometry, NeuroPictor) in the main time-series comparison, only in the beta-value comparison in the appendix. Including these in the main comparison would strengthen the claims.",
+          "The multi-subject training and cross-subject generalization results are only briefly mentioned in the appendix without detailed analysis or comparison to dedicated multi-subject methods.",
+          "The paper does not deeply analyze why the brain module design choices (e.g., timestep-specific layers) are effective, beyond showing that they improve performance.",
+          "The paper does not discuss the computational cost of training the 'Specialized' models for each time offset, which could be a practical limitation for real-time applications."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "How were the MindEye1 and MindEye2 baselines adapted for time-series fMRI? The paper mentions flattening the time dimension, but does this account for the temporal structure of the data? Could a more sophisticated adaptation (e.g., using a temporal encoder) lead to better baseline performance?",
+          "In the time-resolved analysis, what is the specific novelty of the 'Specialized' vs 'General' model comparison? Is the finding that specialized models work better at their specific time offset simply a result of distribution shift, or does it reveal something fundamental about brain dynamics?",
+          "Why does the 'General' model tend to decode the previous/next image at extreme time shifts? Is this due to the fMRI signal from adjacent stimuli bleeding into the window, or is it a learned bias?",
+          "The paper reports results on beta values in the appendix. How does Dynadiff's performance on beta values compare to its performance on time-series data when using the same evaluation protocol (e.g., single-trial vs averaged)?",
+          "What is the training time and computational cost for the 'Specialized' models? How many models need to be trained to cover the range of time offsets shown in Figure 5?",
+          "The multi-subject model shows performance on par with single-subject models. How does this compare to the performance of dedicated multi-subject methods like MindBridge or Psychometry in terms of both accuracy and data efficiency?",
+          "The paper mentions that a null text embedding is used. Did you experiment with using image embeddings from CLIP instead of fMRI embeddings as a conditioning input, and if so, what was the effect?"
+        ],
+        "Limitations": [
+          "The approach is validated only on the NSD dataset, which has a specific stimulus distribution (MS-COCO images) and a limited number of subjects (4). Generalization to other datasets and populations is not demonstrated.",
+          "The model requires a substantial amount of per-subject training data (27,000 trials), which may not be available in many fMRI studies.",
+          "The preprocessing steps (detrending, z-scoring, ROI selection) are still necessary, and the paper does not fully automate the pipeline, despite claiming simplification.",
+          "The time-resolved analysis is limited to static images; extending to video decoding would require additional work.",
+          "The potential for misuse of brain decoding technology, particularly regarding mental privacy, is acknowledged but not deeply addressed. The paper could discuss potential safeguards in more detail.",
+          "The model does not address cross-subject generalization for unseen participants without fine-tuning, which limits its practical applicability."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 4,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces Dynadiff, a single-stage diffusion model for reconstructing images from time-resolved fMRI data. The key contributions are: (1) simplifying the decoding pipeline compared to multi-stage approaches like MindEye2, (2) achieving state-of-the-art performance on time-resolved fMRI signals, and (3) enabling temporal analysis of image representations in brain activity.\n\nStrengths:\n- The single-stage training approach is a significant simplification over existing complex multi-stage pipelines\n- Strong experimental results on NSD, outperforming MindEye2 on several key metrics (AlexNet(2/5), CLIP, DreamSim)\n- The time-resolved decoding analysis (Figures 4, 5) provides novel insights into the temporal dynamics of image representations\n- Comprehensive ablation studies on brain module design, diffusion model fine-tuning, and preprocessing\n- The authors provide code and address ethical concerns (mental privacy, face blurring)\n\nWeaknesses:\n- The improvement over MindEye2 is modest on some metrics (SSIM, PixCorr are lower or comparable)\n- The comparison to baselines may not be entirely fair - MindEye1/2 were designed for beta values, not time-series, and the adaptation (flattening time dimension) may not be optimal\n- The \"General\" vs \"Specialized\" distinction in time-resolved decoding is somewhat confusing - it's not clear if this is a novel contribution or just a natural property of training on specific time windows\n- The paper doesn't deeply analyze why the \"Specialized\" models work better than the \"General\" model at shifted time points - this could be due to overfitting to specific temporal patterns rather than a fundamental property of brain dynamics\n- The authors don't compare against the latest state-of-the-art methods (e.g., Psychometry, NeuroPictor) in the main time-series comparison, only in the beta-value comparison\n- The multi-subject training results are only briefly mentioned in the appendix without much analysis\n\nOriginality: The single-stage approach is novel, and the time-resolved decoding analysis is a unique contribution. The combination of LoRA fine-tuning with brain module training is also interesting.\n\nQuality: The experimental methodology is generally sound, with good use of SEM and multiple metrics. However, the fairness of baseline comparisons could be questioned. The time-resolved analysis is thorough.\n\nClarity: The paper is well-written and organized, with clear figures and tables. The method section is understandable.\n\nSignificance: The simplification of the pipeline and the time-resolved decoding capability are significant contributions that could benefit the brain decoding community. The temporal analysis of image representations is also valuable.\n\nOverall: This is a solid paper with a clear contribution. The single-stage approach and time-resolved decoding are valuable. However, the relatively modest improvements over MindEye2 on some metrics and questions about baseline fairness prevent it from being a top-tier paper. I would lean towards acceptance given the novelty and the potential impact on the field.\n\nDecision: Accept\n\nConfidence: 4 (I'm fairly confident, but not absolutely certain about some details of the baseline comparisons and the novelty of the time-resolved analysis)REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper introduces Dynadiff, a single-stage diffusion model for reconstructing images from time-resolved fMRI recordings. Unlike existing multi-stage pipelines (e.g., MindEye2, Brain-Diffuser) that collapse the temporal dimension of fMRI data, Dynadiff directly conditions a pretrained latent diffusion model on fMRI time-series using a lightweight brain module (subject-specific linear layer, timestep-specific layers, temporal aggregation) and LoRA adapters. The model is trained end-to-end with a standard diffusion loss. Experiments on the Natural Scenes Dataset show that Dynadiff outperforms state-of-the-art methods on time-resolved fMRI signals, especially on high-level semantic metrics (AlexNet(2/5), CLIP, DreamSim), while remaining competitive on beta-value inputs. The authors also demonstrate time-resolved decoding capabilities, showing that specialized models trained on specific time windows can decode images at different offsets relative to stimulus onset, providing insights into the temporal dynamics of image representations in the brain.\",\n  \"Strengths\": [\n    \"Single-stage training pipeline significantly simplifies the complex multi-stage architectures used in prior work, making the approach more accessible and reproducible.\",\n    \"Strong experimental results on time-resolved fMRI data, outperforming MindEye2 on several key semantic metrics (AlexNet(2/5), CLIP, DreamSim) with a simpler architecture.\",\n    \"The time-resolved decoding analysis (Figures 4-5) is a novel and interesting contribution, revealing how image representations evolve over time in fMRI and showing that specialized decoders can decode images at different time offsets.\",\n    \"Comprehensive ablation studies on brain module design, diffusion model fine-tuning strategy, and preprocessing choices provide useful insights into what matters for performance.\",\n    \"The authors provide code and discuss ethical considerations, including mental privacy and face blurring, which is commendable.\",\n    \"The model shows competitive performance even on beta-value inputs, demonstrating its flexibility.\"\n  ],\n  \"Weaknesses\": [\n    \"The improvement over MindEye2 on low-level metrics (SSIM, PixCorr) is not significant or is even slightly worse, which tempers the claim of overall superiority.\",\n    \"The adaptation of MindEye1/2 to time-series fMRI (by simply flattening the time dimension) may not be an optimal baseline comparison, as these models were designed for beta values. A more careful adaptation or a discussion of this limitation would strengthen the comparison.\",\n    \"The distinction between 'General' and 'Specialized' models in the time-resolved analysis is somewhat confusing. The 'Specialized' models are essentially trained for each time offset, which is a straightforward extension of the training procedure, and the observation that they perform better at their specific offset is not surprising. The paper could better articulate the novel insight here.\",\n    \"The paper does not compare against the latest state-of-the-art methods (e.g., Psychometry, NeuroPictor) in the main time-series comparison, only in the beta-value comparison in the appendix. Including these in the main comparison would strengthen the claims.\",\n    \"The multi-subject training and cross-subject generalization results are only briefly mentioned in the appendix without detailed analysis or comparison to dedicated multi-subject methods.\",\n    \"The paper does not deeply analyze why the brain module design choices (e.g., timestep-specific layers) are effective, beyond showing that they improve performance.\",\n    \"The paper does not discuss the computational cost of training the 'Specialized' models for each time offset, which could be a practical limitation for real-time applications.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"How were the MindEye1 and MindEye2 baselines adapted for time-series fMRI? The paper mentions flattening the time dimension, but does this account for the temporal structure of the data? Could a more sophisticated adaptation (e.g., using a temporal encoder) lead to better baseline performance?\",\n    \"In the time-resolved analysis, what is the specific novelty of the 'Specialized' vs 'General' model comparison? Is the finding that specialized models work better at their specific time offset simply a result of distribution shift, or does it reveal something fundamental about brain dynamics?\",\n    \"Why does the 'General' model tend to decode the previous/next image at extreme time shifts? Is this due to the fMRI signal from adjacent stimuli bleeding into the window, or is it a learned bias?\",\n    \"The paper reports results on beta values in the appendix. How does Dynadiff's performance on beta values compare to its performance on time-series data when using the same evaluation protocol (e.g., single-trial vs averaged)?\",\n    \"What is the training time and computational cost for the 'Specialized' models? How many models need to be trained to cover the range of time offsets shown in Figure 5?\",\n    \"The multi-subject model shows performance on par with single-subject models. How does this compare to the performance of dedicated multi-subject methods like MindBridge or Psychometry in terms of both accuracy and data efficiency?\",\n    \"The paper mentions that a null text embedding is used. Did you experiment with using image embeddings from CLIP instead of fMRI embeddings as a conditioning input, and if so, what was the effect?\"\n  ],\n  \"Limitations\": [\n    \"The approach is validated only on the NSD dataset, which has a specific stimulus distribution (MS-COCO images) and a limited number of subjects (4). Generalization to other datasets and populations is not demonstrated.\",\n    \"The model requires a substantial amount of per-subject training data (27,000 trials), which may not be available in many fMRI studies.\",\n    \"The preprocessing steps (detrending, z-scoring, ROI selection) are still necessary, and the paper does not fully automate the pipeline, despite claiming simplification.\",\n    \"The time-resolved analysis is limited to static images; extending to video decoding would require additional work.\",\n    \"The potential for misuse of brain decoding technology, particularly regarding mental privacy, is acknowledged but not deeply addressed. The paper could discuss potential safeguards in more detail.\",\n    \"The model does not address cross-subject generalization for unseen participants without fine-tuning, which limits its practical applicability.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 4,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 23017,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 21225,
+        "completion_tokens": 2008,
+        "reasoning_tokens": 0,
+        "total_tokens": 25025
+      },
+      "attempts": 1,
+      "response_id": "9182a3c9-2b93-4d97-85b9-2b3720c8b567"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper introduces Dynadiff, a single-stage diffusion model for reconstructing images from time-resolved fMRI signals. Unlike prior multi-stage pipelines (e.g., MindEye2, Brain-Diffuser) that rely on time-collapsed beta values and complex training procedures, Dynadiff directly fine-tunes a pretrained latent diffusion model with fMRI time-series data using a single diffusion loss. The method uses a brain module with subject-specific and timestep-specific linear layers to project fMRI volumes into the conditioning space of the diffusion model, with LoRA adapters on cross-attention layers. The authors demonstrate state-of-the-art performance on time-resolved fMRI data from the Natural Scenes Dataset, particularly on high-level semantic metrics, while remaining competitive on beta-value data. They also provide temporal analysis showing how image representations evolve over time in brain activity.",
+        "Strengths": [
+          "Addresses an important limitation of existing methods: the collapse of temporal information in fMRI preprocessing. This is a novel and timely contribution.",
+          "Simplifies the decoding pipeline to a single-stage training process with a single diffusion loss, contrasting with the complexity of recent multi-stage approaches.",
+          "Achieves state-of-the-art performance on time-resolved fMRI data from NSD, especially on high-level semantic metrics (CLIP, DreamSim, mIoU).",
+          "Provides interesting temporal analysis (Figures 4-5) that characterizes the evolution of image representations in brain activity, which is a unique contribution.",
+          "The paper is well-written, clearly organized, and includes thorough ablation studies on brain module design, diffusion model finetuning, and preprocessing.",
+          "The authors are transparent about limitations and discuss ethical considerations, including mental privacy and face blurring in their model release.",
+          "Comprehensive appendix with additional quantitative results, cross-subject analyses, and visualizations."
+        ],
+        "Weaknesses": [
+          "Performance gains over MindEye2 on some low-level metrics (SSIM, PixCorr) are negligible or slightly negative, suggesting the advantage is primarily on high-level semantic metrics.",
+          "The adaptation of baselines (MindEye1/2) to time-series data by flattening the time dimension may not be the most fair comparison, as these methods were designed for beta values. Alternative adaptations might yield different results.",
+          "The paper does not compare against the most recent methods (e.g., Le et al. 2025, which is cited but not benchmarked), limiting the completeness of the state-of-the-art comparison.",
+          "The 'specialized' models in the temporal analysis require training a separate model for each time shift, which is computationally expensive and limits the practical applicability of the time-resolved decoding approach.",
+          "The claim of 'precise characterization' of image representation evolution may be somewhat overstated given the low temporal resolution of fMRI (TR=1.3s) and the indirect nature of the decoding approach.",
+          "The cross-subject analysis is confined to the appendix and could be more thoroughly integrated into the main narrative."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "1. How were the baseline methods (MindEye1/2) adapted to the time-series data? The appendix mentions flattening the time dimension, but could this adaptation disadvantage these methods? Did you consider alternative adaptations, such as using a temporal encoder before the existing architecture?",
+          "2. For the 'specialized' models in Figures 4-5, how many models were trained in total? What is the computational cost of this approach compared to the 'general' model?",
+          "3. The performance on beta-value data (Table 4) shows Dynadiff is competitive but not superior to MindEye2. Could the time-resolved architecture be adapted to better handle beta values, or is the advantage primarily in the time domain?",
+          "4. In the temporal analysis, the 'general' model seems to decode the previous/next images at extreme shifts. How do you ensure that this is not due to information leakage from neighboring trials in the fMRI signal (e.g., due to overlapping hemodynamic responses)?",
+          "5. What is the effect of the null text embeddings? The paper mentions this was empirically observed to not boost performance. Could you elaborate on this experiment?",
+          "6. The cross-subject analysis shows benefits from pretraining. How does this compare quantitatively to MindEye2's cross-subject performance, which claims good transfer with limited data?"
+        ],
+        "Limitations": [
+          "The approach is validated on a single dataset (NSD) with a specific image distribution, which may not generalize to other datasets or more diverse stimuli.",
+          "The method requires substantial training data per subject (27,000 trials) and does not generalize to unseen participants without fine-tuning.",
+          "The temporal resolution of fMRI limits the precision of the temporal analysis, despite the time-resolved approach.",
+          "The computational cost of training (2.5 days on 8 A100 GPUs) may be prohibitive for some research groups.",
+          "The paper does not address potential biases in the NSD dataset (e.g., stereotypical image clusters) beyond mentioning it as a limitation.",
+          "The ethical implications of brain decoding, particularly regarding mental privacy, are discussed but the practical safeguards beyond face blurring are not detailed."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 4,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces Dynadiff, a single-stage diffusion model for reconstructing images from time-resolved fMRI data. The key contributions are: (1) simplification of the decoding pipeline compared to complex multi-stage methods like MindEye2, (2) state-of-the-art performance on time-resolved fMRI signals from the Natural Scenes Dataset, and (3) characterization of temporal evolution of image representations in brain activity.\n\nStrengths:\n- The paper addresses a significant limitation in existing brain-to-image decoding methods: the collapse of temporal information in fMRI preprocessing. This is a novel and important contribution.\n- The single-stage training approach is a meaningful simplification compared to complex multi-stage pipelines.\n- The method achieves competitive or better performance on time-resolved fMRI data compared to state-of-the-art methods.\n- The temporal analysis (Figures 4-5) provides interesting insights into the dynamics of image representation in the brain.\n- The paper is well-written and clearly organized, with thorough ablation studies and appendix materials.\n- The authors are upfront about limitations and discuss ethical considerations including mental privacy and face blurring.\n\nWeaknesses:\n- The performance gains over MindEye2 on time-resolved data are modest on some metrics (e.g., SSIM and PixCorr are slightly lower or equal), though improvements on high-level semantic metrics are more substantial.\n- The comparison with baselines adapted to time-series data may not be entirely fair, as these methods were originally designed for beta values. The authors adapted them by flattening the time dimension, which may not be optimal.\n- The paper does not compare against all recent methods (e.g., Le et al. 2025, which is cited but not compared).\n- The \"specialized\" models in Figure 4/5 require training a separate model for each time shift, which is computationally expensive and somewhat limits the practical benefit of the time-resolved approach.\n- The claim about \"precise characterization of the evolution of image representations\" could be overstated given the low temporal resolution of fMRI (TR=1.3s).\n- The cross-subject analysis is only in the appendix and could be more thoroughly integrated.\n\nOriginality: High. The single-stage training approach on raw time-series fMRI data is a novel contribution, and the temporal analysis is innovative.\n\nQuality: Good. The experimental methodology is generally sound, with appropriate metrics and baselines. However, there are some concerns about the fairness of baseline comparisons.\n\nClarity: Good. The paper is well-written and the figures are informative.\n\nSignificance: High. The work addresses an important limitation in the field and could enable future time-resolved decoding approaches.\n\nOverall, I think this is a solid paper that makes a valuable contribution to the field. The main concerns are the modest performance gains on some metrics and the limited comparison with the most recent methods. I would lean towards acceptance.\n\nREVIEW JSON:\n```json\n{\n\"Summary\": \"The paper introduces Dynadiff, a single-stage diffusion model for reconstructing images from time-resolved fMRI signals. Unlike prior multi-stage pipelines (e.g., MindEye2, Brain-Diffuser) that rely on time-collapsed beta values and complex training procedures, Dynadiff directly fine-tunes a pretrained latent diffusion model with fMRI time-series data using a single diffusion loss. The method uses a brain module with subject-specific and timestep-specific linear layers to project fMRI volumes into the conditioning space of the diffusion model, with LoRA adapters on cross-attention layers. The authors demonstrate state-of-the-art performance on time-resolved fMRI data from the Natural Scenes Dataset, particularly on high-level semantic metrics, while remaining competitive on beta-value data. They also provide temporal analysis showing how image representations evolve over time in brain activity.\",\n\"Strengths\": [\n\"Addresses an important limitation of existing methods: the collapse of temporal information in fMRI preprocessing. This is a novel and timely contribution.\",\n\"Simplifies the decoding pipeline to a single-stage training process with a single diffusion loss, contrasting with the complexity of recent multi-stage approaches.\",\n\"Achieves state-of-the-art performance on time-resolved fMRI data from NSD, especially on high-level semantic metrics (CLIP, DreamSim, mIoU).\",\n\"Provides interesting temporal analysis (Figures 4-5) that characterizes the evolution of image representations in brain activity, which is a unique contribution.\",\n\"The paper is well-written, clearly organized, and includes thorough ablation studies on brain module design, diffusion model finetuning, and preprocessing.\",\n\"The authors are transparent about limitations and discuss ethical considerations, including mental privacy and face blurring in their model release.\",\n\"Comprehensive appendix with additional quantitative results, cross-subject analyses, and visualizations.\"\n],\n\"Weaknesses\": [\n\"Performance gains over MindEye2 on some low-level metrics (SSIM, PixCorr) are negligible or slightly negative, suggesting the advantage is primarily on high-level semantic metrics.\",\n\"The adaptation of baselines (MindEye1/2) to time-series data by flattening the time dimension may not be the most fair comparison, as these methods were designed for beta values. Alternative adaptations might yield different results.\",\n\"The paper does not compare against the most recent methods (e.g., Le et al. 2025, which is cited but not benchmarked), limiting the completeness of the state-of-the-art comparison.\",\n\"The 'specialized' models in the temporal analysis require training a separate model for each time shift, which is computationally expensive and limits the practical applicability of the time-resolved decoding approach.\",\n\"The claim of 'precise characterization' of image representation evolution may be somewhat overstated given the low temporal resolution of fMRI (TR=1.3s) and the indirect nature of the decoding approach.\",\n\"The cross-subject analysis is confined to the appendix and could be more thoroughly integrated into the main narrative.\"\n],\n\"Originality\": 4,\n\"Quality\": 3,\n\"Clarity\": 3,\n\"Significance\": 4,\n\"Questions\": [\n\"1. How were the baseline methods (MindEye1/2) adapted to the time-series data? The appendix mentions flattening the time dimension, but could this adaptation disadvantage these methods? Did you consider alternative adaptations, such as using a temporal encoder before the existing architecture?\",\n\"2. For the 'specialized' models in Figures 4-5, how many models were trained in total? What is the computational cost of this approach compared to the 'general' model?\",\n\"3. The performance on beta-value data (Table 4) shows Dynadiff is competitive but not superior to MindEye2. Could the time-resolved architecture be adapted to better handle beta values, or is the advantage primarily in the time domain?\",\n\"4. In the temporal analysis, the 'general' model seems to decode the previous/next images at extreme shifts. How do you ensure that this is not due to information leakage from neighboring trials in the fMRI signal (e.g., due to overlapping hemodynamic responses)?\",\n\"5. What is the effect of the null text embeddings? The paper mentions this was empirically observed to not boost performance. Could you elaborate on this experiment?\",\n\"6. The cross-subject analysis shows benefits from pretraining. How does this compare quantitatively to MindEye2's cross-subject performance, which claims good transfer with limited data?\"\n],\n\"Limitations\": [\n\"The approach is validated on a single dataset (NSD) with a specific image distribution, which may not generalize to other datasets or more diverse stimuli.\",\n\"The method requires substantial training data per subject (27,000 trials) and does not generalize to unseen participants without fine-tuning.\",\n\"The temporal resolution of fMRI limits the precision of the temporal analysis, despite the time-resolved approach.\",\n\"The computational cost of training (2.5 days on 8 A100 GPUs) may be prohibitive for some research groups.\",\n\"The paper does not address potential biases in the NSD dataset (e.g., stereotypical image clusters) beyond mentioning it as a limitation.\",\n\"The ethical implications of brain decoding, particularly regarding mental privacy, are discussed but the practical safeguards beyond face blurring are not detailed.\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 3,\n\"Contribution\": 4,\n\"Overall\": 7,\n\"Confidence\": 4,\n\"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 23017,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 21225,
+        "completion_tokens": 1708,
+        "reasoning_tokens": 0,
+        "total_tokens": 24725
+      },
+      "attempts": 1,
+      "response_id": "09b84970-d491-4066-a19b-1222ee6e1756"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 5,
+      "Reject": 0
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          4,
+          3,
+          3,
+          4,
+          4
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          4,
+          3,
+          3,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Significance": {
+        "values": [
+          4,
+          3,
+          3,
+          4,
+          4
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          4,
+          3,
+          3,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Contribution": {
+        "values": [
+          4,
+          3,
+          3,
+          4,
+          4
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Overall": {
+        "values": [
+          7,
+          6,
+          7,
+          7,
+          7
+        ],
+        "mean": 6.8,
+        "rounded_mean": 7,
+        "population_sd": 0.4,
+        "min": 6,
+        "max": 7
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper introduces Dynadiff, a single-stage diffusion model for reconstructing images from time-resolved fMRI BOLD signals. Unlike prior multi-stage pipelines that collapse the temporal dimension of fMRI data (e.g., MindEye2, Brain-Diffuser), Dynadiff directly conditions a pretrained latent diffusion model on fMRI time-series via a brain module with subject-specific and timestep-specific layers, followed by temporal aggregation. The model is trained end-to-end with a single diffusion loss using LoRA adapters on cross-attention layers. Experiments on the Natural Scenes Dataset (NSD) demonstrate state-of-the-art performance on time-resolved fMRI signals, particularly on high-level semantic metrics (CLIP, DreamSim, AlexNet(2/5), mIoU), while remaining competitive on beta-value benchmarks. The paper also presents a novel time-resolved decoding analysis showing that specialized models trained at different time offsets can decode images at various points in the hemodynamic response, suggesting dynamic coding of visual representations in fMRI. Extensive ablations on window duration, brain module design, and fine-tuning strategies provide insights into the contribution of each component. The authors release code and discuss ethical considerations including mental privacy and face blurring.",
+      "Strengths": [
+        "Addresses an important limitation of existing fMRI-to-image decoding methods: the collapse of temporal information through beta-value preprocessing. The time-resolved approach is a novel and timely contribution.",
+        "Significantly simplifies the decoding pipeline to a single-stage training process with a single diffusion loss, contrasting with the complex 2-4 stage architectures of prior work (Brain-Diffuser, MindEye2, WAVE).",
+        "Achieves strong results on time-resolved fMRI data from NSD, outperforming adapted baselines on key high-level semantic metrics (AlexNet(2/5), CLIP, DreamSim, mIoU).",
+        "The temporal analysis (Figures 4-5) is a unique contribution, characterizing how image representations evolve over time in brain activity and demonstrating that specialized decoders can decode images at different time offsets.",
+        "Comprehensive ablation studies on brain module design, diffusion model fine-tuning strategies, time window duration, and preprocessing choices provide valuable insights for the community.",
+        "The paper is well-written, clearly organized, and transparent about limitations and ethical considerations. Public code release enhances reproducibility.",
+        "Cross-subject experiments showing transfer learning benefits and reduced data requirements with pretraining add practical value."
+      ],
+      "Weaknesses": [
+        "The claim of state-of-the-art performance is primarily supported on time-resolved data; on the standard beta-value benchmark (Table 4), Dynadiff underperforms MindEye2 on low-level metrics (SSIM 0.37 vs 0.43, PixCorr 0.21 vs 0.32). This trade-off is not transparently highlighted in the main text.",
+        "The adaptation of baselines (MindEye1/2) to time-series data by simply flattening the time dimension may be suboptimal and potentially unfair, as these methods were designed for beta values. A more sophisticated temporal adaptation could yield different comparison results.",
+        "The interpretation of temporal dynamics as 'dynamic coding' is speculative given the low temporal resolution of fMRI (TR=1.3s) and the slow hemodynamic response. Observed temporal patterns could largely reflect the HRF shape rather than true neural dynamics.",
+        "The gains over MindEye2 on low-level metrics (SSIM, PixCorr) are negligible or slightly negative, suggesting the advantage is mainly on high-level semantic metrics. The paper does not deeply analyze this trade-off.",
+        "The 'specialized' models in the temporal analysis require training a separate model for each time offset, which is computationally expensive and partially contradicts the simplicity claim of the approach.",
+        "The comparison with the most recent methods (e.g., Psychometry, NeuroPictor) is only present in the beta-value appendix, not in the main time-series evaluation, limiting the completeness of the state-of-the-art comparison.",
+        "Computational cost (2.5 days on 8 A100 GPUs per subject) is substantial and may limit reproducibility for smaller research groups; this limitation is not explicitly discussed."
+      ],
+      "Originality": 4,
+      "Quality": 3,
+      "Clarity": 3,
+      "Significance": 4,
+      "Questions": [
+        "How were MindEye1/2 adapted to time-series fMRI input? The paper mentions flattening the time dimension, but could this have disadvantaged these models? Would a more sophisticated adaptation (e.g., a temporal encoder before the existing architecture) change the comparison results?",
+        "In the temporal analysis, the 'General' model decodes previous/next images at extreme time shifts. Is this due to information leakage from neighboring trials (e.g., overlapping hemodynamic responses), or does it indicate the model is decoding the wrong stimulus? How does this affect interpretation of the time-resolved results?",
+        "Given the slow HRF, how do you disentangle neural dynamics from hemodynamic response properties? Have you considered deconvolution or explicit HRF modeling to support the 'dynamic coding' claim?",
+        "The paper reports lower performance on low-level metrics (SSIM, PixCorr) compared to MindEye2 while high-level metrics improve. Is this an inherent trade-off of the approach, or could it be addressed through architectural or training modifications?",
+        "What is the total computational cost of training all 'specialized' models for the temporal analysis? How many models were trained in total?",
+        "How sensitive are the results to the choice of LoRA rank and alpha? Was any hyperparameter search conducted for these?",
+        "For the cross-subject experiments, how does the multi-subject model perform without fine-tuning on the new subject? This would clarify the true generalization capability.",
+        "The paper mentions that null text embeddings didn't boost performance. What was the rationale for this experiment, and were there any differences in training stability?",
+        "The evaluation uses a fixed random seed for selecting one of three test repetitions. How sensitive are results to this choice? Would averaging across all three repetitions change conclusions?"
+      ],
+      "Limitations": [
+        "The approach is validated only on the NSD dataset, which has a stereotypical image distribution (MS-COCO images) and only 4 subjects. Generalization to other datasets or more naturalistic stimuli remains unclear.",
+        "The method requires substantial per-subject training data (27,000 trials), limiting applicability to studies with limited data availability.",
+        "Preprocessing still requires manual steps (detrending, z-scoring, ROI selection) that could be automated with learned or foundational models of brain activity.",
+        "The time-resolved analysis is limited to static images; extending to video decoding would require additional architectural considerations.",
+        "The model does not address cross-subject generalization without fine-tuning, which remains an open challenge.",
+        "The computational cost (2.5 days on 8 A100 GPUs per subject) may hinder adoption by researchers with limited resources.",
+        "The paper acknowledges potential ethical concerns about mental privacy and face generation, but the face-blurring solution is only briefly mentioned and may not fully address the issue. The paper could also discuss the risk of overclaiming 'mind reading' capabilities and the need for responsible communication of brain decoding results."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 3,
+      "Contribution": 4,
+      "Overall": 7,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "THOUGHT:\nThe paper presents a novel single-stage diffusion model for fMRI-to-image decoding that directly conditions on time-resolved fMRI signals, addressing a significant limitation of prior methods that collapse temporal information. All five reviewers rate it positively (Overall scores: 7, 6, 7, 7, 7) and recommend acceptance. The consensus is that the work is technically solid, presents a meaningful simplification of existing pipelines, and offers novel time-resolved analysis. The main concerns across reviews are: (1) the fairness of baseline comparisons (MindEye1/2 were designed for beta values, and the simple flattening adaptation may disadvantage them), (2) the interpretation of temporal dynamics as \"dynamic coding\" given the slow HRF, (3) the modest or negative gains on low-level metrics, and (4) computational costs. However, these are not fatal flaws; they are mostly issues of framing and thoroughness. The reviewers consistently rate soundness at 3 (good) and contribution at 3-4 (good to very high), with originality at 3-4. No reviewer raises ethical concerns. Given the strong consensus for acceptance and the clear novelty and contribution to the field, I will recommend acceptance. My meta-review will aggregate the strengths and weaknesses, highlight the key questions for the authors, and provide a balanced assessment that acknowledges the limitations while recognizing the significant contribution.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper introduces Dynadiff, a single-stage diffusion model for reconstructing images from time-resolved fMRI BOLD signals. Unlike prior multi-stage pipelines that collapse the temporal dimension of fMRI data (e.g., MindEye2, Brain-Diffuser), Dynadiff directly conditions a pretrained latent diffusion model on fMRI time-series via a brain module with subject-specific and timestep-specific layers, followed by temporal aggregation. The model is trained end-to-end with a single diffusion loss using LoRA adapters on cross-attention layers. Experiments on the Natural Scenes Dataset (NSD) demonstrate state-of-the-art performance on time-resolved fMRI signals, particularly on high-level semantic metrics (CLIP, DreamSim, AlexNet(2/5), mIoU), while remaining competitive on beta-value benchmarks. The paper also presents a novel time-resolved decoding analysis showing that specialized models trained at different time offsets can decode images at various points in the hemodynamic response, suggesting dynamic coding of visual representations in fMRI. Extensive ablations on window duration, brain module design, and fine-tuning strategies provide insights into the contribution of each component. The authors release code and discuss ethical considerations including mental privacy and face blurring.\",\n    \"Strengths\": [\n        \"Addresses an important limitation of existing fMRI-to-image decoding methods: the collapse of temporal information through beta-value preprocessing. The time-resolved approach is a novel and timely contribution.\",\n        \"Significantly simplifies the decoding pipeline to a single-stage training process with a single diffusion loss, contrasting with the complex 2-4 stage architectures of prior work (Brain-Diffuser, MindEye2, WAVE).\",\n        \"Achieves strong results on time-resolved fMRI data from NSD, outperforming adapted baselines on key high-level semantic metrics (AlexNet(2/5), CLIP, DreamSim, mIoU).\",\n        \"The temporal analysis (Figures 4-5) is a unique contribution, characterizing how image representations evolve over time in brain activity and demonstrating that specialized decoders can decode images at different time offsets.\",\n        \"Comprehensive ablation studies on brain module design, diffusion model fine-tuning strategies, time window duration, and preprocessing choices provide valuable insights for the community.\",\n        \"The paper is well-written, clearly organized, and transparent about limitations and ethical considerations. Public code release enhances reproducibility.\",\n        \"Cross-subject experiments showing transfer learning benefits and reduced data requirements with pretraining add practical value.\"\n    ],\n    \"Weaknesses\": [\n        \"The claim of state-of-the-art performance is primarily supported on time-resolved data; on the standard beta-value benchmark (Table 4), Dynadiff underperforms MindEye2 on low-level metrics (SSIM 0.37 vs 0.43, PixCorr 0.21 vs 0.32). This trade-off is not transparently highlighted in the main text.\",\n        \"The adaptation of baselines (MindEye1/2) to time-series data by simply flattening the time dimension may be suboptimal and potentially unfair, as these methods were designed for beta values. A more sophisticated temporal adaptation could yield different comparison results.\",\n        \"The interpretation of temporal dynamics as 'dynamic coding' is speculative given the low temporal resolution of fMRI (TR=1.3s) and the slow hemodynamic response. Observed temporal patterns could largely reflect the HRF shape rather than true neural dynamics.\",\n        \"The gains over MindEye2 on low-level metrics (SSIM, PixCorr) are negligible or slightly negative, suggesting the advantage is mainly on high-level semantic metrics. The paper does not deeply analyze this trade-off.\",\n        \"The 'specialized' models in the temporal analysis require training a separate model for each time offset, which is computationally expensive and partially contradicts the simplicity claim of the approach.\",\n        \"The comparison with the most recent methods (e.g., Psychometry, NeuroPictor) is only present in the beta-value appendix, not in the main time-series evaluation, limiting the completeness of the state-of-the-art comparison.\",\n        \"Computational cost (2.5 days on 8 A100 GPUs per subject) is substantial and may limit reproducibility for smaller research groups; this limitation is not explicitly discussed.\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 4,\n    \"Questions\": [\n        \"How were MindEye1/2 adapted to time-series fMRI input? The paper mentions flattening the time dimension, but could this have disadvantaged these models? Would a more sophisticated adaptation (e.g., a temporal encoder before the existing architecture) change the comparison results?\",\n        \"In the temporal analysis, the 'General' model decodes previous/next images at extreme time shifts. Is this due to information leakage from neighboring trials (e.g., overlapping hemodynamic responses), or does it indicate the model is decoding the wrong stimulus? How does this affect interpretation of the time-resolved results?\",\n        \"Given the slow HRF, how do you disentangle neural dynamics from hemodynamic response properties? Have you considered deconvolution or explicit HRF modeling to support the 'dynamic coding' claim?\",\n        \"The paper reports lower performance on low-level metrics (SSIM, PixCorr) compared to MindEye2 while high-level metrics improve. Is this an inherent trade-off of the approach, or could it be addressed through architectural or training modifications?\",\n        \"What is the total computational cost of training all 'specialized' models for the temporal analysis? How many models were trained in total?\",\n        \"How sensitive are the results to the choice of LoRA rank and alpha? Was any hyperparameter search conducted for these?\",\n        \"For the cross-subject experiments, how does the multi-subject model perform without fine-tuning on the new subject? This would clarify the true generalization capability.\",\n        \"The paper mentions that null text embeddings didn't boost performance. What was the rationale for this experiment, and were there any differences in training stability?\",\n        \"The evaluation uses a fixed random seed for selecting one of three test repetitions. How sensitive are results to this choice? Would averaging across all three repetitions change conclusions?\"\n    ],\n    \"Limitations\": [\n        \"The approach is validated only on the NSD dataset, which has a stereotypical image distribution (MS-COCO images) and only 4 subjects. Generalization to other datasets or more naturalistic stimuli remains unclear.\",\n        \"The method requires substantial per-subject training data (27,000 trials), limiting applicability to studies with limited data availability.\",\n        \"Preprocessing still requires manual steps (detrending, z-scoring, ROI selection) that could be automated with learned or foundational models of brain activity.\",\n        \"The time-resolved analysis is limited to static images; extending to video decoding would require additional architectural considerations.\",\n        \"The model does not address cross-subject generalization without fine-tuning, which remains an open challenge.\",\n        \"The computational cost (2.5 days on 8 A100 GPUs per subject) may hinder adoption by researchers with limited resources.\",\n        \"The paper acknowledges potential ethical concerns about mental privacy and face generation, but the face-blurring solution is only briefly mentioned and may not fully address the issue. The paper could also discuss the risk of overclaiming 'mind reading' capabilities and the need for responsible communication of brain decoding results.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 4,\n    \"Overall\": 7,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 8061,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 8061,
+      "completion_tokens": 1875,
+      "reasoning_tokens": 0,
+      "total_tokens": 9936
+    },
+    "attempts": 1,
+    "response_id": "139aae39-eecf-4586-9eb1-7a8481912687"
+  },
+  "final_review": {
+    "Summary": "The paper introduces Dynadiff, a single-stage diffusion model for reconstructing images from time-resolved fMRI BOLD signals. Unlike prior multi-stage pipelines that collapse the temporal dimension of fMRI data (e.g., MindEye2, Brain-Diffuser), Dynadiff directly conditions a pretrained latent diffusion model on fMRI time-series via a brain module with subject-specific and timestep-specific layers, followed by temporal aggregation. The model is trained end-to-end with a single diffusion loss using LoRA adapters on cross-attention layers. Experiments on the Natural Scenes Dataset (NSD) demonstrate state-of-the-art performance on time-resolved fMRI signals, particularly on high-level semantic metrics (CLIP, DreamSim, AlexNet(2/5), mIoU), while remaining competitive on beta-value benchmarks. The paper also presents a novel time-resolved decoding analysis showing that specialized models trained at different time offsets can decode images at various points in the hemodynamic response, suggesting dynamic coding of visual representations in fMRI. Extensive ablations on window duration, brain module design, and fine-tuning strategies provide insights into the contribution of each component. The authors release code and discuss ethical considerations including mental privacy and face blurring.",
+    "Strengths": [
+      "Addresses an important limitation of existing fMRI-to-image decoding methods: the collapse of temporal information through beta-value preprocessing. The time-resolved approach is a novel and timely contribution.",
+      "Significantly simplifies the decoding pipeline to a single-stage training process with a single diffusion loss, contrasting with the complex 2-4 stage architectures of prior work (Brain-Diffuser, MindEye2, WAVE).",
+      "Achieves strong results on time-resolved fMRI data from NSD, outperforming adapted baselines on key high-level semantic metrics (AlexNet(2/5), CLIP, DreamSim, mIoU).",
+      "The temporal analysis (Figures 4-5) is a unique contribution, characterizing how image representations evolve over time in brain activity and demonstrating that specialized decoders can decode images at different time offsets.",
+      "Comprehensive ablation studies on brain module design, diffusion model fine-tuning strategies, time window duration, and preprocessing choices provide valuable insights for the community.",
+      "The paper is well-written, clearly organized, and transparent about limitations and ethical considerations. Public code release enhances reproducibility.",
+      "Cross-subject experiments showing transfer learning benefits and reduced data requirements with pretraining add practical value."
+    ],
+    "Weaknesses": [
+      "The claim of state-of-the-art performance is primarily supported on time-resolved data; on the standard beta-value benchmark (Table 4), Dynadiff underperforms MindEye2 on low-level metrics (SSIM 0.37 vs 0.43, PixCorr 0.21 vs 0.32). This trade-off is not transparently highlighted in the main text.",
+      "The adaptation of baselines (MindEye1/2) to time-series data by simply flattening the time dimension may be suboptimal and potentially unfair, as these methods were designed for beta values. A more sophisticated temporal adaptation could yield different comparison results.",
+      "The interpretation of temporal dynamics as 'dynamic coding' is speculative given the low temporal resolution of fMRI (TR=1.3s) and the slow hemodynamic response. Observed temporal patterns could largely reflect the HRF shape rather than true neural dynamics.",
+      "The gains over MindEye2 on low-level metrics (SSIM, PixCorr) are negligible or slightly negative, suggesting the advantage is mainly on high-level semantic metrics. The paper does not deeply analyze this trade-off.",
+      "The 'specialized' models in the temporal analysis require training a separate model for each time offset, which is computationally expensive and partially contradicts the simplicity claim of the approach.",
+      "The comparison with the most recent methods (e.g., Psychometry, NeuroPictor) is only present in the beta-value appendix, not in the main time-series evaluation, limiting the completeness of the state-of-the-art comparison.",
+      "Computational cost (2.5 days on 8 A100 GPUs per subject) is substantial and may limit reproducibility for smaller research groups; this limitation is not explicitly discussed."
+    ],
+    "Originality": 4,
+    "Quality": 3,
+    "Clarity": 3,
+    "Significance": 4,
+    "Questions": [
+      "How were MindEye1/2 adapted to time-series fMRI input? The paper mentions flattening the time dimension, but could this have disadvantaged these models? Would a more sophisticated adaptation (e.g., a temporal encoder before the existing architecture) change the comparison results?",
+      "In the temporal analysis, the 'General' model decodes previous/next images at extreme time shifts. Is this due to information leakage from neighboring trials (e.g., overlapping hemodynamic responses), or does it indicate the model is decoding the wrong stimulus? How does this affect interpretation of the time-resolved results?",
+      "Given the slow HRF, how do you disentangle neural dynamics from hemodynamic response properties? Have you considered deconvolution or explicit HRF modeling to support the 'dynamic coding' claim?",
+      "The paper reports lower performance on low-level metrics (SSIM, PixCorr) compared to MindEye2 while high-level metrics improve. Is this an inherent trade-off of the approach, or could it be addressed through architectural or training modifications?",
+      "What is the total computational cost of training all 'specialized' models for the temporal analysis? How many models were trained in total?",
+      "How sensitive are the results to the choice of LoRA rank and alpha? Was any hyperparameter search conducted for these?",
+      "For the cross-subject experiments, how does the multi-subject model perform without fine-tuning on the new subject? This would clarify the true generalization capability.",
+      "The paper mentions that null text embeddings didn't boost performance. What was the rationale for this experiment, and were there any differences in training stability?",
+      "The evaluation uses a fixed random seed for selecting one of three test repetitions. How sensitive are results to this choice? Would averaging across all three repetitions change conclusions?"
+    ],
+    "Limitations": [
+      "The approach is validated only on the NSD dataset, which has a stereotypical image distribution (MS-COCO images) and only 4 subjects. Generalization to other datasets or more naturalistic stimuli remains unclear.",
+      "The method requires substantial per-subject training data (27,000 trials), limiting applicability to studies with limited data availability.",
+      "Preprocessing still requires manual steps (detrending, z-scoring, ROI selection) that could be automated with learned or foundational models of brain activity.",
+      "The time-resolved analysis is limited to static images; extending to video decoding would require additional architectural considerations.",
+      "The model does not address cross-subject generalization without fine-tuning, which remains an open challenge.",
+      "The computational cost (2.5 days on 8 A100 GPUs per subject) may hinder adoption by researchers with limited resources.",
+      "The paper acknowledges potential ethical concerns about mental privacy and face generation, but the face-blurring solution is only briefly mentioned and may not fully address the issue. The paper could also discuss the risk of overclaiming 'mind reading' capabilities and the need for responsible communication of brain decoding results."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 3,
+    "Contribution": 4,
+    "Overall": 7,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 123146,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 114186,
+    "completion_tokens": 11389,
+    "reasoning_tokens": 0,
+    "total_tokens": 134535,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.01598604,
+    "output_usd": 0.00318892,
+    "total_usd": 0.01920005
+  },
+  "elapsed_seconds": 39.944,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Accept",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B159",
+    "filename": "B159.txt",
+    "blind_text_sha256": "6ed0923c7dbafda90883e6b999fc452867644ee77fb8374f968b6810c52aa5ce",
+    "characters": 69432,
+    "full_text_saved": false
+  }
+}

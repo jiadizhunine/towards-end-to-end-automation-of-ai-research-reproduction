@@ -1,0 +1,583 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T09:17:02.509590+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "max",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "meta",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper proposes IA2 (ICL Activation Alignment), a self-distillation priming step before Supervised Fine-Tuning (SFT) that aligns the hidden activations of an SFT model with those of the same model performing In-Context Learning (ICL). The authors first show that ICL and SFT produce different activation patterns, then train LoRA/(IA)^3 adapters to minimize the MSE between non-ICL and ICL activations, followed by standard SFT. They evaluate on 12 benchmarks with Qwen3 and Llama-3.2 models, reporting accuracy and expected calibration error, and find that IA2-primed SFT often outperforms SFT alone and sometimes ICL.",
+        "Strengths": [
+          "The core idea is simple and novel: transferring activation-level (not just output-level) behavior from ICL to SFT via self-distillation is an interesting way to leverage ICL's rich context processing.",
+          "The empirical study is large-scale: 13,000+ models, two model families, multiple few-shot sizes, OOD evaluations, and two PEFT methods (LoRA and (IA)^3).",
+          "The paper provides evidence that IA2 and SFT occupy different LoRA weight subspaces, suggesting the priming signal is not reachable by SFT alone.",
+          "The proposed IA2→SFT pipeline consistently improves over SFT-only on most single/multi-token tasks in the low-data regime, with some calibration improvements."
+        ],
+        "Weaknesses": [
+          "The improvements are not universal; in several OOD cases (e.g., AGN→BBCN in Table 1) IA2→SFT underperforms SFT-only, and the reported standard deviations are often very large, making some gains statistically fragile.",
+          "Calibration improvements are not statistically significant for larger N (N=16 and 32 in Table 5), contradicting the broad claim that IA2 improves calibration.",
+          "The method requires collecting and storing dense activation tensors for every training sample and generation token, but the computational/memory overhead is not quantified; it may be prohibitive for long outputs or large datasets.",
+          "IA2-only can be catastrophically worse than SFT-only (e.g., SciQ accuracy 6.9% in Table 2), so the claim that IA2 provides a rich training signal independent of SFT is not universally true; the signal depends heavily on ICL's behavior.",
+          "The hyperparameter selection procedure (choosing the best learning rate on the evaluated test set) is a form of test-set bias and could inflate reported improvements.",
+          "The presentation is marred by typos and ambiguous notation (e.g., Eq. (3) vs. Eq. (4), 'newly generated token (at index: -1)'), making the method hard to reproduce from the text alone."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 3,
+        "Questions": [
+          "In Eq. (3), the goal is stated as SA([I∘X]; W) ≈ SA(X; \\tilde W), but the implemented loss in Eq. (4) matches activations on [X∘\\hat Y] at output token positions. How are the target positions and the absence of ICL demos reconciled with Eq. (3)?",
+          "How much wall-clock time and GPU memory are required to collect ICL activations and run IA2 relative to standard SFT? Is storing dense L×G×d tensors for all samples feasible for 10k+ samples?",
+          "Did you compare IA2 against a simpler baseline that distills ICL output probabilities (e.g., KL divergence on logits) instead of activations? This would isolate the benefit of activation alignment.",
+          "Why does IA2-only collapse on SciQ multi-token? Does the variable-length generation cause the activation matching objective to be unstable?",
+          "What early-stopping criterion is used for IA2 and SFT, and is the learning-rate selection performed on a separate validation set or the test set? Please clarify to assess test-set leakage."
+        ],
+        "Limitations": [
+          "Only small PEFT adapters (LoRA rank 8 and (IA)^3) on 1B–4B models are tested; results may not transfer to larger models or full fine-tuning.",
+          "The ICL activation collection is performed with small demonstration sets (N−1), and the method's benefits may diminish with larger training sets; the paper shows diminishing/insignificant calibration gains at larger N.",
+          "The method requires access to model internals, so it cannot be applied to black-box API models.",
+          "Potential negative societal impacts are not discussed; however, the method only improves adaptation quality and does not introduce obvious new risks."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 2,
+        "Contribution": 3,
+        "Overall": 5,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes IA2 (ICL Activation Alignment), a self-distillation priming step before Supervised Fine-Tuning (SFT) that aligns the hidden activations of an SFT model with those of the same model performing In-Context Learning (ICL). The authors first show that ICL and SFT produce different activation patterns, then train LoRA/(IA)^3 adapters to minimize the MSE between non-ICL and ICL activations, followed by standard SFT. They evaluate on 12 benchmarks with Qwen3 and Llama-3.2 models, reporting accuracy and expected calibration error, and find that IA2-primed SFT often outperforms SFT alone and sometimes ICL.\",\n  \"Strengths\": [\n    \"The core idea is simple and novel: transferring activation-level (not just output-level) behavior from ICL to SFT via self-distillation is an interesting way to leverage ICL's rich context processing.\",\n    \"The empirical study is large-scale: 13,000+ models, two model families, multiple few-shot sizes, OOD evaluations, and two PEFT methods (LoRA and (IA)^3).\",\n    \"The paper provides evidence that IA2 and SFT occupy different LoRA weight subspaces, suggesting the priming signal is not reachable by SFT alone.\",\n    \"The proposed IA2→SFT pipeline consistently improves over SFT-only on most single/multi-token tasks in the low-data regime, with some calibration improvements.\"\n  ],\n  \"Weaknesses\": [\n    \"The improvements are not universal; in several OOD cases (e.g., AGN→BBCN in Table 1) IA2→SFT underperforms SFT-only, and the reported standard deviations are often very large, making some gains statistically fragile.\",\n    \"Calibration improvements are not statistically significant for larger N (N=16 and 32 in Table 5), contradicting the broad claim that IA2 improves calibration.\",\n    \"The method requires collecting and storing dense activation tensors for every training sample and generation token, but the computational/memory overhead is not quantified; it may be prohibitive for long outputs or large datasets.\",\n    \"IA2-only can be catastrophically worse than SFT-only (e.g., SciQ accuracy 6.9% in Table 2), so the claim that IA2 provides a rich training signal independent of SFT is not universally true; the signal depends heavily on ICL's behavior.\",\n    \"The hyperparameter selection procedure (choosing the best learning rate on the evaluated test set) is a form of test-set bias and could inflate reported improvements.\",\n    \"The presentation is marred by typos and ambiguous notation (e.g., Eq. (3) vs. Eq. (4), 'newly generated token (at index: -1)'), making the method hard to reproduce from the text alone.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"In Eq. (3), the goal is stated as SA([I∘X]; W) ≈ SA(X; \\\\tilde W), but the implemented loss in Eq. (4) matches activations on [X∘\\\\hat Y] at output token positions. How are the target positions and the absence of ICL demos reconciled with Eq. (3)?\",\n    \"How much wall-clock time and GPU memory are required to collect ICL activations and run IA2 relative to standard SFT? Is storing dense L×G×d tensors for all samples feasible for 10k+ samples?\",\n    \"Did you compare IA2 against a simpler baseline that distills ICL output probabilities (e.g., KL divergence on logits) instead of activations? This would isolate the benefit of activation alignment.\",\n    \"Why does IA2-only collapse on SciQ multi-token? Does the variable-length generation cause the activation matching objective to be unstable?\",\n    \"What early-stopping criterion is used for IA2 and SFT, and is the learning-rate selection performed on a separate validation set or the test set? Please clarify to assess test-set leakage.\"\n  ],\n  \"Limitations\": [\n    \"Only small PEFT adapters (LoRA rank 8 and (IA)^3) on 1B–4B models are tested; results may not transfer to larger models or full fine-tuning.\",\n    \"The ICL activation collection is performed with small demonstration sets (N−1), and the method's benefits may diminish with larger training sets; the paper shows diminishing/insignificant calibration gains at larger N.\",\n    \"The method requires access to model internals, so it cannot be applied to black-box API models.\",\n    \"Potential negative societal impacts are not discussed; however, the method only improves adaptation quality and does not introduce obvious new risks.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 2,\n  \"Contribution\": 3,\n  \"Overall\": 5,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 27671,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 26903,
+        "completion_tokens": 6455,
+        "reasoning_tokens": 5376,
+        "total_tokens": 34126
+      },
+      "attempts": 1,
+      "response_id": "9a2c3116-e8a1-4964-bcc8-42bb93c12aa8"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper introduces ICL Activation Alignment (IA2), a self-distillation technique that aligns the activations of an SFT model with its own ICL activations as a priming step before fine-tuning. The authors find that ICL and SFT produce distinct activation patterns, and show that IA2 priming before SFT improves accuracy and calibration across 12 benchmarks and two model families (Qwen3 and Llama-3.2). The work includes extensive experiments with varying dataset sizes, OOD evaluations, and an analysis of weight subspace overlap.",
+        "Strengths": [
+          "The idea of using the model's own ICL activations as a training signal for SFT is novel and interesting.",
+          "The empirical evaluation is extensive: over 13,000 models, 12 benchmarks, multiple model sizes, and both single-token and multi-token tasks.",
+          "The analysis showing that IA2-only models (without SFT on target labels) can already achieve strong accuracy and calibration suggests the activation signal carries task-relevant information.",
+          "The inclusion of OOD evaluations and statistical significance tests strengthens the claims."
+        ],
+        "Weaknesses": [
+          "A serious confound: in ICL, the query and output tokens have different absolute positional encodings than in the non-ICL (SFT) setting because the demonstrations shift the sequence positions. The paper does not address this, so the observed activation differences and the IA2 loss may be partly due to positional offsets rather than functional adaptation. This could undermine the method's conceptual foundation.",
+          "Missing key baselines: the paper does not compare IA2 to standard soft-label knowledge distillation from the ICL teacher, nor to other feature-distillation methods. Thus, it is unclear whether the activation alignment provides unique benefits over simpler distillation approaches.",
+          "The hyperparameter selection (e.g., choosing the best learning rate per method) is not fully specified; if done on the same validation set used for final evaluation, it may bias the results. Moreover, some calibration improvements are not statistically significant at larger N (e.g., N=16, N=32 in Table 5).",
+          "The method is only evaluated with LoRA on models up to 4B parameters; its effectiveness for larger models and full fine-tuning remains unexplored.",
+          "The theoretical motivation is underdeveloped: prior work suggests ICL and SFT may be functionally related via implicit gradient descent, but the paper finds different activations without reconciling these views."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How do you handle the differing absolute token positions between ICL sequences (with demonstrations) and non-ICL sequences when collecting and matching activations? Could the improvements come from the model learning to compensate for positional offsets?",
+          "How does IA2 compare to standard knowledge distillation using the ICL model's soft probabilities as targets?",
+          "Why is activation alignment performed only on output token positions? Would aligning on query token activations also be beneficial?",
+          "Does the benefit of IA2 depend on the quality of the base model's ICL performance? What happens if ICL itself is unreliable?",
+          "Was the best learning rate chosen on a validation set that is disjoint from the final test set? If so, what is the potential selection bias?",
+          "Does the subspace overlap analysis hold for full fine-tuning, or is it an artifact of LoRA's low-rank structure?",
+          "Given that ECE improvements are not statistically significant for N=16 and N=32, how robust is the calibration claim?"
+        ],
+        "Limitations": [
+          "The positional encoding confound is not addressed, making the activation comparison and the IA2 loss potentially ill-posed.",
+          "The paper does not compare against standard distillation baselines (soft-label KD, feature distillation), so the uniqueness of the IA2 signal is not proven.",
+          "Experiments are limited to small models (1B-4B) and LoRA; results may not scale to larger models or full fine-tuning.",
+          "The activation collection step may be memory-intensive and impractical for very long sequences or large datasets.",
+          "The method introduces additional hyperparameters (e.g., beta in IA2+SFT, alignment layers) without comprehensive tuning guidance."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper introduces ICL Activation Alignment (IA2), a self-distillation technique that aligns the activations of an SFT model with its own ICL activations as a priming step before fine-tuning. The authors find that ICL and SFT produce distinct activation patterns, and show that IA2 priming before SFT improves accuracy and calibration across 12 benchmarks and two model families (Qwen3 and Llama-3.2). The work includes extensive experiments with varying dataset sizes, OOD evaluations, and an analysis of weight subspace overlap.\",\n  \"Strengths\": [\n    \"The idea of using the model's own ICL activations as a training signal for SFT is novel and interesting.\",\n    \"The empirical evaluation is extensive: over 13,000 models, 12 benchmarks, multiple model sizes, and both single-token and multi-token tasks.\",\n    \"The analysis showing that IA2-only models (without SFT on target labels) can already achieve strong accuracy and calibration suggests the activation signal carries task-relevant information.\",\n    \"The inclusion of OOD evaluations and statistical significance tests strengthens the claims.\"\n  ],\n  \"Weaknesses\": [\n    \"A serious confound: in ICL, the query and output tokens have different absolute positional encodings than in the non-ICL (SFT) setting because the demonstrations shift the sequence positions. The paper does not address this, so the observed activation differences and the IA2 loss may be partly due to positional offsets rather than functional adaptation. This could undermine the method's conceptual foundation.\",\n    \"Missing key baselines: the paper does not compare IA2 to standard soft-label knowledge distillation from the ICL teacher, nor to other feature-distillation methods. Thus, it is unclear whether the activation alignment provides unique benefits over simpler distillation approaches.\",\n    \"The hyperparameter selection (e.g., choosing the best learning rate per method) is not fully specified; if done on the same validation set used for final evaluation, it may bias the results. Moreover, some calibration improvements are not statistically significant at larger N (e.g., N=16, N=32 in Table 5).\",\n    \"The method is only evaluated with LoRA on models up to 4B parameters; its effectiveness for larger models and full fine-tuning remains unexplored.\",\n    \"The theoretical motivation is underdeveloped: prior work suggests ICL and SFT may be functionally related via implicit gradient descent, but the paper finds different activations without reconciling these views.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How do you handle the differing absolute token positions between ICL sequences (with demonstrations) and non-ICL sequences when collecting and matching activations? Could the improvements come from the model learning to compensate for positional offsets?\",\n    \"How does IA2 compare to standard knowledge distillation using the ICL model's soft probabilities as targets?\",\n    \"Why is activation alignment performed only on output token positions? Would aligning on query token activations also be beneficial?\",\n    \"Does the benefit of IA2 depend on the quality of the base model's ICL performance? What happens if ICL itself is unreliable?\",\n    \"Was the best learning rate chosen on a validation set that is disjoint from the final test set? If so, what is the potential selection bias?\",\n    \"Does the subspace overlap analysis hold for full fine-tuning, or is it an artifact of LoRA's low-rank structure?\",\n    \"Given that ECE improvements are not statistically significant for N=16 and N=32, how robust is the calibration claim?\"\n  ],\n  \"Limitations\": [\n    \"The positional encoding confound is not addressed, making the activation comparison and the IA2 loss potentially ill-posed.\",\n    \"The paper does not compare against standard distillation baselines (soft-label KD, feature distillation), so the uniqueness of the IA2 signal is not proven.\",\n    \"Experiments are limited to small models (1B-4B) and LoRA; results may not scale to larger models or full fine-tuning.\",\n    \"The activation collection step may be memory-intensive and impractical for very long sequences or large datasets.\",\n    \"The method introduces additional hyperparameters (e.g., beta in IA2+SFT, alignment layers) without comprehensive tuning guidance.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 27671,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 26903,
+        "completion_tokens": 4833,
+        "reasoning_tokens": 3866,
+        "total_tokens": 32504
+      },
+      "attempts": 1,
+      "response_id": "7dc4c2ff-c771-4af1-ad25-31d7ad02f9b3"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper proposes ICL Activation Alignment (IA2), a self-distillation priming step before supervised fine-tuning. It collects activation patterns produced by the base model during in-context learning and trains the model (via LoRA) to match those activations when the query is presented without demonstrations, then performs standard SFT. The authors report improved accuracy and calibration on single- and multi-token tasks across Qwen and Llama models, and analyze activation similarity and LoRA subspace overlap to argue that IA2 provides a training signal absent from SFT.",
+        "Strengths": [
+          "Novel idea of aligning internal activations with ICL rather than only output text; relevant to context distillation.",
+          "Extensive experiments: 12 benchmarks, 2 model families, multiple PEFT methods, statistical tests.",
+          "Analysis of activation similarity and subspace overlap provides some interpretability.",
+          "The method improves calibration, which is practically valuable in low-data settings."
+        ],
+        "Weaknesses": [
+          "The central activation comparison (ICL vs SFT) confounds method with input context: ICL activations are collected with demonstrations in the prompt, while SFT activations are collected with query only. Thus low similarity may simply reflect different inputs, not different adaptation mechanisms. A controlled comparison (e.g., SFT model also given demonstrations, or base model without demos) is missing.",
+          "No empirical comparison with prior context-distillation methods (e.g., Snell et al., Chen et al., etc.), so the practical advantage over existing distillation techniques is not established.",
+          "Results show high variance and several non-significant or negative cases; the aggregated t-test does not demonstrate consistent per-dataset improvements.",
+          "IA2 relies on generated ICL responses as targets (for multi-token), which may introduce a distribution mismatch and no ablations on response quality are provided.",
+          "Only small base models (1B-4B) are tested; no evidence the method scales or works with full fine-tuning.",
+          "The subspace overlap analysis lacks a random/null baseline; 39% overlap may not be meaningful."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 2,
+        "Questions": [
+          "Did the authors compare activation similarity between base model with vs without demonstrations, or SFT model with demonstrations, to control for context length? Without this, how can we distinguish activation changes due to ICL vs due to extra tokens?",
+          "How does IA2 compare to output-distillation baselines (Snell et al., Chen et al.) on the same tasks, controlling for compute?",
+          "What is the cost of activation collection across all layers and output tokens, and how sensitive is IA2 to the MSE scaling and LoRA rank?",
+          "Why does IA2-only sometimes achieve high accuracy without SFT? Is it because activation alignment implicitly encodes label information?",
+          "For multi-token tasks, would increasing LoRA rank reduce the gap to ICL? Was rank 8 chosen based on compute rather than performance?",
+          "How does IA2 behave when ICL performance is poor or OOD (e.g., QASCr label shift)? Should the pipeline detect and avoid harmful ICL alignment?"
+        ],
+        "Limitations": [
+          "The main motivation is weakened by the confounded activation comparison.",
+          "No comparison with prior context-distillation methods.",
+          "Limited model sizes and PEFT settings; no full fine-tuning.",
+          "High variance and lack of per-dataset significance.",
+          "The method's success depends on ICL quality; when ICL overfits, IA2 can inherit that (shown in QASCr OOD), but no mitigation is proposed.",
+          "No discussion of negative societal impacts or safety."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes ICL Activation Alignment (IA2), a self-distillation priming step before supervised fine-tuning. It collects activation patterns produced by the base model during in-context learning and trains the model (via LoRA) to match those activations when the query is presented without demonstrations, then performs standard SFT. The authors report improved accuracy and calibration on single- and multi-token tasks across Qwen and Llama models, and analyze activation similarity and LoRA subspace overlap to argue that IA2 provides a training signal absent from SFT.\",\n  \"Strengths\": [\n    \"Novel idea of aligning internal activations with ICL rather than only output text; relevant to context distillation.\",\n    \"Extensive experiments: 12 benchmarks, 2 model families, multiple PEFT methods, statistical tests.\",\n    \"Analysis of activation similarity and subspace overlap provides some interpretability.\",\n    \"The method improves calibration, which is practically valuable in low-data settings.\"\n  ],\n  \"Weaknesses\": [\n    \"The central activation comparison (ICL vs SFT) confounds method with input context: ICL activations are collected with demonstrations in the prompt, while SFT activations are collected with query only. Thus low similarity may simply reflect different inputs, not different adaptation mechanisms. A controlled comparison (e.g., SFT model also given demonstrations, or base model without demos) is missing.\",\n    \"No empirical comparison with prior context-distillation methods (e.g., Snell et al., Chen et al., etc.), so the practical advantage over existing distillation techniques is not established.\",\n    \"Results show high variance and several non-significant or negative cases; the aggregated t-test does not demonstrate consistent per-dataset improvements.\",\n    \"IA2 relies on generated ICL responses as targets (for multi-token), which may introduce a distribution mismatch and no ablations on response quality are provided.\",\n    \"Only small base models (1B-4B) are tested; no evidence the method scales or works with full fine-tuning.\",\n    \"The subspace overlap analysis lacks a random/null baseline; 39% overlap may not be meaningful.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"Did the authors compare activation similarity between base model with vs without demonstrations, or SFT model with demonstrations, to control for context length? Without this, how can we distinguish activation changes due to ICL vs due to extra tokens?\",\n    \"How does IA2 compare to output-distillation baselines (Snell et al., Chen et al.) on the same tasks, controlling for compute?\",\n    \"What is the cost of activation collection across all layers and output tokens, and how sensitive is IA2 to the MSE scaling and LoRA rank?\",\n    \"Why does IA2-only sometimes achieve high accuracy without SFT? Is it because activation alignment implicitly encodes label information?\",\n    \"For multi-token tasks, would increasing LoRA rank reduce the gap to ICL? Was rank 8 chosen based on compute rather than performance?\",\n    \"How does IA2 behave when ICL performance is poor or OOD (e.g., QASCr label shift)? Should the pipeline detect and avoid harmful ICL alignment?\"\n  ],\n  \"Limitations\": [\n    \"The main motivation is weakened by the confounded activation comparison.\",\n    \"No comparison with prior context-distillation methods.\",\n    \"Limited model sizes and PEFT settings; no full fine-tuning.\",\n    \"High variance and lack of per-dataset significance.\",\n    \"The method's success depends on ICL quality; when ICL overfits, IA2 can inherit that (shown in QASCr OOD), but no mitigation is proposed.\",\n    \"No discussion of negative societal impacts or safety.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 27671,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 26903,
+        "completion_tokens": 4214,
+        "reasoning_tokens": 3360,
+        "total_tokens": 31885
+      },
+      "attempts": 1,
+      "response_id": "9b28d191-6a65-4aea-8160-44f4500368e9"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper proposes ICL Activation Alignment (IA2), a self-distillation method that fine-tunes a model to match its own ICL activations at output token positions, then performs SFT. The authors show ICL and SFT activation patterns differ, and that IA2 priming improves SFT accuracy and calibration on 12 benchmarks across Qwen and Llama families, with analyses of activation similarity and LoRA subspace overlap. They also compare IA2+SFT and (IA)^3 variants.",
+        "Strengths": [
+          "The paper addresses an interesting and timely question: whether ICL's internal computations can improve SFT, and proposes a novel activation-level alignment objective different from typical output-distillation.",
+          "Extensive empirical evaluation: over 13,000 trained models, 12 benchmarks, single- and multi-token tasks, two model families, LoRA and (IA)^3, with OOD evaluations and statistical significance tests.",
+          "The analysis of activation similarity and LoRA subspace overlap provides a useful conceptual view and suggests IA2 explores a different region of weight space than SFT alone.",
+          "The paper is generally clearly written and includes many details for reproducibility (data setup, training details, parsing functions, code)."
+        ],
+        "Weaknesses": [
+          "The core claim that ICL and SFT produce 'different functional mechanisms' is based only on activation similarity between SFT(no demos) and ICL(with demos) under different contexts; no control similarity between two SFT runs or SFT vs base model, making it unclear whether the observed difference is due to adaptation mechanism or simply input context (presence of demonstrations).",
+          "IA2's objective is tested only at output token positions and uses the model's own ICL-generated responses as targets; this confounds the effect of activation alignment with the effect of self-distillation from ICL responses. A baseline that simply performs SFT on the same ICL-generated responses (without activation matching) is missing and is needed to isolate IA2's benefit.",
+          "Hyperparameter selection is potentially biased: the best learning rate is selected per method/dataset based on validation performance, and significance tests are computed on those best-performing runs; no nested validation or correction for multiple comparisons is reported.",
+          "Several results have large standard deviations and are not consistently significant across dataset sizes (e.g., ECE at N=16/32 in Table 5), weakening the 'across the board' claim.",
+          "The paper does not compare with existing context-distillation or self-distillation methods (e.g., Snell et al., 2022; context distillation variants), so the practical advantage over these simpler alternatives is not established."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 2,
+        "Questions": [
+          "What is the activation similarity between two independently trained SFT models or between SFT and the base model under the same input distribution? Without such controls, can we attribute the ICL-SFT activation gap to the adaptation mechanism rather than to the presence of demonstrations in the context?",
+          "How does IA2 compare to simply performing SFT on the ICL-generated responses (i.e., using the same pseudo-labels as IA2 but without the activation MSE term)? This would separate the contribution of activation alignment from response distillation.",
+          "Why align only at output token positions? Since the ICL input contains demonstration tokens that are absent during IA2, how faithful is this alignment, and would aligning at a subset of layers or all token positions change results?",
+          "How was the best learning rate chosen and does the reported significance hold under a nested validation protocol or when aggregating fixed hyperparameters?",
+          "What is the additional compute cost (FLOPs/time) of collecting ICL activations and running IA2 versus SFT only, especially as N grows? Does IA2 scale to larger models or full fine-tuning?"
+        ],
+        "Limitations": [
+          "The method is evaluated only on small models (1B-4B) and up to 128 training examples; its effectiveness on larger models and larger data regimes is unknown.",
+          "IA2 relies on a base model with non-trivial ICL capability; for tasks where ICL is poor (e.g., Llama-1B on SciQr), IA2 cannot provide useful supervision.",
+          "The paper does not assess the impact on other important post-training properties such as catastrophic forgetting, output diversity, or robustness to distribution shift beyond the tested OOD sets.",
+          "The use of ICL demonstrations during activation collection increases the effective context length and compute per training sample, but this overhead is not quantified in the paper.",
+          "Potential biases or harmful behaviors in ICL demonstrations could be distilled into the SFT model, and the paper does not discuss or test for such amplification."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes ICL Activation Alignment (IA2), a self-distillation method that fine-tunes a model to match its own ICL activations at output token positions, then performs SFT. The authors show ICL and SFT activation patterns differ, and that IA2 priming improves SFT accuracy and calibration on 12 benchmarks across Qwen and Llama families, with analyses of activation similarity and LoRA subspace overlap. They also compare IA2+SFT and (IA)^3 variants.\",\n  \"Strengths\": [\n    \"The paper addresses an interesting and timely question: whether ICL's internal computations can improve SFT, and proposes a novel activation-level alignment objective different from typical output-distillation.\",\n    \"Extensive empirical evaluation: over 13,000 trained models, 12 benchmarks, single- and multi-token tasks, two model families, LoRA and (IA)^3, with OOD evaluations and statistical significance tests.\",\n    \"The analysis of activation similarity and LoRA subspace overlap provides a useful conceptual view and suggests IA2 explores a different region of weight space than SFT alone.\",\n    \"The paper is generally clearly written and includes many details for reproducibility (data setup, training details, parsing functions, code).\"\n  ],\n  \"Weaknesses\": [\n    \"The core claim that ICL and SFT produce 'different functional mechanisms' is based only on activation similarity between SFT(no demos) and ICL(with demos) under different contexts; no control similarity between two SFT runs or SFT vs base model, making it unclear whether the observed difference is due to adaptation mechanism or simply input context (presence of demonstrations).\",\n    \"IA2's objective is tested only at output token positions and uses the model's own ICL-generated responses as targets; this confounds the effect of activation alignment with the effect of self-distillation from ICL responses. A baseline that simply performs SFT on the same ICL-generated responses (without activation matching) is missing and is needed to isolate IA2's benefit.\",\n    \"Hyperparameter selection is potentially biased: the best learning rate is selected per method/dataset based on validation performance, and significance tests are computed on those best-performing runs; no nested validation or correction for multiple comparisons is reported.\",\n    \"Several results have large standard deviations and are not consistently significant across dataset sizes (e.g., ECE at N=16/32 in Table 5), weakening the 'across the board' claim.\",\n    \"The paper does not compare with existing context-distillation or self-distillation methods (e.g., Snell et al., 2022; context distillation variants), so the practical advantage over these simpler alternatives is not established.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"What is the activation similarity between two independently trained SFT models or between SFT and the base model under the same input distribution? Without such controls, can we attribute the ICL-SFT activation gap to the adaptation mechanism rather than to the presence of demonstrations in the context?\",\n    \"How does IA2 compare to simply performing SFT on the ICL-generated responses (i.e., using the same pseudo-labels as IA2 but without the activation MSE term)? This would separate the contribution of activation alignment from response distillation.\",\n    \"Why align only at output token positions? Since the ICL input contains demonstration tokens that are absent during IA2, how faithful is this alignment, and would aligning at a subset of layers or all token positions change results?\",\n    \"How was the best learning rate chosen and does the reported significance hold under a nested validation protocol or when aggregating fixed hyperparameters?\",\n    \"What is the additional compute cost (FLOPs/time) of collecting ICL activations and running IA2 versus SFT only, especially as N grows? Does IA2 scale to larger models or full fine-tuning?\"\n  ],\n  \"Limitations\": [\n    \"The method is evaluated only on small models (1B-4B) and up to 128 training examples; its effectiveness on larger models and larger data regimes is unknown.\",\n    \"IA2 relies on a base model with non-trivial ICL capability; for tasks where ICL is poor (e.g., Llama-1B on SciQr), IA2 cannot provide useful supervision.\",\n    \"The paper does not assess the impact on other important post-training properties such as catastrophic forgetting, output diversity, or robustness to distribution shift beyond the tested OOD sets.\",\n    \"The use of ICL demonstrations during activation collection increases the effective context length and compute per training sample, but this overhead is not quantified in the paper.\",\n    \"Potential biases or harmful behaviors in ICL demonstrations could be distilled into the SFT model, and the paper does not discuss or test for such amplification.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 27671,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 26903,
+        "completion_tokens": 3929,
+        "reasoning_tokens": 2856,
+        "total_tokens": 31600
+      },
+      "attempts": 1,
+      "response_id": "925d6d7f-8625-4d3b-9747-0d0e0056dcca"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper studies the relationship between In-Context Learning (ICL) and Supervised Fine-Tuning (SFT) in large language models, showing that the two adaptation methods produce distinct internal activation patterns. Motivated by this, the authors propose IA2 (ICL Activation Alignment), a self-distillation priming step that trains a model to match its own ICL activations before performing SFT. The paper reports that IA2 priming significantly improves accuracy and calibration over SFT-only in few-shot settings, with extensive experiments across 12 benchmarks, 2 model families, and over 13,000 trained models, including out-of-distribution evaluations and a comparison with an alternative PEFT method.",
+        "Strengths": [
+          "The core idea is novel: using ICL activation patterns as a training signal for SFT, moving beyond output-level distillation and offering a new way to leverage ICL's generalization and calibration properties.",
+          "The empirical evaluation is very extensive, covering many datasets, multiple model sizes/families, varying numbers of training examples, OOD evaluations, statistical significance tests, and both LoRA and (IA)^3 PEFT methods.",
+          "The paper provides a compelling conceptual analysis, including the relationship between ICL-activation similarity and calibration, as well as weight-subspace overlap evidence that IA2 provides a training signal inaccessible to SFT alone.",
+          "The paper is generally well-written and includes a reproducibility statement with code release and detailed experimental details in the appendix."
+        ],
+        "Weaknesses": [
+          "There is an inconsistency between the formal objective in Equation (3), which matches self-attention outputs at the newly generated token position, and the implementation described in Section 4, which matches hidden states at the positions of the response tokens in a single forward pass; this needs clarification for reproducibility.",
+          "The theoretical justification for why matching raw activations should transfer ICL behavior is weak; there is no comparison with simpler alternatives such as output-level knowledge distillation from ICL, or with matching activations from random/non-ICL contexts to rule out a generic regularizing effect.",
+          "The activation similarity metric is not benchmarked against a null distribution, so the observed low similarity between ICL and SFT could partly be due to different context lengths/sequences rather than a fundamental difference in functional mechanisms.",
+          "Although aggregate statistical tests show improvement, many per-dataset gains have high variance and are not individually significant (e.g., several Table 1 entries have overlapping standard deviations).",
+          "The method is only evaluated with low-rank adapters (LoRA, (IA)^3) and small base models (1B-4B), and multi-token experiments are limited to N <= 16 and a fixed maximum generation length; the generalizability to full fine-tuning and larger models is unclear.",
+          "No ablation is provided on the choice of layers to align, the sensitivity to ICL demonstration selection/order, or the effect of activation normalization, leaving design choices under-explored."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "Could you clarify the exact activation positions used for teacher and student in IA2? Equation (3) suggests matching the last-position activations during autoregressive generation, while the text says the model is run on [X_i ∘ Y_hat_i] and activations are collected at response token positions. Which is the actual implementation?",
+          "Did you compare IA2 against standard context distillation (e.g., matching the ICL teacher's output logits/probabilities) to demonstrate that activation alignment, rather than the ICL response signal, is the key driver of the improvements?",
+          "How sensitive are the results to the choice of ICL demonstrations? Did varying the order/number of demonstrations change IA2's effectiveness?",
+          "How was expected calibration error computed (number of bins, binning scheme)? Are the reported standard deviations across the 5 random seeds or across evaluation samples?",
+          "Did you examine whether IA2 changes attention patterns or circuit-level behavior to resemble ICL, or is the evidence limited to activation/value similarity?",
+          "Could the improvement from IA2 be attributed to an implicit regularizing effect (e.g., early stopping or weight-space warmup) rather than to ICL-specific knowledge? Did you try matching activations from a different source, such as the base model's own responses or random demonstrations, as a control?"
+        ],
+        "Limitations": [
+          "The method is evaluated only with PEFT (LoRA and (IA)^3); full fine-tuning is not considered, so conclusions may not transfer to full-rank adaptation.",
+          "Experiments are limited to relatively small models (1B-4B) and specific model families (Llama, Qwen); scaling to larger models is untested.",
+          "Multi-token experiments restrict generation length and do not measure calibration, limiting the assessment for open-ended generation.",
+          "The paper does not quantify the computational overhead of the activation collection step, though it is a one-time cost.",
+          "No analysis of potential negative societal impacts is provided, though the method itself appears benign and does not raise direct ethical concerns beyond general risks of improved fine-tuning."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper studies the relationship between In-Context Learning (ICL) and Supervised Fine-Tuning (SFT) in large language models, showing that the two adaptation methods produce distinct internal activation patterns. Motivated by this, the authors propose IA2 (ICL Activation Alignment), a self-distillation priming step that trains a model to match its own ICL activations before performing SFT. The paper reports that IA2 priming significantly improves accuracy and calibration over SFT-only in few-shot settings, with extensive experiments across 12 benchmarks, 2 model families, and over 13,000 trained models, including out-of-distribution evaluations and a comparison with an alternative PEFT method.\",\n  \"Strengths\": [\n    \"The core idea is novel: using ICL activation patterns as a training signal for SFT, moving beyond output-level distillation and offering a new way to leverage ICL's generalization and calibration properties.\",\n    \"The empirical evaluation is very extensive, covering many datasets, multiple model sizes/families, varying numbers of training examples, OOD evaluations, statistical significance tests, and both LoRA and (IA)^3 PEFT methods.\",\n    \"The paper provides a compelling conceptual analysis, including the relationship between ICL-activation similarity and calibration, as well as weight-subspace overlap evidence that IA2 provides a training signal inaccessible to SFT alone.\",\n    \"The paper is generally well-written and includes a reproducibility statement with code release and detailed experimental details in the appendix.\"\n  ],\n  \"Weaknesses\": [\n    \"There is an inconsistency between the formal objective in Equation (3), which matches self-attention outputs at the newly generated token position, and the implementation described in Section 4, which matches hidden states at the positions of the response tokens in a single forward pass; this needs clarification for reproducibility.\",\n    \"The theoretical justification for why matching raw activations should transfer ICL behavior is weak; there is no comparison with simpler alternatives such as output-level knowledge distillation from ICL, or with matching activations from random/non-ICL contexts to rule out a generic regularizing effect.\",\n    \"The activation similarity metric is not benchmarked against a null distribution, so the observed low similarity between ICL and SFT could partly be due to different context lengths/sequences rather than a fundamental difference in functional mechanisms.\",\n    \"Although aggregate statistical tests show improvement, many per-dataset gains have high variance and are not individually significant (e.g., several Table 1 entries have overlapping standard deviations).\",\n    \"The method is only evaluated with low-rank adapters (LoRA, (IA)^3) and small base models (1B-4B), and multi-token experiments are limited to N <= 16 and a fixed maximum generation length; the generalizability to full fine-tuning and larger models is unclear.\",\n    \"No ablation is provided on the choice of layers to align, the sensitivity to ICL demonstration selection/order, or the effect of activation normalization, leaving design choices under-explored.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"Could you clarify the exact activation positions used for teacher and student in IA2? Equation (3) suggests matching the last-position activations during autoregressive generation, while the text says the model is run on [X_i ∘ Y_hat_i] and activations are collected at response token positions. Which is the actual implementation?\",\n    \"Did you compare IA2 against standard context distillation (e.g., matching the ICL teacher's output logits/probabilities) to demonstrate that activation alignment, rather than the ICL response signal, is the key driver of the improvements?\",\n    \"How sensitive are the results to the choice of ICL demonstrations? Did varying the order/number of demonstrations change IA2's effectiveness?\",\n    \"How was expected calibration error computed (number of bins, binning scheme)? Are the reported standard deviations across the 5 random seeds or across evaluation samples?\",\n    \"Did you examine whether IA2 changes attention patterns or circuit-level behavior to resemble ICL, or is the evidence limited to activation/value similarity?\",\n    \"Could the improvement from IA2 be attributed to an implicit regularizing effect (e.g., early stopping or weight-space warmup) rather than to ICL-specific knowledge? Did you try matching activations from a different source, such as the base model's own responses or random demonstrations, as a control?\"\n  ],\n  \"Limitations\": [\n    \"The method is evaluated only with PEFT (LoRA and (IA)^3); full fine-tuning is not considered, so conclusions may not transfer to full-rank adaptation.\",\n    \"Experiments are limited to relatively small models (1B-4B) and specific model families (Llama, Qwen); scaling to larger models is untested.\",\n    \"Multi-token experiments restrict generation length and do not measure calibration, limiting the assessment for open-ended generation.\",\n    \"The paper does not quantify the computational overhead of the activation collection step, though it is a one-time cost.\",\n    \"No analysis of potential negative societal impacts is provided, though the method itself appears benign and does not raise direct ethical concerns beyond general risks of improved fine-tuning.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 27671,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 26903,
+        "completion_tokens": 4543,
+        "reasoning_tokens": 3392,
+        "total_tokens": 32214
+      },
+      "attempts": 1,
+      "response_id": "3e995078-5a21-49a5-8aec-63453f430480"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 2,
+      "Reject": 3
+    },
+    "unanimous_decision": false,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Quality": {
+        "values": [
+          2,
+          2,
+          2,
+          2,
+          3
+        ],
+        "mean": 2.2,
+        "rounded_mean": 2,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          2,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          3,
+          3,
+          2,
+          2,
+          3
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Soundness": {
+        "values": [
+          3,
+          2,
+          2,
+          2,
+          3
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          2,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          3,
+          2,
+          2,
+          2,
+          3
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          5,
+          4,
+          4,
+          4,
+          6
+        ],
+        "mean": 4.6,
+        "rounded_mean": 5,
+        "population_sd": 0.8,
+        "min": 4,
+        "max": 6
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper proposes ICL Activation Alignment (IA2), a self-distillation priming step before supervised fine-tuning (SFT) that aligns the hidden activations of a model performing SFT with its own activations during in-context learning (ICL). The authors show that ICL and SFT produce different activation patterns, and that IA2 priming before SFT improves accuracy and calibration on 12 benchmarks across Qwen and Llama models, using LoRA and (IA)^3 adapters, with extensive experiments including out-of-distribution evaluations and statistical significance tests.",
+      "Strengths": [
+        "The core idea of using the model's own ICL activations as a training signal for SFT is novel and moves beyond output-level distillation.",
+        "The empirical evaluation is very extensive: over 13,000 trained models, 12 benchmarks, two model families, multiple PEFT methods, OOD evaluations, and significance testing.",
+        "The analysis of activation similarity and LoRA weight-subspace overlap provides a useful conceptual view and suggests IA2 explores a different region of weight space than SFT alone.",
+        "The paper includes a reproducibility statement with code release and detailed experimental details in the appendix."
+      ],
+      "Weaknesses": [
+        "The central activation comparison (ICL vs SFT) is confounded: ICL activations are collected with demonstrations in the prompt, while SFT activations are collected with query only, so the observed differences may be due to input context length/content rather than different adaptation mechanisms; no controlled comparisons (e.g., SFT model with demonstrations, base model with/without demos) are provided.",
+        "Missing key baselines: the paper does not compare IA2 against standard output-level knowledge distillation from the ICL teacher nor prior context-distillation methods, so the unique benefit of activation alignment over simpler distillation is not established.",
+        "Hyperparameter selection is potentially biased: the best learning rate is chosen per method/dataset based on validation performance, and significance tests are computed on those best-performing runs; no nested validation or correction for multiple comparisons is reported.",
+        "Many per-dataset improvements have high variance and are not individually significant; calibration improvements are not statistically significant for larger N (N=16 and N=32 in Table 5), weakening the broad claim of calibration benefits.",
+        "IA2-only can be much worse than SFT-only on some tasks (e.g., SciQ accuracy 6.9%), indicating the method's success depends on ICL quality and is not universally beneficial; when ICL overfits or performs poorly, IA2 can inherit those issues.",
+        "The computational/memory overhead of collecting dense ICL activations is not quantified, and may be prohibitive for long sequences or large datasets; this is especially important because the method requires access to model internals (not applicable to black-box APIs).",
+        "The formal objective in Equation (3) and the implementation described in Section 4 are inconsistent regarding which token positions are matched, making the method hard to reproduce from the text alone.",
+        "The method is only evaluated with low-rank adapters (LoRA rank 8, (IA)^3) on small base models (1B-4B) and up to 128 training examples; its effectiveness for larger models, full fine-tuning, and larger data regimes is unknown."
+      ],
+      "Originality": 3,
+      "Quality": 2,
+      "Clarity": 3,
+      "Significance": 2,
+      "Questions": [
+        "How does IA2 compare to simply performing SFT on the ICL-generated responses (same pseudo-labels as IA2) without the activation MSE term? This would isolate the contribution of activation alignment from response distillation.",
+        "What are the activation similarities between two independently trained SFT models, between SFT and the base model, and between ICL models from different random seeds? Without such controls, how can the observed ICL-SFT activation gap be attributed to the adaptation mechanism rather than the presence of demonstrations?",
+        "What is the additional wall-clock time and GPU memory required for collecting ICL activations and running IA2 relative to standard SFT? Is storing dense activation tensors for all training samples feasible for 10k+ samples?",
+        "How was the best learning rate selected, and do the reported significance results hold under nested validation or with fixed hyperparameters?",
+        "Why does IA2-only collapse on SciQ multi-token? Does the variable-length generation cause instability in the activation matching objective?",
+        "How sensitive are the results to the choice/order/number of ICL demonstrations? Does IA2 amplify harmful biases present in ICL demonstrations?",
+        "What is the subspace overlap with a null random baseline? Is the 39% overlap statistically meaningful?"
+      ],
+      "Limitations": [
+        "The main motivation is weakened by the confounded activation comparison and lack of control experiments.",
+        "No comparison with prior context-distillation methods (e.g., Snell et al., Chen et al.) or standard knowledge distillation baselines, so practical advantages are not demonstrated.",
+        "The method requires access to model internals and is not applicable to black-box API models.",
+        "The activation collection step is memory-intensive and may be impractical for long sequences or large datasets; this overhead is not quantified.",
+        "Experiments are limited to small PEFT models (1B-4B); full fine-tuning and larger models are untested.",
+        "The method depends on the base model's ICL capability; when ICL is unreliable (e.g., Llama-1B on SciQr), IA2 does not help or harms.",
+        "No analysis of potential negative societal impacts or bias amplification through ICL demonstrations is provided."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 2,
+      "Presentation": 3,
+      "Contribution": 2,
+      "Overall": 4,
+      "Confidence": 4,
+      "Decision": "Reject"
+    },
+    "raw_response": "{\n  \"Summary\": \"The paper proposes ICL Activation Alignment (IA2), a self-distillation priming step before supervised fine-tuning (SFT) that aligns the hidden activations of a model performing SFT with its own activations during in-context learning (ICL). The authors show that ICL and SFT produce different activation patterns, and that IA2 priming before SFT improves accuracy and calibration on 12 benchmarks across Qwen and Llama models, using LoRA and (IA)^3 adapters, with extensive experiments including out-of-distribution evaluations and statistical significance tests.\",\n  \"Strengths\": [\n    \"The core idea of using the model's own ICL activations as a training signal for SFT is novel and moves beyond output-level distillation.\",\n    \"The empirical evaluation is very extensive: over 13,000 trained models, 12 benchmarks, two model families, multiple PEFT methods, OOD evaluations, and significance testing.\",\n    \"The analysis of activation similarity and LoRA weight-subspace overlap provides a useful conceptual view and suggests IA2 explores a different region of weight space than SFT alone.\",\n    \"The paper includes a reproducibility statement with code release and detailed experimental details in the appendix.\"\n  ],\n  \"Weaknesses\": [\n    \"The central activation comparison (ICL vs SFT) is confounded: ICL activations are collected with demonstrations in the prompt, while SFT activations are collected with query only, so the observed differences may be due to input context length/content rather than different adaptation mechanisms; no controlled comparisons (e.g., SFT model with demonstrations, base model with/without demos) are provided.\",\n    \"Missing key baselines: the paper does not compare IA2 against standard output-level knowledge distillation from the ICL teacher nor prior context-distillation methods, so the unique benefit of activation alignment over simpler distillation is not established.\",\n    \"Hyperparameter selection is potentially biased: the best learning rate is chosen per method/dataset based on validation performance, and significance tests are computed on those best-performing runs; no nested validation or correction for multiple comparisons is reported.\",\n    \"Many per-dataset improvements have high variance and are not individually significant; calibration improvements are not statistically significant for larger N (N=16 and N=32 in Table 5), weakening the broad claim of calibration benefits.\",\n    \"IA2-only can be much worse than SFT-only on some tasks (e.g., SciQ accuracy 6.9%), indicating the method's success depends on ICL quality and is not universally beneficial; when ICL overfits or performs poorly, IA2 can inherit those issues.\",\n    \"The computational/memory overhead of collecting dense ICL activations is not quantified, and may be prohibitive for long sequences or large datasets; this is especially important because the method requires access to model internals (not applicable to black-box APIs).\",\n    \"The formal objective in Equation (3) and the implementation described in Section 4 are inconsistent regarding which token positions are matched, making the method hard to reproduce from the text alone.\",\n    \"The method is only evaluated with low-rank adapters (LoRA rank 8, (IA)^3) on small base models (1B-4B) and up to 128 training examples; its effectiveness for larger models, full fine-tuning, and larger data regimes is unknown.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"How does IA2 compare to simply performing SFT on the ICL-generated responses (same pseudo-labels as IA2) without the activation MSE term? This would isolate the contribution of activation alignment from response distillation.\",\n    \"What are the activation similarities between two independently trained SFT models, between SFT and the base model, and between ICL models from different random seeds? Without such controls, how can the observed ICL-SFT activation gap be attributed to the adaptation mechanism rather than the presence of demonstrations?\",\n    \"What is the additional wall-clock time and GPU memory required for collecting ICL activations and running IA2 relative to standard SFT? Is storing dense activation tensors for all training samples feasible for 10k+ samples?\",\n    \"How was the best learning rate selected, and do the reported significance results hold under nested validation or with fixed hyperparameters?\",\n    \"Why does IA2-only collapse on SciQ multi-token? Does the variable-length generation cause instability in the activation matching objective?\",\n    \"How sensitive are the results to the choice/order/number of ICL demonstrations? Does IA2 amplify harmful biases present in ICL demonstrations?\",\n    \"What is the subspace overlap with a null random baseline? Is the 39% overlap statistically meaningful?\"\n  ],\n  \"Limitations\": [\n    \"The main motivation is weakened by the confounded activation comparison and lack of control experiments.\",\n    \"No comparison with prior context-distillation methods (e.g., Snell et al., Chen et al.) or standard knowledge distillation baselines, so practical advantages are not demonstrated.\",\n    \"The method requires access to model internals and is not applicable to black-box API models.\",\n    \"The activation collection step is memory-intensive and may be impractical for long sequences or large datasets; this overhead is not quantified.\",\n    \"Experiments are limited to small PEFT models (1B-4B); full fine-tuning and larger models are untested.\",\n    \"The method depends on the base model's ICL capability; when ICL is unreliable (e.g., Llama-1B on SciQr), IA2 does not help or harms.\",\n    \"No analysis of potential negative societal impacts or bias amplification through ICL demonstrations is provided.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+    "usage": {
+      "prompt_tokens": 5939,
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 5683,
+      "completion_tokens": 2166,
+      "reasoning_tokens": 919,
+      "total_tokens": 8105
+    },
+    "attempts": 1,
+    "response_id": "31621ff2-d436-4f5e-bacd-3e0f9cdf3d87"
+  },
+  "final_review": {
+    "Summary": "The paper proposes ICL Activation Alignment (IA2), a self-distillation priming step before supervised fine-tuning (SFT) that aligns the hidden activations of a model performing SFT with its own activations during in-context learning (ICL). The authors show that ICL and SFT produce different activation patterns, and that IA2 priming before SFT improves accuracy and calibration on 12 benchmarks across Qwen and Llama models, using LoRA and (IA)^3 adapters, with extensive experiments including out-of-distribution evaluations and statistical significance tests.",
+    "Strengths": [
+      "The core idea of using the model's own ICL activations as a training signal for SFT is novel and moves beyond output-level distillation.",
+      "The empirical evaluation is very extensive: over 13,000 trained models, 12 benchmarks, two model families, multiple PEFT methods, OOD evaluations, and significance testing.",
+      "The analysis of activation similarity and LoRA weight-subspace overlap provides a useful conceptual view and suggests IA2 explores a different region of weight space than SFT alone.",
+      "The paper includes a reproducibility statement with code release and detailed experimental details in the appendix."
+    ],
+    "Weaknesses": [
+      "The central activation comparison (ICL vs SFT) is confounded: ICL activations are collected with demonstrations in the prompt, while SFT activations are collected with query only, so the observed differences may be due to input context length/content rather than different adaptation mechanisms; no controlled comparisons (e.g., SFT model with demonstrations, base model with/without demos) are provided.",
+      "Missing key baselines: the paper does not compare IA2 against standard output-level knowledge distillation from the ICL teacher nor prior context-distillation methods, so the unique benefit of activation alignment over simpler distillation is not established.",
+      "Hyperparameter selection is potentially biased: the best learning rate is chosen per method/dataset based on validation performance, and significance tests are computed on those best-performing runs; no nested validation or correction for multiple comparisons is reported.",
+      "Many per-dataset improvements have high variance and are not individually significant; calibration improvements are not statistically significant for larger N (N=16 and N=32 in Table 5), weakening the broad claim of calibration benefits.",
+      "IA2-only can be much worse than SFT-only on some tasks (e.g., SciQ accuracy 6.9%), indicating the method's success depends on ICL quality and is not universally beneficial; when ICL overfits or performs poorly, IA2 can inherit those issues.",
+      "The computational/memory overhead of collecting dense ICL activations is not quantified, and may be prohibitive for long sequences or large datasets; this is especially important because the method requires access to model internals (not applicable to black-box APIs).",
+      "The formal objective in Equation (3) and the implementation described in Section 4 are inconsistent regarding which token positions are matched, making the method hard to reproduce from the text alone.",
+      "The method is only evaluated with low-rank adapters (LoRA rank 8, (IA)^3) on small base models (1B-4B) and up to 128 training examples; its effectiveness for larger models, full fine-tuning, and larger data regimes is unknown."
+    ],
+    "Originality": 3,
+    "Quality": 2,
+    "Clarity": 3,
+    "Significance": 2,
+    "Questions": [
+      "How does IA2 compare to simply performing SFT on the ICL-generated responses (same pseudo-labels as IA2) without the activation MSE term? This would isolate the contribution of activation alignment from response distillation.",
+      "What are the activation similarities between two independently trained SFT models, between SFT and the base model, and between ICL models from different random seeds? Without such controls, how can the observed ICL-SFT activation gap be attributed to the adaptation mechanism rather than the presence of demonstrations?",
+      "What is the additional wall-clock time and GPU memory required for collecting ICL activations and running IA2 relative to standard SFT? Is storing dense activation tensors for all training samples feasible for 10k+ samples?",
+      "How was the best learning rate selected, and do the reported significance results hold under nested validation or with fixed hyperparameters?",
+      "Why does IA2-only collapse on SciQ multi-token? Does the variable-length generation cause instability in the activation matching objective?",
+      "How sensitive are the results to the choice/order/number of ICL demonstrations? Does IA2 amplify harmful biases present in ICL demonstrations?",
+      "What is the subspace overlap with a null random baseline? Is the 39% overlap statistically meaningful?"
+    ],
+    "Limitations": [
+      "The main motivation is weakened by the confounded activation comparison and lack of control experiments.",
+      "No comparison with prior context-distillation methods (e.g., Snell et al., Chen et al.) or standard knowledge distillation baselines, so practical advantages are not demonstrated.",
+      "The method requires access to model internals and is not applicable to black-box API models.",
+      "The activation collection step is memory-intensive and may be impractical for long sequences or large datasets; this overhead is not quantified.",
+      "Experiments are limited to small PEFT models (1B-4B); full fine-tuning and larger models are untested.",
+      "The method depends on the base model's ICL capability; when ICL is unreliable (e.g., Llama-1B on SciQr), IA2 does not help or harms.",
+      "No analysis of potential negative societal impacts or bias amplification through ICL demonstrations is provided."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 2,
+    "Presentation": 3,
+    "Contribution": 2,
+    "Overall": 4,
+    "Confidence": 4,
+    "Decision": "Reject"
+  },
+  "final_review_source": "Area Chair model output",
+  "usage": {
+    "prompt_tokens": 144294,
+    "prompt_cache_hit_tokens": 4096,
+    "prompt_cache_miss_tokens": 140198,
+    "completion_tokens": 26140,
+    "reasoning_tokens": 19769,
+    "total_tokens": 170434,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 1.147e-05,
+    "cache_miss_input_usd": 0.01962772,
+    "output_usd": 0.0073192,
+    "total_usd": 0.02695839
+  },
+  "elapsed_seconds": 70.537,
+  "input": {
+    "blind_id": "B091",
+    "filename": "B091.txt",
+    "blind_text_sha256": "258879b04b2ed1c1a97abb99762db163609f3b28af748beaf2717087d64a9373",
+    "characters": 83378,
+    "full_text_saved": false
+  }
+}

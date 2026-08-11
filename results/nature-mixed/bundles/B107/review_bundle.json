@@ -1,0 +1,734 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:47:12.773340+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "This paper proposes FORMED, a framework for repurposing pre-trained time series foundation models (specifically TimesFM) for medical time series (MedTS) classification. The framework consists of three stages: (1) pre-training on general time series (already completed), (2) repurposing, where a novel attention-based classifier with Shared Decoding Attention (SDA), Channel Embeddings (CEs), and Label Queries (LQs) is trained jointly on a cohort of 5 MedTS datasets, and (3) adapting, where only lightweight task-specific parameters (CEs and LQs) are trained for new unseen datasets. The key innovation is decoupling domain-invariant knowledge (in SDA) from task-specific knowledge (in CEs and LQs). The paper evaluates FORMED against 15 baselines (11 task-specific models and 4 task-specific adaptation methods) on 5 MedTS datasets, showing improvements in F1-score, and demonstrates adaptation to 2 out-of-domain datasets with limited training data.",
+        "Strengths": [
+          "The problem is well-motivated: medical time series classification faces real challenges with inter- and intra-dataset heterogeneity, and existing approaches have limited generalizability.",
+          "The architectural design is thoughtful: separating task-agnostic (Shared Decoding Attention) from task-specific (Channel Embeddings, Label Queries) parameters is a clean and principled approach.",
+          "The repurposing concept (adapting a forecasting foundation model to classification tasks) is novel and addresses a real gap in the field.",
+          "The experimental evaluation is comprehensive with 15 baselines across 5 diverse datasets (EEG and ECG).",
+          "The adaptation experiments on unseen datasets (ECG200, StandWalkJump) demonstrate the framework's ability to generalize to new tasks with minimal parameter updates.",
+          "The paper includes ablation studies (Table 7) and extended baseline comparisons (Table 6) to justify design choices.",
+          "The paper is generally well-written, clearly explaining the methodology and the three-stage process.",
+          "Code is made publicly available, supporting reproducibility."
+        ],
+        "Weaknesses": [
+          "The variance in results is extremely high (e.g., ADFTD F1 = 63.66±21.67, ADFTD Accuracy = 66.83±18.35). This is a major concern as standard deviations are over 1/3 of the mean values, suggesting the model is highly unstable across seeds and data splits. This undermines confidence in the reported improvements.",
+          "The claim of 'up to 35% absolute improvement' is misleading given the high variance. The improvement may not be statistically significant, and no significance testing (e.g., t-tests, confidence intervals) is provided.",
+          "Only one backbone (TimesFM) is evaluated. The paper acknowledges this limitation but the generalizability of the FORMED framework to other foundation models (e.g., MOMENT, UniTS, Moirai) remains unvalidated.",
+          "The TSA baseline (TimesFM-TSA) uses a simple CNN head, while FORMED uses a more sophisticated attention-based classifier. This is not a fair comparison - the performance gain could be attributed to the classifier architecture rather than the repurposing strategy. A more controlled comparison (e.g., TimesFM-TSA with the same attention head, or FORMED with a CNN head) would be needed.",
+          "The adaptation experiments show FORMED underperforms the baseline at lower k values (e.g., k=4, 8, 16 on ECG200) and only shows clear improvements at very large k (512+). This suggests the approach may require impractical amounts of task-specific parameters to be effective.",
+          "The 'power law' claim for scaling behavior in Figure 5 is not rigorously demonstrated - the relationship between k and performance is not formally fitted or tested.",
+          "The paper lacks a discussion of computational cost during repurposing. Training on a cohort of 340K samples with a 500M parameter backbone is likely very expensive, and this is not addressed.",
+          "The evaluation metrics are reported with standard deviations but no statistical significance testing is performed to determine if the differences between FORMED and baselines are meaningful.",
+          "The paper's statement that FORMED 'achieves SOTA level performance' is somewhat overstated given the high variance and the fact that on some datasets (e.g., TDBrain), FORMED only performs on par with the best TSM models."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "The reported standard deviations are extremely high (e.g., ADFTD F1 = 63.66±21.67). Can you provide statistical significance tests (e.g., paired t-tests or confidence intervals) to confirm that FORMED's improvements over baselines are statistically significant?",
+          "How many random seeds and data splits were used for the reported results? The high variance suggests the model may be very sensitive to initialization and data partitioning.",
+          "Why was TimesFM-TSA (with CNN head) chosen as the primary TSA baseline? Would a fairer comparison use the same attention-based classifier head for both FORMED and the TSA baseline, isolating the contribution of the joint repurposing training?",
+          "The adaptation results show FORMED underperforms TimesFM-TSA at small k values. What is the practical recommendation for choosing k for a new dataset? Is there a way to determine the optimal k without extensive grid search?",
+          "What is the computational cost (GPU hours) of the repurposing stage? This is important for assessing the practical feasibility of the approach.",
+          "How does FORMED perform with other backbone foundation models (e.g., MOMENT, UniTS, PatchTST)? The paper only evaluates TimesFM.",
+          "In the ablation study (Table 7), removing the Channel Embeddings (CE) leads to a performance drop on most datasets but an improvement on TDBrain. Can you explain this?",
+          "The training trajectories in Figure 6 show high variability across seeds. How was the best model checkpoint selected, and does this selection process contribute to the high variance in test results?"
+        ],
+        "Limitations": [
+          "The paper only evaluates one backbone (TimesFM). The generalizability of FORMED to other time series foundation models is not demonstrated.",
+          "The high variance in results across seeds and splits is a significant limitation that is acknowledged but not fully addressed.",
+          "The MedTS cohort used for repurposing is limited to 5 datasets. The impact of cohort composition and scale on the captured domain knowledge is not thoroughly investigated.",
+          "The paper does not discuss potential negative societal impacts, such as the risk of misdiagnosis in clinical deployment or bias in medical datasets.",
+          "The computational cost of the repurposing stage is not reported, which is important for practical adoption.",
+          "The adaptation experiments are limited to two small datasets. More extensive evaluation on diverse unseen datasets would strengthen the claims."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes FORMED, a framework for repurposing time series foundation models (specifically TimesFM) for medical time series classification. The key idea is a three-stage process: pre-training (already done), repurposing (training a shared attention-based classifier on a cohort of MedTS datasets), and adapting (training only lightweight task-specific parameters for new datasets).\n\nStrengths:\n1. The problem is well-motivated - medical time series classification faces real challenges with heterogeneity across datasets/channels/classes.\n2. The architectural design is thoughtful - separating task-agnostic (Shared Decoding Attention) from task-specific (Channel Embeddings, Label Queries) parameters is a clean approach.\n3. The experimental evaluation is comprehensive with 15 baselines across 5 datasets.\n4. The adaptation experiments on unseen datasets are valuable for demonstrating generalization.\n5. The paper is generally well-written and clearly explains the methodology.\n\nWeaknesses:\n1. The variance in results is extremely high (e.g., ADFTD F1 = 63.66±21.67). This is concerning - the standard deviation is over 1/3 of the mean value. This suggests the model is highly unstable across seeds/splits.\n2. The claim of \"up to 35% absolute improvement\" is misleading given the high variance - the improvements may not be statistically significant.\n3. Only one backbone (TimesFM) is tested. The paper acknowledges this limitation but it's still a significant gap.\n4. The TSA baseline comparison is somewhat unfair - TimesFM-TSA uses a CNN head while FORMED uses a more sophisticated attention-based classifier. A more apples-to-apples comparison would use the same classifier head architecture.\n5. The adaptation experiments show mixed results at lower k values - FORMED underperforms the baseline at small k and only shows clear improvements at very large k (512+), which seems impractical.\n6. The paper lacks statistical significance testing (e.g., t-tests or confidence intervals) to support claims of superiority.\n7. The \"power law\" claim for scaling behavior is not rigorously demonstrated.\n\nOriginality: The repurposing concept and the specific architecture (SDA + CE + LQ) appear novel. The idea of decoupling domain-invariant from task-specific knowledge is not entirely new but the specific implementation for MedTS is novel.\n\nQuality: The experimental methodology is generally sound but the high variance undermines confidence in the results. The ablation study is helpful. The lack of significance testing is a concern.\n\nClarity: The paper is well-organized and clearly written. The figures are helpful. Some details could be improved (e.g., the exact meaning of \"k\" in the architecture description).\n\nSignificance: The problem is important and the proposed approach could be valuable. However, the high variance and limited backbone evaluation reduce the practical significance. The approach of repurposing forecasting models for classification is a useful direction.\n\nOverall assessment: This is a borderline paper. The core idea is interesting and the results show promise, but the high variance and lack of statistical rigor are significant concerns. I'll rate it as a borderline reject due to these issues, though the idea has merit.\n\nConfidence: I'm fairly confident in my assessment. I have knowledge of time series foundation models and medical time series classification.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper proposes FORMED, a framework for repurposing pre-trained time series foundation models (specifically TimesFM) for medical time series (MedTS) classification. The framework consists of three stages: (1) pre-training on general time series (already completed), (2) repurposing, where a novel attention-based classifier with Shared Decoding Attention (SDA), Channel Embeddings (CEs), and Label Queries (LQs) is trained jointly on a cohort of 5 MedTS datasets, and (3) adapting, where only lightweight task-specific parameters (CEs and LQs) are trained for new unseen datasets. The key innovation is decoupling domain-invariant knowledge (in SDA) from task-specific knowledge (in CEs and LQs). The paper evaluates FORMED against 15 baselines (11 task-specific models and 4 task-specific adaptation methods) on 5 MedTS datasets, showing improvements in F1-score, and demonstrates adaptation to 2 out-of-domain datasets with limited training data.\",\n    \"Strengths\": [\n        \"The problem is well-motivated: medical time series classification faces real challenges with inter- and intra-dataset heterogeneity, and existing approaches have limited generalizability.\",\n        \"The architectural design is thoughtful: separating task-agnostic (Shared Decoding Attention) from task-specific (Channel Embeddings, Label Queries) parameters is a clean and principled approach.\",\n        \"The repurposing concept (adapting a forecasting foundation model to classification tasks) is novel and addresses a real gap in the field.\",\n        \"The experimental evaluation is comprehensive with 15 baselines across 5 diverse datasets (EEG and ECG).\",\n        \"The adaptation experiments on unseen datasets (ECG200, StandWalkJump) demonstrate the framework's ability to generalize to new tasks with minimal parameter updates.\",\n        \"The paper includes ablation studies (Table 7) and extended baseline comparisons (Table 6) to justify design choices.\",\n        \"The paper is generally well-written, clearly explaining the methodology and the three-stage process.\",\n        \"Code is made publicly available, supporting reproducibility.\"\n    ],\n    \"Weaknesses\": [\n        \"The variance in results is extremely high (e.g., ADFTD F1 = 63.66±21.67, ADFTD Accuracy = 66.83±18.35). This is a major concern as standard deviations are over 1/3 of the mean values, suggesting the model is highly unstable across seeds and data splits. This undermines confidence in the reported improvements.\",\n        \"The claim of 'up to 35% absolute improvement' is misleading given the high variance. The improvement may not be statistically significant, and no significance testing (e.g., t-tests, confidence intervals) is provided.\",\n        \"Only one backbone (TimesFM) is evaluated. The paper acknowledges this limitation but the generalizability of the FORMED framework to other foundation models (e.g., MOMENT, UniTS, Moirai) remains unvalidated.\",\n        \"The TSA baseline (TimesFM-TSA) uses a simple CNN head, while FORMED uses a more sophisticated attention-based classifier. This is not a fair comparison - the performance gain could be attributed to the classifier architecture rather than the repurposing strategy. A more controlled comparison (e.g., TimesFM-TSA with the same attention head, or FORMED with a CNN head) would be needed.\",\n        \"The adaptation experiments show FORMED underperforms the baseline at lower k values (e.g., k=4, 8, 16 on ECG200) and only shows clear improvements at very large k (512+). This suggests the approach may require impractical amounts of task-specific parameters to be effective.\",\n        \"The 'power law' claim for scaling behavior in Figure 5 is not rigorously demonstrated - the relationship between k and performance is not formally fitted or tested.\",\n        \"The paper lacks a discussion of computational cost during repurposing. Training on a cohort of 340K samples with a 500M parameter backbone is likely very expensive, and this is not addressed.\",\n        \"The evaluation metrics are reported with standard deviations but no statistical significance testing is performed to determine if the differences between FORMED and baselines are meaningful.\",\n        \"The paper's statement that FORMED 'achieves SOTA level performance' is somewhat overstated given the high variance and the fact that on some datasets (e.g., TDBrain), FORMED only performs on par with the best TSM models.\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 2,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"The reported standard deviations are extremely high (e.g., ADFTD F1 = 63.66±21.67). Can you provide statistical significance tests (e.g., paired t-tests or confidence intervals) to confirm that FORMED's improvements over baselines are statistically significant?\",\n        \"How many random seeds and data splits were used for the reported results? The high variance suggests the model may be very sensitive to initialization and data partitioning.\",\n        \"Why was TimesFM-TSA (with CNN head) chosen as the primary TSA baseline? Would a fairer comparison use the same attention-based classifier head for both FORMED and the TSA baseline, isolating the contribution of the joint repurposing training?\",\n        \"The adaptation results show FORMED underperforms TimesFM-TSA at small k values. What is the practical recommendation for choosing k for a new dataset? Is there a way to determine the optimal k without extensive grid search?\",\n        \"What is the computational cost (GPU hours) of the repurposing stage? This is important for assessing the practical feasibility of the approach.\",\n        \"How does FORMED perform with other backbone foundation models (e.g., MOMENT, UniTS, PatchTST)? The paper only evaluates TimesFM.\",\n        \"In the ablation study (Table 7), removing the Channel Embeddings (CE) leads to a performance drop on most datasets but an improvement on TDBrain. Can you explain this?\",\n        \"The training trajectories in Figure 6 show high variability across seeds. How was the best model checkpoint selected, and does this selection process contribute to the high variance in test results?\"\n    ],\n    \"Limitations\": [\n        \"The paper only evaluates one backbone (TimesFM). The generalizability of FORMED to other time series foundation models is not demonstrated.\",\n        \"The high variance in results across seeds and splits is a significant limitation that is acknowledged but not fully addressed.\",\n        \"The MedTS cohort used for repurposing is limited to 5 datasets. The impact of cohort composition and scale on the captured domain knowledge is not thoroughly investigated.\",\n        \"The paper does not discuss potential negative societal impacts, such as the risk of misdiagnosis in clinical deployment or bias in medical datasets.\",\n        \"The computational cost of the repurposing stage is not reported, which is important for practical adoption.\",\n        \"The adaptation experiments are limited to two small datasets. More extensive evaluation on diverse unseen datasets would strengthen the claims.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 2,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 4,\n    \"Confidence\": 4,\n    \"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 28574,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 26782,
+        "completion_tokens": 2213,
+        "reasoning_tokens": 0,
+        "total_tokens": 30787
+      },
+      "attempts": 1,
+      "response_id": "45e21146-d18c-4c5b-af85-9896cd03339d"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper proposes FORMED, a framework for repurposing general time series foundation models (specifically TimesFM) for medical time series (MedTS) classification. FORMED uses a frozen backbone feature extractor combined with a novel attention-based classifier consisting of task-specific channel embeddings (CEs), label queries (LQs), and a shared decoding attention (SDA) layer. The framework operates in two stages: repurposing (jointly training the classifier on a cohort of 5 MedTS datasets to capture domain knowledge) and adapting (training only minimal task-specific parameters on new datasets). The paper evaluates FORMED against 15 baselines (11 task-specific models and 4 task-specific adaptation methods) on 5 MedTS datasets, demonstrating significant improvements in classification performance. The paper also shows the model's ability to adapt to unseen out-of-domain datasets with limited data.",
+        "Strengths": [
+          "The problem is well-motivated: MedTS classification faces significant heterogeneity challenges across datasets, and the paper addresses this important issue.",
+          "The proposed architecture is novel: the use of channel embeddings and label queries with a shared decoding attention layer to handle variable channel/class configurations is an innovative design.",
+          "Comprehensive evaluation: 5 datasets, 15 baselines, multiple metrics (accuracy, precision, recall, F1, AUROC, AUPRC), and ablation studies provide a thorough assessment.",
+          "Strong in-domain results: FORMED achieves significant improvements over baselines, particularly on complex datasets like ADFTD (up to 35% absolute F1 improvement).",
+          "The three-stage process (pre-training, repurposing, adapting) is clearly explained and the code is publicly available.",
+          "The paper includes a good discussion of limitations and acknowledges the high variance issue."
+        ],
+        "Weaknesses": [
+          "Extremely high variance in FORMED's results (e.g., ±18.35% on ADFTD accuracy, ±21.67% on F1 score) raises concerns about statistical significance and reliability of the claimed improvements.",
+          "Only one backbone model (TimesFM) is evaluated, limiting the generalizability of the 'repurposing foundation models' claim.",
+          "Out-of-domain evaluation is limited to only 2 small datasets (ECG200, StandWalkJump), which may not be representative of diverse MedTS tasks.",
+          "The comparison with TSA baselines may be unfair since FORMED is jointly trained on all 5 datasets during repurposing, giving it access to more data and diverse patterns.",
+          "In adapting experiments, FORMED only outperforms TimesFM-TSA at larger k values (k≥64 for ECG200, k≥16 for StandWalkJump), and at small k it actually underperforms, suggesting the advantage is not consistent.",
+          "The paper claims a 'power law' improvement with k but doesn't provide theoretical justification or thorough analysis of this phenomenon."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "How does FORMED perform with different backbone models (e.g., MOMENT, UniTS, PatchTST)? The paper only evaluates TimesFM, so it's unclear if the framework benefits are specific to TimesFM or generalizable.",
+          "Can the authors provide statistical significance tests (e.g., paired t-tests or confidence intervals) to support the claim that FORMED outperforms baselines, given the very high variance observed?",
+          "How sensitive is FORMED to the composition of the repurposing cohort? Would performance degrade significantly with fewer datasets or with different combinations?",
+          "The paper mentions 'MoE design' in the ablation study - is this referring to the k queries per class? If so, how does this differ from standard multi-head attention with multiple heads?",
+          "For the adapting experiments, how does FORMED's performance compare when the number of trainable parameters is matched with TimesFM-TSA? The paper shows FORMED outperforms at larger k, but what about at comparable parameter counts?",
+          "What is the computational cost of the repurposing stage? The paper mentions 100 epochs on 5 datasets with a 500M parameter backbone - could this be a barrier for practical adoption?",
+          "Why does FORMED show such high variance compared to baselines? The paper attributes it to limited cohort scale, but could there be architectural instabilities (e.g., attention collapse, gradient issues) that need addressing?"
+        ],
+        "Limitations": [
+          "Only one backbone foundation model (TimesFM) is evaluated, limiting the generalizability of the repurposing framework across different foundation models.",
+          "The repurposing cohort is limited to 5 datasets, all sourced from the same prior work (Wang et al., 2024b), which may introduce bias and limit diversity.",
+          "Out-of-domain adaptation is only tested on 2 small datasets (ECG200 with ~100 samples, StandWalkJump with ~50 samples), which may not represent the full range of MedTS classification challenges.",
+          "The extremely high variance in FORMED's results (sometimes exceeding ±20% on key metrics) raises concerns about reliability for clinical deployment.",
+          "No analysis of failure cases or error patterns - understanding where FORMED struggles would strengthen the paper.",
+          "The paper doesn't discuss the computational cost of the repurposing stage, which involves training a classifier with a 500M-parameter backbone across 5 datasets for 100 epochs."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes FORMED, a framework for repurposing a time series foundation model (TimesFM) for medical time series classification. The key idea is to freeze the backbone and train a novel attention-based classifier with channel embeddings and label queries, which can handle variable numbers of channels and classes. The framework has two stages: repurposing (jointly training on a cohort of MedTS datasets) and adapting (training only minimal task-specific parameters on new datasets).\n\nStrengths:\n1. The problem is well-motivated - MedTS classification indeed suffers from heterogeneity across datasets and poor generalizability.\n2. The proposed architecture is novel - using channel embeddings and label queries with a shared decoding attention layer to handle variable channel/class configurations is a clever design.\n3. The experimental evaluation is comprehensive - 5 datasets, 15 baselines, multiple metrics, and ablation studies.\n4. The results show significant improvements, especially on the ADFTD dataset with up to 35% absolute F1 improvement.\n5. The paper is well-written and clearly explains the three-stage process (pre-training, repurposing, adapting).\n\nWeaknesses:\n1. The variance in FORMED's results is extremely high (e.g., ±18.35% on ADFTD accuracy, ±21.67% on F1). This is concerning for a model claiming to be robust and generalizable. The high variance undermines the statistical significance of the claimed improvements.\n2. The selection of TimesFM as the only backbone is a limitation - the paper mentions this but doesn't explore alternatives. The claim of \"repurposing foundation models\" would be stronger with multiple backbones.\n3. The adapting experiments use only 2 small out-of-domain datasets (ECG200 and StandWalkJump), which limits the strength of claims about generalization to unseen tasks.\n4. The comparison with baselines is somewhat unfair - the TSA baselines are trained on individual datasets while FORMED is jointly trained on all 5 datasets, giving it access to more data during repurposing.\n5. The paper claims \"generalizable adaptation\" but the adapting experiments show FORMED only outperforms TimesFM-TSA at larger k values (k≥64 for ECG200, k≥16 for StandWalkJump). At small k, FORMED actually underperforms.\n\nQuestions:\n1. How does FORMED perform with different backbone models? The paper only uses TimesFM.\n2. Can the authors provide statistical significance tests (e.g., paired t-tests) to support the claim that FORMED outperforms baselines despite the high variance?\n3. How sensitive is FORMED to the composition of the repurposing cohort? Would performance degrade significantly with fewer or different datasets?\n4. The paper mentions the MoE design - is this referring to the k queries per class? If so, how is this different from standard multi-head attention?\n5. For the adapting experiments, how does FORMED's performance compare when using the same amount of trainable parameters as TimesFM-TSA?\n\nLimitations:\n1. Only one backbone model (TimesFM) is evaluated.\n2. High variance in results, particularly on smaller datasets.\n3. Limited out-of-domain evaluation (only 2 small datasets).\n4. The repurposing cohort is limited to 5 datasets, all from the same source (Wang et al., 2024b).\n5. No discussion of computational cost during the repurposing stage.\n\nEthical concerns: None apparent - the paper uses publicly available medical datasets and focuses on model architecture rather than sensitive applications.\n\nOverall assessment: The paper presents a novel and interesting framework with strong results on in-domain datasets. However, the extremely high variance in FORMED's performance is a significant concern that needs to be addressed. The claims of \"generalizable adaptation\" are only partially supported by the out-of-domain experiments. The paper would be stronger with multiple backbones, more out-of-domain datasets, and statistical significance testing. I would rate this as borderline - the core idea is good but the evaluation has some weaknesses.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper proposes FORMED, a framework for repurposing general time series foundation models (specifically TimesFM) for medical time series (MedTS) classification. FORMED uses a frozen backbone feature extractor combined with a novel attention-based classifier consisting of task-specific channel embeddings (CEs), label queries (LQs), and a shared decoding attention (SDA) layer. The framework operates in two stages: repurposing (jointly training the classifier on a cohort of 5 MedTS datasets to capture domain knowledge) and adapting (training only minimal task-specific parameters on new datasets). The paper evaluates FORMED against 15 baselines (11 task-specific models and 4 task-specific adaptation methods) on 5 MedTS datasets, demonstrating significant improvements in classification performance. The paper also shows the model's ability to adapt to unseen out-of-domain datasets with limited data.\",\n  \"Strengths\": [\n    \"The problem is well-motivated: MedTS classification faces significant heterogeneity challenges across datasets, and the paper addresses this important issue.\",\n    \"The proposed architecture is novel: the use of channel embeddings and label queries with a shared decoding attention layer to handle variable channel/class configurations is an innovative design.\",\n    \"Comprehensive evaluation: 5 datasets, 15 baselines, multiple metrics (accuracy, precision, recall, F1, AUROC, AUPRC), and ablation studies provide a thorough assessment.\",\n    \"Strong in-domain results: FORMED achieves significant improvements over baselines, particularly on complex datasets like ADFTD (up to 35% absolute F1 improvement).\",\n    \"The three-stage process (pre-training, repurposing, adapting) is clearly explained and the code is publicly available.\",\n    \"The paper includes a good discussion of limitations and acknowledges the high variance issue.\"\n  ],\n  \"Weaknesses\": [\n    \"Extremely high variance in FORMED's results (e.g., ±18.35% on ADFTD accuracy, ±21.67% on F1 score) raises concerns about statistical significance and reliability of the claimed improvements.\",\n    \"Only one backbone model (TimesFM) is evaluated, limiting the generalizability of the 'repurposing foundation models' claim.\",\n    \"Out-of-domain evaluation is limited to only 2 small datasets (ECG200, StandWalkJump), which may not be representative of diverse MedTS tasks.\",\n    \"The comparison with TSA baselines may be unfair since FORMED is jointly trained on all 5 datasets during repurposing, giving it access to more data and diverse patterns.\",\n    \"In adapting experiments, FORMED only outperforms TimesFM-TSA at larger k values (k≥64 for ECG200, k≥16 for StandWalkJump), and at small k it actually underperforms, suggesting the advantage is not consistent.\",\n    \"The paper claims a 'power law' improvement with k but doesn't provide theoretical justification or thorough analysis of this phenomenon.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 4,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does FORMED perform with different backbone models (e.g., MOMENT, UniTS, PatchTST)? The paper only evaluates TimesFM, so it's unclear if the framework benefits are specific to TimesFM or generalizable.\",\n    \"Can the authors provide statistical significance tests (e.g., paired t-tests or confidence intervals) to support the claim that FORMED outperforms baselines, given the very high variance observed?\",\n    \"How sensitive is FORMED to the composition of the repurposing cohort? Would performance degrade significantly with fewer datasets or with different combinations?\",\n    \"The paper mentions 'MoE design' in the ablation study - is this referring to the k queries per class? If so, how does this differ from standard multi-head attention with multiple heads?\",\n    \"For the adapting experiments, how does FORMED's performance compare when the number of trainable parameters is matched with TimesFM-TSA? The paper shows FORMED outperforms at larger k, but what about at comparable parameter counts?\",\n    \"What is the computational cost of the repurposing stage? The paper mentions 100 epochs on 5 datasets with a 500M parameter backbone - could this be a barrier for practical adoption?\",\n    \"Why does FORMED show such high variance compared to baselines? The paper attributes it to limited cohort scale, but could there be architectural instabilities (e.g., attention collapse, gradient issues) that need addressing?\"\n  ],\n  \"Limitations\": [\n    \"Only one backbone foundation model (TimesFM) is evaluated, limiting the generalizability of the repurposing framework across different foundation models.\",\n    \"The repurposing cohort is limited to 5 datasets, all sourced from the same prior work (Wang et al., 2024b), which may introduce bias and limit diversity.\",\n    \"Out-of-domain adaptation is only tested on 2 small datasets (ECG200 with ~100 samples, StandWalkJump with ~50 samples), which may not represent the full range of MedTS classification challenges.\",\n    \"The extremely high variance in FORMED's results (sometimes exceeding ±20% on key metrics) raises concerns about reliability for clinical deployment.\",\n    \"No analysis of failure cases or error patterns - understanding where FORMED struggles would strengthen the paper.\",\n    \"The paper doesn't discuss the computational cost of the repurposing stage, which involves training a classifier with a 500M-parameter backbone across 5 datasets for 100 epochs.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 4,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 28574,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 26782,
+        "completion_tokens": 2042,
+        "reasoning_tokens": 0,
+        "total_tokens": 30616
+      },
+      "attempts": 1,
+      "response_id": "29146766-4359-4580-826e-6beb0c3c698e"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper proposes FORMED, a framework for repurposing general time series foundation models (specifically TimesFM) for medical time series (MedTS) classification. FORMED freezes the pre-trained backbone and introduces a novel attention-based classifier consisting of: (1) task-specific channel embeddings and label queries that adapt to varying channel counts and class numbers, and (2) a shared decoding attention (SDA) layer trained jointly across a cohort of MedTS datasets to capture task-agnostic medical domain knowledge. For new datasets, only the lightweight task-specific parameters (channel embeddings and label queries, ~0.1% of parameters) need to be trained. The framework is evaluated on 5 MedTS datasets against 11 task-specific models and 4 task-specific adaptation baselines, showing significant improvements (up to 35% absolute F1 improvement on ADFTD). Additional experiments on 2 out-of-domain datasets demonstrate adaptation capabilities with limited data.",
+        "Strengths": [
+          "Well-motivated problem: addresses real challenges of MedTS classification heterogeneity (varying channels, lengths, classes, patient characteristics)",
+          "Clean architectural design separating task-agnostic (SDA) from task-specific (CE, LQ) knowledge, enabling efficient adaptation",
+          "Comprehensive evaluation with 15 baselines across 5 diverse MedTS datasets (EEG and ECG, 2-5 classes, 12-33 channels)",
+          "Impressive performance gains, particularly on harder datasets (ADFTD, PTB-XL) with improvements up to 35% absolute F1",
+          "Clear three-stage framework (pre-training, repurposing, adapting) well explained with helpful figures",
+          "Additional ablation studies and extended baselines in appendix strengthen the analysis",
+          "Code is publicly available"
+        ],
+        "Weaknesses": [
+          "Very high variance in FORMED results (e.g., ADFTD F1: 63.66±21.67, APAVA: 82.45±12.6) raises concerns about reliability and reproducibility, especially compared to much tighter variance in baselines",
+          "Only one backbone (TimesFM) is evaluated; the claim of 'repurposing foundation models' would be significantly stronger with multiple backbones (e.g., MOMENT, PatchTST, GPT4TS)",
+          "Adaptation experiments are limited to only 2 small out-of-domain datasets (ECG200, StandWalkJump), which may not adequately demonstrate generalization to diverse real-world clinical scenarios",
+          "The 'MoE' terminology in the ablation is misleading - multiple queries per class is not a true Mixture of Experts architecture, just increased parameter count",
+          "The TSA baselines use simple heads (CNN, MLP); the comparison might be more persuasive with stronger adaptation baselines",
+          "The joint training procedure across the MedTS cohort is not fully detailed (e.g., how gradients from different datasets are balanced, potential for catastrophic forgetting)",
+          "The power-law scaling claim with k is based on limited data points and high variance"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "1. The variance in FORMED results is notably high (e.g., ±21.67 F1 on ADFTD). Could you provide more analysis on the sources of this variance? Is it primarily due to data splits, initialization, or training instability? How would results look with more seeds or variance reduction techniques?",
+          "2. Why was only TimesFM used as the backbone? Have you experimented with other foundation models (e.g., MOMENT, UniTS, GPT4TS)? How does FORMED's performance depend on the choice of backbone?",
+          "3. In the joint training during repurposing, how are the 5 datasets combined? Is it simple concatenation or some form of multi-task learning with gradient balancing? How sensitive is performance to the cohort composition?",
+          "4. The 'MoE' terminology - could you clarify why multiple queries per class is referred to as Mixture of Experts? This appears to be simply increasing the number of learnable queries rather than an expert routing mechanism.",
+          "5. For the adaptation experiments, how was the TimesFM-TSA baseline configured? Was its CNN head optimized for these small datasets? The high variance (±12.63% F1) suggests possible overfitting - would a simpler head or regularization help?",
+          "6. Have you evaluated FORMED's performance when the repurposing cohort includes datasets more similar to the target domain (e.g., adding more ECG datasets before adapting to ECG200)?",
+          "7. What is the computational cost of the repurposing stage? How long does training take compared to the TSM and TSA baselines?"
+        ],
+        "Limitations": [
+          "High variance in results across seeds/splits, which the authors acknowledge but don't fully resolve - this could be a practical concern for clinical deployment",
+          "Only one backbone (TimesFM) is validated, limiting generalizability claims about the framework",
+          "The MedTS cohort for repurposing is limited to 5 datasets (2 ECG, 3 EEG); broader coverage of medical modalities would strengthen the captured domain knowledge",
+          "The adaptation experiments use only 2 small datasets, which may not represent the full range of inter-dataset heterogeneity in real clinical settings",
+          "Potential for negative societal impact if models with high variance are deployed in clinical settings without adequate uncertainty quantification",
+          "No discussion of fairness or bias considerations across patient populations represented in the datasets"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 3,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper presents FORMED, a framework for repurposing a general time series foundation model (TimesFM) for medical time series classification. The key idea is to freeze the backbone and train a shared attention-based classifier (SDA) across multiple MedTS datasets, with task-specific channel embeddings and label queries. For new datasets, only these task-specific parameters need to be trained.\n\nStrengths:\n1. The problem is well-motivated - MedTS classification indeed faces heterogeneity challenges, and repurposing foundation models is timely.\n2. The architecture design is thoughtful: separating task-agnostic (SDA) from task-specific (CE, LQ) components is a clean approach.\n3. The evaluation is comprehensive with 15 baselines across 5 datasets, plus out-of-domain adaptation experiments.\n4. The results show significant improvements, particularly on ADFTD (up to 35% absolute F1 improvement).\n5. The paper is well-written and clearly explains the three-stage process (pre-training, repurposing, adapting).\n\nWeaknesses:\n1. **High variance in results**: FORMED shows extremely high standard deviations (e.g., ADFTD F1: 63.66±21.67). This is concerning for reliability. The authors acknowledge this but don't fully address it.\n2. **Limited backbone exploration**: Only TimesFM is used as backbone. The authors mention this in limitations but the claim of \"repurposing foundation model\" would be stronger with multiple backbones.\n3. **Adapting experiments are weak**: Only 2 out-of-domain datasets (ECG200, StandWalkJump), both small and relatively simple. The TimesFM-TSA baseline performs poorly, making the comparison somewhat favorable.\n4. **The \"MoE\" claim seems misleading**: The paper refers to the multiple queries per class as \"Mixture of Experts\" in the ablation, but this is really just more parameters/queries, not a true MoE architecture.\n5. **Reproducibility concerns**: The training details are somewhat vague (e.g., how the cohort is jointly trained, batch sampling strategy).\n6. **Baseline TSA models may be unfair**: The TSA baselines use simple heads, and the comparison might not be entirely fair since FORMED was specifically designed for this setting.\n\nOriginality: The concept of repurposing foundation models with a shared task-agnostic classifier is novel. The specific combination of channel embeddings, label queries, and shared decoding attention is new. However, the individual components draw from existing work (DETR-style queries, adapters).\n\nQuality: The paper is technically sound in its core claims, but the high variance in results and limited ablation depth (only one backbone, limited adaptation datasets) reduce confidence. The extended baselines in the appendix help but don't fully address concerns.\n\nClarity: The paper is well-organized and clearly written. The figures are helpful. Some details about the joint training procedure could be clearer.\n\nSignificance: If the results hold, this could be a valuable contribution to MedTS classification. The idea of decoupling domain-invariant from task-specific knowledge is important. However, the high variance and limited validation across backbones reduce immediate impact.\n\nOverall assessment: This is a solid paper with a novel idea and promising results, but with notable concerns about variance, generalizability across backbones, and the strength of adaptation experiments. I lean toward acceptance but with reservations. The paper makes a meaningful contribution to the growing field of foundation model adaptation for specialized domains.\n\nDecision: Accept (with reservations noted in questions/limitations)\n\nConfidence: 3 (fairly confident, but didn't check all math details carefully)\n\nRatings:\n- Originality: 3 (high)\n- Quality: 3 (good)\n- Clarity: 3 (good)\n- Significance: 3 (high)\n- Soundness: 3 (good)\n- Presentation: 3 (good)\n- Contribution: 3 (good)\n- Overall: 6 (Weak Accept)\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper proposes FORMED, a framework for repurposing general time series foundation models (specifically TimesFM) for medical time series (MedTS) classification. FORMED freezes the pre-trained backbone and introduces a novel attention-based classifier consisting of: (1) task-specific channel embeddings and label queries that adapt to varying channel counts and class numbers, and (2) a shared decoding attention (SDA) layer trained jointly across a cohort of MedTS datasets to capture task-agnostic medical domain knowledge. For new datasets, only the lightweight task-specific parameters (channel embeddings and label queries, ~0.1% of parameters) need to be trained. The framework is evaluated on 5 MedTS datasets against 11 task-specific models and 4 task-specific adaptation baselines, showing significant improvements (up to 35% absolute F1 improvement on ADFTD). Additional experiments on 2 out-of-domain datasets demonstrate adaptation capabilities with limited data.\",\n  \"Strengths\": [\n    \"Well-motivated problem: addresses real challenges of MedTS classification heterogeneity (varying channels, lengths, classes, patient characteristics)\",\n    \"Clean architectural design separating task-agnostic (SDA) from task-specific (CE, LQ) knowledge, enabling efficient adaptation\",\n    \"Comprehensive evaluation with 15 baselines across 5 diverse MedTS datasets (EEG and ECG, 2-5 classes, 12-33 channels)\",\n    \"Impressive performance gains, particularly on harder datasets (ADFTD, PTB-XL) with improvements up to 35% absolute F1\",\n    \"Clear three-stage framework (pre-training, repurposing, adapting) well explained with helpful figures\",\n    \"Additional ablation studies and extended baselines in appendix strengthen the analysis\",\n    \"Code is publicly available\"\n  ],\n  \"Weaknesses\": [\n    \"Very high variance in FORMED results (e.g., ADFTD F1: 63.66±21.67, APAVA: 82.45±12.6) raises concerns about reliability and reproducibility, especially compared to much tighter variance in baselines\",\n    \"Only one backbone (TimesFM) is evaluated; the claim of 'repurposing foundation models' would be significantly stronger with multiple backbones (e.g., MOMENT, PatchTST, GPT4TS)\",\n    \"Adaptation experiments are limited to only 2 small out-of-domain datasets (ECG200, StandWalkJump), which may not adequately demonstrate generalization to diverse real-world clinical scenarios\",\n    \"The 'MoE' terminology in the ablation is misleading - multiple queries per class is not a true Mixture of Experts architecture, just increased parameter count\",\n    \"The TSA baselines use simple heads (CNN, MLP); the comparison might be more persuasive with stronger adaptation baselines\",\n    \"The joint training procedure across the MedTS cohort is not fully detailed (e.g., how gradients from different datasets are balanced, potential for catastrophic forgetting)\",\n    \"The power-law scaling claim with k is based on limited data points and high variance\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"1. The variance in FORMED results is notably high (e.g., ±21.67 F1 on ADFTD). Could you provide more analysis on the sources of this variance? Is it primarily due to data splits, initialization, or training instability? How would results look with more seeds or variance reduction techniques?\",\n    \"2. Why was only TimesFM used as the backbone? Have you experimented with other foundation models (e.g., MOMENT, UniTS, GPT4TS)? How does FORMED's performance depend on the choice of backbone?\",\n    \"3. In the joint training during repurposing, how are the 5 datasets combined? Is it simple concatenation or some form of multi-task learning with gradient balancing? How sensitive is performance to the cohort composition?\",\n    \"4. The 'MoE' terminology - could you clarify why multiple queries per class is referred to as Mixture of Experts? This appears to be simply increasing the number of learnable queries rather than an expert routing mechanism.\",\n    \"5. For the adaptation experiments, how was the TimesFM-TSA baseline configured? Was its CNN head optimized for these small datasets? The high variance (±12.63% F1) suggests possible overfitting - would a simpler head or regularization help?\",\n    \"6. Have you evaluated FORMED's performance when the repurposing cohort includes datasets more similar to the target domain (e.g., adding more ECG datasets before adapting to ECG200)?\",\n    \"7. What is the computational cost of the repurposing stage? How long does training take compared to the TSM and TSA baselines?\"\n  ],\n  \"Limitations\": [\n    \"High variance in results across seeds/splits, which the authors acknowledge but don't fully resolve - this could be a practical concern for clinical deployment\",\n    \"Only one backbone (TimesFM) is validated, limiting generalizability claims about the framework\",\n    \"The MedTS cohort for repurposing is limited to 5 datasets (2 ECG, 3 EEG); broader coverage of medical modalities would strengthen the captured domain knowledge\",\n    \"The adaptation experiments use only 2 small datasets, which may not represent the full range of inter-dataset heterogeneity in real clinical settings\",\n    \"Potential for negative societal impact if models with high variance are deployed in clinical settings without adequate uncertainty quantification\",\n    \"No discussion of fairness or bias considerations across patient populations represented in the datasets\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 3,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 28574,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 26782,
+        "completion_tokens": 2057,
+        "reasoning_tokens": 0,
+        "total_tokens": 30631
+      },
+      "attempts": 1,
+      "response_id": "8fe4d940-8296-4703-860b-c9f325625884"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "This paper presents FORMED, a framework for repurposing pre-trained time series foundation models (specifically TimesFM) for medical time series (MedTS) classification. The approach keeps the foundation model backbone frozen and introduces a novel attention-based classifier consisting of: (1) task-specific channel embeddings and label queries that can adapt to varying numbers of channels and classes, and (2) a shared decoding attention layer that captures task-agnostic medical domain knowledge during a repurposing stage. The framework operates in three stages: pre-training (already done), repurposing (training the classifier on a cohort of 5 MedTS datasets), and adapting (training only minimal parameters for new datasets). The authors evaluate FORMED against 11 task-specific models and 4 task-specific adaptation baselines, demonstrating significant improvements (up to 35% absolute F1 improvement on ADFTD) on in-domain generalization and efficient adaptation to unseen datasets with only ~0.1% of parameters trained. The paper includes comprehensive ablation studies validating the architectural components.",
+        "Strengths": [
+          "Novel and practical approach to repurposing time series foundation models for MedTS classification, with clear architectural separation of task-agnostic (shared decoding attention) and task-specific (channel embeddings, label queries) knowledge",
+          "Comprehensive evaluation against 15 baselines (11 TSM + 4 TSA) across 5 diverse MedTS datasets with multiple metrics (accuracy, precision, recall, F1, AUROC, AUPRC)",
+          "Significant performance improvements over baselines, particularly on challenging datasets like ADFTD and PTB-XL",
+          "Efficient adaptation to new datasets requiring only ~0.1% of parameters, which is practically valuable for real-world deployment",
+          "Thorough ablation studies (Table 7) validating the contribution of each architectural component (PE, CE, MoE)",
+          "Additional baseline comparisons (Table 6) including MiniRocket and LoRA fine-tuning strengthen the evaluation",
+          "Public code availability for reproducibility",
+          "Well-motivated problem addressing real challenges of inter- and intra-dataset heterogeneity in MedTS"
+        ],
+        "Weaknesses": [
+          "High variance in results for FORMED on several datasets (e.g., ±18-21% std on ADFTD, ±10-13% on APAVA), which raises concerns about reliability and reproducibility; the paper acknowledges this but doesn't fully address it",
+          "Only one backbone (TimesFM) is tested; the paper acknowledges this limitation but the claim of a generalizable framework would be stronger with multiple foundation models",
+          "The paper claims 'state-of-the-art' performance but doesn't compare with recent specialized MedTS classification models like BIOT (Yang et al., 2023) that were designed for cross-data learning",
+          "Limited theoretical justification for why the attention-based classifier works better than simpler alternatives; the empirical evidence is strong but the underlying reasons could be better explained",
+          "Adaptation experiments use only very small datasets (ECG200 ~100 samples, StandWalkJump ~27 samples) which may not be representative of real-world MedTS scenarios",
+          "The computational cost of the repurposing stage is not discussed in detail",
+          "The hyperparameter k (number of queries per class) is not tuned during repurposing (set to 16 arbitrarily), which may not be optimal",
+          "No analysis of failure cases or model interpretability, which is important for clinical applications"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How does FORMED perform with different backbone foundation models (e.g., MOMENT, UniTS)? Would the framework still work if the backbone is channel-dependent?",
+          "Why is the variance so high on some datasets (e.g., ±18-21% on ADFTD)? Is this primarily from different data splits or random initialization? Could this be mitigated with more seeds or ensemble methods?",
+          "How does FORMED compare with BIOT (Biosignal Transformer for Cross-data Learning), which is specifically designed for cross-dataset medical time series learning?",
+          "What is the computational cost (GPU hours, memory) of the repurposing stage? And how does it compare to training TSM models?",
+          "How sensitive is FORMED's performance to the hyperparameter k during repurposing? Was k=16 chosen based on any analysis?",
+          "Does FORMED work with irregularly sampled time series or missing data, which are common in real-world clinical settings?",
+          "How does the model handle class imbalance in the datasets? Are the reported F1 scores macro-averaged?",
+          "What is the impact of the repurposing cohort composition (e.g., adding more datasets or removing ECG vs EEG) on the learned domain knowledge?"
+        ],
+        "Limitations": [
+          "The paper acknowledges that only TimesFM is used as the backbone, limiting the generalizability claims of the framework",
+          "The repurposing cohort is limited to 5 datasets (2 ECG, 3 EEG), which may not capture the full diversity of MedTS data",
+          "The high variance in results suggests potential instability, which is a concern for clinical deployment",
+          "The paper focuses on waveform data (EEG, ECG) and explicitly excludes sparse EHR data, limiting applicability",
+          "No discussion of potential biases in the datasets or implications of model errors in clinical settings",
+          "The adaptation experiments use very small out-of-domain datasets, which may not reflect realistic deployment scenarios",
+          "No analysis of model interpretability or explainability, which is important for clinical acceptance"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes FORMED, a framework for repurposing a pre-trained time series foundation model (TimesFM) for medical time series classification. The key idea is to keep the backbone frozen and introduce a novel attention-based classifier with channel embeddings, label queries, and a shared decoding attention layer. The method is evaluated on 5 MedTS datasets for in-domain generalization and 2 out-of-domain datasets for adaptation.\n\nStrengths:\n1. Novel approach to repurposing foundation models for MedTS classification with a clear architectural separation of task-agnostic and task-specific knowledge\n2. Comprehensive evaluation against 15 baselines (11 TSM + 4 TSA) across 5 datasets\n3. Strong empirical results with significant improvements (up to 35% absolute F1 improvement)\n4. The adaptation stage requiring only ~0.1% parameters is practically valuable\n5. Good ablation studies validating the architectural components\n6. Public code availability\n\nWeaknesses:\n1. High variance in results (e.g., ±18-21% std on ADFTD for FORMED) raises concerns about reliability and reproducibility\n2. Only one backbone (TimesFM) is tested - the paper acknowledges this but it limits generalizability claims\n3. The paper claims \"state-of-the-art\" but doesn't compare with recent specialized MedTS models beyond those in the cohort\n4. Limited theoretical justification for why the proposed architecture works better than simpler alternatives\n5. The adaptation experiments use very small datasets (ECG200, StandWalkJump) which may not be representative of real-world MedTS scenarios\n6. The paper doesn't discuss computational cost of repurposing stage in detail\n\nOriginality: High - The concept of \"repurposing\" with channel embeddings and label queries for MedTS classification is novel, though inspired by object detection (DETR) and prompt tuning.\n\nQuality: Good - The experimental methodology is thorough with multiple metrics, but the high variance and limited backbone diversity are concerns.\n\nClarity: Good - Well-written and organized, though some technical details could be clearer.\n\nSignificance: High - The problem of generalizable MedTS classification is important, and the proposed approach offers a practical solution with efficient adaptation.\n\nQuestions to ask:\n1. How does the model perform with different backbone foundation models (e.g., MOMENT, UniTS)?\n2. Why is the variance so high on some datasets (ADFTD ±18-21%)? Is this from different data splits or initialization?\n3. How does FORMED compare with recent specialized MedTS models like BIOT?\n4. What is the computational cost of the repurposing stage?\n5. How sensitive is the performance to the choice of k hyperparameter during repurposing?\n6. Does the model work with irregularly sampled time series?\n\nLimitations:\n- Only tested with TimesFM backbone\n- High variance in results\n- Limited to waveform data (not EHR)\n- Repurposing cohort limited to 5 datasets\n- No analysis of failure cases or model interpretability\n\nEthical concerns: No significant ethical issues for this medical ML paper. The authors should consider discussing potential biases in the datasets and implications for clinical deployment.\n\nSoundness: 3 (good) - The methodology is sound but the high variance and limited backbone evaluation are concerns.\n\nPresentation: 3 (good) - Well-written but some figures are dense and hard to read.\n\nContribution: 3 (good) - Novel approach with practical value, but needs broader validation.\n\nOverall: 7 (Accept) - Technically solid paper with good contributions, but the high variance and limited backbone evaluation prevent a higher score.\n\nConfidence: 4 - I'm fairly confident in my assessment, though I haven't checked all implementation details.\n\nDecision: Accept\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper presents FORMED, a framework for repurposing pre-trained time series foundation models (specifically TimesFM) for medical time series (MedTS) classification. The approach keeps the foundation model backbone frozen and introduces a novel attention-based classifier consisting of: (1) task-specific channel embeddings and label queries that can adapt to varying numbers of channels and classes, and (2) a shared decoding attention layer that captures task-agnostic medical domain knowledge during a repurposing stage. The framework operates in three stages: pre-training (already done), repurposing (training the classifier on a cohort of 5 MedTS datasets), and adapting (training only minimal parameters for new datasets). The authors evaluate FORMED against 11 task-specific models and 4 task-specific adaptation baselines, demonstrating significant improvements (up to 35% absolute F1 improvement on ADFTD) on in-domain generalization and efficient adaptation to unseen datasets with only ~0.1% of parameters trained. The paper includes comprehensive ablation studies validating the architectural components.\",\n  \"Strengths\": [\n    \"Novel and practical approach to repurposing time series foundation models for MedTS classification, with clear architectural separation of task-agnostic (shared decoding attention) and task-specific (channel embeddings, label queries) knowledge\",\n    \"Comprehensive evaluation against 15 baselines (11 TSM + 4 TSA) across 5 diverse MedTS datasets with multiple metrics (accuracy, precision, recall, F1, AUROC, AUPRC)\",\n    \"Significant performance improvements over baselines, particularly on challenging datasets like ADFTD and PTB-XL\",\n    \"Efficient adaptation to new datasets requiring only ~0.1% of parameters, which is practically valuable for real-world deployment\",\n    \"Thorough ablation studies (Table 7) validating the contribution of each architectural component (PE, CE, MoE)\",\n    \"Additional baseline comparisons (Table 6) including MiniRocket and LoRA fine-tuning strengthen the evaluation\",\n    \"Public code availability for reproducibility\",\n    \"Well-motivated problem addressing real challenges of inter- and intra-dataset heterogeneity in MedTS\"\n  ],\n  \"Weaknesses\": [\n    \"High variance in results for FORMED on several datasets (e.g., ±18-21% std on ADFTD, ±10-13% on APAVA), which raises concerns about reliability and reproducibility; the paper acknowledges this but doesn't fully address it\",\n    \"Only one backbone (TimesFM) is tested; the paper acknowledges this limitation but the claim of a generalizable framework would be stronger with multiple foundation models\",\n    \"The paper claims 'state-of-the-art' performance but doesn't compare with recent specialized MedTS classification models like BIOT (Yang et al., 2023) that were designed for cross-data learning\",\n    \"Limited theoretical justification for why the attention-based classifier works better than simpler alternatives; the empirical evidence is strong but the underlying reasons could be better explained\",\n    \"Adaptation experiments use only very small datasets (ECG200 ~100 samples, StandWalkJump ~27 samples) which may not be representative of real-world MedTS scenarios\",\n    \"The computational cost of the repurposing stage is not discussed in detail\",\n    \"The hyperparameter k (number of queries per class) is not tuned during repurposing (set to 16 arbitrarily), which may not be optimal\",\n    \"No analysis of failure cases or model interpretability, which is important for clinical applications\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does FORMED perform with different backbone foundation models (e.g., MOMENT, UniTS)? Would the framework still work if the backbone is channel-dependent?\",\n    \"Why is the variance so high on some datasets (e.g., ±18-21% on ADFTD)? Is this primarily from different data splits or random initialization? Could this be mitigated with more seeds or ensemble methods?\",\n    \"How does FORMED compare with BIOT (Biosignal Transformer for Cross-data Learning), which is specifically designed for cross-dataset medical time series learning?\",\n    \"What is the computational cost (GPU hours, memory) of the repurposing stage? And how does it compare to training TSM models?\",\n    \"How sensitive is FORMED's performance to the hyperparameter k during repurposing? Was k=16 chosen based on any analysis?\",\n    \"Does FORMED work with irregularly sampled time series or missing data, which are common in real-world clinical settings?\",\n    \"How does the model handle class imbalance in the datasets? Are the reported F1 scores macro-averaged?\",\n    \"What is the impact of the repurposing cohort composition (e.g., adding more datasets or removing ECG vs EEG) on the learned domain knowledge?\"\n  ],\n  \"Limitations\": [\n    \"The paper acknowledges that only TimesFM is used as the backbone, limiting the generalizability claims of the framework\",\n    \"The repurposing cohort is limited to 5 datasets (2 ECG, 3 EEG), which may not capture the full diversity of MedTS data\",\n    \"The high variance in results suggests potential instability, which is a concern for clinical deployment\",\n    \"The paper focuses on waveform data (EEG, ECG) and explicitly excludes sparse EHR data, limiting applicability\",\n    \"No discussion of potential biases in the datasets or implications of model errors in clinical settings\",\n    \"The adaptation experiments use very small out-of-domain datasets, which may not reflect realistic deployment scenarios\",\n    \"No analysis of model interpretability or explainability, which is important for clinical acceptance\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 28574,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 26782,
+        "completion_tokens": 2024,
+        "reasoning_tokens": 0,
+        "total_tokens": 30598
+      },
+      "attempts": 1,
+      "response_id": "fe26f436-8fde-43f3-a660-40cbb6cf66cc"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "This paper introduces FORMED, a framework for repurposing general time series foundation models (specifically TimesFM) for medical time series classification. The approach uses a three-stage process: (1) pre-training a foundation model on general time series forecasting tasks, (2) repurposing it by adding a novel attention-based classifier with task-specific channel embeddings and label queries along with a shared decoding attention layer trained across multiple MedTS datasets, and (3) adapting to new datasets by only training lightweight task-specific parameters. The classifier design allows handling variable numbers of channels and classes. The paper evaluates on 5 MedTS datasets (ADFTD, APAVA, TDBrain, PTB, PTB-XL) against 11 task-specific models and 4 task-specific adaptation baselines, showing improvements particularly on larger datasets. The paper also demonstrates adaptation to 2 out-of-domain datasets with parameter-efficient scaling behavior.",
+        "Strengths": [
+          "The problem is well-motivated: medical time series classification faces significant generalization challenges due to inter- and intra-dataset heterogeneity, and the paper clearly articulates these challenges",
+          "The proposed architecture is novel - separating task-agnostic shared decoding attention from task-specific channel embeddings and label queries is an interesting design that enables handling variable input configurations",
+          "The three-stage pipeline (pre-training, repurposing, adapting) is clearly conceptualized and well-executed, with the repurposing stage enabling lightweight adaptation to new tasks",
+          "Strong experimental results on several datasets, particularly ADFTD where FORMED achieves up to 35% absolute improvement in F1-score over baselines",
+          "The adaptation experiments with varying k (number of queries per class) provide useful insights into scaling behavior and parameter efficiency",
+          "The ablation study (Table 7) systematically validates the contribution of each architectural component",
+          "Code is publicly available, supporting reproducibility"
+        ],
+        "Weaknesses": [
+          "Very high variance in results across seeds (e.g., ±18.35% accuracy on ADFTD, ±21.67% F1) raises concerns about reliability and stability of the approach, especially on smaller datasets",
+          "Only one backbone model (TimesFM) is evaluated - the claim of 'foundation model repurposing' would be significantly strengthened by testing with multiple foundation models (e.g., MOMENT, UniTS, GPT4TS)",
+          "The comparison to TSA baselines may be somewhat unfair since the TSA models use simpler heads (CNN) without the sophisticated attention-based classifier design",
+          "No comparison against more recent time series foundation models that natively support classification (e.g., MOMENT, UniTS) - this is a notable omission given the related work discusses these models",
+          "The hyperparameter k=16 for repurposing is chosen arbitrarily without tuning, and sensitivity analysis is only performed during adaptation",
+          "The adaptation experiments use only 2 small UCR datasets (ECG200, StandWalkJump) which may not adequately represent the diversity of real-world MedTS adaptation scenarios",
+          "The paper claims to handle 'arbitrary channel configurations' but only tests a limited range (12-33 channels)"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "1. What was the rationale for selecting TimesFM as the backbone? Was there a systematic comparison of candidate foundation models? Would the framework work equally well with other backbones such as MOMENT or UniTS, which natively support classification?",
+          "2. The paper reports very high variance in results (e.g., ±18.35% on ADFTD accuracy). What are the main sources of this variance? Does it stem from the small dataset sizes, the joint training across heterogeneous datasets, or the architecture itself?",
+          "3. How sensitive is the performance to the choice of k during the repurposing stage? Was k=16 truly optimal, or was it selected primarily for computational reasons?",
+          "4. The paper mentions that TimesFM processes channels independently. How does the framework handle datasets with very different numbers of channels (e.g., 1-channel ECG vs. 256-channel EEG)? Is there a minimum or maximum number of channels that works well?",
+          "5. Could the framework be extended to handle irregularly sampled time series or missing data, which are common in real-world medical settings?",
+          "6. What is the computational cost of the repurposing stage? How long does training take and what are the memory requirements?",
+          "7. The TSA baselines use a CNN head. Would a more sophisticated TSA head (e.g., an attention-based head similar to FORMED's but trained per-task) narrow the performance gap?",
+          "8. How does FORMED perform when the repurposing cohort is reduced or expanded? Is there a minimum cohort size needed for the shared decoding attention to learn useful domain knowledge?"
+        ],
+        "Limitations": [
+          "The paper acknowledges the limited backbone validation (only TimesFM) but this is a significant limitation for a paper claiming to repurpose 'foundation models' generally",
+          "The high variance in results, particularly on smaller datasets, is not adequately explained and may limit practical applicability",
+          "The evaluation of adaptation is limited to 2 small UCR datasets - more diverse out-of-domain evaluation is needed",
+          "No discussion of computational costs during the repurposing stage, which may be significant given the size of TimesFM",
+          "The potential negative societal impact of medical AI (e.g., deployment risks, bias) is not discussed",
+          "The paper does not analyze failure cases or scenarios where FORMED might not be beneficial compared to simpler approaches",
+          "The MedTS cohort is limited to 5 datasets - the breadth of learned domain knowledge may be insufficient for truly generalizable medical time series analysis"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper presents FORMED, a framework for repurposing a foundation model (TimesFM) for medical time series classification. The key innovation is a novel classifier architecture with channel embeddings, label queries, and a shared decoding attention layer that allows handling variable channels and classes while learning transferable medical domain knowledge. The paper evaluates on 5 MedTS datasets with 15 baselines.\n\nStrengths:\n- The problem is well-motivated: medical time series classification faces significant generalization challenges due to heterogeneity\n- The proposed architecture is novel - the separation of task-agnostic (SDA) and task-specific (CE, LQ) parameters is an interesting design\n- The three-stage process (pre-training, repurposing, adapting) is clearly conceptualized\n- Strong experimental results, particularly on ADFTD with 35% improvement\n- The adapt-time scaling analysis with k is thorough\n- Code is available\n\nWeaknesses:\n- Very high variance in results (e.g., ±18.35% on ADFTD accuracy) which raises concerns about reliability\n- Only one backbone (TimesFM) is tested - the claim of \"foundation model repurposing\" would be stronger with multiple backbones\n- The paper claims to handle \"arbitrary channel configurations\" but only tests 12-33 channels\n- The comparison to TSA methods may be unfair - the TSA models use much simpler heads\n- Limited evaluation on out-of-domain datasets (only 2 small UCR datasets)\n- The paper doesn't compare against more recent foundation models like MOMENT or UniTS\n- The hyperparameter k=16 for repurposing is arbitrary and not tuned\n\nQuestions:\n1. Why was TimesFM chosen over other foundation models? The paper mentions resource limitations but doesn't provide a systematic comparison\n2. How sensitive is the performance to the choice of k during repurposing? The paper uses k=16 arbitrarily\n3. The paper reports very high variance - what causes this and how reliable are the conclusions?\n4. Would the framework work with backbone models that process multivariate time series natively (e.g., UniTS)?\n5. How does the performance compare when using a smaller backbone model?\n6. The paper mentions \"arbitrary channel configurations\" - what happens with very different numbers of channels (e.g., 1 or 100)?\n\nLimitations:\n- The paper acknowledges the limited backbone validation but could be more thorough\n- No discussion of computational costs during repurposing\n- No analysis of failure cases or when FORMED might not work well\n- The societal impact of medical AI is not discussed\n\nEthical concerns: No significant ethical issues identified. The work uses public datasets and the code is available.\n\nOverall assessment: The paper presents a novel and well-motivated approach with promising results. However, the high variance and limited backbone evaluation are concerns. The contribution is solid but the evaluation could be more comprehensive. I would lean toward acceptance given the novelty and potential impact, but with reservations about the robustness of the results.\n\nSoundness: 3 (good) - The methodology is sound but the high variance in results is concerning\nPresentation: 3 (good) - Well-organized but some sections are dense\nContribution: 3 (good) - Novel approach with potential impact, but needs more validation\nOverall: 6 (Weak Accept)\n\nConfidence: 4 - I'm confident in my assessment but not absolutely certain\n\nREVIEW JSON:\n```json\n{\n\"Summary\": \"This paper introduces FORMED, a framework for repurposing general time series foundation models (specifically TimesFM) for medical time series classification. The approach uses a three-stage process: (1) pre-training a foundation model on general time series forecasting tasks, (2) repurposing it by adding a novel attention-based classifier with task-specific channel embeddings and label queries along with a shared decoding attention layer trained across multiple MedTS datasets, and (3) adapting to new datasets by only training lightweight task-specific parameters. The classifier design allows handling variable numbers of channels and classes. The paper evaluates on 5 MedTS datasets (ADFTD, APAVA, TDBrain, PTB, PTB-XL) against 11 task-specific models and 4 task-specific adaptation baselines, showing improvements particularly on larger datasets. The paper also demonstrates adaptation to 2 out-of-domain datasets with parameter-efficient scaling behavior.\",\n\"Strengths\": [\n\"The problem is well-motivated: medical time series classification faces significant generalization challenges due to inter- and intra-dataset heterogeneity, and the paper clearly articulates these challenges\",\n\"The proposed architecture is novel - separating task-agnostic shared decoding attention from task-specific channel embeddings and label queries is an interesting design that enables handling variable input configurations\",\n\"The three-stage pipeline (pre-training, repurposing, adapting) is clearly conceptualized and well-executed, with the repurposing stage enabling lightweight adaptation to new tasks\",\n\"Strong experimental results on several datasets, particularly ADFTD where FORMED achieves up to 35% absolute improvement in F1-score over baselines\",\n\"The adaptation experiments with varying k (number of queries per class) provide useful insights into scaling behavior and parameter efficiency\",\n\"The ablation study (Table 7) systematically validates the contribution of each architectural component\",\n\"Code is publicly available, supporting reproducibility\"\n],\n\"Weaknesses\": [\n\"Very high variance in results across seeds (e.g., ±18.35% accuracy on ADFTD, ±21.67% F1) raises concerns about reliability and stability of the approach, especially on smaller datasets\",\n\"Only one backbone model (TimesFM) is evaluated - the claim of 'foundation model repurposing' would be significantly strengthened by testing with multiple foundation models (e.g., MOMENT, UniTS, GPT4TS)\",\n\"The comparison to TSA baselines may be somewhat unfair since the TSA models use simpler heads (CNN) without the sophisticated attention-based classifier design\",\n\"No comparison against more recent time series foundation models that natively support classification (e.g., MOMENT, UniTS) - this is a notable omission given the related work discusses these models\",\n\"The hyperparameter k=16 for repurposing is chosen arbitrarily without tuning, and sensitivity analysis is only performed during adaptation\",\n\"The adaptation experiments use only 2 small UCR datasets (ECG200, StandWalkJump) which may not adequately represent the diversity of real-world MedTS adaptation scenarios\",\n\"The paper claims to handle 'arbitrary channel configurations' but only tests a limited range (12-33 channels)\"\n],\n\"Originality\": 4,\n\"Quality\": 3,\n\"Clarity\": 3,\n\"Significance\": 3,\n\"Questions\": [\n\"1. What was the rationale for selecting TimesFM as the backbone? Was there a systematic comparison of candidate foundation models? Would the framework work equally well with other backbones such as MOMENT or UniTS, which natively support classification?\",\n\"2. The paper reports very high variance in results (e.g., ±18.35% on ADFTD accuracy). What are the main sources of this variance? Does it stem from the small dataset sizes, the joint training across heterogeneous datasets, or the architecture itself?\",\n\"3. How sensitive is the performance to the choice of k during the repurposing stage? Was k=16 truly optimal, or was it selected primarily for computational reasons?\",\n\"4. The paper mentions that TimesFM processes channels independently. How does the framework handle datasets with very different numbers of channels (e.g., 1-channel ECG vs. 256-channel EEG)? Is there a minimum or maximum number of channels that works well?\",\n\"5. Could the framework be extended to handle irregularly sampled time series or missing data, which are common in real-world medical settings?\",\n\"6. What is the computational cost of the repurposing stage? How long does training take and what are the memory requirements?\",\n\"7. The TSA baselines use a CNN head. Would a more sophisticated TSA head (e.g., an attention-based head similar to FORMED's but trained per-task) narrow the performance gap?\",\n\"8. How does FORMED perform when the repurposing cohort is reduced or expanded? Is there a minimum cohort size needed for the shared decoding attention to learn useful domain knowledge?\"\n],\n\"Limitations\": [\n\"The paper acknowledges the limited backbone validation (only TimesFM) but this is a significant limitation for a paper claiming to repurpose 'foundation models' generally\",\n\"The high variance in results, particularly on smaller datasets, is not adequately explained and may limit practical applicability\",\n\"The evaluation of adaptation is limited to 2 small UCR datasets - more diverse out-of-domain evaluation is needed\",\n\"No discussion of computational costs during the repurposing stage, which may be significant given the size of TimesFM\",\n\"The potential negative societal impact of medical AI (e.g., deployment risks, bias) is not discussed\",\n\"The paper does not analyze failure cases or scenarios where FORMED might not be beneficial compared to simpler approaches\",\n\"The MedTS cohort is limited to 5 datasets - the breadth of learned domain knowledge may be insufficient for truly generalizable medical time series analysis\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 3,\n\"Contribution\": 3,\n\"Overall\": 6,\n\"Confidence\": 4,\n\"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 28574,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 26782,
+        "completion_tokens": 1938,
+        "reasoning_tokens": 0,
+        "total_tokens": 30512
+      },
+      "attempts": 1,
+      "response_id": "8ef325fb-a71d-45c6-9779-24e2bd276c4c"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 4,
+      "Reject": 1
+    },
+    "unanimous_decision": false,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          3,
+          4,
+          3,
+          4,
+          4
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          2,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          4,
+          3,
+          3,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Significance": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Soundness": {
+        "values": [
+          2,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          4,
+          3,
+          3,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Contribution": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          4,
+          6,
+          6,
+          7,
+          6
+        ],
+        "mean": 5.8,
+        "rounded_mean": 6,
+        "population_sd": 0.98,
+        "min": 4,
+        "max": 7
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          3,
+          4,
+          4
+        ],
+        "mean": 3.8,
+        "rounded_mean": 4,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper proposes FORMED, a framework for repurposing pre-trained time series foundation models (specifically TimesFM) for medical time series (MedTS) classification. FORMED freezes the backbone and introduces a novel attention-based classifier comprising task-specific channel embeddings (CEs), label queries (LQs), and a shared decoding attention (SDA) layer. The framework operates in three stages: pre-training (already done), repurposing (jointly training the classifier on a cohort of 5 MedTS datasets to capture domain knowledge), and adapting (training only lightweight task-specific parameters for new datasets). The paper evaluates FORMED against 15 baselines (11 task-specific models and 4 task-specific adaptation methods) on 5 MedTS datasets (EEG and ECG), reporting improvements in F1-score, with up to 35% absolute improvement on ADFTD. It also demonstrates adaptation to 2 out-of-domain datasets (ECG200, StandWalkJump) with limited training data. The paper includes ablation studies and extended baseline comparisons.",
+      "Strengths": [
+        "The problem is well-motivated: medical time series classification faces significant heterogeneity challenges across datasets, and the paper clearly articulates these challenges.",
+        "The architectural design is novel and principled: separating task-agnostic (shared decoding attention) from task-specific (channel embeddings, label queries) knowledge enables efficient adaptation to new datasets with variable channel/class configurations.",
+        "Comprehensive evaluation: 5 datasets, 15 baselines, multiple metrics, and ablation studies provide a thorough assessment.",
+        "Significant performance improvements are reported on several datasets (e.g., ADFTD, PTB-XL), suggesting the approach has practical potential.",
+        "The three-stage framework (pre-training, repurposing, adapting) is clearly conceptualized and well explained.",
+        "Code is publicly available, supporting reproducibility."
+      ],
+      "Weaknesses": [
+        "Extremely high variance in FORMED's results (e.g., ADFTD F1 = 63.66±21.67, APAVA F1 = 82.45±12.6) raises serious concerns about the reliability and statistical significance of the claimed improvements. No significance testing (e.g., paired t-tests, confidence intervals) is provided.",
+        "Only one backbone (TimesFM) is evaluated. The claim of a generalizable 'repurposing foundation models' framework is not validated across other foundation models (e.g., MOMENT, UniTS, PatchTST).",
+        "The comparison with TSA baselines may be unfair: FORMED uses a sophisticated attention-based classifier while TSA baselines use simple CNN/MLP heads. The performance gain could be partly attributed to the classifier architecture rather than the repurposing strategy.",
+        "Adaptation experiments are limited to only 2 small out-of-domain datasets (ECG200 with ~100 samples, StandWalkJump with ~27 samples), which may not represent diverse real-world MedTS scenarios. FORMED underperforms baselines at small k values and only shows clear improvements at large k.",
+        "The 'power law' scaling claim with k is not rigorously demonstrated (no formal fitting or hypothesis testing).",
+        "Computational cost of the repurposing stage (training a 500M-parameter backbone on 340K samples for 100 epochs) is not reported, which is important for practical feasibility.",
+        "No comparison with recent specialized cross-data MedTS models (e.g., BIOT) that are designed for similar settings.",
+        "The paper does not discuss potential negative societal impacts, such as risks of misdiagnosis in clinical deployment or bias in medical datasets."
+      ],
+      "Originality": 4,
+      "Quality": 2,
+      "Clarity": 3,
+      "Significance": 3,
+      "Questions": [
+        "Given the very high variance in FORMED's results (e.g., ±21.67 F1 on ADFTD), can the authors provide statistical significance tests (e.g., paired t-tests or confidence intervals) to confirm that FORMED's improvements over baselines are statistically significant?",
+        "How many random seeds and data splits were used? Is the high variance primarily due to data splits, initialization, or training instability? Could variance reduction techniques (e.g., ensembling) mitigate this?",
+        "Why was TimesFM-TSA (with CNN head) chosen as the primary TSA baseline? Would a fairer comparison use the same attention-based classifier head for both FORMED and TSA, isolating the contribution of the joint repurposing training?",
+        "How does FORMED perform with other backbone foundation models (e.g., MOMENT, UniTS, PatchTST)? The paper only evaluates TimesFM, so it is unclear if the framework benefits are specific to TimesFM or generalizable.",
+        "What is the computational cost (GPU hours, memory) of the repurposing stage? This is important for practical adoption.",
+        "How does FORMED compare with BIOT (Biosignal Transformer for Cross-data Learning), which is specifically designed for cross-dataset medical time series learning?",
+        "In the adaptation experiments, FORMED underperforms TimesFM-TSA at small k values. What is the practical recommendation for choosing k for a new dataset? Is there a way to determine the optimal k without extensive grid search?",
+        "The paper claims a 'power law' improvement with k but does not provide theoretical justification or thorough analysis. Can the authors elaborate on this?",
+        "How sensitive is FORMED to the composition of the repurposing cohort (e.g., adding/removing datasets, balancing EEG vs ECG)? Is there a minimum cohort size needed for the SDA to learn useful domain knowledge?",
+        "How does FORMED handle class imbalance in the datasets? Are the reported F1 scores macro-averaged?"
+      ],
+      "Limitations": [
+        "Only one backbone foundation model (TimesFM) is evaluated, limiting the generalizability of the 'repurposing foundation models' claim.",
+        "The repurposing cohort is limited to 5 datasets (2 ECG, 3 EEG), which may not capture the full diversity of MedTS data. The impact of cohort composition/scale is not thoroughly investigated.",
+        "Extremely high variance in FORMED's results (sometimes exceeding ±20% on key metrics) raises concerns about reliability for clinical deployment.",
+        "Adaptation experiments are limited to 2 small out-of-domain datasets, which may not represent the full range of inter-dataset heterogeneity in real clinical settings.",
+        "No analysis of failure cases or error patterns; no discussion of model interpretability or explainability, which is important for clinical acceptance.",
+        "No discussion of potential negative societal impacts, such as risks of misdiagnosis or bias in medical datasets.",
+        "Computational cost of the repurposing stage is not reported, which is important for practical adoption."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 2,
+      "Presentation": 3,
+      "Contribution": 3,
+      "Overall": 4,
+      "Confidence": 4,
+      "Decision": "Reject"
+    },
+    "raw_response": "THOUGHT:\nThe paper proposes FORMED, a framework to adapt a frozen time-series foundation model (TimesFM) for medical time series classification. The main novelty is the architecture: a shared decoding attention layer combined with task-specific channel embeddings and label queries, trained jointly on a cohort of MedTS datasets, then adapted to new datasets with only lightweight parameters. The evaluation is extensive (5 datasets, 15 baselines), and results show large improvements on some datasets.\n\nHowever, there are significant concerns that cut across all reviews:\n1. Extremely high variance in results (e.g., ±21.67 F1 on ADFTD). This undermines the reliability of the claimed improvements, and no statistical significance testing is provided.\n2. Only one backbone (TimesFM) is evaluated, limiting the generality of the \"repurposing foundation models\" claim.\n3. The comparison to TSA baselines may be unfair, as FORMED uses a more sophisticated attention head while TSA uses a simple CNN head.\n4. Adaptation experiments are limited to two very small datasets, and FORMED underperforms at small k values.\n5. Computational cost of repurposing is not reported.\n6. No comparison to recent specialized cross-data MedTS models like BIOT.\n\nReviewer decisions: 1 reject, 2 accept, 3 accept, 4 accept, 5 accept. So 4 accepts and 1 reject. However, the reject review raises the most critical concerns about variance and fairness of comparison. The accept reviewers also note the high variance but seem willing to overlook it.\n\nAs Area Chair, I need to weigh the consensus. There is strong agreement on the novelty and potential significance, but also strong agreement on the high variance issue. The question is whether the high variance is disqualifying. Given that the paper is about a framework for clinical deployment, high variance (especially ±20+ on key metrics) is a serious concern. Also, the lack of statistical testing makes it hard to confirm the claimed improvements are real. The unfair comparison with TSA baselines is another issue that could be addressed but wasn't.\n\nI lean towards rejecting, because the core claims are not sufficiently supported given the high variance and the unfair comparisons. The paper has promise, but needs more robust evaluation (multiple backbones, significance tests, fair baselines) before acceptance. The consensus among reviewers is mixed, but the reject review raises the most valid technical concerns. I'll go with Reject, with an overall score around 4-5 (borderline reject to reject). Given the instruction to choose only Accept or Reject, I'll pick Reject.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper proposes FORMED, a framework for repurposing pre-trained time series foundation models (specifically TimesFM) for medical time series (MedTS) classification. FORMED freezes the backbone and introduces a novel attention-based classifier comprising task-specific channel embeddings (CEs), label queries (LQs), and a shared decoding attention (SDA) layer. The framework operates in three stages: pre-training (already done), repurposing (jointly training the classifier on a cohort of 5 MedTS datasets to capture domain knowledge), and adapting (training only lightweight task-specific parameters for new datasets). The paper evaluates FORMED against 15 baselines (11 task-specific models and 4 task-specific adaptation methods) on 5 MedTS datasets (EEG and ECG), reporting improvements in F1-score, with up to 35% absolute improvement on ADFTD. It also demonstrates adaptation to 2 out-of-domain datasets (ECG200, StandWalkJump) with limited training data. The paper includes ablation studies and extended baseline comparisons.\",\n  \"Strengths\": [\n    \"The problem is well-motivated: medical time series classification faces significant heterogeneity challenges across datasets, and the paper clearly articulates these challenges.\",\n    \"The architectural design is novel and principled: separating task-agnostic (shared decoding attention) from task-specific (channel embeddings, label queries) knowledge enables efficient adaptation to new datasets with variable channel/class configurations.\",\n    \"Comprehensive evaluation: 5 datasets, 15 baselines, multiple metrics, and ablation studies provide a thorough assessment.\",\n    \"Significant performance improvements are reported on several datasets (e.g., ADFTD, PTB-XL), suggesting the approach has practical potential.\",\n    \"The three-stage framework (pre-training, repurposing, adapting) is clearly conceptualized and well explained.\",\n    \"Code is publicly available, supporting reproducibility.\"\n  ],\n  \"Weaknesses\": [\n    \"Extremely high variance in FORMED's results (e.g., ADFTD F1 = 63.66±21.67, APAVA F1 = 82.45±12.6) raises serious concerns about the reliability and statistical significance of the claimed improvements. No significance testing (e.g., paired t-tests, confidence intervals) is provided.\",\n    \"Only one backbone (TimesFM) is evaluated. The claim of a generalizable 'repurposing foundation models' framework is not validated across other foundation models (e.g., MOMENT, UniTS, PatchTST).\",\n    \"The comparison with TSA baselines may be unfair: FORMED uses a sophisticated attention-based classifier while TSA baselines use simple CNN/MLP heads. The performance gain could be partly attributed to the classifier architecture rather than the repurposing strategy.\",\n    \"Adaptation experiments are limited to only 2 small out-of-domain datasets (ECG200 with ~100 samples, StandWalkJump with ~27 samples), which may not represent diverse real-world MedTS scenarios. FORMED underperforms baselines at small k values and only shows clear improvements at large k.\",\n    \"The 'power law' scaling claim with k is not rigorously demonstrated (no formal fitting or hypothesis testing).\",\n    \"Computational cost of the repurposing stage (training a 500M-parameter backbone on 340K samples for 100 epochs) is not reported, which is important for practical feasibility.\",\n    \"No comparison with recent specialized cross-data MedTS models (e.g., BIOT) that are designed for similar settings.\",\n    \"The paper does not discuss potential negative societal impacts, such as risks of misdiagnosis in clinical deployment or bias in medical datasets.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"Given the very high variance in FORMED's results (e.g., ±21.67 F1 on ADFTD), can the authors provide statistical significance tests (e.g., paired t-tests or confidence intervals) to confirm that FORMED's improvements over baselines are statistically significant?\",\n    \"How many random seeds and data splits were used? Is the high variance primarily due to data splits, initialization, or training instability? Could variance reduction techniques (e.g., ensembling) mitigate this?\",\n    \"Why was TimesFM-TSA (with CNN head) chosen as the primary TSA baseline? Would a fairer comparison use the same attention-based classifier head for both FORMED and TSA, isolating the contribution of the joint repurposing training?\",\n    \"How does FORMED perform with other backbone foundation models (e.g., MOMENT, UniTS, PatchTST)? The paper only evaluates TimesFM, so it is unclear if the framework benefits are specific to TimesFM or generalizable.\",\n    \"What is the computational cost (GPU hours, memory) of the repurposing stage? This is important for practical adoption.\",\n    \"How does FORMED compare with BIOT (Biosignal Transformer for Cross-data Learning), which is specifically designed for cross-dataset medical time series learning?\",\n    \"In the adaptation experiments, FORMED underperforms TimesFM-TSA at small k values. What is the practical recommendation for choosing k for a new dataset? Is there a way to determine the optimal k without extensive grid search?\",\n    \"The paper claims a 'power law' improvement with k but does not provide theoretical justification or thorough analysis. Can the authors elaborate on this?\",\n    \"How sensitive is FORMED to the composition of the repurposing cohort (e.g., adding/removing datasets, balancing EEG vs ECG)? Is there a minimum cohort size needed for the SDA to learn useful domain knowledge?\",\n    \"How does FORMED handle class imbalance in the datasets? Are the reported F1 scores macro-averaged?\"\n  ],\n  \"Limitations\": [\n    \"Only one backbone foundation model (TimesFM) is evaluated, limiting the generalizability of the 'repurposing foundation models' claim.\",\n    \"The repurposing cohort is limited to 5 datasets (2 ECG, 3 EEG), which may not capture the full diversity of MedTS data. The impact of cohort composition/scale is not thoroughly investigated.\",\n    \"Extremely high variance in FORMED's results (sometimes exceeding ±20% on key metrics) raises concerns about reliability for clinical deployment.\",\n    \"Adaptation experiments are limited to 2 small out-of-domain datasets, which may not represent the full range of inter-dataset heterogeneity in real clinical settings.\",\n    \"No analysis of failure cases or error patterns; no discussion of model interpretability or explainability, which is important for clinical acceptance.\",\n    \"No discussion of potential negative societal impacts, such as risks of misdiagnosis or bias in medical datasets.\",\n    \"Computational cost of the repurposing stage is not reported, which is important for practical adoption.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 8162,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 8162,
+      "completion_tokens": 2038,
+      "reasoning_tokens": 0,
+      "total_tokens": 10200
+    },
+    "attempts": 1,
+    "response_id": "166748c6-b39f-40c7-97a9-6d542baeb978"
+  },
+  "final_review": {
+    "Summary": "The paper proposes FORMED, a framework for repurposing pre-trained time series foundation models (specifically TimesFM) for medical time series (MedTS) classification. FORMED freezes the backbone and introduces a novel attention-based classifier comprising task-specific channel embeddings (CEs), label queries (LQs), and a shared decoding attention (SDA) layer. The framework operates in three stages: pre-training (already done), repurposing (jointly training the classifier on a cohort of 5 MedTS datasets to capture domain knowledge), and adapting (training only lightweight task-specific parameters for new datasets). The paper evaluates FORMED against 15 baselines (11 task-specific models and 4 task-specific adaptation methods) on 5 MedTS datasets (EEG and ECG), reporting improvements in F1-score, with up to 35% absolute improvement on ADFTD. It also demonstrates adaptation to 2 out-of-domain datasets (ECG200, StandWalkJump) with limited training data. The paper includes ablation studies and extended baseline comparisons.",
+    "Strengths": [
+      "The problem is well-motivated: medical time series classification faces significant heterogeneity challenges across datasets, and the paper clearly articulates these challenges.",
+      "The architectural design is novel and principled: separating task-agnostic (shared decoding attention) from task-specific (channel embeddings, label queries) knowledge enables efficient adaptation to new datasets with variable channel/class configurations.",
+      "Comprehensive evaluation: 5 datasets, 15 baselines, multiple metrics, and ablation studies provide a thorough assessment.",
+      "Significant performance improvements are reported on several datasets (e.g., ADFTD, PTB-XL), suggesting the approach has practical potential.",
+      "The three-stage framework (pre-training, repurposing, adapting) is clearly conceptualized and well explained.",
+      "Code is publicly available, supporting reproducibility."
+    ],
+    "Weaknesses": [
+      "Extremely high variance in FORMED's results (e.g., ADFTD F1 = 63.66±21.67, APAVA F1 = 82.45±12.6) raises serious concerns about the reliability and statistical significance of the claimed improvements. No significance testing (e.g., paired t-tests, confidence intervals) is provided.",
+      "Only one backbone (TimesFM) is evaluated. The claim of a generalizable 'repurposing foundation models' framework is not validated across other foundation models (e.g., MOMENT, UniTS, PatchTST).",
+      "The comparison with TSA baselines may be unfair: FORMED uses a sophisticated attention-based classifier while TSA baselines use simple CNN/MLP heads. The performance gain could be partly attributed to the classifier architecture rather than the repurposing strategy.",
+      "Adaptation experiments are limited to only 2 small out-of-domain datasets (ECG200 with ~100 samples, StandWalkJump with ~27 samples), which may not represent diverse real-world MedTS scenarios. FORMED underperforms baselines at small k values and only shows clear improvements at large k.",
+      "The 'power law' scaling claim with k is not rigorously demonstrated (no formal fitting or hypothesis testing).",
+      "Computational cost of the repurposing stage (training a 500M-parameter backbone on 340K samples for 100 epochs) is not reported, which is important for practical feasibility.",
+      "No comparison with recent specialized cross-data MedTS models (e.g., BIOT) that are designed for similar settings.",
+      "The paper does not discuss potential negative societal impacts, such as risks of misdiagnosis in clinical deployment or bias in medical datasets."
+    ],
+    "Originality": 4,
+    "Quality": 3,
+    "Clarity": 3,
+    "Significance": 3,
+    "Questions": [
+      "Given the very high variance in FORMED's results (e.g., ±21.67 F1 on ADFTD), can the authors provide statistical significance tests (e.g., paired t-tests or confidence intervals) to confirm that FORMED's improvements over baselines are statistically significant?",
+      "How many random seeds and data splits were used? Is the high variance primarily due to data splits, initialization, or training instability? Could variance reduction techniques (e.g., ensembling) mitigate this?",
+      "Why was TimesFM-TSA (with CNN head) chosen as the primary TSA baseline? Would a fairer comparison use the same attention-based classifier head for both FORMED and TSA, isolating the contribution of the joint repurposing training?",
+      "How does FORMED perform with other backbone foundation models (e.g., MOMENT, UniTS, PatchTST)? The paper only evaluates TimesFM, so it is unclear if the framework benefits are specific to TimesFM or generalizable.",
+      "What is the computational cost (GPU hours, memory) of the repurposing stage? This is important for practical adoption.",
+      "How does FORMED compare with BIOT (Biosignal Transformer for Cross-data Learning), which is specifically designed for cross-dataset medical time series learning?",
+      "In the adaptation experiments, FORMED underperforms TimesFM-TSA at small k values. What is the practical recommendation for choosing k for a new dataset? Is there a way to determine the optimal k without extensive grid search?",
+      "The paper claims a 'power law' improvement with k but does not provide theoretical justification or thorough analysis. Can the authors elaborate on this?",
+      "How sensitive is FORMED to the composition of the repurposing cohort (e.g., adding/removing datasets, balancing EEG vs ECG)? Is there a minimum cohort size needed for the SDA to learn useful domain knowledge?",
+      "How does FORMED handle class imbalance in the datasets? Are the reported F1 scores macro-averaged?"
+    ],
+    "Limitations": [
+      "Only one backbone foundation model (TimesFM) is evaluated, limiting the generalizability of the 'repurposing foundation models' claim.",
+      "The repurposing cohort is limited to 5 datasets (2 ECG, 3 EEG), which may not capture the full diversity of MedTS data. The impact of cohort composition/scale is not thoroughly investigated.",
+      "Extremely high variance in FORMED's results (sometimes exceeding ±20% on key metrics) raises concerns about reliability for clinical deployment.",
+      "Adaptation experiments are limited to 2 small out-of-domain datasets, which may not represent the full range of inter-dataset heterogeneity in real clinical settings.",
+      "No analysis of failure cases or error patterns; no discussion of model interpretability or explainability, which is important for clinical acceptance.",
+      "No discussion of potential negative societal impacts, such as risks of misdiagnosis or bias in medical datasets.",
+      "Computational cost of the repurposing stage is not reported, which is important for practical adoption."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 3,
+    "Contribution": 3,
+    "Overall": 6,
+    "Confidence": 4,
+    "Decision": "Reject"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 151032,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 142072,
+    "completion_tokens": 12312,
+    "reasoning_tokens": 0,
+    "total_tokens": 163344,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.01989008,
+    "output_usd": 0.00344736,
+    "total_usd": 0.02336253
+  },
+  "elapsed_seconds": 37.75,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Reject",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B107",
+    "filename": "B107.txt",
+    "blind_text_sha256": "3b3b8156d9a8146a3a9b3fb3aa1163370c48efd7acb0dcad3625073afbdd279a",
+    "characters": 83462,
+    "full_text_saved": false
+  }
+}

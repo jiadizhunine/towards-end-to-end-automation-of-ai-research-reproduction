@@ -1,0 +1,595 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T09:01:11.002675+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "max",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "meta",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper proposes Phi-Module, a plug-in module for GNN-based interatomic potentials that enforces a discrete Poisson equation L*phi = rho on a distance-weighted graph Laplacian. The potential phi and charges rho are represented in the Laplacian eigenbasis via a lightweight alpha-Net, and the model adds a PDE residual loss plus optional charge-neutrality loss, together with an electrostatic energy term E^ES = 1/2 * rho^T * phi. Experiments on OE62 and MD22 with several GNN baselines report improved energy/force accuracy, low computational overhead, memory efficiency, and robustness to hyperparameters and data scarcity.",
+        "Strengths": [
+          "The central idea of injecting Poisson's equation as a self-supervised physics constraint into arbitrary GNN potentials is novel and modular; it requires no external charge labels and adds only a small computational overhead compared to Ewald-based long-range methods.",
+          "The paper evaluates the module across a diverse set of architectures (SchNet, DimeNet++, PaiNN, GemNet-T, E2GNN, ViSNet) and benchmarks, including data-scarce regimes and long NVE molecular dynamics simulations.",
+          "The memory-scaling study against Ewald message passing and Neural P3M is informative and demonstrates that the proposed module can scale to much larger systems than these alternatives.",
+          "The authors provide an ablation with a random Laplacian and without the residual optimization, supporting the importance of the physical constraint, and report EVP curves suggesting hyperparameter robustness."
+        ],
+        "Weaknesses": [
+          "The central claim that this captures long-range electrostatics is not supported: the graph Laplacian is built from local, cutoff-limited edges, so L*phi = rho is a local smoothing equation and cannot represent 1/r Coulomb interactions between distant atoms.",
+          "The default alpha-Net uses 1D convolutions over the node index, which is not permutation invariant/equivariant (as the authors admit in Appendix F); this is a major flaw for atomistic predictions where atom ordering is arbitrary. Only a 1x1-convolution variant is invariant, but it is not used in the main results.",
+          "The theoretical analysis is disconnected from the actual method: the theorems optimize a squared surrogate (E - E_model + 1/2 * phi^T * rho)^2, whereas the final energy is E_model + E^ES and the training loss is MAE plus penalties; the sign of E^ES appears inconsistent, and the 'monotone improvement' is only an inner minimization for fixed phi, not a convergence result.",
+          "The learned electrostatic energy is a graph Dirichlet energy (1/2 * phi^T * L * phi) after residual minimization, not Coulomb electrostatics; no comparison to DFT charges or potentials is provided to validate physical meaning.",
+          "Results lack statistical rigor: no error bars, seeds, or significance tests are reported; some MD22 improvements (e.g., DHA energy from 0.072 to 0.010, Stachyose forces from 0.107 to 0.011) are implausibly large given that no hyperparameter search was performed for ViSNet.",
+          "Eigenvector sign/order ambiguity and the behavior of LOBPCG under small geometric perturbations are not addressed; the paper claims no sorting is needed, but eigenvalue crossings or degeneracies can make the eigenbasis discontinuous.",
+          "There are internal inconsistencies: the abstract says 12/14 MD22 improvements while the experiment section says 11/14, and the contributions say 'error reductions from 5%' despite E2GNN improving only about 1.5-2.8% on OE62."
+        ],
+        "Originality": 2,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 2,
+        "Questions": [
+          "How does Phi-Module capture truly long-range electrostatic interactions given that the graph Laplacian is constructed from local, cutoff-limited edges? For molecules larger than the cutoff (e.g., >20 Å in OE62), distant atoms have no edges, so L*phi = rho only relates local neighborhoods.",
+          "Is the default alpha-Net's 1D convolution over the node index permutation invariant? If not, how are predictions independent of arbitrary atom indexing, and why was the invariant 1x1-convolution variant not used in the main experiments?",
+          "The main training loss is MAE between the true and predicted total energy, where predicted total energy is E_model + E^ES. The theorems instead analyze (a + 1/2 * phi^T * rho)^2. Should it not be (a - 1/2 * phi^T * rho)^2? How do the theorems apply to the actual objective?",
+          "What are the eigenvector sign and sorting conventions for the LOBPCG decomposition, and how does alpha-Net remain stable if eigenvectors change sign or order under small geometric perturbations or eigenvalue degeneracies?",
+          "Are the reported improvements statistically significant? Were multiple random seeds used? Why are some MD22 gains (e.g., DHA energy from 0.072 to 0.010) so large without any hyperparameter search?",
+          "How was memory measured in the carbyne-chain experiment (batch size, training/inference, exact GPU peak)? Does LOBPCG eigendecomposition remain feasible for 10^5 atoms with k=9 eigenvectors in end-to-end training?",
+          "Does adding Phi-Module simply add parameters/capacity that improve performance? Is there a control with an equally sized MLP or spectral head without the Poisson residual?"
+        ],
+        "Limitations": [
+          "The graph-Laplacian formulation may not handle periodic boundary conditions, where Ewald summation is the natural approach; no experiments on periodic crystals are provided.",
+          "No validation that the learned rho and phi correspond to physically meaningful partial charges or electrostatic potentials; the module may act only as a flexible regularizer.",
+          "Eigendecomposition cost and stability for very large systems (10^5 atoms) is not thoroughly benchmarked in terms of wall-clock time and memory during training.",
+          "The module is tested only on neutral organic molecules; its behavior on charged species, metals, or systems with strong dispersion interactions is unknown.",
+          "The method inherits the limitations of graph-based representations, including sensitivity to cutoff radius and graph connectivity, as acknowledged by the authors.",
+          "No negative societal impacts are identified."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 3,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes Phi-Module, a plug-in module for GNN-based interatomic potentials that enforces a discrete Poisson equation L*phi = rho on a distance-weighted graph Laplacian. The potential phi and charges rho are represented in the Laplacian eigenbasis via a lightweight alpha-Net, and the model adds a PDE residual loss plus optional charge-neutrality loss, together with an electrostatic energy term E^ES = 1/2 * rho^T * phi. Experiments on OE62 and MD22 with several GNN baselines report improved energy/force accuracy, low computational overhead, memory efficiency, and robustness to hyperparameters and data scarcity.\",\n  \"Strengths\": [\n    \"The central idea of injecting Poisson's equation as a self-supervised physics constraint into arbitrary GNN potentials is novel and modular; it requires no external charge labels and adds only a small computational overhead compared to Ewald-based long-range methods.\",\n    \"The paper evaluates the module across a diverse set of architectures (SchNet, DimeNet++, PaiNN, GemNet-T, E2GNN, ViSNet) and benchmarks, including data-scarce regimes and long NVE molecular dynamics simulations.\",\n    \"The memory-scaling study against Ewald message passing and Neural P3M is informative and demonstrates that the proposed module can scale to much larger systems than these alternatives.\",\n    \"The authors provide an ablation with a random Laplacian and without the residual optimization, supporting the importance of the physical constraint, and report EVP curves suggesting hyperparameter robustness.\"\n  ],\n  \"Weaknesses\": [\n    \"The central claim that this captures long-range electrostatics is not supported: the graph Laplacian is built from local, cutoff-limited edges, so L*phi = rho is a local smoothing equation and cannot represent 1/r Coulomb interactions between distant atoms.\",\n    \"The default alpha-Net uses 1D convolutions over the node index, which is not permutation invariant/equivariant (as the authors admit in Appendix F); this is a major flaw for atomistic predictions where atom ordering is arbitrary. Only a 1x1-convolution variant is invariant, but it is not used in the main results.\",\n    \"The theoretical analysis is disconnected from the actual method: the theorems optimize a squared surrogate (E - E_model + 1/2 * phi^T * rho)^2, whereas the final energy is E_model + E^ES and the training loss is MAE plus penalties; the sign of E^ES appears inconsistent, and the 'monotone improvement' is only an inner minimization for fixed phi, not a convergence result.\",\n    \"The learned electrostatic energy is a graph Dirichlet energy (1/2 * phi^T * L * phi) after residual minimization, not Coulomb electrostatics; no comparison to DFT charges or potentials is provided to validate physical meaning.\",\n    \"Results lack statistical rigor: no error bars, seeds, or significance tests are reported; some MD22 improvements (e.g., DHA energy from 0.072 to 0.010, Stachyose forces from 0.107 to 0.011) are implausibly large given that no hyperparameter search was performed for ViSNet.\",\n    \"Eigenvector sign/order ambiguity and the behavior of LOBPCG under small geometric perturbations are not addressed; the paper claims no sorting is needed, but eigenvalue crossings or degeneracies can make the eigenbasis discontinuous.\",\n    \"There are internal inconsistencies: the abstract says 12/14 MD22 improvements while the experiment section says 11/14, and the contributions say 'error reductions from 5%' despite E2GNN improving only about 1.5-2.8% on OE62.\"\n  ],\n  \"Originality\": 2,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"How does Phi-Module capture truly long-range electrostatic interactions given that the graph Laplacian is constructed from local, cutoff-limited edges? For molecules larger than the cutoff (e.g., >20 Å in OE62), distant atoms have no edges, so L*phi = rho only relates local neighborhoods.\",\n    \"Is the default alpha-Net's 1D convolution over the node index permutation invariant? If not, how are predictions independent of arbitrary atom indexing, and why was the invariant 1x1-convolution variant not used in the main experiments?\",\n    \"The main training loss is MAE between the true and predicted total energy, where predicted total energy is E_model + E^ES. The theorems instead analyze (a + 1/2 * phi^T * rho)^2. Should it not be (a - 1/2 * phi^T * rho)^2? How do the theorems apply to the actual objective?\",\n    \"What are the eigenvector sign and sorting conventions for the LOBPCG decomposition, and how does alpha-Net remain stable if eigenvectors change sign or order under small geometric perturbations or eigenvalue degeneracies?\",\n    \"Are the reported improvements statistically significant? Were multiple random seeds used? Why are some MD22 gains (e.g., DHA energy from 0.072 to 0.010) so large without any hyperparameter search?\",\n    \"How was memory measured in the carbyne-chain experiment (batch size, training/inference, exact GPU peak)? Does LOBPCG eigendecomposition remain feasible for 10^5 atoms with k=9 eigenvectors in end-to-end training?\",\n    \"Does adding Phi-Module simply add parameters/capacity that improve performance? Is there a control with an equally sized MLP or spectral head without the Poisson residual?\"\n  ],\n  \"Limitations\": [\n    \"The graph-Laplacian formulation may not handle periodic boundary conditions, where Ewald summation is the natural approach; no experiments on periodic crystals are provided.\",\n    \"No validation that the learned rho and phi correspond to physically meaningful partial charges or electrostatic potentials; the module may act only as a flexible regularizer.\",\n    \"Eigendecomposition cost and stability for very large systems (10^5 atoms) is not thoroughly benchmarked in terms of wall-clock time and memory during training.\",\n    \"The module is tested only on neutral organic molecules; its behavior on charged species, metals, or systems with strong dispersion interactions is unknown.\",\n    \"The method inherits the limitations of graph-based representations, including sensitivity to cutoff radius and graph connectivity, as acknowledged by the authors.\",\n    \"No negative societal impacts are identified.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 3,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 16482,
+        "prompt_cache_hit_tokens": 5632,
+        "prompt_cache_miss_tokens": 10850,
+        "completion_tokens": 7757,
+        "reasoning_tokens": 6330,
+        "total_tokens": 24239
+      },
+      "attempts": 1,
+      "response_id": "0ce06285-6f0f-47b6-83e2-3563a6c307af"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper proposes Φ-Module, a plug-in for GNN interatomic potentials that enforces a discrete Poisson equation in latent space. It computes graph Laplacian eigenvectors, uses a small α-Net to predict eigenbasis coefficients for potential φ and charge ρ, adds a PDE residual loss and a net-charge constraint, and includes an electrostatic energy term in the total energy. Experiments on OE62 and MD22 show improved energy/force predictions over several baselines, with analyses of hyperparameter stability, memory scaling, data scarcity, and ablations.",
+        "Strengths": [
+          "Lightweight, model-agnostic design: it can be inserted into SchNet, DimeNet++, PaiNN, GemNet-T, E2GNN, and ViSNet with small training overhead (e.g., ~4–10% on OE62), and the memory scaling experiments show it avoids OOM of Ewald/P3M on large carbyne chains.",
+          "The spectral parametrization of φ and ρ with the symmetric-gradient argument for using Λ in the charge parametrization is an interesting and reasonably novel way to couple a physics-like residual to learned node features.",
+          "Empirical gains are consistent across many baselines and datasets, and the paper includes useful sensitivity analyses (hyperparameter stability, data scarcity, ablations).",
+          "The paper addresses an important problem (non-local/long-range interactions in ML potentials) and does not require external charge labels."
+        ],
+        "Weaknesses": [
+          "The physical grounding is questionable: a normalized graph Laplacian with edge weights equal to interatomic distances is not a discretization of the continuous Poisson equation for electrostatics; there is no link between the learned φ/ρ and true atomic charges or potentials, so E_ES may simply be an extra learned correction.",
+          "The theoretical claims are overclaimed: Theorems 3.1/3.2 only analyze a simplified squared-loss surrogate and exact minimization over ρ, not the actual L1 training objective or stochastic optimization; the phrase 'monotone objective decrease' is not established.",
+          "Empirical results are modest relative to prior long-range methods: on OE62, the Ewald message-passing baseline achieves lower MAE than Φ-Module for 3 of 5 models (e.g., SchNet: 79.2 vs 92.2 meV), and the claimed '12 out of 14' MD22 improvements appears inconsistent with Table 1 (only 11 strict improvements; AT-AT energy is a tie).",
+          "Reproducibility is hampered by incomplete method details: α-Net architecture is only sketched, the pseudocode is not visible in the submitted manuscript, and there are many formatting/cross-reference errors and duplicated theorem statements.",
+          "No statistical significance tests/error bars are reported; data-scarcity and ablation figures are not quantified; MD22 uses no hyperparameter search, and the memory-scaling study is limited to linear carbyne chains."
+        ],
+        "Originality": 2,
+        "Quality": 2,
+        "Clarity": 1,
+        "Significance": 2,
+        "Questions": [
+          "How is the graph Laplacian with distance edge weights derived from the continuous Poisson equation? What prevents the learned φ/ρ from being arbitrary latent variables unrelated to electrostatics?",
+          "Can the monotone decrease in Theorem 3.2 be demonstrated for the actual L1 loss and for gradient descent, rather than for exact inner minimization of a squared surrogate?",
+          "Please clarify the count in MD22: Table 1 appears to show 11 strict improvements and one tie, not 12 out of 14.",
+          "What are the exact specifications of α-Net (layers, kernel sizes, pooling, output dimensions, number of parameters), and how is node ordering handled?",
+          "In the ablation, if the PDE residual is removed but the energy term and α-Net are kept, is the performance drop statistically significant? What if the Laplacian is replaced by another fixed symmetric matrix that is not distance-weighted?",
+          "How does the accuracy of Φ-SchNet compare to Ewald or P3M on large systems at similar memory budgets, rather than only reporting memory?"
+        ],
+        "Limitations": [
+          "The graph Laplacian is still constructed from a cutoff-radius graph, so the method does not explicitly capture interactions beyond the cutoff; it is not a true long-range model in the Ewald sense.",
+          "No validation that the learned charges/potentials match physical quantities; no comparison to DFT partial charges or electrostatic potentials.",
+          "Theorems are for a surrogate squared objective and do not guarantee convergence of the actual training procedure.",
+          "Missing code and precise architecture details limit reproducibility.",
+          "No evaluation on periodic/charged systems or on datasets with explicit electrostatic labels."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 1,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes Φ-Module, a plug-in for GNN interatomic potentials that enforces a discrete Poisson equation in latent space. It computes graph Laplacian eigenvectors, uses a small α-Net to predict eigenbasis coefficients for potential φ and charge ρ, adds a PDE residual loss and a net-charge constraint, and includes an electrostatic energy term in the total energy. Experiments on OE62 and MD22 show improved energy/force predictions over several baselines, with analyses of hyperparameter stability, memory scaling, data scarcity, and ablations.\",\n  \"Strengths\": [\n    \"Lightweight, model-agnostic design: it can be inserted into SchNet, DimeNet++, PaiNN, GemNet-T, E2GNN, and ViSNet with small training overhead (e.g., ~4–10% on OE62), and the memory scaling experiments show it avoids OOM of Ewald/P3M on large carbyne chains.\",\n    \"The spectral parametrization of φ and ρ with the symmetric-gradient argument for using Λ in the charge parametrization is an interesting and reasonably novel way to couple a physics-like residual to learned node features.\",\n    \"Empirical gains are consistent across many baselines and datasets, and the paper includes useful sensitivity analyses (hyperparameter stability, data scarcity, ablations).\",\n    \"The paper addresses an important problem (non-local/long-range interactions in ML potentials) and does not require external charge labels.\"\n  ],\n  \"Weaknesses\": [\n    \"The physical grounding is questionable: a normalized graph Laplacian with edge weights equal to interatomic distances is not a discretization of the continuous Poisson equation for electrostatics; there is no link between the learned φ/ρ and true atomic charges or potentials, so E_ES may simply be an extra learned correction.\",\n    \"The theoretical claims are overclaimed: Theorems 3.1/3.2 only analyze a simplified squared-loss surrogate and exact minimization over ρ, not the actual L1 training objective or stochastic optimization; the phrase 'monotone objective decrease' is not established.\",\n    \"Empirical results are modest relative to prior long-range methods: on OE62, the Ewald message-passing baseline achieves lower MAE than Φ-Module for 3 of 5 models (e.g., SchNet: 79.2 vs 92.2 meV), and the claimed '12 out of 14' MD22 improvements appears inconsistent with Table 1 (only 11 strict improvements; AT-AT energy is a tie).\",\n    \"Reproducibility is hampered by incomplete method details: α-Net architecture is only sketched, the pseudocode is not visible in the submitted manuscript, and there are many formatting/cross-reference errors and duplicated theorem statements.\",\n    \"No statistical significance tests/error bars are reported; data-scarcity and ablation figures are not quantified; MD22 uses no hyperparameter search, and the memory-scaling study is limited to linear carbyne chains.\"\n  ],\n  \"Originality\": 2,\n  \"Quality\": 2,\n  \"Clarity\": 1,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"How is the graph Laplacian with distance edge weights derived from the continuous Poisson equation? What prevents the learned φ/ρ from being arbitrary latent variables unrelated to electrostatics?\",\n    \"Can the monotone decrease in Theorem 3.2 be demonstrated for the actual L1 loss and for gradient descent, rather than for exact inner minimization of a squared surrogate?\",\n    \"Please clarify the count in MD22: Table 1 appears to show 11 strict improvements and one tie, not 12 out of 14.\",\n    \"What are the exact specifications of α-Net (layers, kernel sizes, pooling, output dimensions, number of parameters), and how is node ordering handled?\",\n    \"In the ablation, if the PDE residual is removed but the energy term and α-Net are kept, is the performance drop statistically significant? What if the Laplacian is replaced by another fixed symmetric matrix that is not distance-weighted?\",\n    \"How does the accuracy of Φ-SchNet compare to Ewald or P3M on large systems at similar memory budgets, rather than only reporting memory?\"\n  ],\n  \"Limitations\": [\n    \"The graph Laplacian is still constructed from a cutoff-radius graph, so the method does not explicitly capture interactions beyond the cutoff; it is not a true long-range model in the Ewald sense.\",\n    \"No validation that the learned charges/potentials match physical quantities; no comparison to DFT partial charges or electrostatic potentials.\",\n    \"Theorems are for a surrogate squared objective and do not guarantee convergence of the actual training procedure.\",\n    \"Missing code and precise architecture details limit reproducibility.\",\n    \"No evaluation on periodic/charged systems or on datasets with explicit electrostatic labels.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 1,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 16482,
+        "prompt_cache_hit_tokens": 5632,
+        "prompt_cache_miss_tokens": 10850,
+        "completion_tokens": 8263,
+        "reasoning_tokens": 7189,
+        "total_tokens": 24745
+      },
+      "attempts": 1,
+      "response_id": "9275d1b7-f500-4592-aab3-3bce971ed753"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper proposes Φ-Module, a plugin module for graph neural network interatomic potentials that enforces a discretized Poisson equation on atom-wise representations to learn electrostatic interactions in a self-supervised manner. It computes potential φ and charges ρ via Laplacian eigenbasis coefficients estimated by a lightweight α-Net, adds a PDE residual loss and optional charge neutrality constraint, and uses an electrostatic energy term to improve total energy predictions. The module is integrated into multiple GNN baselines and evaluated on OE62 and MD22 benchmarks, showing consistent energy/force improvements, hyperparameter stability, memory efficiency compared to Ewald summation, and stable NVE simulations.",
+        "Strengths": [
+          "Novel self-supervised approach to incorporate electrostatics into GNN potentials without requiring external charge labels, using the graph Laplacian and Poisson equation.",
+          "Universal plugin that consistently improves multiple GNN baselines (SchNet, DimeNet++, PaiNN, GemNet-T, E2GNN) on OE62 with modest computational overhead (≈5-10% runtime increase).",
+          "Memory-efficient scaling compared to Ewald summation and Neural P3M, enabling application to very large molecules (up to 10^5 atoms in experiments).",
+          "Includes theoretical analysis (strict convexity of inner minimization and monotone objective decrease) and ablations (random Laplacian, removing PDE loss) that support the design choices.",
+          "Demonstrates stable 100 ps NVE molecular dynamics simulations with low energy drift, indicating practical usability."
+        ],
+        "Weaknesses": [
+          "The theoretical results are proven for a surrogate squared loss and only characterize minimization over ρ for fixed φ; the actual training loss uses an L1 energy term and jointly optimizes both φ and ρ through α-Net, so the claimed guarantees do not directly apply.",
+          "The α-Net uses 1D convolutions over the node dimension, which is not permutation equivariant for kernel sizes >1; although the appendix mentions that 1x1 convolutions preserve invariance and perform similarly, the default setting likely violates the fundamental requirement of invariance to atom indexing in molecular property prediction.",
+          "The graph Laplacian with edge weights equal to interatomic distances is a heuristic discretization of Poisson's equation; no evidence is provided that the learned φ and ρ correspond to physically meaningful electrostatic quantities, and the energy term may act merely as a flexible regularizer rather than capturing true electrostatics.",
+          "Experimental gains are inconsistent: improvements on OE62 range from ~30% for SchNet to only 1.5% for E2GNN, and on MD22 the method does not surpass state-of-the-art models (e.g., MACE, Equiformer) in most metrics; the claim of 'best in 5 out of 14' is not fully supported by the table.",
+          "No standard deviations or multiple random seeds are reported for the main results, making it difficult to assess statistical significance of the improvements.",
+          "The comparison with Ewald and P3M on carbyne chains may be unfair because those methods are primarily designed for periodic systems and the non-periodic use requires artificial supercell approximations."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 2,
+        "Questions": [
+          "How does the α-Net achieve permutation invariance when using 1D convolutions over the node dimension? If kernel size >1, what is the node ordering used, and why does this not break invariance to atom indexing?",
+          "The theorems are derived for a surrogate squared loss. Do the properties (strict convexity, monotone decrease) hold for the actual training objective with L1 energy loss, PDE loss, and net charge constraint?",
+          "What are the quantitative results for the ablation with a random Laplacian and without the PDE loss? The paper only mentions a 'distinct trend' without numbers.",
+          "How are forces computed in Φ-Module, and does the electrostatic term contribute correctly to the force gradients?",
+          "How is the eigendecomposition handled for molecular graphs with disconnected components? Are molecules always connected in the datasets used?",
+          "For E2GNN, γ is set to 0 (no net charge constraint). How does this affect the learned charges and the performance compared to models with γ > 0?"
+        ],
+        "Limitations": [
+          "The method approximates electrostatics using point charges on atoms, neglecting multipole moments and polarization effects.",
+          "The graph Laplacian construction with distance-based edge weights is a simplified discretization; the connection to the continuous Poisson equation is not rigorously established.",
+          "The eigendecomposition may become a computational bottleneck for extremely large systems or long MD simulations, despite the memory efficiency claim.",
+          "The model is only evaluated on energy and force predictions; it does not directly predict or validate partial charges or electrostatic potentials.",
+          "The method still relies on local message passing and graph connectivity; long-range interactions beyond the cutoff may not be fully captured."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes Φ-Module, a plugin module for graph neural network interatomic potentials that enforces a discretized Poisson equation on atom-wise representations to learn electrostatic interactions in a self-supervised manner. It computes potential φ and charges ρ via Laplacian eigenbasis coefficients estimated by a lightweight α-Net, adds a PDE residual loss and optional charge neutrality constraint, and uses an electrostatic energy term to improve total energy predictions. The module is integrated into multiple GNN baselines and evaluated on OE62 and MD22 benchmarks, showing consistent energy/force improvements, hyperparameter stability, memory efficiency compared to Ewald summation, and stable NVE simulations.\",\n  \"Strengths\": [\n    \"Novel self-supervised approach to incorporate electrostatics into GNN potentials without requiring external charge labels, using the graph Laplacian and Poisson equation.\",\n    \"Universal plugin that consistently improves multiple GNN baselines (SchNet, DimeNet++, PaiNN, GemNet-T, E2GNN) on OE62 with modest computational overhead (≈5-10% runtime increase).\",\n    \"Memory-efficient scaling compared to Ewald summation and Neural P3M, enabling application to very large molecules (up to 10^5 atoms in experiments).\",\n    \"Includes theoretical analysis (strict convexity of inner minimization and monotone objective decrease) and ablations (random Laplacian, removing PDE loss) that support the design choices.\",\n    \"Demonstrates stable 100 ps NVE molecular dynamics simulations with low energy drift, indicating practical usability.\"\n  ],\n  \"Weaknesses\": [\n    \"The theoretical results are proven for a surrogate squared loss and only characterize minimization over ρ for fixed φ; the actual training loss uses an L1 energy term and jointly optimizes both φ and ρ through α-Net, so the claimed guarantees do not directly apply.\",\n    \"The α-Net uses 1D convolutions over the node dimension, which is not permutation equivariant for kernel sizes >1; although the appendix mentions that 1x1 convolutions preserve invariance and perform similarly, the default setting likely violates the fundamental requirement of invariance to atom indexing in molecular property prediction.\",\n    \"The graph Laplacian with edge weights equal to interatomic distances is a heuristic discretization of Poisson's equation; no evidence is provided that the learned φ and ρ correspond to physically meaningful electrostatic quantities, and the energy term may act merely as a flexible regularizer rather than capturing true electrostatics.\",\n    \"Experimental gains are inconsistent: improvements on OE62 range from ~30% for SchNet to only 1.5% for E2GNN, and on MD22 the method does not surpass state-of-the-art models (e.g., MACE, Equiformer) in most metrics; the claim of 'best in 5 out of 14' is not fully supported by the table.\",\n    \"No standard deviations or multiple random seeds are reported for the main results, making it difficult to assess statistical significance of the improvements.\",\n    \"The comparison with Ewald and P3M on carbyne chains may be unfair because those methods are primarily designed for periodic systems and the non-periodic use requires artificial supercell approximations.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"How does the α-Net achieve permutation invariance when using 1D convolutions over the node dimension? If kernel size >1, what is the node ordering used, and why does this not break invariance to atom indexing?\",\n    \"The theorems are derived for a surrogate squared loss. Do the properties (strict convexity, monotone decrease) hold for the actual training objective with L1 energy loss, PDE loss, and net charge constraint?\",\n    \"What are the quantitative results for the ablation with a random Laplacian and without the PDE loss? The paper only mentions a 'distinct trend' without numbers.\",\n    \"How are forces computed in Φ-Module, and does the electrostatic term contribute correctly to the force gradients?\",\n    \"How is the eigendecomposition handled for molecular graphs with disconnected components? Are molecules always connected in the datasets used?\",\n    \"For E2GNN, γ is set to 0 (no net charge constraint). How does this affect the learned charges and the performance compared to models with γ > 0?\"\n  ],\n  \"Limitations\": [\n    \"The method approximates electrostatics using point charges on atoms, neglecting multipole moments and polarization effects.\",\n    \"The graph Laplacian construction with distance-based edge weights is a simplified discretization; the connection to the continuous Poisson equation is not rigorously established.\",\n    \"The eigendecomposition may become a computational bottleneck for extremely large systems or long MD simulations, despite the memory efficiency claim.\",\n    \"The model is only evaluated on energy and force predictions; it does not directly predict or validate partial charges or electrostatic potentials.\",\n    \"The method still relies on local message passing and graph connectivity; long-range interactions beyond the cutoff may not be fully captured.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 16482,
+        "prompt_cache_hit_tokens": 5632,
+        "prompt_cache_miss_tokens": 10850,
+        "completion_tokens": 8329,
+        "reasoning_tokens": 7217,
+        "total_tokens": 24811
+      },
+      "attempts": 1,
+      "response_id": "56f811c3-ed08-4ac5-b524-75c7530912bc"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper proposes Φ-Module, a plug-in module for GNN interatomic potentials that enforces a discretized Poisson equation on molecular graphs by learning coefficients of the Laplacian eigenbasis via a lightweight α-Net. The module produces potential φ and charge ρ representations, an auxiliary PDE residual loss, and an electrostatic energy term. Experiments on OE62 and MD22 show error reductions over several GNN baselines, favorable memory scaling compared to Ewald/P3M methods, and stability under hyperparameter and data-scarcity variations.",
+        "Strengths": [
+          "The core idea of using a discrete Poisson equation as a self-supervised auxiliary objective is novel and avoids external charge labels.",
+          "The module integrates into multiple GNN architectures (SchNet, DimeNet++, PaiNN, GemNet-T, E2GNN, ViSNet) and reports consistent error reductions on OE62 and MD22.",
+          "Memory scaling experiments on carbyne chains indicate Φ-Module avoids the OOM issues of Ewald/P3M and scales similarly to the baseline.",
+          "Ablations replacing the Laplacian with a random matrix and removing the PDE loss support the physical grounding of the module."
+        ],
+        "Weaknesses": [
+          "The theoretical results (Theorems 3.1 and 3.2) are derived for a squared surrogate objective, not the actual L1 model loss, and the 'monotone objective decrease' is only a property of inner minimization over ρ, not of the training dynamics. Moreover, in the actual model ρ is not a free variable but restricted to UΛα_ρ, so the minimizer may not be attainable.",
+          "The physical soundness of the electrostatic energy is questionable: since the graph Laplacian is positive semidefinite, if Lφ≈ρ then E^ES = 1/2 φ^T Lφ ≥ 0, implying electrostatics is always repulsive. The sign convention of Poisson's equation and the possibility of attractive interactions are not addressed.",
+          "Permutation invariance is not guaranteed by α-Net when using 1D convolutions over the node dimension with kernel size >1. The appendix admits this and proposes a 1×1 conv variant, but the main results use the default α-Net, so predictions may depend on arbitrary atom indexing.",
+          "Reported numbers are inconsistent: the introduction says 12 out of 14 MD22 improvements while Section 4 says 11; the contribution claims ≥5% error reductions but Table 3 shows E2GNN only 1.5%; runtime overhead is called 'insignificant' but reaches 23.9% for E2GNN.",
+          "The paper lacks statistical rigor: no error bars, multiple seeds, or significance tests; several quantitative claims (energy drift x2/x4, memory scaling, data scarcity) are supported only by figures without exact values.",
+          "The connection between the learned φ, ρ and actual physical charges/potentials is not established; no comparison with baselines that learn partial charges (e.g., PhysNet) or Ewald variants in terms of force errors on OE62 is provided."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 2,
+        "Questions": [
+          "When Lφ≈ρ, the electrostatic energy is 1/2 φ^T Lφ ≥ 0. How can the model represent negative (attractive) electrostatic contributions? Would flipping the sign or using an indefinite operator change results?",
+          "What is the exact kernel size used in α-Net for the main experiments? If kernel >1, how is permutation invariance ensured for arbitrary atom orderings?",
+          "The theorems assume minimization over all ρ in span(U_k), but the module restricts ρ=UΛα_ρ and φ=Uα_φ. How does this restriction affect the claimed unique minimizer and monotonic decrease?",
+          "How is the eigendecomposition computed for the 10^5-atom carbyne chains, and what is the actual training time compared to baseline in that setup? Is L recomputed and decomposed every MD step?",
+          "Why do the reported MD22 improvement counts differ (11 vs 12) and why does E2GNN show only 1.5% improvement despite the abstract claiming ≥5% reductions?",
+          "Were multiple random seeds used? If yes, please provide mean±std for Table 3 and Table 1."
+        ],
+        "Limitations": [
+          "Assumes partial-charge-like description; no multipoles or polarization (disclosed by the authors).",
+          "Method is influenced by graph connectivity/cutoff radius (disclosed).",
+          "Potential sign/positivity issue of the electrostatic energy is not addressed.",
+          "Permutation invariance of α-Net is not guaranteed in the default configuration.",
+          "No error bars or multi-seed results, limiting confidence in improvements.",
+          "Theoretical guarantees do not apply to the actual loss used in training."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 3,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes Φ-Module, a plug-in module for GNN interatomic potentials that enforces a discretized Poisson equation on molecular graphs by learning coefficients of the Laplacian eigenbasis via a lightweight α-Net. The module produces potential φ and charge ρ representations, an auxiliary PDE residual loss, and an electrostatic energy term. Experiments on OE62 and MD22 show error reductions over several GNN baselines, favorable memory scaling compared to Ewald/P3M methods, and stability under hyperparameter and data-scarcity variations.\",\n  \"Strengths\": [\n    \"The core idea of using a discrete Poisson equation as a self-supervised auxiliary objective is novel and avoids external charge labels.\",\n    \"The module integrates into multiple GNN architectures (SchNet, DimeNet++, PaiNN, GemNet-T, E2GNN, ViSNet) and reports consistent error reductions on OE62 and MD22.\",\n    \"Memory scaling experiments on carbyne chains indicate Φ-Module avoids the OOM issues of Ewald/P3M and scales similarly to the baseline.\",\n    \"Ablations replacing the Laplacian with a random matrix and removing the PDE loss support the physical grounding of the module.\"\n  ],\n  \"Weaknesses\": [\n    \"The theoretical results (Theorems 3.1 and 3.2) are derived for a squared surrogate objective, not the actual L1 model loss, and the 'monotone objective decrease' is only a property of inner minimization over ρ, not of the training dynamics. Moreover, in the actual model ρ is not a free variable but restricted to UΛα_ρ, so the minimizer may not be attainable.\",\n    \"The physical soundness of the electrostatic energy is questionable: since the graph Laplacian is positive semidefinite, if Lφ≈ρ then E^ES = 1/2 φ^T Lφ ≥ 0, implying electrostatics is always repulsive. The sign convention of Poisson's equation and the possibility of attractive interactions are not addressed.\",\n    \"Permutation invariance is not guaranteed by α-Net when using 1D convolutions over the node dimension with kernel size >1. The appendix admits this and proposes a 1×1 conv variant, but the main results use the default α-Net, so predictions may depend on arbitrary atom indexing.\",\n    \"Reported numbers are inconsistent: the introduction says 12 out of 14 MD22 improvements while Section 4 says 11; the contribution claims ≥5% error reductions but Table 3 shows E2GNN only 1.5%; runtime overhead is called 'insignificant' but reaches 23.9% for E2GNN.\",\n    \"The paper lacks statistical rigor: no error bars, multiple seeds, or significance tests; several quantitative claims (energy drift x2/x4, memory scaling, data scarcity) are supported only by figures without exact values.\",\n    \"The connection between the learned φ, ρ and actual physical charges/potentials is not established; no comparison with baselines that learn partial charges (e.g., PhysNet) or Ewald variants in terms of force errors on OE62 is provided.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"When Lφ≈ρ, the electrostatic energy is 1/2 φ^T Lφ ≥ 0. How can the model represent negative (attractive) electrostatic contributions? Would flipping the sign or using an indefinite operator change results?\",\n    \"What is the exact kernel size used in α-Net for the main experiments? If kernel >1, how is permutation invariance ensured for arbitrary atom orderings?\",\n    \"The theorems assume minimization over all ρ in span(U_k), but the module restricts ρ=UΛα_ρ and φ=Uα_φ. How does this restriction affect the claimed unique minimizer and monotonic decrease?\",\n    \"How is the eigendecomposition computed for the 10^5-atom carbyne chains, and what is the actual training time compared to baseline in that setup? Is L recomputed and decomposed every MD step?\",\n    \"Why do the reported MD22 improvement counts differ (11 vs 12) and why does E2GNN show only 1.5% improvement despite the abstract claiming ≥5% reductions?\",\n    \"Were multiple random seeds used? If yes, please provide mean±std for Table 3 and Table 1.\"\n  ],\n  \"Limitations\": [\n    \"Assumes partial-charge-like description; no multipoles or polarization (disclosed by the authors).\",\n    \"Method is influenced by graph connectivity/cutoff radius (disclosed).\",\n    \"Potential sign/positivity issue of the electrostatic energy is not addressed.\",\n    \"Permutation invariance of α-Net is not guaranteed in the default configuration.\",\n    \"No error bars or multi-seed results, limiting confidence in improvements.\",\n    \"Theoretical guarantees do not apply to the actual loss used in training.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 3,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 16482,
+        "prompt_cache_hit_tokens": 5632,
+        "prompt_cache_miss_tokens": 10850,
+        "completion_tokens": 7438,
+        "reasoning_tokens": 6320,
+        "total_tokens": 23920
+      },
+      "attempts": 1,
+      "response_id": "78620cf1-bb9c-4a2e-ae9f-a5bba0efb57e"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper proposes Φ-Module, a plug-in module for GNN-based interatomic potentials that enforces a discrete Poisson equation Lφ=ρ on atom representations. It expands φ and ρ in an eigenbasis of the graph Laplacian using a lightweight α-net, adds a PDE residual loss (and optionally a charge-neutrality loss), and adds an electrostatic energy term E^ES=½φᵀρ to the total predicted energy. Experiments on OE62 and MD22 show improved energy/force errors over several baselines with modest computational overhead, memory efficiency compared to Ewald/P3M methods, hyperparameter stability, and stable MD trajectories.",
+        "Strengths": [
+          "The module is model-agnostic and easy to insert into several GNN architectures, which is practically appealing.",
+          "Empirical results on OE62 show consistent error reductions (≥5% for most baselines) and on MD22 show improvements in 12 out of 14 energy/force metrics.",
+          "Memory scaling experiments demonstrate clear advantages over Ewald message passing and Neural P3M for very large systems, and runtime overhead is relatively small.",
+          "The paper includes useful ablations (random Laplacian, removing PDE residual), hyperparameter stability analysis, and data-scarcity experiments.",
+          "The overall idea of using a physics-inspired self-supervised auxiliary loss is a potentially interesting direction for neural interatomic potentials."
+        ],
+        "Weaknesses": [
+          "The physical interpretation is questionable: the distance-weighted graph Laplacian with a local cutoff cannot capture true Coulomb 1/r long-range electrostatics; the resulting E^ES is essentially a graph-smoothing term, not a non-local electrostatic interaction.",
+          "The theoretical claims (Theorems 3.1 and 3.2) use a surrogate squared loss with e=a+½φᵀρ, but the actual reported loss is |E - (E_model + ½φᵀρ)|, i.e., the error should be a−½φᵀρ. The sign inconsistency means the theorems do not directly apply to the actual training objective. Moreover, the main loss is L1, not L2.",
+          "The α-net applies 1D convolutions over the node dimension; unless the kernel size is 1, this breaks permutation invariance. The paper only tests the 1×1 convolution alternative in an appendix, while the main results appear to use the default (possibly non-invariant) version.",
+          "Eigenvector sign ambiguity is not discussed; eigenvectors of the graph Laplacian are defined only up to sign, which can make the learned coefficients and reproduced φ/ρ unstable across runs or conformations.",
+          "The statement that the Laplacian is identical for different 3D compositions is contradicted by the use of distance-dependent edge weights, making the exposition confusing.",
+          "Theorems only address exact inner minimization over ρ for a fixed φ, not the actual joint optimization of the α-net and the backbone, so they do not prove monotone improvement in practice.",
+          "MD22 results are inconsistent (e.g., Stachyose energy worsens from 0.017 to 0.040 while the force error improves suspiciously from 0.107 to 0.011), and no hyperparameter search was performed for MD22, raising reproducibility concerns."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 2,
+        "Questions": [
+          "How does the distance-weighted graph Laplacian, which is local by construction, produce Coulomb-like 1/r behavior beyond the cutoff radius? Can the resulting E^ES be physically interpreted as electrostatics?",
+          "The main loss is L1 on energy with E_total = E_model + ½φᵀρ. Why do Theorems 3.1–3.2 consider the squared error with a+½φᵀρ instead of a−½φᵀρ? Is there a sign convention difference that is not stated?",
+          "What is the kernel size of the α-net convolutions used in the main experiments, and how is permutation invariance guaranteed if the kernel size is greater than 1?",
+          "How are eigenvector signs resolved across different graphs or across training iterations? Is the sign deterministic for a given molecule?",
+          "Which eigenvalues/eigenvectors are selected by LOBPCG (e.g., smallest k), and is the eigendecomposition recomputed every batch? What is the total computational overhead for large MD22 systems?",
+          "Were the MD22 ViSNet baselines re-trained with identical splits and hyperparameters as Φ-ViSNet? Why do some results (e.g., DHA energy, Stachyose forces) improve by an order of magnitude while others worsen?"
+        ],
+        "Limitations": [
+          "The graph-Laplacian-based potential does not capture true long-range Coulomb interactions; it remains local despite claims of non-local electrostatics.",
+          "The default α-net may break permutation invariance unless 1×1 convolutions are used, which limits applicability to standard molecular graphs.",
+          "Eigenvector sign ambiguity is not handled, potentially affecting reproducibility and stability.",
+          "The theoretical guarantees assume an exact inner minimizer over ρ with a surrogate squared loss, so they do not directly support the actual training procedure.",
+          "The method is only evaluated on organic-molecule datasets; its behavior for periodic, charged, or highly polar systems is not examined.",
+          "No negative societal impacts are identified, but the method is not yet validated for real-world drug or material discovery workflows."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes Φ-Module, a plug-in module for GNN-based interatomic potentials that enforces a discrete Poisson equation Lφ=ρ on atom representations. It expands φ and ρ in an eigenbasis of the graph Laplacian using a lightweight α-net, adds a PDE residual loss (and optionally a charge-neutrality loss), and adds an electrostatic energy term E^ES=½φᵀρ to the total predicted energy. Experiments on OE62 and MD22 show improved energy/force errors over several baselines with modest computational overhead, memory efficiency compared to Ewald/P3M methods, hyperparameter stability, and stable MD trajectories.\",\n  \"Strengths\": [\n    \"The module is model-agnostic and easy to insert into several GNN architectures, which is practically appealing.\",\n    \"Empirical results on OE62 show consistent error reductions (≥5% for most baselines) and on MD22 show improvements in 12 out of 14 energy/force metrics.\",\n    \"Memory scaling experiments demonstrate clear advantages over Ewald message passing and Neural P3M for very large systems, and runtime overhead is relatively small.\",\n    \"The paper includes useful ablations (random Laplacian, removing PDE residual), hyperparameter stability analysis, and data-scarcity experiments.\",\n    \"The overall idea of using a physics-inspired self-supervised auxiliary loss is a potentially interesting direction for neural interatomic potentials.\"\n  ],\n  \"Weaknesses\": [\n    \"The physical interpretation is questionable: the distance-weighted graph Laplacian with a local cutoff cannot capture true Coulomb 1/r long-range electrostatics; the resulting E^ES is essentially a graph-smoothing term, not a non-local electrostatic interaction.\",\n    \"The theoretical claims (Theorems 3.1 and 3.2) use a surrogate squared loss with e=a+½φᵀρ, but the actual reported loss is |E - (E_model + ½φᵀρ)|, i.e., the error should be a−½φᵀρ. The sign inconsistency means the theorems do not directly apply to the actual training objective. Moreover, the main loss is L1, not L2.\",\n    \"The α-net applies 1D convolutions over the node dimension; unless the kernel size is 1, this breaks permutation invariance. The paper only tests the 1×1 convolution alternative in an appendix, while the main results appear to use the default (possibly non-invariant) version.\",\n    \"Eigenvector sign ambiguity is not discussed; eigenvectors of the graph Laplacian are defined only up to sign, which can make the learned coefficients and reproduced φ/ρ unstable across runs or conformations.\",\n    \"The statement that the Laplacian is identical for different 3D compositions is contradicted by the use of distance-dependent edge weights, making the exposition confusing.\",\n    \"Theorems only address exact inner minimization over ρ for a fixed φ, not the actual joint optimization of the α-net and the backbone, so they do not prove monotone improvement in practice.\",\n    \"MD22 results are inconsistent (e.g., Stachyose energy worsens from 0.017 to 0.040 while the force error improves suspiciously from 0.107 to 0.011), and no hyperparameter search was performed for MD22, raising reproducibility concerns.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"How does the distance-weighted graph Laplacian, which is local by construction, produce Coulomb-like 1/r behavior beyond the cutoff radius? Can the resulting E^ES be physically interpreted as electrostatics?\",\n    \"The main loss is L1 on energy with E_total = E_model + ½φᵀρ. Why do Theorems 3.1–3.2 consider the squared error with a+½φᵀρ instead of a−½φᵀρ? Is there a sign convention difference that is not stated?\",\n    \"What is the kernel size of the α-net convolutions used in the main experiments, and how is permutation invariance guaranteed if the kernel size is greater than 1?\",\n    \"How are eigenvector signs resolved across different graphs or across training iterations? Is the sign deterministic for a given molecule?\",\n    \"Which eigenvalues/eigenvectors are selected by LOBPCG (e.g., smallest k), and is the eigendecomposition recomputed every batch? What is the total computational overhead for large MD22 systems?\",\n    \"Were the MD22 ViSNet baselines re-trained with identical splits and hyperparameters as Φ-ViSNet? Why do some results (e.g., DHA energy, Stachyose forces) improve by an order of magnitude while others worsen?\"\n  ],\n  \"Limitations\": [\n    \"The graph-Laplacian-based potential does not capture true long-range Coulomb interactions; it remains local despite claims of non-local electrostatics.\",\n    \"The default α-net may break permutation invariance unless 1×1 convolutions are used, which limits applicability to standard molecular graphs.\",\n    \"Eigenvector sign ambiguity is not handled, potentially affecting reproducibility and stability.\",\n    \"The theoretical guarantees assume an exact inner minimizer over ρ with a surrogate squared loss, so they do not directly support the actual training procedure.\",\n    \"The method is only evaluated on organic-molecule datasets; its behavior for periodic, charged, or highly polar systems is not examined.\",\n    \"No negative societal impacts are identified, but the method is not yet validated for real-world drug or material discovery workflows.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 16482,
+        "prompt_cache_hit_tokens": 5632,
+        "prompt_cache_miss_tokens": 10850,
+        "completion_tokens": 6231,
+        "reasoning_tokens": 4993,
+        "total_tokens": 22713
+      },
+      "attempts": 1,
+      "response_id": "85c7d8d5-678b-47df-9ea4-bf97ee5528d8"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 0,
+      "Reject": 5
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          2,
+          2,
+          3,
+          3,
+          3
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Quality": {
+        "values": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "mean": 2,
+        "rounded_mean": 2,
+        "population_sd": 0.0,
+        "min": 2,
+        "max": 2
+      },
+      "Clarity": {
+        "values": [
+          2,
+          1,
+          3,
+          2,
+          2
+        ],
+        "mean": 2,
+        "rounded_mean": 2,
+        "population_sd": 0.632,
+        "min": 1,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "mean": 2,
+        "rounded_mean": 2,
+        "population_sd": 0.0,
+        "min": 2,
+        "max": 2
+      },
+      "Soundness": {
+        "values": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "mean": 2,
+        "rounded_mean": 2,
+        "population_sd": 0.0,
+        "min": 2,
+        "max": 2
+      },
+      "Presentation": {
+        "values": [
+          2,
+          1,
+          3,
+          2,
+          2
+        ],
+        "mean": 2,
+        "rounded_mean": 2,
+        "population_sd": 0.632,
+        "min": 1,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "mean": 2,
+        "rounded_mean": 2,
+        "population_sd": 0.0,
+        "min": 2,
+        "max": 2
+      },
+      "Overall": {
+        "values": [
+          3,
+          4,
+          4,
+          3,
+          4
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper proposes Phi-Module, a plug-in module for GNN-based interatomic potentials that enforces a discrete Poisson equation L*phi = rho on a distance-weighted graph Laplacian. The potential phi and charges rho are represented in the Laplacian eigenbasis via a lightweight alpha-Net, and the model adds a PDE residual loss plus optional charge-neutrality loss, together with an electrostatic energy term E^ES = 1/2 * rho^T * phi. Experiments on OE62 and MD22 with several GNN baselines report improved energy/force accuracy, low computational overhead, memory efficiency, and robustness to hyperparameters and data scarcity.",
+      "Strengths": [
+        "The idea of injecting a physics-inspired self-supervised constraint into arbitrary GNN potentials is novel and modular, requiring no external charge labels.",
+        "The module is evaluated across a wide range of GNN architectures and benchmarks, showing consistent (though sometimes modest) improvements over several baselines.",
+        "Memory scaling experiments demonstrate advantages over Ewald-based message passing and Neural P3M for large systems.",
+        "Ablations and sensitivity analyses provide some support for the design choices and robustness.",
+        "The work addresses an important problem: incorporating non-local/long-range interactions into ML interatomic potentials."
+      ],
+      "Weaknesses": [
+        "The central claim that the module captures long-range electrostatics is not supported: the graph Laplacian is built from local, cutoff-limited edges, so the resulting operator is local and cannot represent true 1/r Coulomb interactions between distant atoms.",
+        "The default alpha-Net uses 1D convolutions over the node index, which is not permutation invariant/equivariant when kernel size >1; this is a fundamental flaw for atomistic predictions where atom ordering is arbitrary.",
+        "The theoretical analysis is disconnected from the actual training objective: theorems use a surrogate squared loss and exact minimization over rho, but the actual loss is L1 energy MAE with jointly optimized alpha-Net coefficients; sign inconsistencies in E^ES further weaken the theoretical claims.",
+        "No evidence is provided that the learned phi and rho correspond to physically meaningful charges or potentials, leaving the possibility that E^ES acts only as a flexible regularizer.",
+        "Results lack statistical rigor: no error bars, multiple seeds, or significance tests are reported; some MD22 improvements are implausibly large without any hyperparameter search.",
+        "The paper contains internal inconsistencies (e.g., 12/14 vs 11/14 MD22 improvements, contributions claiming >=5% error reductions despite some models improving only ~1.5%) and incomplete reproducibility details (alpha-Net architecture, eigendecomposition handling, etc.).",
+        "Eigenvector sign/order ambiguity and the behavior of LOBPCG under small perturbations are not addressed, which can make the eigenbasis discontinuous across runs or conformations."
+      ],
+      "Originality": 2,
+      "Quality": 2,
+      "Clarity": 2,
+      "Significance": 2,
+      "Questions": [
+        "How does a distance-weighted graph Laplacian with local cutoff edges produce Coulomb-like 1/r long-range interactions? What is the physical interpretation of E^ES = 1/2 phi^T rho?",
+        "How is permutation invariance guaranteed when alpha-Net uses 1D convolutions over the node index with kernel size >1? Why was the invariant 1x1-convolution variant not used in the main results?",
+        "How do Theorems 3.1 and 3.2 apply to the actual L1 training loss with total energy E_model + E^ES, given that the theorems analyze a squared surrogate and the sign of E^ES appears inconsistent?",
+        "How are eigenvector signs and orders resolved in the LOBPCG decomposition across different molecular graphs or training iterations?",
+        "Are the reported improvements statistically significant? Were multiple random seeds used and are standard deviations available?",
+        "What are the exact specifications of alpha-Net (layers, kernel sizes, output dimensions) and how is the eigendecomposition recomputed in large-scale and MD simulations?",
+        "Does adding Phi-Module simply add parameters/capacity? Is there a control with an equally sized MLP or spectral head without the Poisson residual?",
+        "How does Phi-Module compare to Ewald/P3M in terms of accuracy rather than only memory, and on periodic or charged systems?"
+      ],
+      "Limitations": [
+        "The method does not capture true long-range Coulomb electrostatics beyond the cutoff; it remains a local graph-based correction.",
+        "The learned charges and potentials are not validated against DFT partial charges or electrostatic potentials.",
+        "The theoretical guarantees do not apply to the actual training procedure or loss function.",
+        "Permutation invariance is not guaranteed in the default configuration, limiting applicability to standard molecular graphs.",
+        "Eigenvector sign ambiguity and potential discontinuities are not handled.",
+        "The method is evaluated only on neutral organic molecules; periodic, charged, or strongly polar systems are not considered, and periodic boundary conditions are not addressed.",
+        "No negative societal impacts are identified."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 2,
+      "Presentation": 2,
+      "Contribution": 2,
+      "Overall": 3,
+      "Confidence": 4,
+      "Decision": "Reject"
+    },
+    "raw_response": "{\n  \"Summary\": \"The paper proposes Phi-Module, a plug-in module for GNN-based interatomic potentials that enforces a discrete Poisson equation L*phi = rho on a distance-weighted graph Laplacian. The potential phi and charges rho are represented in the Laplacian eigenbasis via a lightweight alpha-Net, and the model adds a PDE residual loss plus optional charge-neutrality loss, together with an electrostatic energy term E^ES = 1/2 * rho^T * phi. Experiments on OE62 and MD22 with several GNN baselines report improved energy/force accuracy, low computational overhead, memory efficiency, and robustness to hyperparameters and data scarcity.\",\n  \"Strengths\": [\n    \"The idea of injecting a physics-inspired self-supervised constraint into arbitrary GNN potentials is novel and modular, requiring no external charge labels.\",\n    \"The module is evaluated across a wide range of GNN architectures and benchmarks, showing consistent (though sometimes modest) improvements over several baselines.\",\n    \"Memory scaling experiments demonstrate advantages over Ewald-based message passing and Neural P3M for large systems.\",\n    \"Ablations and sensitivity analyses provide some support for the design choices and robustness.\",\n    \"The work addresses an important problem: incorporating non-local/long-range interactions into ML interatomic potentials.\"\n  ],\n  \"Weaknesses\": [\n    \"The central claim that the module captures long-range electrostatics is not supported: the graph Laplacian is built from local, cutoff-limited edges, so the resulting operator is local and cannot represent true 1/r Coulomb interactions between distant atoms.\",\n    \"The default alpha-Net uses 1D convolutions over the node index, which is not permutation invariant/equivariant when kernel size >1; this is a fundamental flaw for atomistic predictions where atom ordering is arbitrary.\",\n    \"The theoretical analysis is disconnected from the actual training objective: theorems use a surrogate squared loss and exact minimization over rho, but the actual loss is L1 energy MAE with jointly optimized alpha-Net coefficients; sign inconsistencies in E^ES further weaken the theoretical claims.\",\n    \"No evidence is provided that the learned phi and rho correspond to physically meaningful charges or potentials, leaving the possibility that E^ES acts only as a flexible regularizer.\",\n    \"Results lack statistical rigor: no error bars, multiple seeds, or significance tests are reported; some MD22 improvements are implausibly large without any hyperparameter search.\",\n    \"The paper contains internal inconsistencies (e.g., 12/14 vs 11/14 MD22 improvements, contributions claiming >=5% error reductions despite some models improving only ~1.5%) and incomplete reproducibility details (alpha-Net architecture, eigendecomposition handling, etc.).\",\n    \"Eigenvector sign/order ambiguity and the behavior of LOBPCG under small perturbations are not addressed, which can make the eigenbasis discontinuous across runs or conformations.\"\n  ],\n  \"Originality\": 2,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"How does a distance-weighted graph Laplacian with local cutoff edges produce Coulomb-like 1/r long-range interactions? What is the physical interpretation of E^ES = 1/2 phi^T rho?\",\n    \"How is permutation invariance guaranteed when alpha-Net uses 1D convolutions over the node index with kernel size >1? Why was the invariant 1x1-convolution variant not used in the main results?\",\n    \"How do Theorems 3.1 and 3.2 apply to the actual L1 training loss with total energy E_model + E^ES, given that the theorems analyze a squared surrogate and the sign of E^ES appears inconsistent?\",\n    \"How are eigenvector signs and orders resolved in the LOBPCG decomposition across different molecular graphs or training iterations?\",\n    \"Are the reported improvements statistically significant? Were multiple random seeds used and are standard deviations available?\",\n    \"What are the exact specifications of alpha-Net (layers, kernel sizes, output dimensions) and how is the eigendecomposition recomputed in large-scale and MD simulations?\",\n    \"Does adding Phi-Module simply add parameters/capacity? Is there a control with an equally sized MLP or spectral head without the Poisson residual?\",\n    \"How does Phi-Module compare to Ewald/P3M in terms of accuracy rather than only memory, and on periodic or charged systems?\"\n  ],\n  \"Limitations\": [\n    \"The method does not capture true long-range Coulomb electrostatics beyond the cutoff; it remains a local graph-based correction.\",\n    \"The learned charges and potentials are not validated against DFT partial charges or electrostatic potentials.\",\n    \"The theoretical guarantees do not apply to the actual training procedure or loss function.\",\n    \"Permutation invariance is not guaranteed in the default configuration, limiting applicability to standard molecular graphs.\",\n    \"Eigenvector sign ambiguity and potential discontinuities are not handled.\",\n    \"The method is evaluated only on neutral organic molecules; periodic, charged, or strongly polar systems are not considered, and periodic boundary conditions are not addressed.\",\n    \"No negative societal impacts are identified.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 3,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+    "usage": {
+      "prompt_tokens": 6784,
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 6528,
+      "completion_tokens": 1314,
+      "reasoning_tokens": 179,
+      "total_tokens": 8098
+    },
+    "attempts": 1,
+    "response_id": "08e2f5db-bf2e-4112-b6e8-996b27d49a98"
+  },
+  "final_review": {
+    "Summary": "The paper proposes Phi-Module, a plug-in module for GNN-based interatomic potentials that enforces a discrete Poisson equation L*phi = rho on a distance-weighted graph Laplacian. The potential phi and charges rho are represented in the Laplacian eigenbasis via a lightweight alpha-Net, and the model adds a PDE residual loss plus optional charge-neutrality loss, together with an electrostatic energy term E^ES = 1/2 * rho^T * phi. Experiments on OE62 and MD22 with several GNN baselines report improved energy/force accuracy, low computational overhead, memory efficiency, and robustness to hyperparameters and data scarcity.",
+    "Strengths": [
+      "The idea of injecting a physics-inspired self-supervised constraint into arbitrary GNN potentials is novel and modular, requiring no external charge labels.",
+      "The module is evaluated across a wide range of GNN architectures and benchmarks, showing consistent (though sometimes modest) improvements over several baselines.",
+      "Memory scaling experiments demonstrate advantages over Ewald-based message passing and Neural P3M for large systems.",
+      "Ablations and sensitivity analyses provide some support for the design choices and robustness.",
+      "The work addresses an important problem: incorporating non-local/long-range interactions into ML interatomic potentials."
+    ],
+    "Weaknesses": [
+      "The central claim that the module captures long-range electrostatics is not supported: the graph Laplacian is built from local, cutoff-limited edges, so the resulting operator is local and cannot represent true 1/r Coulomb interactions between distant atoms.",
+      "The default alpha-Net uses 1D convolutions over the node index, which is not permutation invariant/equivariant when kernel size >1; this is a fundamental flaw for atomistic predictions where atom ordering is arbitrary.",
+      "The theoretical analysis is disconnected from the actual training objective: theorems use a surrogate squared loss and exact minimization over rho, but the actual loss is L1 energy MAE with jointly optimized alpha-Net coefficients; sign inconsistencies in E^ES further weaken the theoretical claims.",
+      "No evidence is provided that the learned phi and rho correspond to physically meaningful charges or potentials, leaving the possibility that E^ES acts only as a flexible regularizer.",
+      "Results lack statistical rigor: no error bars, multiple seeds, or significance tests are reported; some MD22 improvements are implausibly large without any hyperparameter search.",
+      "The paper contains internal inconsistencies (e.g., 12/14 vs 11/14 MD22 improvements, contributions claiming >=5% error reductions despite some models improving only ~1.5%) and incomplete reproducibility details (alpha-Net architecture, eigendecomposition handling, etc.).",
+      "Eigenvector sign/order ambiguity and the behavior of LOBPCG under small perturbations are not addressed, which can make the eigenbasis discontinuous across runs or conformations."
+    ],
+    "Originality": 2,
+    "Quality": 2,
+    "Clarity": 2,
+    "Significance": 2,
+    "Questions": [
+      "How does a distance-weighted graph Laplacian with local cutoff edges produce Coulomb-like 1/r long-range interactions? What is the physical interpretation of E^ES = 1/2 phi^T rho?",
+      "How is permutation invariance guaranteed when alpha-Net uses 1D convolutions over the node index with kernel size >1? Why was the invariant 1x1-convolution variant not used in the main results?",
+      "How do Theorems 3.1 and 3.2 apply to the actual L1 training loss with total energy E_model + E^ES, given that the theorems analyze a squared surrogate and the sign of E^ES appears inconsistent?",
+      "How are eigenvector signs and orders resolved in the LOBPCG decomposition across different molecular graphs or training iterations?",
+      "Are the reported improvements statistically significant? Were multiple random seeds used and are standard deviations available?",
+      "What are the exact specifications of alpha-Net (layers, kernel sizes, output dimensions) and how is the eigendecomposition recomputed in large-scale and MD simulations?",
+      "Does adding Phi-Module simply add parameters/capacity? Is there a control with an equally sized MLP or spectral head without the Poisson residual?",
+      "How does Phi-Module compare to Ewald/P3M in terms of accuracy rather than only memory, and on periodic or charged systems?"
+    ],
+    "Limitations": [
+      "The method does not capture true long-range Coulomb electrostatics beyond the cutoff; it remains a local graph-based correction.",
+      "The learned charges and potentials are not validated against DFT partial charges or electrostatic potentials.",
+      "The theoretical guarantees do not apply to the actual training procedure or loss function.",
+      "Permutation invariance is not guaranteed in the default configuration, limiting applicability to standard molecular graphs.",
+      "Eigenvector sign ambiguity and potential discontinuities are not handled.",
+      "The method is evaluated only on neutral organic molecules; periodic, charged, or strongly polar systems are not considered, and periodic boundary conditions are not addressed.",
+      "No negative societal impacts are identified."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 2,
+    "Presentation": 2,
+    "Contribution": 2,
+    "Overall": 3,
+    "Confidence": 4,
+    "Decision": "Reject"
+  },
+  "final_review_source": "Area Chair model output",
+  "usage": {
+    "prompt_tokens": 89194,
+    "prompt_cache_hit_tokens": 28416,
+    "prompt_cache_miss_tokens": 60778,
+    "completion_tokens": 39332,
+    "reasoning_tokens": 32228,
+    "total_tokens": 128526,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 7.956e-05,
+    "cache_miss_input_usd": 0.00850892,
+    "output_usd": 0.01101296,
+    "total_usd": 0.01960144
+  },
+  "elapsed_seconds": 79.819,
+  "input": {
+    "blind_id": "B009",
+    "filename": "B009.txt",
+    "blind_text_sha256": "b346cdaf5e842d186a58f0d1d2166f488ff35d8df207a464fe501c9353295704",
+    "characters": 57807,
+    "full_text_saved": false
+  }
+}

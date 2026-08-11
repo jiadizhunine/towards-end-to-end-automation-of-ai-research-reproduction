@@ -1,0 +1,723 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:47:42.847110+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper proposes Training-Free GRPO, a method that adapts LLM agents to specialized tasks without any parameter updates. Instead of fine-tuning, the method iteratively distills 'semantic advantages' (natural language experiences) from group rollouts of a frozen LLM, and maintains an external experience library that is injected into the prompt context at inference time. The method is evaluated on mathematical reasoning (AIME24/25) and web searching (WebWalkerQA) benchmarks, showing improvements over strong ReAct baselines with only 100 training samples and ~$18 training cost, outperforming fine-tuned 32B models that require $10K+ training costs.",
+        "Strengths": [
+          "Novel and well-motivated idea: shifting RL policy optimization from parameter space to context space via an evolving token prior (experience library).",
+          "The method is simple, cost-effective, and requires minimal data (100 samples), making it practical for real-world low-resource scenarios.",
+          "Comprehensive ablations: directly generated experiences, removing group computation, removing ground truths, and cross-domain transfer analysis.",
+          "Detailed cost analysis comparing training and inference costs with fine-tuning approaches, highlighting the economic advantages.",
+          "The case studies in the appendix are thorough and clearly illustrate how the learned experiences guide the agent to correct reasoning paths.",
+          "The method preserves the base model's generalization capability, avoiding the domain specialization trade-off seen in fine-tuned models."
+        ],
+        "Weaknesses": [
+          "The connection to GRPO is somewhat loose; the method is essentially iterative prompt refinement with group-based feedback, not RL in a strict sense. The name may be misleading.",
+          "Performance gains over strong baselines are modest in some settings (e.g., +1.1% on AIME25 for direct prompting, +2.7% on AIME24 with tool use), and no statistical significance testing is provided.",
+          "The comparison with fine-tuned methods is confounded: Training-Free GRPO uses a much larger and more capable base model (DeepSeek-V3.1-Terminus) compared to the fine-tuned 32B models. A fairer comparison would be on the same base model.",
+          "The method's effectiveness is highly dependent on the base model's capability; on QwQ-32B it actually degrades performance (25.5% vs. 27.5% pass@1). The paper acknowledges this but does not provide a thorough analysis of the capability threshold.",
+          "The experience library update mechanism (Add/Delete/Modify/Keep) is described at a high level; the prompts are in the appendix but there is no analysis of the quality, stability, or size evolution of the learned experiences.",
+          "The evaluation is limited to two domains (math and web); generalizability to other agentic tasks (code, GUI) is unclear.",
+          "The inference cost per query is higher than fine-tuned small models, which may be a drawback for high-volume or latency-sensitive applications."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How sensitive is the method to the prompt templates used for summarization, advantage extraction, and experience update? Have you tested alternative prompts or different LLMs for these components?",
+          "What is the distribution of Add/Delete/Modify/Keep operations across training steps? How does the experience library size evolve, and is there a risk of context overflow?",
+          "Are the reported improvements statistically significant? Please provide confidence intervals or standard deviations across multiple random seeds (for both training data sampling and inference).",
+          "For the cross-domain analysis, the comparison is confounded by model size (DeepSeek-V3.1-Terminus vs. Qwen2.5-32B). Can you isolate the effect of the method from the base model capability? For example, apply Training-Free GRPO to Qwen2.5-32B and compare with ReTool on the same model.",
+          "What is the minimum base model capability threshold for Training-Free GRPO to be beneficial? The QwQ-32B results suggest strong dependency—can you characterize this?",
+          "How does the method compare with other training-free approaches like Reflexion, Self-Refine, or TextGrad on the same benchmarks?",
+          "Have you analyzed the quality of the learned experiences? For example, how many of the 48 learned experiences are actually useful, and how does the method handle conflicting or redundant experiences?",
+          "What is the impact of the group size G? You show G=1 is worse, but is there an optimal G?",
+          "The learning dynamics figure (Figure 4) is mentioned but not fully described in the text. Can you clarify the metrics shown (Mean@5 on training set, tool calls)?"
+        ],
+        "Limitations": [
+          "The method's effectiveness is dependent on the base model's reasoning and tool-use capabilities, as demonstrated by the QwQ-32B results. The paper does not provide a thorough analysis of this dependency.",
+          "The evaluation covers only mathematical reasoning and web searching; generalizability to other domains (e.g., code generation, GUI agents) is not demonstrated.",
+          "Inference cost per query is higher than for fine-tuned small models, which may be a limitation for high-volume applications.",
+          "The paper does not discuss potential negative societal impacts, such as the method's potential to create more effective deceptive agents or its environmental impact (though the cost is low).",
+          "The method requires multiple LLM calls per training step (summary, advantage, update), which could be a bottleneck for very large training sets, though the paper uses only 100 samples."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThe paper proposes Training-Free GRPO, a method that replaces parameter updates in GRPO with iterative refinement of an \"experience library\" in the prompt context. The core idea is to use LLM-based semantic advantage (natural language feedback) computed from group rollouts to iteratively update a shared experience pool, which is then injected into prompts at inference time. This is an interesting and timely contribution with clear practical motivation (avoiding fine-tuning costs).\n\nStrengths:\n- Novel framing: shifting RL from parameter space to context space is conceptually interesting and well-motivated.\n- The method is simple and cost-effective, with strong empirical results on math (AIME) and web (WebWalkerQA) tasks, especially with DeepSeek-V3.1-Terminus.\n- Ablations are thoughtful: directly generated experiences, removing group computation, removing ground truths, and cross-domain transfer analysis.\n- The cost analysis (training cost ~$18 vs. $10K+ for fine-tuning) is compelling and practically relevant.\n- The case studies in the appendix are detailed and illustrate the mechanism well.\n\nWeaknesses:\n- The method's name is somewhat misleading—it's not really \"GRPO\" in the RL sense but rather an iterative prompt-refinement technique. The connection to GRPO is loose (only the group rollout and relative comparison idea).\n- The improvement over strong baselines is modest in some cases (e.g., +1.1% on AIME25 for direct prompting; +2.7% on AIME24 with tool use). The web search improvement is also small (+4.6% pass@1).\n- The method's effectiveness seems highly dependent on the base model's capabilities. On QwQ-32B, it actually hurts performance (25.5% vs. 27.5% pass@1). The paper acknowledges this but doesn't deeply analyze why.\n- The experience library update mechanism (Add/Delete/Modify/Keep operations) is described at a high level. The prompts are in the appendix but there's no analysis of the quality or stability of the learned experiences. How sensitive is the method to the LLM's ability to distill good experiences?\n- The comparison with fine-tuned methods is somewhat apples-to-oranges: they compare a large API model (DeepSeek-V3.1-Terminus) with fine-tuned 32B models. A fairer comparison would be Training-Free GRPO on a 32B model vs. fine-tuned 32B models. They do show results on Qwen3-32B and Qwen2.5-72B, but these are weak models for math (e.g., 14.9% on AIME24 with Qwen2.5-72B), and the improvements are small.\n- The paper doesn't discuss variance/statistical significance of the results. With 32 runs, they report mean@32, but there's no confidence interval.\n- The \"learning dynamics\" figure (Figure 4) is referenced but not included in the text provided. This is a formatting issue.\n- The method requires multiple LLM calls per training step (summary, advantage extraction, experience update), which could be expensive at scale, though they report only ~$18 for 100 samples.\n\nOriginality: High. The idea of using semantic advantage and iterative experience distillation in context is novel and distinct from prior in-context RL work (which focuses on per-query feedback).\n\nQuality: Good. The experiments are reasonably designed with ablations, but there are concerns about the fairness of comparisons and the lack of statistical rigor.\n\nClarity: Good. The paper is well-written and the method is clearly explained, though some details (e.g., exact prompts, experience update procedure) are only in the appendix.\n\nSignificance: Moderate to high. The method could be practically useful, especially for scenarios with limited data and budgets. However, the modest gains and dependency on strong base models may limit its broader impact.\n\nQuestions for authors:\n1. How sensitive is the method to the quality of the summaries and the experience extraction prompts? Have you tried different prompt templates or LLMs for these components?\n2. The experience library update uses Add/Delete/Modify/Keep. How is the \"Keep\" operation decided? What's the distribution of these operations across training steps?\n3. What's the variance of the results across different random seeds (both for training data sampling and inference)? Are the reported improvements statistically significant?\n4. For the cross-domain analysis, you compare Training-Free GRPO on DeepSeek-V3.1-Terminus with fine-tuned models on Qwen2.5-32B. This is a confounded comparison (model size + method). Can you clarify whether the gains are due to the method or the base model?\n5. The method seems to require a strong base model. Can you characterize the minimum capability threshold for the method to be beneficial?\n6. How does the experience library size evolve? Is there a risk of context overflow? What's the maximum number of experiences you can include?\n7. Have you considered comparing with other training-free methods like Reflexion or Self-Refine on the same benchmarks?\n\nLimitations:\n- The paper acknowledges the dependence on base model capability but doesn't provide a thorough analysis.\n- The evaluation is limited to two domains (math and web). Generalizability to other domains (e.g., code, GUI agents) is unclear.\n- The method's cost at inference time is higher than fine-tuned small models (as they note), which may be a drawback for high-volume applications.\n- No discussion of potential negative societal impacts (e.g., the method could be used to create more convincing deceptive agents).\n\nEthical concerns: None apparent beyond the general considerations for AI agents. Not flagging for ethics review.\n\nOverall assessment: The paper presents a novel and well-motivated idea with promising results. However, the modest improvements, confounded comparisons, and lack of statistical rigor prevent it from being a strong accept. I lean towards a borderline accept—the idea is valuable and could inspire future work, but the current evaluation is not fully convincing. I'll rate it as a weak accept (overall 6) with a decision of Accept, noting that the authors should address the questions raised.\n\nRatings:\n- Originality: 4 (very high)\n- Quality: 3 (good)\n- Clarity: 3 (good)\n- Significance: 3 (good)\n- Soundness: 3 (good)\n- Presentation: 3 (good)\n- Contribution: 3 (good)\n- Overall: 6 (weak accept)\n- Confidence: 4 (confident, but not an expert in all related work)\n\nI'll frame the decision as \"Accept\" since the paper has a solid contribution and the issues are addressable in the rebuttal.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper proposes Training-Free GRPO, a method that adapts LLM agents to specialized tasks without any parameter updates. Instead of fine-tuning, the method iteratively distills 'semantic advantages' (natural language experiences) from group rollouts of a frozen LLM, and maintains an external experience library that is injected into the prompt context at inference time. The method is evaluated on mathematical reasoning (AIME24/25) and web searching (WebWalkerQA) benchmarks, showing improvements over strong ReAct baselines with only 100 training samples and ~$18 training cost, outperforming fine-tuned 32B models that require $10K+ training costs.\",\n  \"Strengths\": [\n    \"Novel and well-motivated idea: shifting RL policy optimization from parameter space to context space via an evolving token prior (experience library).\",\n    \"The method is simple, cost-effective, and requires minimal data (100 samples), making it practical for real-world low-resource scenarios.\",\n    \"Comprehensive ablations: directly generated experiences, removing group computation, removing ground truths, and cross-domain transfer analysis.\",\n    \"Detailed cost analysis comparing training and inference costs with fine-tuning approaches, highlighting the economic advantages.\",\n    \"The case studies in the appendix are thorough and clearly illustrate how the learned experiences guide the agent to correct reasoning paths.\",\n    \"The method preserves the base model's generalization capability, avoiding the domain specialization trade-off seen in fine-tuned models.\"\n  ],\n  \"Weaknesses\": [\n    \"The connection to GRPO is somewhat loose; the method is essentially iterative prompt refinement with group-based feedback, not RL in a strict sense. The name may be misleading.\",\n    \"Performance gains over strong baselines are modest in some settings (e.g., +1.1% on AIME25 for direct prompting, +2.7% on AIME24 with tool use), and no statistical significance testing is provided.\",\n    \"The comparison with fine-tuned methods is confounded: Training-Free GRPO uses a much larger and more capable base model (DeepSeek-V3.1-Terminus) compared to the fine-tuned 32B models. A fairer comparison would be on the same base model.\",\n    \"The method's effectiveness is highly dependent on the base model's capability; on QwQ-32B it actually degrades performance (25.5% vs. 27.5% pass@1). The paper acknowledges this but does not provide a thorough analysis of the capability threshold.\",\n    \"The experience library update mechanism (Add/Delete/Modify/Keep) is described at a high level; the prompts are in the appendix but there is no analysis of the quality, stability, or size evolution of the learned experiences.\",\n    \"The evaluation is limited to two domains (math and web); generalizability to other agentic tasks (code, GUI) is unclear.\",\n    \"The inference cost per query is higher than fine-tuned small models, which may be a drawback for high-volume or latency-sensitive applications.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How sensitive is the method to the prompt templates used for summarization, advantage extraction, and experience update? Have you tested alternative prompts or different LLMs for these components?\",\n    \"What is the distribution of Add/Delete/Modify/Keep operations across training steps? How does the experience library size evolve, and is there a risk of context overflow?\",\n    \"Are the reported improvements statistically significant? Please provide confidence intervals or standard deviations across multiple random seeds (for both training data sampling and inference).\",\n    \"For the cross-domain analysis, the comparison is confounded by model size (DeepSeek-V3.1-Terminus vs. Qwen2.5-32B). Can you isolate the effect of the method from the base model capability? For example, apply Training-Free GRPO to Qwen2.5-32B and compare with ReTool on the same model.\",\n    \"What is the minimum base model capability threshold for Training-Free GRPO to be beneficial? The QwQ-32B results suggest strong dependency—can you characterize this?\",\n    \"How does the method compare with other training-free approaches like Reflexion, Self-Refine, or TextGrad on the same benchmarks?\",\n    \"Have you analyzed the quality of the learned experiences? For example, how many of the 48 learned experiences are actually useful, and how does the method handle conflicting or redundant experiences?\",\n    \"What is the impact of the group size G? You show G=1 is worse, but is there an optimal G?\",\n    \"The learning dynamics figure (Figure 4) is mentioned but not fully described in the text. Can you clarify the metrics shown (Mean@5 on training set, tool calls)?\"\n  ],\n  \"Limitations\": [\n    \"The method's effectiveness is dependent on the base model's reasoning and tool-use capabilities, as demonstrated by the QwQ-32B results. The paper does not provide a thorough analysis of this dependency.\",\n    \"The evaluation covers only mathematical reasoning and web searching; generalizability to other domains (e.g., code generation, GUI agents) is not demonstrated.\",\n    \"Inference cost per query is higher than for fine-tuned small models, which may be a limitation for high-volume applications.\",\n    \"The paper does not discuss potential negative societal impacts, such as the method's potential to create more effective deceptive agents or its environmental impact (though the cost is low).\",\n    \"The method requires multiple LLM calls per training step (summary, advantage, update), which could be a bottleneck for very large training sets, though the paper uses only 100 samples.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 15691,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 13899,
+        "completion_tokens": 2668,
+        "reasoning_tokens": 0,
+        "total_tokens": 18359
+      },
+      "attempts": 1,
+      "response_id": "d3f28d94-a081-473e-92b6-b531a6d5e768"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper proposes Training-Free GRPO, a method that aims to replicate the benefits of Group Relative Policy Optimization (GRPO) for LLM agents without any parameter updates. Instead of gradient-based optimization, the method maintains an external experiential knowledge library (initialized empty) that is iteratively refined across multiple epochs. For each query, multiple rollouts are generated (group size G), summarized, and compared to distill a 'semantic advantage' — natural language insights about why certain trajectories succeeded or failed. These semantic advantages are used to update the experience library via add/delete/modify/keep operations. The experience library serves as a token prior injected into prompts during inference, steering the frozen LLM's output distribution. The method is evaluated on mathematical reasoning (AIME24/25 with and without code interpreter tool) and web searching (WebWalkerQA). Results show that Training-Free GRPO applied to DeepSeek-V3.1-Terminus improves performance with only 100 training samples and ~$18 cost, outperforming fine-tuned 32B models trained with RL at $10,000+ cost. The paper also demonstrates cross-domain transferability (no catastrophic forgetting) and includes ablation studies on ground truth removal, group size, and direct experience generation.",
+        "Strengths": [
+          "Novel and interesting paradigm: shifting RL optimization from parameter space to context space via an evolving token prior is a fresh and potentially impactful idea.",
+          "Extremely cost-effective: achieving competitive results with ~$18 learning cost versus $10,000+ for parameter-tuning baselines is compelling for practical deployment.",
+          "Preserves generalization: since the base model is frozen, cross-domain performance is maintained, avoiding the specialization trade-off seen in fine-tuned models.",
+          "Well-structured ablation studies: removing ground truths, reducing group size, and comparing against directly generated experiences help isolate the contributions of each component.",
+          "The paper is honest about limitations, particularly noting the dependence on the base model's capability (QwQ-32B actually degrades in web searching).",
+          "Practical applicability: the method works with API-based models and pay-as-you-go pricing, making it accessible to practitioners without GPU clusters."
+        ],
+        "Weaknesses": [
+          "Unfair baseline comparison: the headline result compares DeepSeek-V3.1-Terminus (a ~671B parameter model) against fine-tuned 32B models. This conflates model scale with method effectiveness. A fairer comparison would apply Training-Free GRPO to the same 32B models that the RL baselines use, or compare against a strong frozen 671B baseline without the method.",
+          "The term 'Training-Free GRPO' is somewhat misleading — the method is essentially iterative prompt engineering via LLM self-reflection. There is no formal RL objective, no policy optimization in the mathematical sense, and the 'advantage' is a subjective natural language summary. The connection to GRPO is conceptual rather than algorithmic.",
+          "Limited evaluation breadth: only two domains (math, web search) and one benchmark per domain for the main results. The web searching ablation uses only 51 instances. Statistical significance and variance across runs are not reported.",
+          "The experience library update mechanism (add/delete/modify/keep) relies entirely on the LLM's judgment and could be unstable or sensitive to the specific prompts used. No analysis of this sensitivity is provided.",
+          "Results on smaller models are marginal: Qwen2.5-72B shows only +1.4/+1.8% improvement, and QwQ-32B degrades. This suggests the method's effectiveness is highly dependent on the base model already possessing strong reasoning abilities, limiting its general applicability.",
+          "No comparison against simpler in-context learning baselines with similar compute budgets (e.g., few-shot demonstrations, self-consistency, or static prompt optimization). The 'directly generated experiences' baseline is a single point of comparison and may not represent the full space of lightweight alternatives.",
+          "The paper does not discuss potential failure modes, such as the experience library becoming too large, conflicting experiences, or the method's sensitivity to the number of epochs and group size beyond the single ablation.",
+          "Figure references are broken (e.g., 'Figure [2]', 'Figure [3]') and some tables are misnumbered in the text (Table 3 referenced as Table 1), suggesting incomplete proofreading."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "1. How does Training-Free GRPO compare against fine-tuned baselines when applied to the same base model? For example, what would ReTool or AFM achieve if applied to DeepSeek-V3.1-Terminus (even with approximations), and what would Training-Free GRPO achieve on Qwen2.5-32B? This would isolate the effect of the method from the effect of model scale.",
+          "2. The experience library is described as maintained via add/delete/modify/keep operations. How is the size of the library controlled? What happens if the library grows too large — does performance degrade due to context length limits or conflicting experiences? Is there a maximum size or pruning strategy?",
+          "3. What is the variance of the results across different random seeds or different random subsets of the 100 training samples? The paper reports mean values but no standard errors or confidence intervals.",
+          "4. How sensitive is the method to the specific prompts used for summarization, semantic advantage extraction, and experience optimization? Have the authors tested alternative prompt formulations?",
+          "5. The paper states that semantic advantages are only generated for groups with 'clear winners and losers.' What fraction of groups in practice have this property? How does the method behave when most groups are homogeneous in reward?",
+          "6. For the web searching task, the ablation uses only 51 instances. What is the performance on the full WebWalkerQA test set for the ablated variants? Are the reported improvements statistically significant given the small sample?",
+          "7. How does the method's performance scale with the number of training samples? The paper uses 100 samples — what happens with 10, 50, 200, or 500 samples? Is there a saturation point?",
+          "8. The cross-domain analysis compares against ReTool and MiroThinker, which are trained on different domains. Is it possible that the poor cross-domain performance of these models is due to their smaller base models (32B) rather than the training method itself? How would a 32B model trained with Training-Free GRPO in math perform on web tasks?"
+        ],
+        "Limitations": [
+          "The method's effectiveness is strongly dependent on the base LLM's inherent capabilities. For models below a certain capability threshold (e.g., QwQ-32B on web tasks), the method can actually degrade performance, limiting its applicability to weaker or smaller models.",
+          "The evaluation is limited to two domains (mathematical reasoning and web searching) and specific benchmarks. Broader validation across more diverse agentic tasks (e.g., coding, tool use, multi-step planning) is needed.",
+          "The comparison against parameter-tuning methods is confounded by model scale differences. The paper does not isolate the effect of the method from the effect of using a much larger base model.",
+          "The experience library maintenance relies on LLM judgment, which may be unstable, non-reproducible, or sensitive to prompt variations. No analysis of this stability is provided.",
+          "No statistical significance testing or confidence intervals are reported, making it difficult to assess whether the observed improvements are robust.",
+          "The paper does not discuss potential negative societal impacts, such as the method being used to optimize agents for harmful tasks with minimal cost, or the environmental impact of the inference-heavy learning process (though this is much lower than fine-tuning).",
+          "The method's cost comparison focuses on API pricing for DeepSeek; results may vary significantly with other API providers or self-hosted inference."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes Training-Free GRPO, a method that claims to replicate the benefits of GRPO-style reinforcement learning without any parameter updates. Instead of updating model weights, it maintains an external \"experience library\" that is iteratively refined using semantic advantages derived from comparing multiple rollouts. The method is evaluated on mathematical reasoning (AIME24/25) and web searching (WebWalkerQA).\n\nKey strengths:\n- The core idea is novel and interesting: shifting RL optimization from parameter space to context space via an evolving token prior\n- The cost comparison is compelling — $18 vs $10,000+ for training\n- Cross-domain generalization is demonstrated (no catastrophic forgetting)\n- The method is practical and could be immediately applicable to API-based models\n- Ablation studies are thoughtful (removing ground truths, group size, direct experiences)\n\nKey weaknesses:\n- The comparison to fine-tuned baselines is somewhat unfair — they compare a 671B parameter model (DeepSeek-V3.1-Terminus) against 32B models. The claim \"outperforms fine-tuned small LLMs\" is true but the comparison is apples-to-oranges\n- The method's success heavily depends on the base model's capabilities. On Qwen2.5-72B, improvements are marginal (+1.4, +1.8); on QwQ-32B, it actually hurts performance in web searching\n- The \"learning\" process is essentially prompt engineering via LLM self-reflection — calling it \"Training-Free GRPO\" is somewhat of a misnomer since there's no actual reinforcement learning happening in the traditional sense\n- Limited baseline comparisons — they don't compare against simpler in-context learning approaches with the same compute budget\n- The evaluation on web searching is thin (only one benchmark, small test set for ablations)\n- The mechanism of how the experience library is maintained (add/delete/modify/keep) relies on the LLM's judgment, which could be unstable across runs\n- No variance analysis or statistical significance testing reported\n- The paper doesn't deeply discuss potential failure modes or when the method might not work\n\nOriginality: High — the concept of semantic advantage distillation into a context prior is novel\nQuality: Good — experiments are well-designed but have some fairness issues in comparisons\nClarity: Good — the paper is well-written but could be clearer on implementation details\nSignificance: Moderate-high — the cost-efficiency angle is valuable, but the method's dependence on strong base models limits its broader applicability\n\nI'll rate this as a borderline accept. The idea is interesting and the results are promising, but the evaluation has some fairness concerns and the method's practical value for weaker models is questionable. The core contribution — demonstrating that context-space optimization can rival parameter-space optimization for strong frozen models — is valuable for the community.\n\nDecision: Accept (weak accept territory, but the novelty and practical implications push it over the line)REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper proposes Training-Free GRPO, a method that aims to replicate the benefits of Group Relative Policy Optimization (GRPO) for LLM agents without any parameter updates. Instead of gradient-based optimization, the method maintains an external experiential knowledge library (initialized empty) that is iteratively refined across multiple epochs. For each query, multiple rollouts are generated (group size G), summarized, and compared to distill a 'semantic advantage' — natural language insights about why certain trajectories succeeded or failed. These semantic advantages are used to update the experience library via add/delete/modify/keep operations. The experience library serves as a token prior injected into prompts during inference, steering the frozen LLM's output distribution. The method is evaluated on mathematical reasoning (AIME24/25 with and without code interpreter tool) and web searching (WebWalkerQA). Results show that Training-Free GRPO applied to DeepSeek-V3.1-Terminus improves performance with only 100 training samples and ~$18 cost, outperforming fine-tuned 32B models trained with RL at $10,000+ cost. The paper also demonstrates cross-domain transferability (no catastrophic forgetting) and includes ablation studies on ground truth removal, group size, and direct experience generation.\",\n  \"Strengths\": [\n    \"Novel and interesting paradigm: shifting RL optimization from parameter space to context space via an evolving token prior is a fresh and potentially impactful idea.\",\n    \"Extremely cost-effective: achieving competitive results with ~$18 learning cost versus $10,000+ for parameter-tuning baselines is compelling for practical deployment.\",\n    \"Preserves generalization: since the base model is frozen, cross-domain performance is maintained, avoiding the specialization trade-off seen in fine-tuned models.\",\n    \"Well-structured ablation studies: removing ground truths, reducing group size, and comparing against directly generated experiences help isolate the contributions of each component.\",\n    \"The paper is honest about limitations, particularly noting the dependence on the base model's capability (QwQ-32B actually degrades in web searching).\",\n    \"Practical applicability: the method works with API-based models and pay-as-you-go pricing, making it accessible to practitioners without GPU clusters.\"\n  ],\n  \"Weaknesses\": [\n    \"Unfair baseline comparison: the headline result compares DeepSeek-V3.1-Terminus (a ~671B parameter model) against fine-tuned 32B models. This conflates model scale with method effectiveness. A fairer comparison would apply Training-Free GRPO to the same 32B models that the RL baselines use, or compare against a strong frozen 671B baseline without the method.\",\n    \"The term 'Training-Free GRPO' is somewhat misleading — the method is essentially iterative prompt engineering via LLM self-reflection. There is no formal RL objective, no policy optimization in the mathematical sense, and the 'advantage' is a subjective natural language summary. The connection to GRPO is conceptual rather than algorithmic.\",\n    \"Limited evaluation breadth: only two domains (math, web search) and one benchmark per domain for the main results. The web searching ablation uses only 51 instances. Statistical significance and variance across runs are not reported.\",\n    \"The experience library update mechanism (add/delete/modify/keep) relies entirely on the LLM's judgment and could be unstable or sensitive to the specific prompts used. No analysis of this sensitivity is provided.\",\n    \"Results on smaller models are marginal: Qwen2.5-72B shows only +1.4/+1.8% improvement, and QwQ-32B degrades. This suggests the method's effectiveness is highly dependent on the base model already possessing strong reasoning abilities, limiting its general applicability.\",\n    \"No comparison against simpler in-context learning baselines with similar compute budgets (e.g., few-shot demonstrations, self-consistency, or static prompt optimization). The 'directly generated experiences' baseline is a single point of comparison and may not represent the full space of lightweight alternatives.\",\n    \"The paper does not discuss potential failure modes, such as the experience library becoming too large, conflicting experiences, or the method's sensitivity to the number of epochs and group size beyond the single ablation.\",\n    \"Figure references are broken (e.g., 'Figure [2]', 'Figure [3]') and some tables are misnumbered in the text (Table 3 referenced as Table 1), suggesting incomplete proofreading.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"1. How does Training-Free GRPO compare against fine-tuned baselines when applied to the same base model? For example, what would ReTool or AFM achieve if applied to DeepSeek-V3.1-Terminus (even with approximations), and what would Training-Free GRPO achieve on Qwen2.5-32B? This would isolate the effect of the method from the effect of model scale.\",\n    \"2. The experience library is described as maintained via add/delete/modify/keep operations. How is the size of the library controlled? What happens if the library grows too large — does performance degrade due to context length limits or conflicting experiences? Is there a maximum size or pruning strategy?\",\n    \"3. What is the variance of the results across different random seeds or different random subsets of the 100 training samples? The paper reports mean values but no standard errors or confidence intervals.\",\n    \"4. How sensitive is the method to the specific prompts used for summarization, semantic advantage extraction, and experience optimization? Have the authors tested alternative prompt formulations?\",\n    \"5. The paper states that semantic advantages are only generated for groups with 'clear winners and losers.' What fraction of groups in practice have this property? How does the method behave when most groups are homogeneous in reward?\",\n    \"6. For the web searching task, the ablation uses only 51 instances. What is the performance on the full WebWalkerQA test set for the ablated variants? Are the reported improvements statistically significant given the small sample?\",\n    \"7. How does the method's performance scale with the number of training samples? The paper uses 100 samples — what happens with 10, 50, 200, or 500 samples? Is there a saturation point?\",\n    \"8. The cross-domain analysis compares against ReTool and MiroThinker, which are trained on different domains. Is it possible that the poor cross-domain performance of these models is due to their smaller base models (32B) rather than the training method itself? How would a 32B model trained with Training-Free GRPO in math perform on web tasks?\"\n  ],\n  \"Limitations\": [\n    \"The method's effectiveness is strongly dependent on the base LLM's inherent capabilities. For models below a certain capability threshold (e.g., QwQ-32B on web tasks), the method can actually degrade performance, limiting its applicability to weaker or smaller models.\",\n    \"The evaluation is limited to two domains (mathematical reasoning and web searching) and specific benchmarks. Broader validation across more diverse agentic tasks (e.g., coding, tool use, multi-step planning) is needed.\",\n    \"The comparison against parameter-tuning methods is confounded by model scale differences. The paper does not isolate the effect of the method from the effect of using a much larger base model.\",\n    \"The experience library maintenance relies on LLM judgment, which may be unstable, non-reproducible, or sensitive to prompt variations. No analysis of this stability is provided.\",\n    \"No statistical significance testing or confidence intervals are reported, making it difficult to assess whether the observed improvements are robust.\",\n    \"The paper does not discuss potential negative societal impacts, such as the method being used to optimize agents for harmful tasks with minimal cost, or the environmental impact of the inference-heavy learning process (though this is much lower than fine-tuning).\",\n    \"The method's cost comparison focuses on API pricing for DeepSeek; results may vary significantly with other API providers or self-hosted inference.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 15691,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 13899,
+        "completion_tokens": 2337,
+        "reasoning_tokens": 0,
+        "total_tokens": 18028
+      },
+      "attempts": 1,
+      "response_id": "37c46dd7-c8c5-460e-a722-6701d996171f"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper proposes Training-Free GRPO, a method that aims to replicate the effects of Group Relative Policy Optimization (GRPO) for LLM agents without any parameter updates. Instead of gradient-based optimization, the method maintains an external 'experience library' that is iteratively refined using LLM-generated semantic advantages derived from group rollouts. For each query, multiple outputs are generated, summarized, and compared to extract natural-language experiences that are added, deleted, or modified in the experience library. This evolving knowledge serves as a token prior injected into prompts during inference. The method is evaluated on mathematical reasoning (AIME24/25) and web searching (WebWalkerQA) benchmarks, showing improvements over ReAct baselines with DeepSeek-V3.1-Terminus using only 100 training samples and minimal cost (~$18). The paper also includes ablations on group computation, ground-truth dependence, and cross-domain transfer, as well as a cost analysis comparing against parameter-tuning approaches.",
+        "Strengths": [
+          "Novel and interesting core idea: shifting RL policy optimization from parameter space to context space via an evolving token prior, avoiding expensive fine-tuning.",
+          "Cost-effectiveness is compelling: the method requires only ~$18 in API costs versus ~$10,000+ for fine-tuning baselines.",
+          "Multi-epoch learning with group-based semantic advantage provides a principled framework for iterative experience refinement.",
+          "Cross-domain transfer analysis (Table 6) effectively demonstrates the generalization advantage of keeping model parameters frozen.",
+          "Ablation studies are thoughtful and include useful variants (no ground truths, no group computation, directly generated experiences).",
+          "Case studies in the appendix provide concrete illustrations of how learned experiences improve reasoning trajectories."
+        ],
+        "Weaknesses": [
+          "The comparison against fine-tuned baselines (ReTool, AFM, etc.) is confounded: those methods train Qwen2.5-32B while Training-Free GRPO uses DeepSeek-V3.1-Terminus, a much larger and more capable model. The performance gap could be largely attributable to base model capability rather than the method itself.",
+          "Evaluation is very limited: only 100 training samples, 3 epochs, and no exploration of scaling behavior with more data or training steps.",
+          "No statistical significance testing or confidence intervals are reported. With 32 runs and small training sets, the observed gains (e.g., +1.1% on AIME25 in the direct setting) may not be robust.",
+          "The method's effectiveness appears highly model-dependent: it fails on QwQ-32B for web searching (25.5% vs 27.5% baseline), suggesting limited generality across model families.",
+          "The 'semantic advantage' mechanism is underspecified. The paper does not clearly define what constitutes a good experience or provide validation that the extracted experiences are consistently high-quality.",
+          "The learning process still incurs substantial inference costs (multiple rollouts, summaries, advantage extraction per query across epochs), which are not fully accounted for in the cost comparison.",
+          "The web searching evaluation is thin: only one main result (Table 4) and ablations on a small 51-instance subset.",
+          "The claim that this method 'outperforms fine-tuned small LLMs' in the abstract is misleading given the model size discrepancy."
+        ],
+        "Originality": 4,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 2,
+        "Questions": [
+          "1. How does Training-Free GRPO perform when applied to the same base model (e.g., Qwen2.5-32B-Instruct) that the fine-tuned baselines (ReTool, AFM, SimpleTIR) use? This would provide a fairer comparison isolating the method's contribution from base model capability.",
+          "2. What is the variance across different random seeds for the 100-sample training set? Are the reported improvements statistically significant (e.g., with bootstrap confidence intervals or paired tests)?",
+          "3. How does performance scale with the number of training samples (e.g., 50, 200, 500) and epochs (e.g., 1, 5, 10)? Is there a plateau or overfitting risk?",
+          "4. Why does Training-Free GRPO fail on QwQ-32B for web searching? Is this due to the model's weaker tool-use capabilities, the reward signal quality, or the experience extraction quality?",
+          "5. The learning process incurs inference costs for rollouts, summaries, and advantage extraction. What is the total token cost per training step, and how does this compare to a single fine-tuning epoch on the same data?",
+          "6. How sensitive is the method to the specific prompt templates used for summary extraction and advantage computation? Have different prompt variants been tested?",
+          "7. In the ablation without ground truths, how does the LLM determine winners and losers within a group? Could this lead to reward hacking or circular self-reinforcement?",
+          "8. The experience library can grow over time. How is its size controlled? Is there a risk of context length overflow or conflicting experiences?",
+          "9. For the cross-domain comparison in Table 6, why is the ReAct baseline for Qwen2.5-32B on WebWalker (31.9%) much lower than for DeepSeek-V3.1-Terminus (63.2%)? This again highlights the base model confound."
+        ],
+        "Limitations": [
+          "The evaluation is limited to two domains (math reasoning and web searching) and a small number of base models. The method's generality across other domains (e.g., coding, tool use, multi-agent interaction) is unverified.",
+          "The comparison with fine-tuning methods is not apples-to-apples due to different base model sizes and capabilities.",
+          "The method's effectiveness depends on the LLM's self-evaluation and experience extraction capabilities, which may not transfer to weaker or differently-aligned models (as shown by the QwQ-32B failure).",
+          "The paper does not address potential negative societal impacts, such as the risk of amplifying biases present in the training data or the potential for the experience library to encode harmful behaviors.",
+          "The cost analysis focuses on API pricing and does not account for the engineering overhead of implementing the multi-step learning pipeline or the computational cost of the summarization and advantage extraction calls."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces Training-Free GRPO, a method that aims to replicate the effects of GRPO-based reinforcement learning for LLM agents without any parameter updates. Instead of gradient-based optimization, it maintains an external \"experience library\" that is iteratively refined using LLM-generated semantic advantages from group rollouts. The method is evaluated on mathematical reasoning (AIME24/25) and web searching (WebWalkerQA) benchmarks.\n\nKey strengths:\n- The core idea is novel and interesting: shifting RL from parameter space to context space via an evolving token prior\n- The method is extremely cost-effective compared to traditional fine-tuning approaches (claimed ~$18 vs ~$10,000)\n- Results show meaningful improvements over strong baselines (e.g., +2.7% and +5.4% on AIME24/25 with DeepSeek-V3.1-Terminus)\n- The paper includes useful ablations (removing group computation, removing ground truths, directly generated experiences)\n- Cross-domain transfer analysis is a valuable contribution, showing the generalization advantage of the frozen-model approach\n\nKey weaknesses:\n- The comparison against fine-tuned baselines (ReTool, AFM, etc.) is not apples-to-apples: those methods use much smaller models (Qwen2.5-32B) while this method uses DeepSeek-V3.1-Terminus (a much larger and more capable model). The paper acknowledges this but the framing in the abstract (\"outperforms fine-tuned small LLMs\") somewhat obscures this fundamental confound.\n- The evaluation uses only 100 training samples and 3 epochs, which is very limited. The paper doesn't explore how performance scales with more data or epochs.\n- The method relies heavily on the LLM's ability to self-evaluate and extract good experiences. The paper shows this works for DeepSeek-V3.1-Terminus but fails for QwQ-32B in web searching (25.5% vs 27.5% baseline), suggesting significant model-dependent variability.\n- The \"semantic advantage\" mechanism is somewhat underspecified. The prompts are in the appendix, but the criteria for what constitutes good experiences are not clearly defined or validated.\n- Statistical significance is not reported. With Mean@32 and 100 training samples, variance could be substantial.\n- The web searching evaluation on WebWalkerQA is quite limited (one model, one training set, small test subset for ablations).\n- The comparison table (Table 3) mixes different model sizes and training costs, making it hard to isolate the effect of the method itself.\n- The paper claims this is \"training-free\" but the learning process still requires multiple API calls per query (rollouts, summaries, advantage computation, experience updates), which has non-trivial inference costs during the learning phase.\n\nThe paper is well-written and the core idea is promising. However, the evaluation has significant confounds and the method's generality is questionable given the QwQ-32B failure. The comparison to parameter-tuning methods is not fair due to model size differences. I would lean toward rejection in its current form but acknowledge the novelty of the approach. The authors should be encouraged to provide fairer comparisons (e.g., applying their method to the same 32B models used by baselines, or comparing against in-context learning baselines more thoroughly) and to address statistical significance.\n\nFor the review:\n- Originality: High (novel combination of GRPO-style group evaluation with context-space optimization)\n- Quality: Fair (interesting results but significant evaluation confounds)\n- Clarity: Good (well-organized, clear writing)\n- Significance: Medium (potentially useful direction but limited evidence of broad applicability)\n- Soundness: 2 (fair) - central claims not adequately supported due to confounded comparisons\n- Presentation: 3 (good) - clear but could be improved\n- Contribution: 2 (fair) - novel idea but limited validation\n- Overall: 4 (borderline reject) - technically interesting but evaluation issues\n- Confidence: 4 - I'm fairly confident in this assessment\n\nI'll provide a detailed review with constructive feedback for the authors.REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper proposes Training-Free GRPO, a method that aims to replicate the effects of Group Relative Policy Optimization (GRPO) for LLM agents without any parameter updates. Instead of gradient-based optimization, the method maintains an external 'experience library' that is iteratively refined using LLM-generated semantic advantages derived from group rollouts. For each query, multiple outputs are generated, summarized, and compared to extract natural-language experiences that are added, deleted, or modified in the experience library. This evolving knowledge serves as a token prior injected into prompts during inference. The method is evaluated on mathematical reasoning (AIME24/25) and web searching (WebWalkerQA) benchmarks, showing improvements over ReAct baselines with DeepSeek-V3.1-Terminus using only 100 training samples and minimal cost (~$18). The paper also includes ablations on group computation, ground-truth dependence, and cross-domain transfer, as well as a cost analysis comparing against parameter-tuning approaches.\",\n  \"Strengths\": [\n    \"Novel and interesting core idea: shifting RL policy optimization from parameter space to context space via an evolving token prior, avoiding expensive fine-tuning.\",\n    \"Cost-effectiveness is compelling: the method requires only ~$18 in API costs versus ~$10,000+ for fine-tuning baselines.\",\n    \"Multi-epoch learning with group-based semantic advantage provides a principled framework for iterative experience refinement.\",\n    \"Cross-domain transfer analysis (Table 6) effectively demonstrates the generalization advantage of keeping model parameters frozen.\",\n    \"Ablation studies are thoughtful and include useful variants (no ground truths, no group computation, directly generated experiences).\",\n    \"Case studies in the appendix provide concrete illustrations of how learned experiences improve reasoning trajectories.\"\n  ],\n  \"Weaknesses\": [\n    \"The comparison against fine-tuned baselines (ReTool, AFM, etc.) is confounded: those methods train Qwen2.5-32B while Training-Free GRPO uses DeepSeek-V3.1-Terminus, a much larger and more capable model. The performance gap could be largely attributable to base model capability rather than the method itself.\",\n    \"Evaluation is very limited: only 100 training samples, 3 epochs, and no exploration of scaling behavior with more data or training steps.\",\n    \"No statistical significance testing or confidence intervals are reported. With 32 runs and small training sets, the observed gains (e.g., +1.1% on AIME25 in the direct setting) may not be robust.\",\n    \"The method's effectiveness appears highly model-dependent: it fails on QwQ-32B for web searching (25.5% vs 27.5% baseline), suggesting limited generality across model families.\",\n    \"The 'semantic advantage' mechanism is underspecified. The paper does not clearly define what constitutes a good experience or provide validation that the extracted experiences are consistently high-quality.\",\n    \"The learning process still incurs substantial inference costs (multiple rollouts, summaries, advantage extraction per query across epochs), which are not fully accounted for in the cost comparison.\",\n    \"The web searching evaluation is thin: only one main result (Table 4) and ablations on a small 51-instance subset.\",\n    \"The claim that this method 'outperforms fine-tuned small LLMs' in the abstract is misleading given the model size discrepancy.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"1. How does Training-Free GRPO perform when applied to the same base model (e.g., Qwen2.5-32B-Instruct) that the fine-tuned baselines (ReTool, AFM, SimpleTIR) use? This would provide a fairer comparison isolating the method's contribution from base model capability.\",\n    \"2. What is the variance across different random seeds for the 100-sample training set? Are the reported improvements statistically significant (e.g., with bootstrap confidence intervals or paired tests)?\",\n    \"3. How does performance scale with the number of training samples (e.g., 50, 200, 500) and epochs (e.g., 1, 5, 10)? Is there a plateau or overfitting risk?\",\n    \"4. Why does Training-Free GRPO fail on QwQ-32B for web searching? Is this due to the model's weaker tool-use capabilities, the reward signal quality, or the experience extraction quality?\",\n    \"5. The learning process incurs inference costs for rollouts, summaries, and advantage extraction. What is the total token cost per training step, and how does this compare to a single fine-tuning epoch on the same data?\",\n    \"6. How sensitive is the method to the specific prompt templates used for summary extraction and advantage computation? Have different prompt variants been tested?\",\n    \"7. In the ablation without ground truths, how does the LLM determine winners and losers within a group? Could this lead to reward hacking or circular self-reinforcement?\",\n    \"8. The experience library can grow over time. How is its size controlled? Is there a risk of context length overflow or conflicting experiences?\",\n    \"9. For the cross-domain comparison in Table 6, why is the ReAct baseline for Qwen2.5-32B on WebWalker (31.9%) much lower than for DeepSeek-V3.1-Terminus (63.2%)? This again highlights the base model confound.\"\n  ],\n  \"Limitations\": [\n    \"The evaluation is limited to two domains (math reasoning and web searching) and a small number of base models. The method's generality across other domains (e.g., coding, tool use, multi-agent interaction) is unverified.\",\n    \"The comparison with fine-tuning methods is not apples-to-apples due to different base model sizes and capabilities.\",\n    \"The method's effectiveness depends on the LLM's self-evaluation and experience extraction capabilities, which may not transfer to weaker or differently-aligned models (as shown by the QwQ-32B failure).\",\n    \"The paper does not address potential negative societal impacts, such as the risk of amplifying biases present in the training data or the potential for the experience library to encode harmful behaviors.\",\n    \"The cost analysis focuses on API pricing and does not account for the engineering overhead of implementing the multi-step learning pipeline or the computational cost of the summarization and advantage extraction calls.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 15691,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 13899,
+        "completion_tokens": 2262,
+        "reasoning_tokens": 0,
+        "total_tokens": 17953
+      },
+      "attempts": 1,
+      "response_id": "48e1823e-0035-4e0f-8a39-eba1ae36177b"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "This paper proposes Training-Free GRPO, a novel method that aims to replicate the benefits of Group Relative Policy Optimization (GRPO) for LLM agents without any parameter updates. Instead of gradient-based optimization in parameter space, the method maintains an external 'experiential knowledge' library that is iteratively refined using 'semantic advantages' derived from comparing multiple rollouts per query. The approach uses LLM introspection to distill natural language experiences from groups of rollouts, which are then used to update the experience library via Add/Delete/Modify/Keep operations. The updated experience library serves as a token prior in subsequent queries, steering the frozen policy model's output distribution. The method is evaluated on mathematical reasoning (AIME24/25) and web searching (WebWalkerQA) benchmarks, demonstrating significant improvements over strong baselines (e.g., ReAct with DeepSeek-V3.1-Terminus) at very low cost (approximately $18 vs $10,000+ for fine-tuning approaches). The paper also includes ablation studies showing the importance of group computation and the limitations of directly generated experiences, plus a cross-domain transfer analysis demonstrating the advantage of preserving model generalization.",
+        "Strengths": [
+          "Novel and interesting core idea: shifting RL policy optimization from parameter space to context space via an evolving experience library is a creative and potentially impactful contribution.",
+          "Impressive empirical results with very low cost: the method achieves significant gains over strong baselines with only 100 training samples and ~$18 cost, compared to $10,000+ for fine-tuning approaches.",
+          "Addresses practical challenges of fine-tuning: computational cost, data scarcity, poor generalization, and diminishing returns are all relevant real-world concerns.",
+          "Good ablation studies: the paper systematically shows the importance of group computation and demonstrates that directly generated experiences are insufficient, validating the need for the multi-epoch learning process.",
+          "Cross-domain transfer analysis: Table 6 nicely illustrates the advantage of preserving model generalization compared to parameter-tuned specialists that suffer from domain specialization trade-offs.",
+          "Well-written and clearly organized: the method is explained in a way that makes the key ideas accessible."
+        ],
+        "Weaknesses": [
+          "Limited evaluation scope: only two domains (math reasoning and web searching) are evaluated, and the number of baselines for direct comparison is relatively small.",
+          "Method dependence on base model capability is not deeply investigated: the negative result on QwQ-32B (performance degradation) is only briefly mentioned, and the paper does not analyze when and why the method fails or what minimum base model capability is required.",
+          "Unfair comparison setup: the main comparison with fine-tuned methods uses DeepSeek-V3.1-Terminus (a much larger and stronger model) versus Qwen2.5-32B for the RL-trained baselines, making the comparison less apples-to-apples.",
+          "Lack of sensitivity analysis: the paper does not thoroughly explore the sensitivity to hyperparameters such as group size, number of epochs, temperature, or the number of experiences in the library.",
+          "The semantic advantage mechanism relies heavily on LLM introspection, which could be unstable or biased; the paper does not analyze the reliability or variance of this process.",
+          "The experience library update mechanism (Add/Delete/Modify/Keep) is somewhat ad-hoc and could benefit from more systematic analysis or comparison with simpler alternatives (e.g., just accumulating experiences).",
+          "The paper does not report variance across multiple runs of the learning process, which would be important given the stochastic nature of the method."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "1. The QwQ-32B results show performance degradation with Training-Free GRPO. Could you provide more analysis on what causes this? Is there a minimum base model capability threshold for the method to be effective?",
+          "2. How sensitive is the method to the number of experiences in the library? Is there a risk of context length overflow or performance degradation with too many accumulated experiences?",
+          "3. The semantic advantage computation relies on LLM introspection. How consistent/reliable is this process across different runs? Have you measured the variance of the learned experiences?",
+          "4. In the ablation without ground truths (w/o ground truths), what reward signal is used to identify winners and losers within a group? Is it purely based on the LLM's self-evaluation?",
+          "5. Have you considered comparing with simpler baselines such as just using the best rollout from the training set as in-context examples, or using a fixed set of hand-crafted experiences?",
+          "6. The comparison with fine-tuned methods uses different base models (DeepSeek-V3.1-Terminus vs Qwen2.5-32B). Have you tried applying Training-Free GRPO to Qwen2.5-32B to enable a more direct comparison?",
+          "7. How does the method perform with different group sizes (e.g., G=3, G=10)? Is there a sweet spot, and how does the cost scale with group size?",
+          "8. The paper mentions that the method is robust to reward signal noise. Could you elaborate on what types of noise were considered and how robustness was measured?"
+        ],
+        "Limitations": [
+          "The method's effectiveness appears dependent on the base model's reasoning and tool-use capabilities, and may degrade performance on less capable models (as shown with QwQ-32B).",
+          "The evaluation is limited to two domains (math reasoning and web searching); broader applicability to other agentic tasks (e.g., code generation, computer use) is not demonstrated.",
+          "The method relies on LLM-based introspection for semantic advantage computation and experience library updates, which introduces potential instability and is not rigorously analyzed.",
+          "The paper does not provide a thorough analysis of the failure modes of the method or the conditions under which it is most/least effective.",
+          "The comparison with fine-tuned models uses different base models, making the cost-performance comparison somewhat less direct.",
+          "The paper does not discuss potential negative societal impacts of the work, though the method itself appears benign and primarily aimed at efficiency improvements."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces Training-Free GRPO, a method that aims to replicate the benefits of GRPO-style reinforcement learning for LLM agents without any parameter updates. Instead of gradient-based optimization, it maintains an external \"experience library\" that is iteratively refined using semantic advantages derived from comparing multiple rollouts per query. The method is evaluated on mathematical reasoning (AIME24/25) and web searching (WebWalkerQA) benchmarks.\n\nKey strengths:\n1. The core idea is novel and interesting - shifting RL optimization from parameter space to context space via an evolving experience library is a creative contribution.\n2. The paper demonstrates impressive empirical results with very low cost (~$18 vs $10,000+ for fine-tuning approaches), showing significant gains over strong baselines.\n3. The method addresses practical challenges of fine-tuning: computational cost, data scarcity, poor generalization, and diminishing returns.\n4. The cross-domain transfer analysis (Table 6) nicely illustrates the advantage of preserving model generalization.\n5. Good ablation studies showing the importance of group computation and the limitations of directly generated experiences.\n\nKey weaknesses:\n1. The method's dependence on the base model's capabilities is acknowledged but not deeply investigated - the QwQ-32B results show it can actually hurt performance, which raises questions about general applicability.\n2. The paper lacks detailed analysis of when the method fails and why. The negative result on QwQ-32B is only briefly discussed.\n3. The evaluation is somewhat limited - only 2 domains (math and web searching) and relatively few baselines for direct comparison.\n4. The \"semantic advantage\" mechanism relies heavily on LLM introspection, which could be unstable or biased - no analysis of this potential issue.\n5. The comparison with fine-tuned methods is somewhat unfair since it uses DeepSeek-V3.1-Terminus (a much larger/stronger model) versus Qwen2.5-32B for the RL-trained baselines.\n6. The paper doesn't thoroughly explore the sensitivity to hyperparameters (group size, number of epochs, temperature, etc.).\n7. The experience library update mechanism (Add/Delete/Modify/Keep) is somewhat ad-hoc and could benefit from more systematic analysis.\n\nThe paper is well-written and clearly presents the method. The experiments are generally well-designed, though the comparison setup could be more rigorous. The cost analysis is thoughtful and adds practical value. Overall, this is a solid contribution with an interesting new paradigm, but the limited evaluation scope and some methodological concerns prevent it from being a top-tier paper.\n\nI'll rate: Soundness 3 (good), Presentation 3 (good), Contribution 3 (good), Overall 6 (weak accept). The paper presents a genuinely novel approach with promising results, but the evaluation breadth and some methodological concerns warrant caution.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper proposes Training-Free GRPO, a novel method that aims to replicate the benefits of Group Relative Policy Optimization (GRPO) for LLM agents without any parameter updates. Instead of gradient-based optimization in parameter space, the method maintains an external 'experiential knowledge' library that is iteratively refined using 'semantic advantages' derived from comparing multiple rollouts per query. The approach uses LLM introspection to distill natural language experiences from groups of rollouts, which are then used to update the experience library via Add/Delete/Modify/Keep operations. The updated experience library serves as a token prior in subsequent queries, steering the frozen policy model's output distribution. The method is evaluated on mathematical reasoning (AIME24/25) and web searching (WebWalkerQA) benchmarks, demonstrating significant improvements over strong baselines (e.g., ReAct with DeepSeek-V3.1-Terminus) at very low cost (approximately $18 vs $10,000+ for fine-tuning approaches). The paper also includes ablation studies showing the importance of group computation and the limitations of directly generated experiences, plus a cross-domain transfer analysis demonstrating the advantage of preserving model generalization.\",\n    \"Strengths\": [\n        \"Novel and interesting core idea: shifting RL policy optimization from parameter space to context space via an evolving experience library is a creative and potentially impactful contribution.\",\n        \"Impressive empirical results with very low cost: the method achieves significant gains over strong baselines with only 100 training samples and ~$18 cost, compared to $10,000+ for fine-tuning approaches.\",\n        \"Addresses practical challenges of fine-tuning: computational cost, data scarcity, poor generalization, and diminishing returns are all relevant real-world concerns.\",\n        \"Good ablation studies: the paper systematically shows the importance of group computation and demonstrates that directly generated experiences are insufficient, validating the need for the multi-epoch learning process.\",\n        \"Cross-domain transfer analysis: Table 6 nicely illustrates the advantage of preserving model generalization compared to parameter-tuned specialists that suffer from domain specialization trade-offs.\",\n        \"Well-written and clearly organized: the method is explained in a way that makes the key ideas accessible.\"\n    ],\n    \"Weaknesses\": [\n        \"Limited evaluation scope: only two domains (math reasoning and web searching) are evaluated, and the number of baselines for direct comparison is relatively small.\",\n        \"Method dependence on base model capability is not deeply investigated: the negative result on QwQ-32B (performance degradation) is only briefly mentioned, and the paper does not analyze when and why the method fails or what minimum base model capability is required.\",\n        \"Unfair comparison setup: the main comparison with fine-tuned methods uses DeepSeek-V3.1-Terminus (a much larger and stronger model) versus Qwen2.5-32B for the RL-trained baselines, making the comparison less apples-to-apples.\",\n        \"Lack of sensitivity analysis: the paper does not thoroughly explore the sensitivity to hyperparameters such as group size, number of epochs, temperature, or the number of experiences in the library.\",\n        \"The semantic advantage mechanism relies heavily on LLM introspection, which could be unstable or biased; the paper does not analyze the reliability or variance of this process.\",\n        \"The experience library update mechanism (Add/Delete/Modify/Keep) is somewhat ad-hoc and could benefit from more systematic analysis or comparison with simpler alternatives (e.g., just accumulating experiences).\",\n        \"The paper does not report variance across multiple runs of the learning process, which would be important given the stochastic nature of the method.\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"1. The QwQ-32B results show performance degradation with Training-Free GRPO. Could you provide more analysis on what causes this? Is there a minimum base model capability threshold for the method to be effective?\",\n        \"2. How sensitive is the method to the number of experiences in the library? Is there a risk of context length overflow or performance degradation with too many accumulated experiences?\",\n        \"3. The semantic advantage computation relies on LLM introspection. How consistent/reliable is this process across different runs? Have you measured the variance of the learned experiences?\",\n        \"4. In the ablation without ground truths (w/o ground truths), what reward signal is used to identify winners and losers within a group? Is it purely based on the LLM's self-evaluation?\",\n        \"5. Have you considered comparing with simpler baselines such as just using the best rollout from the training set as in-context examples, or using a fixed set of hand-crafted experiences?\",\n        \"6. The comparison with fine-tuned methods uses different base models (DeepSeek-V3.1-Terminus vs Qwen2.5-32B). Have you tried applying Training-Free GRPO to Qwen2.5-32B to enable a more direct comparison?\",\n        \"7. How does the method perform with different group sizes (e.g., G=3, G=10)? Is there a sweet spot, and how does the cost scale with group size?\",\n        \"8. The paper mentions that the method is robust to reward signal noise. Could you elaborate on what types of noise were considered and how robustness was measured?\"\n    ],\n    \"Limitations\": [\n        \"The method's effectiveness appears dependent on the base model's reasoning and tool-use capabilities, and may degrade performance on less capable models (as shown with QwQ-32B).\",\n        \"The evaluation is limited to two domains (math reasoning and web searching); broader applicability to other agentic tasks (e.g., code generation, computer use) is not demonstrated.\",\n        \"The method relies on LLM-based introspection for semantic advantage computation and experience library updates, which introduces potential instability and is not rigorously analyzed.\",\n        \"The paper does not provide a thorough analysis of the failure modes of the method or the conditions under which it is most/least effective.\",\n        \"The comparison with fine-tuned models uses different base models, making the cost-performance comparison somewhat less direct.\",\n        \"The paper does not discuss potential negative societal impacts of the work, though the method itself appears benign and primarily aimed at efficiency improvements.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 15691,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 13899,
+        "completion_tokens": 1944,
+        "reasoning_tokens": 0,
+        "total_tokens": 17635
+      },
+      "attempts": 1,
+      "response_id": "10e74750-cbbd-4466-84db-dce5623973f6"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper proposes Training-Free GRPO, a method for improving LLM agent performance without any parameter updates. Instead of gradient-based policy optimization as in vanilla GRPO, the method uses the LLM itself to distill 'semantic advantages' from groups of rollouts, iteratively building an external experiential knowledge library that is injected into prompts as a token prior. The method is evaluated on mathematical reasoning (AIME24/25) and web searching (WebWalkerQA) benchmarks, showing improvements over ReAct baselines on a frozen DeepSeek-V3.1-Terminus model with only ~100 training samples and minimal cost. The paper claims this approach outperforms fine-tuned smaller LLMs while preserving generalization across domains.",
+        "Strengths": [
+          "The core idea of shifting RL-style optimization from parameter space to context space is interesting and timely, addressing real practical concerns about computational cost and data scarcity in agentic RL.",
+          "The method is clearly described and well-motivated, with a good conceptual connection to GRPO that makes the approach easy to understand.",
+          "The case studies in the appendix provide compelling qualitative evidence of how learned experiences guide agent behavior and correct specific errors.",
+          "The cost analysis is thoughtful, acknowledging trade-offs between training cost savings and inference cost increases.",
+          "Ablation studies on ground-truth availability and group size provide useful insights into the method's components.",
+          "The method is simple to implement and applicable to any API-based LLM without requiring access to model weights."
+        ],
+        "Weaknesses": [
+          "The primary comparison against fine-tuned baselines (ReTool, AFM) is confounded: these baselines use Qwen2.5-32B, a much weaker base model than DeepSeek-V3.1-Terminus used by the proposed method. The performance differences are likely dominated by base model capability rather than the method itself.",
+          "The novelty over existing training-free methods (Reflexion, Self-Refine, ICRL, TextGrad) is incremental. The key differentiator—learning a shared experience library across a dataset over multiple epochs—is not rigorously compared against these closer baselines.",
+          "The experimental evaluation is limited in scope: only two domains, limited benchmark coverage, no systematic hyperparameter sensitivity analysis, and no comparison against other training-free methods on the same benchmarks.",
+          "The web searching experiments are thin, with only one main result and a small ablation subset (51 instances).",
+          "The claim of 'superior generalization' is not directly tested—the cross-domain analysis compares against fine-tuned models on different base models, which is not a valid comparison.",
+          "The method relies heavily on the quality of the LLM's self-critique and experience extraction abilities, which may not hold for weaker models (as acknowledged in the QwQ-32B results). This limits general applicability.",
+          "No statistical significance testing is reported for the main results."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "Could you apply Training-Free GRPO to Qwen2.5-32B (the same base model used by ReTool and AFM) and compare directly? This would provide a much fairer assessment of the method versus parameter tuning.",
+          "How does Training-Free GRPO compare against other training-free baselines like Reflexion, Self-Refine, or in-context RL (ICRL) on the same benchmarks and base models?",
+          "What is the sensitivity of the method to key hyperparameters such as group size, number of epochs, experience library size, and the specific prompt templates used for summarization and extraction?",
+          "How robust are the results to different random training samples from DAPO-100 and AFM-100? Are the reported improvements statistically significant?",
+          "Could you provide more details on the experience library update mechanism? How are conflicts between new and existing experiences resolved, and is there a risk of experience degradation or contradiction over multiple epochs?",
+          "The method seems to require the base model to have strong self-reflection capabilities. What is the minimum model capability threshold for the method to be effective?",
+          "In the cost comparison, the inference cost per query for Training-Free GRPO is higher than a dedicated small model. Could you provide a more detailed analysis of the break-even point between training cost savings and increased inference costs for various usage scenarios?"
+        ],
+        "Limitations": [
+          "The method's effectiveness is demonstrated primarily on a very strong base model (DeepSeek-V3.1-Terminus), and results on smaller models show much smaller gains or even degradation (QwQ-32B). The general applicability to weaker models is questionable.",
+          "The evaluation is limited to two domains and specific benchmarks; broader applicability to other agentic tasks (e.g., code generation, GUI interaction) is not demonstrated.",
+          "The method relies on LLM self-critique, which can be biased or hallucinated, potentially leading to incorrect experiences being added to the library.",
+          "The paper does not discuss potential negative societal impacts, such as the risk of amplifying biases present in the training data or the potential for misuse of the learned experiences in harmful applications.",
+          "No analysis is provided on the failure modes of the method or cases where it might harm performance."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes Training-Free GRPO, a method that aims to replicate the benefits of GRPO-style reinforcement learning for LLM agents without any parameter updates. Instead of gradient-based optimization, it uses the LLM itself to distill \"semantic advantages\" from groups of rollouts and iteratively builds an external \"experience library\" that is injected into prompts as a token prior. The method is evaluated on mathematical reasoning (AIME24/25) and web searching (WebWalkerQA).\n\nThe core idea is interesting and timely—inference-time adaptation of frozen LLMs is a hot area. The framing as \"Training-Free GRPO\" is catchy and the connection to GRPO provides a conceptual anchor. The key contributions claimed are: (1) a new training-free RL paradigm via context-space optimization, (2) semantic group advantage replacing numerical advantage, and (3) data/computational efficiency with superior generalization.\n\nHowever, there are significant concerns. The main issue is that the method essentially combines existing techniques: in-context learning with iterative prompt refinement, self-reflection/self-critique, and group-based comparison. The novelty over prior work like Reflexion, Self-Refine, and in-context RL (ICRL) is somewhat incremental—the paper does differentiate itself by learning a shared experience library across a dataset across multiple epochs, rather than per-query refinement. This is a reasonable distinction.\n\nThe experimental evaluation has notable weaknesses. The primary comparison against fine-tuned models (ReTool, AFM) uses different base models (Qwen2.5-32B vs. DeepSeek-V3.1-Terminus), making the comparison confounded—the performance gains could be largely due to the much stronger base model rather than the method itself. The paper acknowledges this but still frames it as \"outperforming\" fine-tuned models, which is misleading. A fairer comparison would apply the method to the same base models as the fine-tuned baselines.\n\nThe ablation studies are helpful but limited. The \"without ground truths\" variant shows the method is somewhat robust to reward signal quality. The group size ablation confirms group computation matters. However, there's no systematic study of key hyperparameters (group size, number of epochs, experience library size, prompt templates). The web searching experiments are limited to a single benchmark and one main model, with a small ablation subset.\n\nThe cost analysis is interesting but somewhat one-sided. While training costs are dramatically lower, the inference cost per query is higher than a dedicated small model. The paper argues this is offset by avoiding fixed infrastructure costs for low-traffic scenarios, which is a reasonable but context-dependent argument.\n\nThe paper is generally well-written and clear, with good use of figures and case studies. The case studies in the appendix are quite illustrative of how the learned experiences guide behavior. The related work section is adequate but could more thoroughly distinguish from the closest methods (e.g., Agent KB, ICRL).\n\nOverall, this is a technically sound paper with an interesting idea and promising results, but the evaluation has significant confounds that limit the strength of the claims. The comparison against parameter-tuned baselines on different base models is a major issue. The novelty over existing training-free methods is moderate. I would rate this as borderline—the idea has merit, but the evidence is not fully convincing as presented. I lean towards reject due to the evaluation confounds, though with a strong rebuttal addressing these issues, it could be acceptable. The decision format requires a binary choice, so I'll go with Reject, noting that the paper has potential but needs stronger experimental design.\n\nFor ratings: Originality is medium (3) as the combination is novel but components exist. Quality is fair (2) due to evaluation confounds. Clarity is good (3) as the paper is well-written. Significance is medium (3) as the idea could be impactful but evidence is limited. Soundness is fair (2), presentation is good (3), contribution is fair (2). Overall is 4 (borderline reject). Confidence is 4.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper proposes Training-Free GRPO, a method for improving LLM agent performance without any parameter updates. Instead of gradient-based policy optimization as in vanilla GRPO, the method uses the LLM itself to distill 'semantic advantages' from groups of rollouts, iteratively building an external experiential knowledge library that is injected into prompts as a token prior. The method is evaluated on mathematical reasoning (AIME24/25) and web searching (WebWalkerQA) benchmarks, showing improvements over ReAct baselines on a frozen DeepSeek-V3.1-Terminus model with only ~100 training samples and minimal cost. The paper claims this approach outperforms fine-tuned smaller LLMs while preserving generalization across domains.\",\n    \"Strengths\": [\n        \"The core idea of shifting RL-style optimization from parameter space to context space is interesting and timely, addressing real practical concerns about computational cost and data scarcity in agentic RL.\",\n        \"The method is clearly described and well-motivated, with a good conceptual connection to GRPO that makes the approach easy to understand.\",\n        \"The case studies in the appendix provide compelling qualitative evidence of how learned experiences guide agent behavior and correct specific errors.\",\n        \"The cost analysis is thoughtful, acknowledging trade-offs between training cost savings and inference cost increases.\",\n        \"Ablation studies on ground-truth availability and group size provide useful insights into the method's components.\",\n        \"The method is simple to implement and applicable to any API-based LLM without requiring access to model weights.\"\n    ],\n    \"Weaknesses\": [\n        \"The primary comparison against fine-tuned baselines (ReTool, AFM) is confounded: these baselines use Qwen2.5-32B, a much weaker base model than DeepSeek-V3.1-Terminus used by the proposed method. The performance differences are likely dominated by base model capability rather than the method itself.\",\n        \"The novelty over existing training-free methods (Reflexion, Self-Refine, ICRL, TextGrad) is incremental. The key differentiator—learning a shared experience library across a dataset over multiple epochs—is not rigorously compared against these closer baselines.\",\n        \"The experimental evaluation is limited in scope: only two domains, limited benchmark coverage, no systematic hyperparameter sensitivity analysis, and no comparison against other training-free methods on the same benchmarks.\",\n        \"The web searching experiments are thin, with only one main result and a small ablation subset (51 instances).\",\n        \"The claim of 'superior generalization' is not directly tested—the cross-domain analysis compares against fine-tuned models on different base models, which is not a valid comparison.\",\n        \"The method relies heavily on the quality of the LLM's self-critique and experience extraction abilities, which may not hold for weaker models (as acknowledged in the QwQ-32B results). This limits general applicability.\",\n        \"No statistical significance testing is reported for the main results.\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 2,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"Could you apply Training-Free GRPO to Qwen2.5-32B (the same base model used by ReTool and AFM) and compare directly? This would provide a much fairer assessment of the method versus parameter tuning.\",\n        \"How does Training-Free GRPO compare against other training-free baselines like Reflexion, Self-Refine, or in-context RL (ICRL) on the same benchmarks and base models?\",\n        \"What is the sensitivity of the method to key hyperparameters such as group size, number of epochs, experience library size, and the specific prompt templates used for summarization and extraction?\",\n        \"How robust are the results to different random training samples from DAPO-100 and AFM-100? Are the reported improvements statistically significant?\",\n        \"Could you provide more details on the experience library update mechanism? How are conflicts between new and existing experiences resolved, and is there a risk of experience degradation or contradiction over multiple epochs?\",\n        \"The method seems to require the base model to have strong self-reflection capabilities. What is the minimum model capability threshold for the method to be effective?\",\n        \"In the cost comparison, the inference cost per query for Training-Free GRPO is higher than a dedicated small model. Could you provide a more detailed analysis of the break-even point between training cost savings and increased inference costs for various usage scenarios?\"\n    ],\n    \"Limitations\": [\n        \"The method's effectiveness is demonstrated primarily on a very strong base model (DeepSeek-V3.1-Terminus), and results on smaller models show much smaller gains or even degradation (QwQ-32B). The general applicability to weaker models is questionable.\",\n        \"The evaluation is limited to two domains and specific benchmarks; broader applicability to other agentic tasks (e.g., code generation, GUI interaction) is not demonstrated.\",\n        \"The method relies on LLM self-critique, which can be biased or hallucinated, potentially leading to incorrect experiences being added to the library.\",\n        \"The paper does not discuss potential negative societal impacts, such as the risk of amplifying biases present in the training data or the potential for misuse of the learned experiences in harmful applications.\",\n        \"No analysis is provided on the failure modes of the method or cases where it might harm performance.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 2,\n    \"Presentation\": 3,\n    \"Contribution\": 2,\n    \"Overall\": 4,\n    \"Confidence\": 4,\n    \"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 15691,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 13899,
+        "completion_tokens": 2013,
+        "reasoning_tokens": 0,
+        "total_tokens": 17704
+      },
+      "attempts": 1,
+      "response_id": "e37de156-cdb6-4389-8e23-8d1dcfcc7a8e"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 3,
+      "Reject": 2
+    },
+    "unanimous_decision": false,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          3
+        ],
+        "mean": 3.8,
+        "rounded_mean": 4,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          2,
+          3,
+          2
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          3,
+          3,
+          2,
+          3,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          2,
+          3,
+          2
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          3,
+          3,
+          2,
+          3,
+          2
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          6,
+          6,
+          4,
+          6,
+          4
+        ],
+        "mean": 5.2,
+        "rounded_mean": 5,
+        "population_sd": 0.98,
+        "min": 4,
+        "max": 6
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper proposes Training-Free GRPO, a method that adapts frozen LLM agents to specialized tasks by iteratively distilling 'semantic advantages' (natural language experiences) from group rollouts and maintaining an external experience library injected into prompts at inference time. The method is evaluated on mathematical reasoning (AIME24/25) and web searching (WebWalkerQA), showing improvements over ReAct baselines with only 100 training samples and ~$18 cost, and is compared against fine-tuned 32B models that require $10K+ training costs. The paper includes ablations on group computation, ground-truth dependence, and cross-domain transfer.",
+      "Strengths": [
+        "Novel and well-motivated idea: shifting RL policy optimization from parameter space to context space via an evolving token prior (experience library).",
+        "Extremely cost-effective: achieving competitive results with ~$18 learning cost versus $10,000+ for parameter-tuning baselines is compelling for practical deployment.",
+        "Preserves generalization: since the base model is frozen, cross-domain performance is maintained, avoiding the specialization trade-off seen in fine-tuned models.",
+        "Comprehensive ablations: directly generated experiences, removing group computation, removing ground truths, and cross-domain transfer analysis.",
+        "Detailed cost analysis comparing training and inference costs with fine-tuning approaches, highlighting the economic advantages.",
+        "Case studies in the appendix provide concrete illustrations of how learned experiences improve reasoning trajectories."
+      ],
+      "Weaknesses": [
+        "The primary comparison against fine-tuned baselines (ReTool, AFM) is confounded: these baselines use Qwen2.5-32B, a much weaker base model than DeepSeek-V3.1-Terminus used by the proposed method. The performance differences are likely dominated by base model capability rather than the method itself.",
+        "The connection to GRPO is somewhat loose; the method is essentially iterative prompt refinement with group-based feedback, not RL in a strict sense.",
+        "Evaluation is limited to two domains (math and web) with a small number of benchmarks, and the web searching ablation uses only 51 instances.",
+        "No statistical significance testing or confidence intervals are reported, making it difficult to assess whether the observed improvements are robust.",
+        "The method's effectiveness appears highly model-dependent: it fails on QwQ-32B for web searching (25.5% vs 27.5% baseline), suggesting limited generality across model families.",
+        "The experience library update mechanism (Add/Delete/Modify/Keep) is described at a high level; no analysis of the quality, stability, or size evolution of the learned experiences is provided.",
+        "No comparison against simpler training-free baselines (e.g., Reflexion, Self-Refine, ICRL) on the same benchmarks and base models.",
+        "Inference cost per query is higher than for fine-tuned small models, which may be a drawback for high-volume or latency-sensitive applications."
+      ],
+      "Originality": 4,
+      "Quality": 2,
+      "Clarity": 3,
+      "Significance": 3,
+      "Questions": [
+        "How does Training-Free GRPO perform when applied to the same base model (e.g., Qwen2.5-32B-Instruct) that the fine-tuned baselines (ReTool, AFM, SimpleTIR) use? This would provide a fairer comparison isolating the method's contribution from base model capability.",
+        "What is the variance across different random seeds for the 100-sample training set? Are the reported improvements statistically significant (e.g., with bootstrap confidence intervals or paired tests)?",
+        "How does performance scale with the number of training samples (e.g., 50, 200, 500) and epochs (e.g., 1, 5, 10)? Is there a plateau or overfitting risk?",
+        "Why does Training-Free GRPO fail on QwQ-32B for web searching? Is this due to the model's weaker tool-use capabilities, the reward signal quality, or the experience extraction quality?",
+        "How sensitive is the method to the specific prompt templates used for summarization, advantage extraction, and experience update? Have alternative prompt formulations been tested?",
+        "What is the distribution of Add/Delete/Modify/Keep operations across training steps? How does the experience library size evolve, and is there a risk of context overflow?",
+        "How does Training-Free GRPO compare against other training-free methods like Reflexion, Self-Refine, or in-context RL (ICRL) on the same benchmarks and base models?",
+        "In the ablation without ground truths, what reward signal is used to identify winners and losers within a group? Could this lead to reward hacking or circular self-reinforcement?"
+      ],
+      "Limitations": [
+        "The method's effectiveness is strongly dependent on the base LLM's inherent capabilities. For models below a certain capability threshold (e.g., QwQ-32B on web tasks), the method can actually degrade performance, limiting its applicability to weaker or smaller models.",
+        "The evaluation is limited to two domains (mathematical reasoning and web searching) and specific benchmarks. Broader validation across more diverse agentic tasks (e.g., coding, tool use, multi-step planning) is needed.",
+        "The comparison against parameter-tuning methods is confounded by model scale differences. The paper does not isolate the effect of the method from the effect of using a much larger base model.",
+        "The experience library maintenance relies on LLM judgment, which may be unstable, non-reproducible, or sensitive to prompt variations. No analysis of this stability is provided.",
+        "No statistical significance testing or confidence intervals are reported, making it difficult to assess whether the observed improvements are robust.",
+        "The paper does not discuss potential negative societal impacts, such as the risk of amplifying biases present in the training data or the potential for misuse of the learned experiences in harmful applications.",
+        "The cost comparison focuses on API pricing for DeepSeek; results may vary significantly with other API providers or self-hosted inference."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 2,
+      "Presentation": 3,
+      "Contribution": 3,
+      "Overall": 4,
+      "Confidence": 4,
+      "Decision": "Reject"
+    },
+    "raw_response": "THOUGHT:\nThe reviewers are split: three lean accept (overall 6), two lean reject (overall 4). All agree the core idea is novel and interesting, and the cost-effectiveness is compelling. However, there is a strong consensus on a major flaw: the main comparison against fine-tuned baselines is confounded by model scale (DeepSeek-V3.1-Terminus vs Qwen2.5-32B). This is raised by all five reviewers, and it undermines the central claim of outperforming fine-tuned models. Additionally, the evaluation is narrow (two domains), there is no statistical significance testing, and the method's dependence on base model capability is not deeply analyzed (QwQ-32B degradation). The connection to GRPO is also criticized as loose.\n\nGiven the unanimous concern about the confounded comparison and the lack of statistical rigor, I believe the paper is not ready for acceptance. The idea has merit, but the evidence is insufficient to support the headline claims. The reviewers who accepted did so with reservations, and the two rejects highlight the same fundamental issues. I will side with rejection, as the technical soundness is questionable given the confound, and the contribution is not clearly demonstrated beyond the base model advantage.\n\nI will write a meta-review that acknowledges the novelty but emphasizes the critical confound, the need for same-base-model comparisons, and the lack of statistical validation. The decision will be Reject.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper proposes Training-Free GRPO, a method that adapts frozen LLM agents to specialized tasks by iteratively distilling 'semantic advantages' (natural language experiences) from group rollouts and maintaining an external experience library injected into prompts at inference time. The method is evaluated on mathematical reasoning (AIME24/25) and web searching (WebWalkerQA), showing improvements over ReAct baselines with only 100 training samples and ~$18 cost, and is compared against fine-tuned 32B models that require $10K+ training costs. The paper includes ablations on group computation, ground-truth dependence, and cross-domain transfer.\",\n  \"Strengths\": [\n    \"Novel and well-motivated idea: shifting RL policy optimization from parameter space to context space via an evolving token prior (experience library).\",\n    \"Extremely cost-effective: achieving competitive results with ~$18 learning cost versus $10,000+ for parameter-tuning baselines is compelling for practical deployment.\",\n    \"Preserves generalization: since the base model is frozen, cross-domain performance is maintained, avoiding the specialization trade-off seen in fine-tuned models.\",\n    \"Comprehensive ablations: directly generated experiences, removing group computation, removing ground truths, and cross-domain transfer analysis.\",\n    \"Detailed cost analysis comparing training and inference costs with fine-tuning approaches, highlighting the economic advantages.\",\n    \"Case studies in the appendix provide concrete illustrations of how learned experiences improve reasoning trajectories.\"\n  ],\n  \"Weaknesses\": [\n    \"The primary comparison against fine-tuned baselines (ReTool, AFM) is confounded: these baselines use Qwen2.5-32B, a much weaker base model than DeepSeek-V3.1-Terminus used by the proposed method. The performance differences are likely dominated by base model capability rather than the method itself.\",\n    \"The connection to GRPO is somewhat loose; the method is essentially iterative prompt refinement with group-based feedback, not RL in a strict sense.\",\n    \"Evaluation is limited to two domains (math and web) with a small number of benchmarks, and the web searching ablation uses only 51 instances.\",\n    \"No statistical significance testing or confidence intervals are reported, making it difficult to assess whether the observed improvements are robust.\",\n    \"The method's effectiveness appears highly model-dependent: it fails on QwQ-32B for web searching (25.5% vs 27.5% baseline), suggesting limited generality across model families.\",\n    \"The experience library update mechanism (Add/Delete/Modify/Keep) is described at a high level; no analysis of the quality, stability, or size evolution of the learned experiences is provided.\",\n    \"No comparison against simpler training-free baselines (e.g., Reflexion, Self-Refine, ICRL) on the same benchmarks and base models.\",\n    \"Inference cost per query is higher than for fine-tuned small models, which may be a drawback for high-volume or latency-sensitive applications.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does Training-Free GRPO perform when applied to the same base model (e.g., Qwen2.5-32B-Instruct) that the fine-tuned baselines (ReTool, AFM, SimpleTIR) use? This would provide a fairer comparison isolating the method's contribution from base model capability.\",\n    \"What is the variance across different random seeds for the 100-sample training set? Are the reported improvements statistically significant (e.g., with bootstrap confidence intervals or paired tests)?\",\n    \"How does performance scale with the number of training samples (e.g., 50, 200, 500) and epochs (e.g., 1, 5, 10)? Is there a plateau or overfitting risk?\",\n    \"Why does Training-Free GRPO fail on QwQ-32B for web searching? Is this due to the model's weaker tool-use capabilities, the reward signal quality, or the experience extraction quality?\",\n    \"How sensitive is the method to the specific prompt templates used for summarization, advantage extraction, and experience update? Have alternative prompt formulations been tested?\",\n    \"What is the distribution of Add/Delete/Modify/Keep operations across training steps? How does the experience library size evolve, and is there a risk of context overflow?\",\n    \"How does Training-Free GRPO compare against other training-free methods like Reflexion, Self-Refine, or in-context RL (ICRL) on the same benchmarks and base models?\",\n    \"In the ablation without ground truths, what reward signal is used to identify winners and losers within a group? Could this lead to reward hacking or circular self-reinforcement?\"\n  ],\n  \"Limitations\": [\n    \"The method's effectiveness is strongly dependent on the base LLM's inherent capabilities. For models below a certain capability threshold (e.g., QwQ-32B on web tasks), the method can actually degrade performance, limiting its applicability to weaker or smaller models.\",\n    \"The evaluation is limited to two domains (mathematical reasoning and web searching) and specific benchmarks. Broader validation across more diverse agentic tasks (e.g., coding, tool use, multi-step planning) is needed.\",\n    \"The comparison against parameter-tuning methods is confounded by model scale differences. The paper does not isolate the effect of the method from the effect of using a much larger base model.\",\n    \"The experience library maintenance relies on LLM judgment, which may be unstable, non-reproducible, or sensitive to prompt variations. No analysis of this stability is provided.\",\n    \"No statistical significance testing or confidence intervals are reported, making it difficult to assess whether the observed improvements are robust.\",\n    \"The paper does not discuss potential negative societal impacts, such as the risk of amplifying biases present in the training data or the potential for misuse of the learned experiences in harmful applications.\",\n    \"The cost comparison focuses on API pricing for DeepSeek; results may vary significantly with other API providers or self-hosted inference.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 8597,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 8597,
+      "completion_tokens": 1633,
+      "reasoning_tokens": 0,
+      "total_tokens": 10230
+    },
+    "attempts": 1,
+    "response_id": "d5773adb-8ce2-4ec5-b90d-7bc36c215ac9"
+  },
+  "final_review": {
+    "Summary": "The paper proposes Training-Free GRPO, a method that adapts frozen LLM agents to specialized tasks by iteratively distilling 'semantic advantages' (natural language experiences) from group rollouts and maintaining an external experience library injected into prompts at inference time. The method is evaluated on mathematical reasoning (AIME24/25) and web searching (WebWalkerQA), showing improvements over ReAct baselines with only 100 training samples and ~$18 cost, and is compared against fine-tuned 32B models that require $10K+ training costs. The paper includes ablations on group computation, ground-truth dependence, and cross-domain transfer.",
+    "Strengths": [
+      "Novel and well-motivated idea: shifting RL policy optimization from parameter space to context space via an evolving token prior (experience library).",
+      "Extremely cost-effective: achieving competitive results with ~$18 learning cost versus $10,000+ for parameter-tuning baselines is compelling for practical deployment.",
+      "Preserves generalization: since the base model is frozen, cross-domain performance is maintained, avoiding the specialization trade-off seen in fine-tuned models.",
+      "Comprehensive ablations: directly generated experiences, removing group computation, removing ground truths, and cross-domain transfer analysis.",
+      "Detailed cost analysis comparing training and inference costs with fine-tuning approaches, highlighting the economic advantages.",
+      "Case studies in the appendix provide concrete illustrations of how learned experiences improve reasoning trajectories."
+    ],
+    "Weaknesses": [
+      "The primary comparison against fine-tuned baselines (ReTool, AFM) is confounded: these baselines use Qwen2.5-32B, a much weaker base model than DeepSeek-V3.1-Terminus used by the proposed method. The performance differences are likely dominated by base model capability rather than the method itself.",
+      "The connection to GRPO is somewhat loose; the method is essentially iterative prompt refinement with group-based feedback, not RL in a strict sense.",
+      "Evaluation is limited to two domains (math and web) with a small number of benchmarks, and the web searching ablation uses only 51 instances.",
+      "No statistical significance testing or confidence intervals are reported, making it difficult to assess whether the observed improvements are robust.",
+      "The method's effectiveness appears highly model-dependent: it fails on QwQ-32B for web searching (25.5% vs 27.5% baseline), suggesting limited generality across model families.",
+      "The experience library update mechanism (Add/Delete/Modify/Keep) is described at a high level; no analysis of the quality, stability, or size evolution of the learned experiences is provided.",
+      "No comparison against simpler training-free baselines (e.g., Reflexion, Self-Refine, ICRL) on the same benchmarks and base models.",
+      "Inference cost per query is higher than for fine-tuned small models, which may be a drawback for high-volume or latency-sensitive applications."
+    ],
+    "Originality": 4,
+    "Quality": 3,
+    "Clarity": 3,
+    "Significance": 3,
+    "Questions": [
+      "How does Training-Free GRPO perform when applied to the same base model (e.g., Qwen2.5-32B-Instruct) that the fine-tuned baselines (ReTool, AFM, SimpleTIR) use? This would provide a fairer comparison isolating the method's contribution from base model capability.",
+      "What is the variance across different random seeds for the 100-sample training set? Are the reported improvements statistically significant (e.g., with bootstrap confidence intervals or paired tests)?",
+      "How does performance scale with the number of training samples (e.g., 50, 200, 500) and epochs (e.g., 1, 5, 10)? Is there a plateau or overfitting risk?",
+      "Why does Training-Free GRPO fail on QwQ-32B for web searching? Is this due to the model's weaker tool-use capabilities, the reward signal quality, or the experience extraction quality?",
+      "How sensitive is the method to the specific prompt templates used for summarization, advantage extraction, and experience update? Have alternative prompt formulations been tested?",
+      "What is the distribution of Add/Delete/Modify/Keep operations across training steps? How does the experience library size evolve, and is there a risk of context overflow?",
+      "How does Training-Free GRPO compare against other training-free methods like Reflexion, Self-Refine, or in-context RL (ICRL) on the same benchmarks and base models?",
+      "In the ablation without ground truths, what reward signal is used to identify winners and losers within a group? Could this lead to reward hacking or circular self-reinforcement?"
+    ],
+    "Limitations": [
+      "The method's effectiveness is strongly dependent on the base LLM's inherent capabilities. For models below a certain capability threshold (e.g., QwQ-32B on web tasks), the method can actually degrade performance, limiting its applicability to weaker or smaller models.",
+      "The evaluation is limited to two domains (mathematical reasoning and web searching) and specific benchmarks. Broader validation across more diverse agentic tasks (e.g., coding, tool use, multi-step planning) is needed.",
+      "The comparison against parameter-tuning methods is confounded by model scale differences. The paper does not isolate the effect of the method from the effect of using a much larger base model.",
+      "The experience library maintenance relies on LLM judgment, which may be unstable, non-reproducible, or sensitive to prompt variations. No analysis of this stability is provided.",
+      "No statistical significance testing or confidence intervals are reported, making it difficult to assess whether the observed improvements are robust.",
+      "The paper does not discuss potential negative societal impacts, such as the risk of amplifying biases present in the training data or the potential for misuse of the learned experiences in harmful applications.",
+      "The cost comparison focuses on API pricing for DeepSeek; results may vary significantly with other API providers or self-hosted inference."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 3,
+    "Contribution": 3,
+    "Overall": 5,
+    "Confidence": 4,
+    "Decision": "Reject"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 87052,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 78092,
+    "completion_tokens": 12857,
+    "reasoning_tokens": 0,
+    "total_tokens": 99909,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.01093288,
+    "output_usd": 0.00359996,
+    "total_usd": 0.01455793
+  },
+  "elapsed_seconds": 36.896,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Reject",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B115",
+    "filename": "B115.txt",
+    "blind_text_sha256": "520868add565b85be8131da9d9216d0c8609fe5da4118d28fc8bf897aec976ba",
+    "characters": 55122,
+    "full_text_saved": false
+  }
+}

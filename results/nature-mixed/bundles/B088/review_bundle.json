@@ -1,0 +1,742 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:46:01.759948+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper introduces MCCE (Multi-LLM Collaborative Co-evolution), a hybrid optimization framework that combines a frozen closed-source LLM (e.g., GPT-4o) with a lightweight trainable local model (Qwen2.5-7B) for multi-objective discrete optimization, demonstrated on molecular design. The framework operates in an evolutionary loop where the frozen LLM provides global exploration and the local model is periodically refined via Direct Preference Optimization (DPO) using similarity-based data synthesis from breakthrough trajectories. The authors systematically compare SFT, RL, and DPO training paradigms, showing DPO with their similarity-based pair construction is most stable. Experiments on a five-objective drug design benchmark (QED, SA, DRD2, GSK3β, JNK3) show MCCE achieves state-of-the-art Hypervolume and Top-K metrics, and both the local and API models improve through collaboration.",
+        "Strengths": [
+          "Novel hybrid architecture combining frozen and trainable LLMs in a co-evolutionary loop, addressing a real limitation of closed-source LLMs (no parameter updates)",
+          "Thoughtful analysis of training paradigms (SFT, RL, DPO) with clear explanations of why SFT leads to catastrophic forgetting and RL is unstable",
+          "The similarity-based DPO data synthesis method is original and addresses the distribution shift problem between models",
+          "Comprehensive evaluation on a challenging 5-objective drug design task, going beyond typical 3-objective benchmarks",
+          "Clear evidence that both models benefit from collaboration (dpo_coevolve:local and dpo_coevolve:api both show improvements)",
+          "Good ablation showing parameter training is crucial for long-term performance gains"
+        ],
+        "Weaknesses": [
+          "Evaluation is limited to a single domain (drug design); the claimed generality to other discrete optimization problems is untested",
+          "No comparison with non-LLM baselines (e.g., traditional evolutionary algorithms, GFlowNets, Bayesian optimization) which are standard for molecular design",
+          "The comparison with ExLLM (Ran et al.) is mentioned but not directly benchmarked, making it hard to assess state-of-the-art claims",
+          "High variance in Hypervolume results (std ~0.1-0.2 relative to means ~0.5-0.8) suggests instability across runs",
+          "The claim of 'mutual inspiration' is not fully substantiated; the mechanism appears to be primarily one-way knowledge transfer from API to local model",
+          "Validity drops for dpo_coevolve:local (0.759 vs 0.838 for collaboration), indicating some degradation in the local model's ability to generate valid molecules",
+          "No analysis of computational cost (API calls, training time, wall-clock time) which is important for practical deployment",
+          "The hyperparameter choices (α=0.3, similarity intervals) seem heuristic with limited sensitivity analysis",
+          "The paper lacks comparison with recent strong molecular optimization methods (e.g., MoLLEO, GFlowNets, genetic algorithms with property predictors)"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How does MCCE compare to non-LLM baselines such as traditional genetic algorithms, GFlowNets, or Bayesian optimization on the same 5-objective task? These are standard baselines for molecular design.",
+          "Can you provide direct comparison with ExLLM (Ran et al.) or MoLLEO (Wang et al.) which are cited as prior work? The claim of state-of-the-art requires this comparison.",
+          "The paper claims the framework is 'broadly applicable to discrete multi-objective optimization tasks beyond drug discovery.' Can you provide results on at least one additional domain (e.g., combinatorial optimization, circuit design)?",
+          "What is the computational cost of the framework in terms of API calls, training time, and wall-clock time? How does this compare to baselines?",
+          "The validity drops for dpo_coevolve:local (0.759). What causes this degradation and how does it affect the overall system performance?",
+          "Can you provide ablation studies on the key components of the similarity-based data synthesis (e.g., removing the similarity filter, changing α, using different similarity metrics)?",
+          "How sensitive are the results to the choice of the local model (e.g., Qwen2.5-7B vs. a smaller model like 1.5B or a larger one like 14B)?",
+          "The paper mentions GFlowNets in the preliminary section but doesn't include them in the experiments. Can you comment on why they were excluded and how they might compare?",
+          "Can you clarify the 'mutual inspiration' claim? The mechanism appears to be one-way (API guides local model training). How does the local model influence the API model's exploration?"
+        ],
+        "Limitations": [
+          "The evaluation is restricted to molecular design; broader applicability to other discrete optimization problems is claimed but not demonstrated",
+          "The framework relies on API access to closed-source models, which introduces cost, latency, and potential reproducibility issues",
+          "The DPO data synthesis involves several heuristic components (similarity thresholds, quantile selection) that may require domain-specific tuning",
+          "The paper does not address potential negative societal impacts of drug design optimization, such as dual-use concerns (e.g., designing toxic compounds or bioweapons)",
+          "No discussion of the environmental impact of training and running large models",
+          "The reference model in DPO is the initial untrained model, which may limit the model's ability to adapt if the search space shifts significantly",
+          "The paper doesn't discuss failure modes or limitations of the approach (e.g., when the API model's prior knowledge is insufficient for the domain)"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 3,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes MCCE, a hybrid framework combining a frozen closed-source LLM with a trainable local model for multi-objective discrete optimization (specifically molecular design). The key idea is co-evolution: the large LLM provides global exploration while the local model is fine-tuned via DPO using similarity-based data synthesis from breakthrough trajectories.\n\n**Strengths:**\n- Novel hybrid architecture combining frozen and trainable LLMs in an evolutionary loop\n- Clear motivation: closed-source LLMs can't be fine-tuned, open models lack reasoning strength\n- The similarity-based DPO data synthesis is a thoughtful contribution addressing training instability\n- Comprehensive comparison of training paradigms (SFT, RL, DPO) with analysis of failures\n- State-of-the-art results on 5-objective drug design benchmark\n- Good analysis showing both models benefit from collaboration (dpo_coevolve:local and dpo_coevolve:api both improve)\n\n**Weaknesses:**\n- Limited evaluation: only one domain (drug design) tested despite claims of broad applicability\n- No comparison with non-LLM baselines (e.g., traditional evolutionary algorithms, GFlowNets)\n- The comparison with ExLLM/Ran et al. is mentioned but not directly benchmarked\n- Hypervolume improvements show high variance (std ~0.1-0.2 relative to means ~0.5-0.8)\n- The DPO training details are somewhat ad-hoc; the similarity-based selection seems heuristic\n- No ablation on the effect of each component (similarity filter, quantile threshold, etc.)\n- The claim of \"mutual inspiration\" is not fully substantiated—it seems more like one-way knowledge transfer from API to local model\n- Validity drops for dpo_coevolve:local (0.759 vs 0.838 for collaboration), suggesting some degradation\n- No analysis of computational cost (API calls, training time)\n- The paper lacks comparison with recent strong baselines like MoLLEO or other dedicated molecular optimization methods\n\n**Originality:** The hybrid frozen+trainable LLM co-evolution framework is novel. The similarity-based DPO data synthesis is also original. However, the overall evolutionary framework with LLM operators is not new (ExLLM, MoLLEO etc.), and the contribution is more of an incremental improvement.\n\n**Quality:** The paper is technically sound with appropriate methods. The ablation of training paradigms is thorough. However, the evaluation is limited to one problem domain and lacks strong baselines. The variance in results is concerning.\n\n**Clarity:** The paper is well-written and organized. The methodology is clearly explained. However, some details are in the appendix and the main text could benefit from more quantitative analysis.\n\n**Significance:** The idea of combining frozen and trainable LLMs for optimization is important and could have broader applicability. However, the demonstrated impact is limited to drug design, and the improvements over simpler baselines (e.g., GPT-4o alone) are modest in some metrics.\n\n**Overall assessment:** This is a solid paper with a novel idea and reasonable results, but the evaluation is somewhat limited. The improvements are not dramatic over the API-only baseline, and there's no comparison with non-LLM methods. The paper would be stronger with more domains and better baselines. I'd lean toward accept but with reservations.\n\n**Decision:** Accept (with caveats about limited evaluation)\n\n**Confidence:** 3 (fairly confident, but I didn't check all details of the algorithm)\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper introduces MCCE (Multi-LLM Collaborative Co-evolution), a hybrid optimization framework that combines a frozen closed-source LLM (e.g., GPT-4o) with a lightweight trainable local model (Qwen2.5-7B) for multi-objective discrete optimization, demonstrated on molecular design. The framework operates in an evolutionary loop where the frozen LLM provides global exploration and the local model is periodically refined via Direct Preference Optimization (DPO) using similarity-based data synthesis from breakthrough trajectories. The authors systematically compare SFT, RL, and DPO training paradigms, showing DPO with their similarity-based pair construction is most stable. Experiments on a five-objective drug design benchmark (QED, SA, DRD2, GSK3β, JNK3) show MCCE achieves state-of-the-art Hypervolume and Top-K metrics, and both the local and API models improve through collaboration.\",\n  \"Strengths\": [\n    \"Novel hybrid architecture combining frozen and trainable LLMs in a co-evolutionary loop, addressing a real limitation of closed-source LLMs (no parameter updates)\",\n    \"Thoughtful analysis of training paradigms (SFT, RL, DPO) with clear explanations of why SFT leads to catastrophic forgetting and RL is unstable\",\n    \"The similarity-based DPO data synthesis method is original and addresses the distribution shift problem between models\",\n    \"Comprehensive evaluation on a challenging 5-objective drug design task, going beyond typical 3-objective benchmarks\",\n    \"Clear evidence that both models benefit from collaboration (dpo_coevolve:local and dpo_coevolve:api both show improvements)\",\n    \"Good ablation showing parameter training is crucial for long-term performance gains\"\n  ],\n  \"Weaknesses\": [\n    \"Evaluation is limited to a single domain (drug design); the claimed generality to other discrete optimization problems is untested\",\n    \"No comparison with non-LLM baselines (e.g., traditional evolutionary algorithms, GFlowNets, Bayesian optimization) which are standard for molecular design\",\n    \"The comparison with ExLLM (Ran et al.) is mentioned but not directly benchmarked, making it hard to assess state-of-the-art claims\",\n    \"High variance in Hypervolume results (std ~0.1-0.2 relative to means ~0.5-0.8) suggests instability across runs\",\n    \"The claim of 'mutual inspiration' is not fully substantiated; the mechanism appears to be primarily one-way knowledge transfer from API to local model\",\n    \"Validity drops for dpo_coevolve:local (0.759 vs 0.838 for collaboration), indicating some degradation in the local model's ability to generate valid molecules\",\n    \"No analysis of computational cost (API calls, training time, wall-clock time) which is important for practical deployment\",\n    \"The hyperparameter choices (α=0.3, similarity intervals) seem heuristic with limited sensitivity analysis\",\n    \"The paper lacks comparison with recent strong molecular optimization methods (e.g., MoLLEO, GFlowNets, genetic algorithms with property predictors)\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does MCCE compare to non-LLM baselines such as traditional genetic algorithms, GFlowNets, or Bayesian optimization on the same 5-objective task? These are standard baselines for molecular design.\",\n    \"Can you provide direct comparison with ExLLM (Ran et al.) or MoLLEO (Wang et al.) which are cited as prior work? The claim of state-of-the-art requires this comparison.\",\n    \"The paper claims the framework is 'broadly applicable to discrete multi-objective optimization tasks beyond drug discovery.' Can you provide results on at least one additional domain (e.g., combinatorial optimization, circuit design)?\",\n    \"What is the computational cost of the framework in terms of API calls, training time, and wall-clock time? How does this compare to baselines?\",\n    \"The validity drops for dpo_coevolve:local (0.759). What causes this degradation and how does it affect the overall system performance?\",\n    \"Can you provide ablation studies on the key components of the similarity-based data synthesis (e.g., removing the similarity filter, changing α, using different similarity metrics)?\",\n    \"How sensitive are the results to the choice of the local model (e.g., Qwen2.5-7B vs. a smaller model like 1.5B or a larger one like 14B)?\",\n    \"The paper mentions GFlowNets in the preliminary section but doesn't include them in the experiments. Can you comment on why they were excluded and how they might compare?\",\n    \"Can you clarify the 'mutual inspiration' claim? The mechanism appears to be one-way (API guides local model training). How does the local model influence the API model's exploration?\"\n  ],\n  \"Limitations\": [\n    \"The evaluation is restricted to molecular design; broader applicability to other discrete optimization problems is claimed but not demonstrated\",\n    \"The framework relies on API access to closed-source models, which introduces cost, latency, and potential reproducibility issues\",\n    \"The DPO data synthesis involves several heuristic components (similarity thresholds, quantile selection) that may require domain-specific tuning\",\n    \"The paper does not address potential negative societal impacts of drug design optimization, such as dual-use concerns (e.g., designing toxic compounds or bioweapons)\",\n    \"No discussion of the environmental impact of training and running large models\",\n    \"The reference model in DPO is the initial untrained model, which may limit the model's ability to adapt if the search space shifts significantly\",\n    \"The paper doesn't discuss failure modes or limitations of the approach (e.g., when the API model's prior knowledge is insufficient for the domain)\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 3,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 13798,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 12006,
+        "completion_tokens": 2017,
+        "reasoning_tokens": 0,
+        "total_tokens": 15815
+      },
+      "attempts": 1,
+      "response_id": "e83130ba-c242-44f6-87d3-47035734ba4a"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper introduces Multi-LLM Collaborative Co-evolution (MCCE), a hybrid optimization framework that combines a frozen closed-source LLM (e.g., GPT-4o) with a lightweight trainable local model (Qwen2.5-7B) for multi-objective discrete optimization, demonstrated on molecular drug design with five objectives (QED, SAscore, DRD2, GSK3β, JNK3). The framework operates in an evolutionary loop where the two models alternate as genetic operators, with the local model being periodically fine-tuned via Direct Preference Optimization (DPO) using similarity-based preference pairs constructed from successful search trajectories. The authors argue that this co-evolution enables mutual inspiration: the large model provides global exploration while the small model internalizes experience through parameter updates. Experiments on drug design benchmarks show that MCCE with DPO achieves the highest Hypervolume Indicator and top-k fitness scores compared to single-model baselines and alternative training paradigms (SFT, RL).",
+        "Strengths": [
+          "Novel and well-motivated framework combining frozen closed-source LLMs with trainable open-source models in a co-evolutionary loop, addressing a real limitation of purely prompt-based or purely trainable approaches.",
+          "Clear demonstration that DPO outperforms SFT and RL for this setting, with a thoughtful analysis of why (catastrophic forgetting for SFT, reward instability for RL).",
+          "The similarity-based data synthesis for DPO is a clever contribution that addresses distribution shift and training instability, with reasonable algorithmic detail and fallback rules.",
+          "Comprehensive evaluation on a challenging 5-objective drug design problem with multiple metrics (Top-k fitness, AUC, uniqueness, diversity, HV, validity), and results reported over 10 runs.",
+          "The framework is presented as general-purpose and extensible to other discrete optimization domains, which broadens its potential impact.",
+          "Well-written and organized paper with clear figures and a reproducible methodology description.",
+          "The co-evolution analysis (Figure 3) showing the trained local model's output distribution shifting toward higher scores is compelling evidence of learning.",
+          "Ablation studies comparing DPO, SFT, and RL co-evolution variants help isolate the contribution of the training paradigm."
+        ],
+        "Weaknesses": [
+          "Critical lack of comparison to the most relevant state-of-the-art baselines, specifically ExLLM (Ran et al., 2025) and MoLLEO (Wang et al., 2024), which are cited in the paper as prior work on LLM-based multi-objective molecular design. Without these comparisons, the claim of 'state-of-the-art' is not well-supported.",
+          "No statistical significance testing (e.g., t-tests, Wilcoxon) despite reporting overlapping standard deviations across many metrics. For example, HV for dpo_coevolve (0.847±0.138) vs rl_coevolve (0.709±0.219) shows high variance that may not be significant.",
+          "The improvement margins are modest in several metrics (e.g., Top1auc: 4.07 vs 4.03 for rl_coevolve), and the practical significance is unclear.",
+          "The claim of 'mutual inspiration' is overstated since the API model is frozen and only benefits indirectly through improved population quality. The paper does not demonstrate that the API model itself improves.",
+          "No comparison to non-LLM baselines such as traditional evolutionary algorithms (NSGA-II, MOEA/D) or GFlowNets, which are standard in multi-objective molecular optimization.",
+          "The similarity-based data synthesis introduces several hyperparameters (α, I1-I3, μ±σ filter) but lacks sensitivity analysis to show robustness to these choices.",
+          "Computational cost (API calls, training time, GPU requirements) is not discussed, which is important for practical adoption.",
+          "The paper does not report the number of generations or total API calls used, making it hard to assess efficiency.",
+          "The 'co-evolutionary curve' (Figure 3 left) is somewhat qualitative and does not provide clear quantitative evidence of how the two models complement each other over time.",
+          "Limited discussion of failure cases or limitations of the DPO approach, such as when the similarity filter might exclude useful training data."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "Why were ExLLM and MoLLEO, which are cited as the most relevant prior work, not included as baselines in the experiments? Can you provide a comparison to these methods using the same evaluation setup?",
+          "Have you conducted statistical significance tests (e.g., paired t-tests or Wilcoxon signed-rank) to confirm that the improvements over baselines are significant given the overlapping standard deviations?",
+          "How does the performance of MCCE compare to traditional multi-objective evolutionary algorithms (e.g., NSGA-II) or GFlowNets on the same task?",
+          "What is the total computational cost of the framework, including the number of API calls to the frozen LLM, the training time for the local model, and the hardware requirements?",
+          "Can you provide a sensitivity analysis for the key hyperparameters in the similarity-based data synthesis (α, similarity intervals I1-I3, update frequency f, dataset size D)?",
+          "How is the balance between the frozen LLM and local model determined in terms of how many candidates each generates per generation? Is this ratio fixed or adaptive?",
+          "The paper claims 'mutual inspiration'—can you provide evidence that the frozen API model's exploration improves over time due to the local model's learning, beyond the population-level metrics?",
+          "How does the choice of the local model size (e.g., 7B vs smaller/larger) affect performance?",
+          "What happens if the API model is unavailable or changes (e.g., model version updates)? Is the framework robust to such changes?",
+          "Can you report the variance of the DPO training loss and the final model's performance across different random seeds?"
+        ],
+        "Limitations": [
+          "The evaluation is limited to a single domain (molecular design) despite claims of generalizability to other discrete optimization problems.",
+          "The paper does not compare against the most relevant prior work (ExLLM, MoLLEO), which weakens the claim of state-of-the-art performance.",
+          "The improvement over baselines is modest and may not be statistically significant given the reported variances.",
+          "The computational cost of the framework (API calls, training) is not discussed, which is important for practical deployment.",
+          "The 'mutual inspiration' claim is not fully substantiated since only the local model is trained.",
+          "No analysis of failure cases or scenarios where the similarity-based filtering might discard useful training data.",
+          "Potential negative societal impact: the framework could be misused for designing molecules with harmful properties (e.g., toxins, chemical weapons), though this is a general concern for drug design tools. The ethics statement is brief and does not address dual-use concerns.",
+          "The paper does not discuss potential biases in the ZINC dataset or the objectives used."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThe paper proposes MCCE, a hybrid framework combining a frozen closed-source LLM with a trainable local model for multi-objective discrete optimization, demonstrated on drug design. The core idea is co-evolution: the large model provides global exploration, while the small model is continuously fine-tuned via DPO using similarity-based preference pairs constructed from successful search trajectories.\n\nStrengths:\n- Novel combination of ideas: hybrid LLM collaboration + continual learning + evolutionary search\n- Clear motivation addressing limitations of both closed-source (no parameter updates) and open-source (weaker) models\n- Interesting empirical finding that DPO outperforms SFT and RL for this setting\n- Comprehensive evaluation on a 5-objective drug design problem with multiple metrics\n- Well-structured paper with clear methodology description\n\nWeaknesses:\n- Limited comparison to state-of-the-art baselines: only compares to single models and its own ablations, not to ExLLM or MoLLEO which are cited as relevant prior work\n- Missing statistical significance testing; results show overlapping standard deviations in many cases\n- The improvement margins are modest (e.g., HV 0.847 vs 0.709 for sft_coevolve)\n- The similarity-based data synthesis is complex with many hyperparameters but limited sensitivity analysis\n- The claim of \"mutual inspiration\" is overstated; the API model is frozen and only benefits indirectly through better population quality\n- Limited discussion of computational cost (API calls, training time)\n- The paper lacks comparison to non-LLM baselines like traditional evolutionary algorithms or GFlowNets\n\nOriginality: Medium-High. The combination of frozen + trainable LLMs in co-evolution is novel, but builds heavily on existing evolutionary LLM frameworks.\n\nQuality: Good. The methodology is sound, but evaluation could be more thorough with better baselines and statistical rigor.\n\nClarity: Good. The paper is well-written and organized, though the algorithm description is somewhat complex.\n\nSignificance: Medium. The idea is interesting and could inspire future work in hybrid LLM systems, but the demonstrated gains are modest and domain-specific.\n\nOverall assessment: This is a solid paper with a novel idea, but the evaluation has notable gaps. The lack of comparison to the most relevant baselines (ExLLM, MoLLEO) is a significant weakness. The claimed \"state-of-the-art\" is not well-supported without these comparisons. However, the core idea of co-evolution between frozen and trainable models is interesting and could be valuable to the community. I would lean toward acceptance with major revisions requested, particularly adding comparisons to key baselines and statistical significance testing.\n\nDecision: Borderline. The technical contribution is sound but the evaluation needs strengthening. I'll recommend Reject given the missing key baselines, but note that with proper revisions it could become acceptable.REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper introduces Multi-LLM Collaborative Co-evolution (MCCE), a hybrid optimization framework that combines a frozen closed-source LLM (e.g., GPT-4o) with a lightweight trainable local model (Qwen2.5-7B) for multi-objective discrete optimization, demonstrated on molecular drug design with five objectives (QED, SAscore, DRD2, GSK3β, JNK3). The framework operates in an evolutionary loop where the two models alternate as genetic operators, with the local model being periodically fine-tuned via Direct Preference Optimization (DPO) using similarity-based preference pairs constructed from successful search trajectories. The authors argue that this co-evolution enables mutual inspiration: the large model provides global exploration while the small model internalizes experience through parameter updates. Experiments on drug design benchmarks show that MCCE with DPO achieves the highest Hypervolume Indicator and top-k fitness scores compared to single-model baselines and alternative training paradigms (SFT, RL).\",\n  \"Strengths\": [\n    \"Novel and well-motivated framework combining frozen closed-source LLMs with trainable open-source models in a co-evolutionary loop, addressing a real limitation of purely prompt-based or purely trainable approaches.\",\n    \"Clear demonstration that DPO outperforms SFT and RL for this setting, with a thoughtful analysis of why (catastrophic forgetting for SFT, reward instability for RL).\",\n    \"The similarity-based data synthesis for DPO is a clever contribution that addresses distribution shift and training instability, with reasonable algorithmic detail and fallback rules.\",\n    \"Comprehensive evaluation on a challenging 5-objective drug design problem with multiple metrics (Top-k fitness, AUC, uniqueness, diversity, HV, validity), and results reported over 10 runs.\",\n    \"The framework is presented as general-purpose and extensible to other discrete optimization domains, which broadens its potential impact.\",\n    \"Well-written and organized paper with clear figures and a reproducible methodology description.\",\n    \"The co-evolution analysis (Figure 3) showing the trained local model's output distribution shifting toward higher scores is compelling evidence of learning.\",\n    \"Ablation studies comparing DPO, SFT, and RL co-evolution variants help isolate the contribution of the training paradigm.\"\n  ],\n  \"Weaknesses\": [\n    \"Critical lack of comparison to the most relevant state-of-the-art baselines, specifically ExLLM (Ran et al., 2025) and MoLLEO (Wang et al., 2024), which are cited in the paper as prior work on LLM-based multi-objective molecular design. Without these comparisons, the claim of 'state-of-the-art' is not well-supported.\",\n    \"No statistical significance testing (e.g., t-tests, Wilcoxon) despite reporting overlapping standard deviations across many metrics. For example, HV for dpo_coevolve (0.847±0.138) vs rl_coevolve (0.709±0.219) shows high variance that may not be significant.\",\n    \"The improvement margins are modest in several metrics (e.g., Top1auc: 4.07 vs 4.03 for rl_coevolve), and the practical significance is unclear.\",\n    \"The claim of 'mutual inspiration' is overstated since the API model is frozen and only benefits indirectly through improved population quality. The paper does not demonstrate that the API model itself improves.\",\n    \"No comparison to non-LLM baselines such as traditional evolutionary algorithms (NSGA-II, MOEA/D) or GFlowNets, which are standard in multi-objective molecular optimization.\",\n    \"The similarity-based data synthesis introduces several hyperparameters (α, I1-I3, μ±σ filter) but lacks sensitivity analysis to show robustness to these choices.\",\n    \"Computational cost (API calls, training time, GPU requirements) is not discussed, which is important for practical adoption.\",\n    \"The paper does not report the number of generations or total API calls used, making it hard to assess efficiency.\",\n    \"The 'co-evolutionary curve' (Figure 3 left) is somewhat qualitative and does not provide clear quantitative evidence of how the two models complement each other over time.\",\n    \"Limited discussion of failure cases or limitations of the DPO approach, such as when the similarity filter might exclude useful training data.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"Why were ExLLM and MoLLEO, which are cited as the most relevant prior work, not included as baselines in the experiments? Can you provide a comparison to these methods using the same evaluation setup?\",\n    \"Have you conducted statistical significance tests (e.g., paired t-tests or Wilcoxon signed-rank) to confirm that the improvements over baselines are significant given the overlapping standard deviations?\",\n    \"How does the performance of MCCE compare to traditional multi-objective evolutionary algorithms (e.g., NSGA-II) or GFlowNets on the same task?\",\n    \"What is the total computational cost of the framework, including the number of API calls to the frozen LLM, the training time for the local model, and the hardware requirements?\",\n    \"Can you provide a sensitivity analysis for the key hyperparameters in the similarity-based data synthesis (α, similarity intervals I1-I3, update frequency f, dataset size D)?\",\n    \"How is the balance between the frozen LLM and local model determined in terms of how many candidates each generates per generation? Is this ratio fixed or adaptive?\",\n    \"The paper claims 'mutual inspiration'—can you provide evidence that the frozen API model's exploration improves over time due to the local model's learning, beyond the population-level metrics?\",\n    \"How does the choice of the local model size (e.g., 7B vs smaller/larger) affect performance?\",\n    \"What happens if the API model is unavailable or changes (e.g., model version updates)? Is the framework robust to such changes?\",\n    \"Can you report the variance of the DPO training loss and the final model's performance across different random seeds?\"\n  ],\n  \"Limitations\": [\n    \"The evaluation is limited to a single domain (molecular design) despite claims of generalizability to other discrete optimization problems.\",\n    \"The paper does not compare against the most relevant prior work (ExLLM, MoLLEO), which weakens the claim of state-of-the-art performance.\",\n    \"The improvement over baselines is modest and may not be statistically significant given the reported variances.\",\n    \"The computational cost of the framework (API calls, training) is not discussed, which is important for practical deployment.\",\n    \"The 'mutual inspiration' claim is not fully substantiated since only the local model is trained.\",\n    \"No analysis of failure cases or scenarios where the similarity-based filtering might discard useful training data.\",\n    \"Potential negative societal impact: the framework could be misused for designing molecules with harmful properties (e.g., toxins, chemical weapons), though this is a general concern for drug design tools. The ethics statement is brief and does not address dual-use concerns.\",\n    \"The paper does not discuss potential biases in the ZINC dataset or the objectives used.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 13798,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 12006,
+        "completion_tokens": 2153,
+        "reasoning_tokens": 0,
+        "total_tokens": 15951
+      },
+      "attempts": 1,
+      "response_id": "f00d0724-d5ad-402d-a909-b44780c1a125"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper introduces MCCE (Multi-LLM Collaborative Co-evolution), a hybrid framework for multi-objective discrete optimization (demonstrated on molecular design) that combines a frozen closed-source LLM (GPT-4o/Gemini) with a lightweight trainable local model (Qwen2.5-7B). The two models alternate as evolutionary operators: the frozen LLM provides global exploration via its broad knowledge, while the local model is periodically fine-tuned using Direct Preference Optimization (DPO) on similarity-filtered preference pairs constructed from successful search trajectories. The authors systematically compare training paradigms (SFT, RL, DPO) and propose a similarity-based data synthesis method to stabilize DPO training by ensuring chosen/rejected candidates are structurally comparable. Experiments on a five-objective drug design benchmark (QED, SA, DRD2, GSK3β, JNK3) show that MCCE achieves higher Hypervolume and Top-k fitness scores than single-model baselines and co-evolution without training, with evidence of mutual improvement for both models.",
+        "Strengths": [
+          "Novel and well-motivated combination of a frozen large LLM with a trainable small model in an evolutionary optimization framework, directly addressing the limitation of static LLM-based optimizers.",
+          "Systematic exploration of training paradigms (SFT, RL, DPO) with clear reasoning for why DPO with similarity-based data synthesis is preferred, providing useful insights for the community.",
+          "The similarity-based pair construction is a thoughtful mechanism to reduce distribution shift and stabilize preference-based training in a co-evolutionary setting.",
+          "Demonstrates that both the local model and the frozen API model improve when used collaboratively (dpo_coevolve:local and dpo_coevolve:api both outperform their individual baselines), supporting the 'mutual inspiration' claim.",
+          "Clear writing with well-structured methodology and useful figures (co-evolutionary curves, output distribution analysis)."
+        ],
+        "Weaknesses": [
+          "Missing comparison with key state-of-the-art baselines cited in the paper, such as ExLLM/MoLLM (Ran et al., 2025) and MoLLEO (Wang et al., 2024). The claim of 'state-of-the-art' performance is not supported without these comparisons.",
+          "The reported improvements over baselines are often modest and within error bars for many metrics (e.g., Top1F: 4.35 vs 4.24 for SFT; Top1auc: 4.07 vs 4.03). Only Hypervolume shows a substantial gain (0.847 vs 0.709), which warrants deeper analysis.",
+          "The validity of generated molecules decreases for dpo_coevolve (0.820) compared to the frozen LLM (0.902) and even the untrained Qwen (0.838), suggesting a potential trade-off from training that is not adequately discussed.",
+          "Lack of detailed experimental setup: population size, number of generations, selection strategy, training frequency, learning rates, and total compute budget (API calls, training time) are not clearly specified.",
+          "The 'co-evolutionary curve' (Figure 3 left) is presented qualitatively without clear quantitative metrics comparing the individual contributions of the two models over time.",
+          "The paper only evaluates on a single task (molecular design). The claim of extensibility to other discrete optimization domains is not demonstrated.",
+          "No ablation on the similarity-based data synthesis parameters (α, similarity windows) or their sensitivity, despite these being central to the method's stability."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 2,
+        "Questions": [
+          "Why are ExLLM/MoLLM and MoLLEO not included as baselines, given they are cited as the most relevant prior work? What are the comparative results?",
+          "What are the specific values for population size, number of generations, selection strategy, and the update frequency f? How were these chosen?",
+          "What is the total computational cost of the framework (number of API calls to GPT-4o, training time for Qwen, and hardware used)?",
+          "Can you provide a quantitative breakdown of the contribution of each model (frozen vs. local) to the final Pareto front, beyond the qualitative co-evolutionary curve?",
+          "How sensitive is the method to the hyperparameters α and the similarity windows I1, I2, I3?",
+          "Why does the validity of dpo_coevolve decrease compared to the untrained model? Is this a concern for practical drug design applications?",
+          "How does the method scale to larger populations or higher-dimensional objective spaces?"
+        ],
+        "Limitations": [
+          "The evaluation is limited to a single domain (molecular design) and a single objective function configuration; the claimed generality to other discrete optimization problems is not empirically demonstrated.",
+          "The paper does not discuss the computational and financial costs of relying on closed-source APIs (GPT-4o), which may limit the practical accessibility of the framework.",
+          "The potential trade-off between solution quality (fitness) and validity is not thoroughly analyzed.",
+          "The paper does not address the environmental impact of extensive LLM API usage and local model training.",
+          "No discussion of potential negative societal impacts, such as the dual-use nature of drug design tools (e.g., designing toxic compounds)."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 2,
+        "Overall": 5,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThe paper proposes MCCE, a hybrid framework combining a frozen closed-source LLM (GPT-4o/Gemini) with a trainable local model (Qwen2.5-7B) for multi-objective molecular optimization. The key contribution is the co-evolutionary loop where the local model is trained via DPO on similarity-filtered preference pairs derived from successful search trajectories.\n\nStrengths:\n- Novel combination of frozen + trainable LLMs in evolutionary optimization, addressing a real limitation of single-model approaches\n- Well-motivated problem (multi-objective drug design) with practical significance\n- Thorough exploration of training paradigms (SFT, RL, DPO) with clear reasoning for choosing DPO\n- Similarity-based data synthesis is a thoughtful mechanism to stabilize DPO training\n- Demonstrates mutual improvement of both models (dpo_coevolve:local and dpo_coevolve:api both improve over baselines)\n\nWeaknesses:\n- The experimental comparison is limited. The baselines are only single-model variants (Qwen, GPT-4o) and the collaboration without training. No comparison against strong existing methods like ExLLM (MoLLM) or MoLLEO, which are cited in the paper but not evaluated against.\n- The improvements over baselines are modest in many metrics (e.g., Top1F 4.35 vs 4.24 for SFT coevolve). Only HV shows a substantial gain (0.847 vs 0.709).\n- The paper claims \"state-of-the-art\" but does not compare with any recent SOTA methods from the molecular design literature.\n- The methodology section is somewhat abstract; more concrete details about the evolutionary loop (population size, selection strategy, number of generations) would help reproducibility.\n- The training details are sparse - no clear specification of training steps, learning rates, or compute budget.\n- The paper does not discuss the computational cost of the framework (API calls to GPT-4o, training time for Qwen).\n- The \"co-evolutionary curve\" in Figure 3 is largely qualitative - no clear quantitative comparison of the two models' individual contributions over time.\n- Validity of generated molecules is lower for dpo_coevolve (0.820) compared to GPT-4o (0.902), suggesting potential degradation from training.\n\nOriginality: Medium-High. The combination of frozen and trainable LLMs in a co-evolutionary framework is novel, though the individual components (LLM-based evolutionary search, DPO training) are established.\n\nQuality: Medium. The paper is technically sound but the evaluation is not comprehensive enough to fully support the \"state-of-the-art\" claim. Missing comparison with key baselines is a significant gap.\n\nClarity: Good. The paper is well-structured and the methodology is explained clearly, though some implementation details are in the appendix.\n\nSignificance: Medium. The framework has potential impact on discrete optimization, but the demonstrated gains are modest and the evaluation is limited to one domain.\n\nOverall assessment: The paper presents an interesting idea with a reasonable implementation, but the evaluation falls short of supporting the strong claims. The lack of comparison with existing SOTA molecular design methods (e.g., ExLLM/MoLLM which is cited but not compared) is a major concern. The improvements over simpler baselines are often within error bars. I would lean toward rejection due to insufficient evidence for the claimed superiority.\n\nRating decisions:\n- Soundness: 3 (good) - technically sound but evaluation is incomplete\n- Presentation: 3 (good) - clear writing\n- Contribution: 2 (fair) - novel idea but limited demonstrated impact\n- Overall: 5 (borderline accept) - interesting but needs stronger evaluation\n- Confidence: 4\n\nDecision: Reject (borderline, but the missing baseline comparison and modest gains push toward rejection)\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper introduces MCCE (Multi-LLM Collaborative Co-evolution), a hybrid framework for multi-objective discrete optimization (demonstrated on molecular design) that combines a frozen closed-source LLM (GPT-4o/Gemini) with a lightweight trainable local model (Qwen2.5-7B). The two models alternate as evolutionary operators: the frozen LLM provides global exploration via its broad knowledge, while the local model is periodically fine-tuned using Direct Preference Optimization (DPO) on similarity-filtered preference pairs constructed from successful search trajectories. The authors systematically compare training paradigms (SFT, RL, DPO) and propose a similarity-based data synthesis method to stabilize DPO training by ensuring chosen/rejected candidates are structurally comparable. Experiments on a five-objective drug design benchmark (QED, SA, DRD2, GSK3β, JNK3) show that MCCE achieves higher Hypervolume and Top-k fitness scores than single-model baselines and co-evolution without training, with evidence of mutual improvement for both models.\",\n  \"Strengths\": [\n    \"Novel and well-motivated combination of a frozen large LLM with a trainable small model in an evolutionary optimization framework, directly addressing the limitation of static LLM-based optimizers.\",\n    \"Systematic exploration of training paradigms (SFT, RL, DPO) with clear reasoning for why DPO with similarity-based data synthesis is preferred, providing useful insights for the community.\",\n    \"The similarity-based pair construction is a thoughtful mechanism to reduce distribution shift and stabilize preference-based training in a co-evolutionary setting.\",\n    \"Demonstrates that both the local model and the frozen API model improve when used collaboratively (dpo_coevolve:local and dpo_coevolve:api both outperform their individual baselines), supporting the 'mutual inspiration' claim.\",\n    \"Clear writing with well-structured methodology and useful figures (co-evolutionary curves, output distribution analysis).\"\n  ],\n  \"Weaknesses\": [\n    \"Missing comparison with key state-of-the-art baselines cited in the paper, such as ExLLM/MoLLM (Ran et al., 2025) and MoLLEO (Wang et al., 2024). The claim of 'state-of-the-art' performance is not supported without these comparisons.\",\n    \"The reported improvements over baselines are often modest and within error bars for many metrics (e.g., Top1F: 4.35 vs 4.24 for SFT; Top1auc: 4.07 vs 4.03). Only Hypervolume shows a substantial gain (0.847 vs 0.709), which warrants deeper analysis.\",\n    \"The validity of generated molecules decreases for dpo_coevolve (0.820) compared to the frozen LLM (0.902) and even the untrained Qwen (0.838), suggesting a potential trade-off from training that is not adequately discussed.\",\n    \"Lack of detailed experimental setup: population size, number of generations, selection strategy, training frequency, learning rates, and total compute budget (API calls, training time) are not clearly specified.\",\n    \"The 'co-evolutionary curve' (Figure 3 left) is presented qualitatively without clear quantitative metrics comparing the individual contributions of the two models over time.\",\n    \"The paper only evaluates on a single task (molecular design). The claim of extensibility to other discrete optimization domains is not demonstrated.\",\n    \"No ablation on the similarity-based data synthesis parameters (α, similarity windows) or their sensitivity, despite these being central to the method's stability.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"Why are ExLLM/MoLLM and MoLLEO not included as baselines, given they are cited as the most relevant prior work? What are the comparative results?\",\n    \"What are the specific values for population size, number of generations, selection strategy, and the update frequency f? How were these chosen?\",\n    \"What is the total computational cost of the framework (number of API calls to GPT-4o, training time for Qwen, and hardware used)?\",\n    \"Can you provide a quantitative breakdown of the contribution of each model (frozen vs. local) to the final Pareto front, beyond the qualitative co-evolutionary curve?\",\n    \"How sensitive is the method to the hyperparameters α and the similarity windows I1, I2, I3?\",\n    \"Why does the validity of dpo_coevolve decrease compared to the untrained model? Is this a concern for practical drug design applications?\",\n    \"How does the method scale to larger populations or higher-dimensional objective spaces?\"\n  ],\n  \"Limitations\": [\n    \"The evaluation is limited to a single domain (molecular design) and a single objective function configuration; the claimed generality to other discrete optimization problems is not empirically demonstrated.\",\n    \"The paper does not discuss the computational and financial costs of relying on closed-source APIs (GPT-4o), which may limit the practical accessibility of the framework.\",\n    \"The potential trade-off between solution quality (fitness) and validity is not thoroughly analyzed.\",\n    \"The paper does not address the environmental impact of extensive LLM API usage and local model training.\",\n    \"No discussion of potential negative societal impacts, such as the dual-use nature of drug design tools (e.g., designing toxic compounds).\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 2,\n  \"Overall\": 5,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 13798,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 12006,
+        "completion_tokens": 2002,
+        "reasoning_tokens": 0,
+        "total_tokens": 15800
+      },
+      "attempts": 1,
+      "response_id": "5e9cdb95-7843-40d1-8aa9-8dfaf33bca71"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper proposes Multi-LLM Collaborative Co-evolution (MCCE), a framework that combines a frozen closed-source LLM (GPT-4o, Gemini) with a lightweight trainable local model (Qwen2.5-7B) for multi-objective discrete optimization, demonstrated on molecular design with five objectives (QED, SAscore, DRD2, GSK3β, JNK3). The system maintains a trajectory memory, and the local model is periodically fine-tuned using Direct Preference Optimization (DPO) on similarity-filtered preference pairs constructed from breakthrough search trajectories. The frozen LLM provides global exploration while the local model performs targeted exploitation, forming a co-evolutionary loop. Experiments show MCCE achieves higher Hypervolume and Top-K scores compared to single-model baselines (Qwen, GPT-4o) and collaborative variants without training or with SFT/RL training.",
+        "Strengths": [
+          "The core idea of coupling a frozen LLM with a trainable small model in a co-evolutionary loop is novel and practically motivated, directly addressing the limitation that closed-source LLMs cannot be fine-tuned.",
+          "The similarity-based data synthesis method for DPO is a thoughtful contribution that addresses training instability from contradictory prompt-response pairs, with a clear algorithmic procedure.",
+          "The paper systematically compares SFT, RL, and DPO training paradigms, providing empirical evidence for the choice of DPO.",
+          "Results show consistent improvements over baselines in Hypervolume and Top-K metrics, with the trained local model demonstrating a shifted output distribution toward higher-quality molecules.",
+          "The paper is generally well-written and clearly motivated, with related work adequately cited."
+        ],
+        "Weaknesses": [
+          "The evaluation is limited to a single task (molecular design with five objectives). The claimed generality to 'discrete optimization beyond drug discovery' is not demonstrated experimentally.",
+          "No comparison with strong non-LLM baselines (e.g., genetic algorithms, GFlowNets, Bayesian optimization, or standard multi-objective evolutionary algorithms like NSGA-II). This is critical for establishing that the LLM-based approach is actually superior.",
+          "The most relevant baselines (ExLLM, MoLLEO) are cited but not directly compared against experimentally.",
+          "No statistical significance testing is reported (e.g., t-tests, Wilcoxon). Given the large standard deviations reported, some improvements may not be statistically significant.",
+          "The paper does not ablate the contribution of the frozen LLM vs. the local model separately. The 'collaboration' baseline without training shows modest gains over single models, suggesting training is the key factor, but this is not analyzed in depth.",
+          "The similarity-based data synthesis has many hyperparameters (α, I1-I3, μ±σ) with no sensitivity analysis.",
+          "GFlowNets are introduced in the preliminaries but never used in experiments, which is confusing and unnecessary.",
+          "The claim of 'mutual inspiration' is not fully supported — the frozen LLM is never updated, so the 'co-evolution' is asymmetric. The improvement in the API model's performance (dpo_coevolve:api) appears to come from population dynamics rather than learning in the API model itself.",
+          "The prompt design is heavily task-specific with extensive domain knowledge injection, raising questions about generality to other discrete optimization problems."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 2,
+        "Questions": [
+          "Can you provide a direct comparison with ExLLM and MoLLEO under the same experimental setup, including the same number of objectives and evaluation protocol?",
+          "How does MCCE compare with standard multi-objective evolutionary algorithms (e.g., NSGA-II, MOEA/D) and other non-LLM methods on this task?",
+          "Have you performed statistical significance tests (e.g., paired t-test, Wilcoxon signed-rank test) to confirm that the improvements over baselines are significant given the reported standard deviations?",
+          "Can you provide an ablation separating the contribution of the frozen LLM and the local model? For example, what is the performance if the local model is trained alone without collaboration with the frozen LLM?",
+          "How sensitive is the method to the hyperparameters in the similarity-based data synthesis (α, I1-I3, μ±σ)? A sensitivity analysis would strengthen the paper.",
+          "The paper claims generality to other discrete optimization domains. Can you demonstrate this on at least one additional task (e.g., combinatorial optimization, circuit design, or scheduling)?",
+          "How is the 'breakthrough' trajectory defined exactly? Is it based on Pareto dominance or scalarized score improvement?",
+          "What is the computational cost of the framework (API calls, training time) compared to baselines?",
+          "The 'mutual inspiration' claim — since the frozen LLM is not updated, how exactly does the local model 'enrich the exploration capacity of larger models'? Is this through population dynamics or some other mechanism?"
+        ],
+        "Limitations": [
+          "The evaluation is restricted to a single domain (drug design), limiting the generality claims.",
+          "The lack of comparison with non-LLM baselines makes it difficult to assess the true value of the LLM-based approach.",
+          "No statistical significance testing is provided.",
+          "The hyperparameter sensitivity of the data synthesis method is not analyzed.",
+          "The computational cost (API calls, training) is not discussed.",
+          "The asymmetric nature of the 'co-evolution' (frozen LLM never updates) is not clearly acknowledged as a limitation."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 5,
+        "Confidence": 3,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThe paper proposes MCCE, a hybrid framework combining a frozen closed-source LLM (GPT-4o, Gemini) with a trainable local model (Qwen2.5-7B) for multi-objective discrete optimization, demonstrated on molecular design with five objectives. The key contribution is the co-evolution loop where the local model is trained via DPO on similarity-filtered preference pairs constructed from breakthrough trajectories, while the frozen LLM provides global exploration.\n\nStrengths:\n1. The core idea of combining a frozen LLM with a trainable small model in a co-evolutionary loop is novel and practically motivated, addressing the limitation that closed-source LLMs cannot be fine-tuned.\n2. The similarity-based data synthesis for DPO is a thoughtful contribution that addresses training instability from contradictory prompt-response pairs.\n3. The paper systematically compares SFT, RL, and DPO training paradigms, providing empirical justification for the DPO choice.\n4. Results show improvement over single-model baselines and collaborative variants without training.\n\nWeaknesses:\n1. The paper lacks comparison with strong non-LLM baselines (e.g., genetic algorithms, GFlowNets, Bayesian optimization). This is critical for establishing that the LLM-based approach is actually superior.\n2. The evaluation is limited to a single task (molecular design with five objectives). The claimed generality to \"discrete optimization beyond drug discovery\" is not demonstrated.\n3. The experimental analysis lacks statistical rigor. Only 10 runs are reported, and no significance tests (e.g., t-tests, Wilcoxon) are performed. The standard deviations are large, and some differences may not be significant.\n4. The paper does not ablate the contribution of the frozen LLM vs. the local model separately — the \"collaboration\" baseline without training shows much smaller gains over single models, suggesting the training is the key factor, but this is not clearly analyzed.\n5. The similarity-based data synthesis is complex with many hyperparameters (α, I1-I3, μ±σ) but no sensitivity analysis is provided.\n6. The paper mentions GFlowNets in the preliminaries but never uses them in experiments — this is confusing.\n7. The prompt design is very task-specific with extensive domain knowledge injection; it's unclear how generalizable this is.\n8. The claim of \"mutual inspiration\" is not well supported — the frozen LLM is never updated, so \"co-evolution\" is asymmetric. The improvement in the API model's performance (dpo_coevolve:api) appears to come from the population dynamics, not from learning in the API model itself.\n\nClarity issues:\n- The algorithm pseudocode is simplified in the main text with details deferred to appendix, making it hard to fully understand the method.\n- The notation is sometimes inconsistent (e.g., using both π_LLM and π_θ).\n- Figure 1 is referenced but not included in the text provided.\n\nOverall, this is a technically solid paper with a novel idea and reasonable experiments, but the evaluation is limited and the claimed generality is not demonstrated. The contribution is moderate — it's a useful combination of existing techniques (LLM-based evolution + DPO) with a specific data synthesis trick. I'd lean towards borderline accept, but the lack of strong baselines and limited evaluation push me towards reject.\n\nDecision: Reject (borderline). The idea is interesting but the evaluation is insufficient to establish state-of-the-art claims.\n\nRatings:\n- Originality: 3 (good) — novel combination, but builds on existing LLM-evolution and DPO literature.\n- Quality: 2 (fair) — technically sound but limited evaluation, no significance tests, single task.\n- Clarity: 3 (good) — well-written but with some organizational issues.\n- Significance: 2 (fair) — potentially useful but not demonstrated beyond one domain.\n- Soundness: 3 (good) — methodology is reasonable, but claims are not fully supported.\n- Presentation: 3 (good) — clear writing, but some details deferred.\n- Contribution: 3 (good) — worthwhile contribution if validated further.\n- Overall: 5 (borderline accept) — reasons to accept (novel idea, reasonable results) outweigh reject (limited evaluation, no strong baselines), but barely.\n- Confidence: 3 (fairly confident) — I'm familiar with LLM-based optimization but did not check all details.\n\nLet me reconsider. The lack of non-LLM baselines and single-domain evaluation are significant weaknesses. The paper also doesn't compare with MoLLEO or ExLLM directly, which are the most relevant baselines. The improvements over the \"collaboration\" (no training) baseline are modest for Top1F (4.19 → 4.35) but HV improves substantially (0.695 → 0.847). This is promising. However, without significance tests, I can't be sure these are real improvements.\n\nI'll go with Reject but with a borderline tone. The idea has merit but the paper needs more thorough evaluation to be accepted.REVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper proposes Multi-LLM Collaborative Co-evolution (MCCE), a framework that combines a frozen closed-source LLM (GPT-4o, Gemini) with a lightweight trainable local model (Qwen2.5-7B) for multi-objective discrete optimization, demonstrated on molecular design with five objectives (QED, SAscore, DRD2, GSK3β, JNK3). The system maintains a trajectory memory, and the local model is periodically fine-tuned using Direct Preference Optimization (DPO) on similarity-filtered preference pairs constructed from breakthrough search trajectories. The frozen LLM provides global exploration while the local model performs targeted exploitation, forming a co-evolutionary loop. Experiments show MCCE achieves higher Hypervolume and Top-K scores compared to single-model baselines (Qwen, GPT-4o) and collaborative variants without training or with SFT/RL training.\",\n    \"Strengths\": [\n        \"The core idea of coupling a frozen LLM with a trainable small model in a co-evolutionary loop is novel and practically motivated, directly addressing the limitation that closed-source LLMs cannot be fine-tuned.\",\n        \"The similarity-based data synthesis method for DPO is a thoughtful contribution that addresses training instability from contradictory prompt-response pairs, with a clear algorithmic procedure.\",\n        \"The paper systematically compares SFT, RL, and DPO training paradigms, providing empirical evidence for the choice of DPO.\",\n        \"Results show consistent improvements over baselines in Hypervolume and Top-K metrics, with the trained local model demonstrating a shifted output distribution toward higher-quality molecules.\",\n        \"The paper is generally well-written and clearly motivated, with related work adequately cited.\"\n    ],\n    \"Weaknesses\": [\n        \"The evaluation is limited to a single task (molecular design with five objectives). The claimed generality to 'discrete optimization beyond drug discovery' is not demonstrated experimentally.\",\n        \"No comparison with strong non-LLM baselines (e.g., genetic algorithms, GFlowNets, Bayesian optimization, or standard multi-objective evolutionary algorithms like NSGA-II). This is critical for establishing that the LLM-based approach is actually superior.\",\n        \"The most relevant baselines (ExLLM, MoLLEO) are cited but not directly compared against experimentally.\",\n        \"No statistical significance testing is reported (e.g., t-tests, Wilcoxon). Given the large standard deviations reported, some improvements may not be statistically significant.\",\n        \"The paper does not ablate the contribution of the frozen LLM vs. the local model separately. The 'collaboration' baseline without training shows modest gains over single models, suggesting training is the key factor, but this is not analyzed in depth.\",\n        \"The similarity-based data synthesis has many hyperparameters (α, I1-I3, μ±σ) with no sensitivity analysis.\",\n        \"GFlowNets are introduced in the preliminaries but never used in experiments, which is confusing and unnecessary.\",\n        \"The claim of 'mutual inspiration' is not fully supported — the frozen LLM is never updated, so the 'co-evolution' is asymmetric. The improvement in the API model's performance (dpo_coevolve:api) appears to come from population dynamics rather than learning in the API model itself.\",\n        \"The prompt design is heavily task-specific with extensive domain knowledge injection, raising questions about generality to other discrete optimization problems.\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 2,\n    \"Clarity\": 3,\n    \"Significance\": 2,\n    \"Questions\": [\n        \"Can you provide a direct comparison with ExLLM and MoLLEO under the same experimental setup, including the same number of objectives and evaluation protocol?\",\n        \"How does MCCE compare with standard multi-objective evolutionary algorithms (e.g., NSGA-II, MOEA/D) and other non-LLM methods on this task?\",\n        \"Have you performed statistical significance tests (e.g., paired t-test, Wilcoxon signed-rank test) to confirm that the improvements over baselines are significant given the reported standard deviations?\",\n        \"Can you provide an ablation separating the contribution of the frozen LLM and the local model? For example, what is the performance if the local model is trained alone without collaboration with the frozen LLM?\",\n        \"How sensitive is the method to the hyperparameters in the similarity-based data synthesis (α, I1-I3, μ±σ)? A sensitivity analysis would strengthen the paper.\",\n        \"The paper claims generality to other discrete optimization domains. Can you demonstrate this on at least one additional task (e.g., combinatorial optimization, circuit design, or scheduling)?\",\n        \"How is the 'breakthrough' trajectory defined exactly? Is it based on Pareto dominance or scalarized score improvement?\",\n        \"What is the computational cost of the framework (API calls, training time) compared to baselines?\",\n        \"The 'mutual inspiration' claim — since the frozen LLM is not updated, how exactly does the local model 'enrich the exploration capacity of larger models'? Is this through population dynamics or some other mechanism?\"\n    ],\n    \"Limitations\": [\n        \"The evaluation is restricted to a single domain (drug design), limiting the generality claims.\",\n        \"The lack of comparison with non-LLM baselines makes it difficult to assess the true value of the LLM-based approach.\",\n        \"No statistical significance testing is provided.\",\n        \"The hyperparameter sensitivity of the data synthesis method is not analyzed.\",\n        \"The computational cost (API calls, training) is not discussed.\",\n        \"The asymmetric nature of the 'co-evolution' (frozen LLM never updates) is not clearly acknowledged as a limitation.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 5,\n    \"Confidence\": 3,\n    \"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 13798,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 12006,
+        "completion_tokens": 2299,
+        "reasoning_tokens": 0,
+        "total_tokens": 16097
+      },
+      "attempts": 1,
+      "response_id": "0d81095e-0399-448a-9ef1-d2edd31a8ff0"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper introduces MCCE (Multi-LLM Collaborative Co-evolution), a hybrid optimization framework that combines a frozen closed-source LLM (GPT-4o) with a lightweight trainable local model (Qwen2.5-7B) for multi-objective discrete optimization, demonstrated on molecular design. The framework operates in an evolutionary loop where the frozen LLM provides global exploration and the local model is periodically fine-tuned via Direct Preference Optimization (DPO) using similarity-filtered preference pairs constructed from past successful trajectories. The authors argue that parameter training is essential for accumulating experience, and that single-model approaches (either frozen or trainable) are insufficient. Experiments on a 5-objective drug design benchmark (QED, SAscore, DRD2, GSK3β, JNK3) show that MCCE achieves state-of-the-art Hypervolume (0.847) compared to single-model baselines (GPT-4o: 0.661, Qwen: 0.516) and alternative co-evolution variants (SFT: 0.709, RL: 0.709). The authors also analyze the co-evolutionary dynamics and show that the trained local model produces molecules with higher quality distribution.",
+        "Strengths": [
+          "Novel combination of frozen and trainable LLMs in a co-evolutionary framework, addressing the fundamental limitation of closed-source models (cannot be fine-tuned) and small open models (lack reasoning power).",
+          "Clear empirical demonstration that parameter training (DPO) is crucial for performance gains, with MCCE significantly outperforming the no-training collaboration baseline.",
+          "The similarity-based DPO data synthesis method is a thoughtful solution to the distribution shift problem and training instability, with clear justification for why SFT and RL fail.",
+          "The framework is general and could be applied to other discrete optimization domains beyond drug design.",
+          "The authors provide detailed ablation of training paradigms (SFT, RL, DPO) and analysis of the learning dynamics."
+        ],
+        "Weaknesses": [
+          "Evaluation is limited to a single task (molecular design). No experiments on other discrete optimization problems, despite claims of generality.",
+          "No comparison with strong non-LLM baselines such as genetic algorithms, GFlowNets, or Bayesian optimization, which are standard for molecular design. This weakens the claim of state-of-the-art performance.",
+          "The co-evolution claim is somewhat overstated: the frozen LLM does not actually evolve since its parameters are fixed. The 'mutual inspiration' is primarily one-way (local model learns from API outputs), and the benefit to the frozen model is indirect at best.",
+          "Statistical significance is questionable: for many metrics, the differences between dpo_coevolve and rl_coevolve are within one standard deviation (e.g., Top1F: 4.35±0.17 vs 4.19±0.17).",
+          "The DPO data synthesis method has many hyperparameters (α, similarity windows, fallback rules) without thorough ablation of each component's contribution.",
+          "Computational cost of API calls and training is not analyzed, which is important for practical adoption.",
+          "The paper claims 'continual evolution' but training is done in batch updates, not truly online."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How does MCCE compare to strong non-LLM baselines such as genetic algorithms (e.g., NSGA-II), GFlowNets, or Bayesian optimization on the same 5-objective task? This is crucial for establishing true state-of-the-art claims.",
+          "The paper claims 'mutual inspiration' between models. Since the frozen LLM cannot be updated, what concrete mechanism allows it to benefit from the local model's learning? Is it only through improved population composition?",
+          "What is the computational cost per generation (API calls, training time) and how does it compare to baselines?",
+          "Why is the validity of dpo_coevolve (0.820) lower than the no-training collaboration (0.838) and GPT-4o alone (0.902)? Does this indicate a trade-off between optimization and chemical validity?",
+          "How sensitive is the performance to the hyperparameters α and similarity windows? Is there a risk of overfitting to the specific task?",
+          "The paper uses a scalarized score for DPO pair construction. How was this scalarization done for the 5 objectives? Different scalarization methods could significantly affect training.",
+          "Could the improvement over rl_coevolve be attributed to the specific RL implementation rather than the DPO approach itself? What RL algorithm was used and how were hyperparameters tuned?"
+        ],
+        "Limitations": [
+          "Evaluation is restricted to one task (molecular design), limiting evidence for the claimed generality of the framework.",
+          "No comparison with non-LLM optimization methods, which are standard baselines in the molecular design literature.",
+          "The co-evolution is asymmetric: the frozen LLM does not truly evolve, weakening the 'co-evolution' narrative.",
+          "The DPO data synthesis method involves many heuristics that may require task-specific tuning.",
+          "Computational cost and API usage are not reported, which is important for practical deployment.",
+          "Potential negative societal impact: the framework could be used for designing molecules with harmful properties (e.g., toxins), though this is not specifically addressed."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 5,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThe paper proposes MCCE, a hybrid framework combining a frozen closed-source LLM (GPT-4o) with a trainable local model (Qwen2.5-7B) for multi-objective molecular design. The key idea is co-evolution: the frozen LLM provides global exploration while the local model is fine-tuned via DPO on similarity-filtered preference pairs from past successful trajectories. The paper reports state-of-the-art Hypervolume on a 5-objective drug design benchmark.\n\nStrengths: (1) Novel combination of frozen LLM + trainable local model with mutual co-evolution, going beyond static multi-model collaboration or single-model RL. (2) Practical insight that SFT and RL are unstable for this task, and DPO with similarity-based filtering stabilizes training. (3) Clear empirical gains in Hypervolume (0.847 vs 0.661 for GPT-4o alone). (4) The framework is generalizable beyond drug design.\n\nWeaknesses: (1) Limited evaluation: only one task (molecular design), no comparison with strong non-LLM baselines (e.g., genetic algorithms, GFlowNets, Bayesian optimization). (2) The co-evolution claim is somewhat overstated—the frozen LLM does not actually \"evolve\" since its parameters are fixed; it only benefits indirectly via better prompts/population. The \"mutual inspiration\" is mostly one-way (local model learns from API outputs). (3) Hyperparameter sensitivity and computational cost of API calls are not deeply analyzed. (4) The DPO data synthesis method is complex with many heuristics (similarity windows, quantile thresholds) and lacks ablation on each component. (5) Statistical significance: 10 runs but the differences between dpo_coevolve and rl_coevolve are within standard deviation for many metrics. (6) The paper claims \"continual evolution\" but the training happens in batch updates, not truly online.\n\nOriginality: Medium-high. The combination of frozen + trainable LLMs with DPO-based experience learning is novel, but builds heavily on ExLLM and MoLLEO. The similarity-based DPO data synthesis is a useful contribution.\n\nQuality: Fair. The empirical results are promising but evaluation is narrow. The methodology section is detailed but some claims (e.g., \"mutual inspiration\") are not fully substantiated. The comparison with SFT/RL baselines is useful but lacks depth (e.g., no learning curves for these baselines).\n\nClarity: Good. The paper is well-structured, but the notation in Section 4.3 is dense and the algorithm description is split between main text and appendix, making it hard to follow. Some figures are referenced but not included in the text.\n\nSignificance: Medium. The idea of hybrid static + trainable LLM systems is timely and could inspire future work, but the demonstrated impact is limited to one benchmark. The paper does not provide enough evidence of broad applicability.\n\nOverall assessment: The paper presents a reasonable contribution with a novel framework and solid empirical results on a single task. However, the narrow evaluation, lack of strong baselines, and somewhat overstated co-evolution claims prevent it from being a strong accept. I lean toward borderline accept but will rate as reject given the criteria require a clear accept/reject decision and the weaknesses are notable.\n\nDecision: Reject (borderline). The technical ideas are sound but the evaluation is insufficient to establish state-of-the-art claims, and the co-evolution narrative is partially misleading.\n\nConfidence: 4 (confident, familiar with LLM-based optimization and molecular design).\n\nSoundness: 3 (good). The method is technically sound but evaluation is limited.\n\nPresentation: 3 (good). Clear writing but some dense sections and missing figure references.\n\nContribution: 3 (good). Novel framework but limited demonstrated impact.\n\nOverall: 5 (borderline accept). Reasons to accept (novel framework, good results) are balanced by reasons to reject (narrow evaluation, overstated claims). Given the forced binary decision, I choose Reject.\n\nEthical concerns: None. The paper includes an ethics statement and uses public datasets.\n\nLimitations: (1) Single-task evaluation. (2) No comparison with non-LLM evolutionary baselines. (3) Computational cost of API calls not analyzed. (4) Co-evolution is asymmetric (frozen model doesn't truly evolve). (5) Hyperparameter sensitivity of DPO synthesis not fully explored.REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper introduces MCCE (Multi-LLM Collaborative Co-evolution), a hybrid optimization framework that combines a frozen closed-source LLM (GPT-4o) with a lightweight trainable local model (Qwen2.5-7B) for multi-objective discrete optimization, demonstrated on molecular design. The framework operates in an evolutionary loop where the frozen LLM provides global exploration and the local model is periodically fine-tuned via Direct Preference Optimization (DPO) using similarity-filtered preference pairs constructed from past successful trajectories. The authors argue that parameter training is essential for accumulating experience, and that single-model approaches (either frozen or trainable) are insufficient. Experiments on a 5-objective drug design benchmark (QED, SAscore, DRD2, GSK3β, JNK3) show that MCCE achieves state-of-the-art Hypervolume (0.847) compared to single-model baselines (GPT-4o: 0.661, Qwen: 0.516) and alternative co-evolution variants (SFT: 0.709, RL: 0.709). The authors also analyze the co-evolutionary dynamics and show that the trained local model produces molecules with higher quality distribution.\",\n  \"Strengths\": [\n    \"Novel combination of frozen and trainable LLMs in a co-evolutionary framework, addressing the fundamental limitation of closed-source models (cannot be fine-tuned) and small open models (lack reasoning power).\",\n    \"Clear empirical demonstration that parameter training (DPO) is crucial for performance gains, with MCCE significantly outperforming the no-training collaboration baseline.\",\n    \"The similarity-based DPO data synthesis method is a thoughtful solution to the distribution shift problem and training instability, with clear justification for why SFT and RL fail.\",\n    \"The framework is general and could be applied to other discrete optimization domains beyond drug design.\",\n    \"The authors provide detailed ablation of training paradigms (SFT, RL, DPO) and analysis of the learning dynamics.\"\n  ],\n  \"Weaknesses\": [\n    \"Evaluation is limited to a single task (molecular design). No experiments on other discrete optimization problems, despite claims of generality.\",\n    \"No comparison with strong non-LLM baselines such as genetic algorithms, GFlowNets, or Bayesian optimization, which are standard for molecular design. This weakens the claim of state-of-the-art performance.\",\n    \"The co-evolution claim is somewhat overstated: the frozen LLM does not actually evolve since its parameters are fixed. The 'mutual inspiration' is primarily one-way (local model learns from API outputs), and the benefit to the frozen model is indirect at best.\",\n    \"Statistical significance is questionable: for many metrics, the differences between dpo_coevolve and rl_coevolve are within one standard deviation (e.g., Top1F: 4.35±0.17 vs 4.19±0.17).\",\n    \"The DPO data synthesis method has many hyperparameters (α, similarity windows, fallback rules) without thorough ablation of each component's contribution.\",\n    \"Computational cost of API calls and training is not analyzed, which is important for practical adoption.\",\n    \"The paper claims 'continual evolution' but training is done in batch updates, not truly online.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does MCCE compare to strong non-LLM baselines such as genetic algorithms (e.g., NSGA-II), GFlowNets, or Bayesian optimization on the same 5-objective task? This is crucial for establishing true state-of-the-art claims.\",\n    \"The paper claims 'mutual inspiration' between models. Since the frozen LLM cannot be updated, what concrete mechanism allows it to benefit from the local model's learning? Is it only through improved population composition?\",\n    \"What is the computational cost per generation (API calls, training time) and how does it compare to baselines?\",\n    \"Why is the validity of dpo_coevolve (0.820) lower than the no-training collaboration (0.838) and GPT-4o alone (0.902)? Does this indicate a trade-off between optimization and chemical validity?\",\n    \"How sensitive is the performance to the hyperparameters α and similarity windows? Is there a risk of overfitting to the specific task?\",\n    \"The paper uses a scalarized score for DPO pair construction. How was this scalarization done for the 5 objectives? Different scalarization methods could significantly affect training.\",\n    \"Could the improvement over rl_coevolve be attributed to the specific RL implementation rather than the DPO approach itself? What RL algorithm was used and how were hyperparameters tuned?\"\n  ],\n  \"Limitations\": [\n    \"Evaluation is restricted to one task (molecular design), limiting evidence for the claimed generality of the framework.\",\n    \"No comparison with non-LLM optimization methods, which are standard baselines in the molecular design literature.\",\n    \"The co-evolution is asymmetric: the frozen LLM does not truly evolve, weakening the 'co-evolution' narrative.\",\n    \"The DPO data synthesis method involves many heuristics that may require task-specific tuning.\",\n    \"Computational cost and API usage are not reported, which is important for practical deployment.\",\n    \"Potential negative societal impact: the framework could be used for designing molecules with harmful properties (e.g., toxins), though this is not specifically addressed.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 5,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 13798,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 12006,
+        "completion_tokens": 2143,
+        "reasoning_tokens": 0,
+        "total_tokens": 15941
+      },
+      "attempts": 1,
+      "response_id": "46f663d1-cc93-43ff-b69d-f65344b930de"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 1,
+      "Reject": 4
+    },
+    "unanimous_decision": false,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Quality": {
+        "values": [
+          3,
+          2,
+          2,
+          2,
+          3
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          3,
+          3,
+          2,
+          2,
+          3
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          3,
+          3,
+          2,
+          3,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          6,
+          6,
+          5,
+          5,
+          5
+        ],
+        "mean": 5.4,
+        "rounded_mean": 5,
+        "population_sd": 0.49,
+        "min": 5,
+        "max": 6
+      },
+      "Confidence": {
+        "values": [
+          3,
+          4,
+          4,
+          3,
+          4
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper introduces MCCE (Multi-LLM Collaborative Co-evolution), a hybrid optimization framework that combines a frozen closed-source LLM (e.g., GPT-4o) with a lightweight trainable local model (Qwen2.5-7B) for multi-objective discrete optimization, demonstrated on molecular drug design with five objectives (QED, SAscore, DRD2, GSK3β, JNK3). The framework operates in an evolutionary loop where the two models alternate as genetic operators, with the local model periodically fine-tuned via Direct Preference Optimization (DPO) using similarity-filtered preference pairs constructed from successful search trajectories. The authors argue this co-evolution enables mutual inspiration: the large model provides global exploration while the small model internalizes experience through parameter updates. Experiments show that MCCE with DPO achieves the highest Hypervolume and Top-k fitness scores compared to single-model baselines and alternative training paradigms (SFT, RL), with evidence that both models benefit from collaboration.",
+      "Strengths": [
+        "Novel and well-motivated framework combining frozen closed-source LLMs with trainable open-source models in a co-evolutionary loop, addressing a real limitation of purely prompt-based or purely trainable approaches.",
+        "Clear demonstration that DPO outperforms SFT and RL for this setting, with thoughtful analysis of why (catastrophic forgetting for SFT, reward instability for RL).",
+        "The similarity-based data synthesis for DPO is a clever contribution that addresses distribution shift and training instability, with reasonable algorithmic detail and fallback rules.",
+        "Comprehensive evaluation on a challenging 5-objective drug design problem with multiple metrics (Top-k fitness, AUC, uniqueness, diversity, HV, validity), with results reported over 10 runs.",
+        "The framework is presented as general-purpose and extensible to other discrete optimization domains, broadening its potential impact.",
+        "Well-written and organized paper with clear figures and a reproducible methodology description.",
+        "Ablation studies comparing DPO, SFT, and RL co-evolution variants help isolate the contribution of the training paradigm."
+      ],
+      "Weaknesses": [
+        "Critical lack of comparison with the most relevant state-of-the-art baselines, specifically ExLLM (Ran et al., 2025) and MoLLEO (Wang et al., 2024), which are cited as prior work. Without these comparisons, the claim of 'state-of-the-art' is not well-supported.",
+        "No statistical significance testing (e.g., t-tests, Wilcoxon) despite reporting overlapping standard deviations across many metrics; some improvements may not be significant.",
+        "No comparison with strong non-LLM baselines such as traditional multi-objective evolutionary algorithms (NSGA-II, MOEA/D), GFlowNets, or Bayesian optimization, which are standard in molecular optimization.",
+        "The claim of 'mutual inspiration' is overstated since the API model is frozen and only benefits indirectly through improved population quality; the co-evolution is asymmetric.",
+        "Evaluation is limited to a single domain (molecular design), despite claims of generality to other discrete optimization problems.",
+        "The similarity-based data synthesis introduces several hyperparameters (α, I1-I3, μ±σ filter) but lacks sensitivity analysis to show robustness.",
+        "Computational cost (API calls, training time, GPU requirements) is not discussed, which is important for practical adoption.",
+        "The validity of generated molecules decreases for dpo_coevolve (0.820) compared to the frozen LLM (0.902) and even the untrained Qwen (0.838), suggesting a potential trade-off from training that is not adequately discussed.",
+        "The 'co-evolutionary curve' is presented qualitatively without clear quantitative metrics of how the two models complement each other over time."
+      ],
+      "Originality": 3,
+      "Quality": 2,
+      "Clarity": 3,
+      "Significance": 2,
+      "Questions": [
+        "Why were ExLLM and MoLLEO, which are cited as the most relevant prior work, not included as baselines in the experiments? Can you provide a comparison using the same evaluation setup?",
+        "How does MCCE compare to standard multi-objective evolutionary algorithms (e.g., NSGA-II, MOEA/D) or GFlowNets on the same 5-objective task?",
+        "Have you conducted statistical significance tests (e.g., paired t-tests or Wilcoxon signed-rank tests) to confirm that improvements over baselines are significant given the reported standard deviations?",
+        "What is the total computational cost of the framework, including the number of API calls to the frozen LLM, the training time for the local model, and the hardware requirements?",
+        "Can you provide a sensitivity analysis for the key hyperparameters in the similarity-based data synthesis (α, similarity intervals I1-I3, update frequency f, dataset size D)?",
+        "How is the 'breakthrough' trajectory defined exactly? Is it based on Pareto dominance or scalarized score improvement?",
+        "The paper claims 'mutual inspiration'—can you provide evidence that the frozen API model's exploration improves over time due to the local model's learning, beyond population-level metrics?",
+        "What is the balance between the frozen LLM and local model in terms of how many candidates each generates per generation? Is this ratio fixed or adaptive?",
+        "Why does the validity of dpo_coevolve decrease compared to the untrained model? Is this a concern for practical drug design applications?",
+        "How sensitive is the method to the choice of the local model size (e.g., 7B vs smaller/larger)? What happens if the API model is unavailable or changes?"
+      ],
+      "Limitations": [
+        "The evaluation is restricted to a single domain (molecular design); the claimed generality to other discrete optimization problems is not empirically demonstrated.",
+        "The paper does not compare against the most relevant prior work (ExLLM, MoLLEO), which weakens the claim of state-of-the-art performance.",
+        "The improvement over baselines is modest and may not be statistically significant given the reported variances.",
+        "The computational and financial costs of relying on closed-source APIs (GPT-4o) are not discussed, limiting practical accessibility.",
+        "The 'mutual inspiration' claim is not fully substantiated since only the local model is trained; the frozen LLM's improvement is indirect at best.",
+        "No analysis of failure cases or scenarios where the similarity-based filtering might discard useful training data.",
+        "Potential negative societal impact: the framework could be misused for designing molecules with harmful properties (e.g., toxins, chemical weapons), a general concern for drug design tools that is only briefly addressed.",
+        "No discussion of potential biases in the ZINC dataset or the objectives used."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 3,
+      "Contribution": 2,
+      "Overall": 4,
+      "Confidence": 4,
+      "Decision": "Reject"
+    },
+    "raw_response": "THOUGHT:\nThe paper proposes MCCE, a hybrid optimization framework combining a frozen closed-source LLM with a trainable local model via a co-evolutionary loop with DPO-based fine-tuning. The reviews are consistently positive about the novelty and motivation but consistently critical about missing comparisons with key baselines (ExLLM, MoLLEO, non-LLM methods like NSGA-II/GFlowNets), lack of statistical significance testing, limited evaluation to a single domain, and unsubstantiated claims of \"mutual inspiration\" and \"state-of-the-art\" performance.\n\nReview scores: 6 (accept), 6 (reject), 5 (reject), 5 (reject), 5 (reject). Four out of five reviewers recommend rejection. The main consensus is that the technical novelty is solid but the evaluation is insufficient to support the claims. The lack of direct comparison with cited prior work and non-LLM baselines is a critical weakness shared by all reviewers. Statistical issues (high variance, no significance tests) further undermine confidence.\n\nGiven the strong consensus among reviewers (4/5 reject) and the consistent identification of critical missing baselines, I will recommend rejection. The paper has merit but is not ready for acceptance at a top venue without addressing these fundamental evaluation gaps. The \"co-evolution\" claim is also overstated since only the local model is trained.\n\nI will set Overall to 4 (borderline reject) and Decision to Reject, reflecting that the paper is technically sound but the evaluation is inadequate for the claims made.\n\nFor the JSON, I will synthesize the common strengths and weaknesses, provide a balanced summary, list the key questions from reviewers, and note the limitations including societal impact concerns. Ethical concerns: false (no direct ethical issues flagged, though dual-use drug design is mentioned). Soundness: 3 (good), Presentation: 3 (good), Contribution: 2 (fair, due to limited demonstration of significance). Confidence: 4 (confident, based on consistent reviewer feedback).\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper introduces MCCE (Multi-LLM Collaborative Co-evolution), a hybrid optimization framework that combines a frozen closed-source LLM (e.g., GPT-4o) with a lightweight trainable local model (Qwen2.5-7B) for multi-objective discrete optimization, demonstrated on molecular drug design with five objectives (QED, SAscore, DRD2, GSK3β, JNK3). The framework operates in an evolutionary loop where the two models alternate as genetic operators, with the local model periodically fine-tuned via Direct Preference Optimization (DPO) using similarity-filtered preference pairs constructed from successful search trajectories. The authors argue this co-evolution enables mutual inspiration: the large model provides global exploration while the small model internalizes experience through parameter updates. Experiments show that MCCE with DPO achieves the highest Hypervolume and Top-k fitness scores compared to single-model baselines and alternative training paradigms (SFT, RL), with evidence that both models benefit from collaboration.\",\n  \"Strengths\": [\n    \"Novel and well-motivated framework combining frozen closed-source LLMs with trainable open-source models in a co-evolutionary loop, addressing a real limitation of purely prompt-based or purely trainable approaches.\",\n    \"Clear demonstration that DPO outperforms SFT and RL for this setting, with thoughtful analysis of why (catastrophic forgetting for SFT, reward instability for RL).\",\n    \"The similarity-based data synthesis for DPO is a clever contribution that addresses distribution shift and training instability, with reasonable algorithmic detail and fallback rules.\",\n    \"Comprehensive evaluation on a challenging 5-objective drug design problem with multiple metrics (Top-k fitness, AUC, uniqueness, diversity, HV, validity), with results reported over 10 runs.\",\n    \"The framework is presented as general-purpose and extensible to other discrete optimization domains, broadening its potential impact.\",\n    \"Well-written and organized paper with clear figures and a reproducible methodology description.\",\n    \"Ablation studies comparing DPO, SFT, and RL co-evolution variants help isolate the contribution of the training paradigm.\"\n  ],\n  \"Weaknesses\": [\n    \"Critical lack of comparison with the most relevant state-of-the-art baselines, specifically ExLLM (Ran et al., 2025) and MoLLEO (Wang et al., 2024), which are cited as prior work. Without these comparisons, the claim of 'state-of-the-art' is not well-supported.\",\n    \"No statistical significance testing (e.g., t-tests, Wilcoxon) despite reporting overlapping standard deviations across many metrics; some improvements may not be significant.\",\n    \"No comparison with strong non-LLM baselines such as traditional multi-objective evolutionary algorithms (NSGA-II, MOEA/D), GFlowNets, or Bayesian optimization, which are standard in molecular optimization.\",\n    \"The claim of 'mutual inspiration' is overstated since the API model is frozen and only benefits indirectly through improved population quality; the co-evolution is asymmetric.\",\n    \"Evaluation is limited to a single domain (molecular design), despite claims of generality to other discrete optimization problems.\",\n    \"The similarity-based data synthesis introduces several hyperparameters (α, I1-I3, μ±σ filter) but lacks sensitivity analysis to show robustness.\",\n    \"Computational cost (API calls, training time, GPU requirements) is not discussed, which is important for practical adoption.\",\n    \"The validity of generated molecules decreases for dpo_coevolve (0.820) compared to the frozen LLM (0.902) and even the untrained Qwen (0.838), suggesting a potential trade-off from training that is not adequately discussed.\",\n    \"The 'co-evolutionary curve' is presented qualitatively without clear quantitative metrics of how the two models complement each other over time.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"Why were ExLLM and MoLLEO, which are cited as the most relevant prior work, not included as baselines in the experiments? Can you provide a comparison using the same evaluation setup?\",\n    \"How does MCCE compare to standard multi-objective evolutionary algorithms (e.g., NSGA-II, MOEA/D) or GFlowNets on the same 5-objective task?\",\n    \"Have you conducted statistical significance tests (e.g., paired t-tests or Wilcoxon signed-rank tests) to confirm that improvements over baselines are significant given the reported standard deviations?\",\n    \"What is the total computational cost of the framework, including the number of API calls to the frozen LLM, the training time for the local model, and the hardware requirements?\",\n    \"Can you provide a sensitivity analysis for the key hyperparameters in the similarity-based data synthesis (α, similarity intervals I1-I3, update frequency f, dataset size D)?\",\n    \"How is the 'breakthrough' trajectory defined exactly? Is it based on Pareto dominance or scalarized score improvement?\",\n    \"The paper claims 'mutual inspiration'—can you provide evidence that the frozen API model's exploration improves over time due to the local model's learning, beyond population-level metrics?\",\n    \"What is the balance between the frozen LLM and local model in terms of how many candidates each generates per generation? Is this ratio fixed or adaptive?\",\n    \"Why does the validity of dpo_coevolve decrease compared to the untrained model? Is this a concern for practical drug design applications?\",\n    \"How sensitive is the method to the choice of the local model size (e.g., 7B vs smaller/larger)? What happens if the API model is unavailable or changes?\"\n  ],\n  \"Limitations\": [\n    \"The evaluation is restricted to a single domain (molecular design); the claimed generality to other discrete optimization problems is not empirically demonstrated.\",\n    \"The paper does not compare against the most relevant prior work (ExLLM, MoLLEO), which weakens the claim of state-of-the-art performance.\",\n    \"The improvement over baselines is modest and may not be statistically significant given the reported variances.\",\n    \"The computational and financial costs of relying on closed-source APIs (GPT-4o) are not discussed, limiting practical accessibility.\",\n    \"The 'mutual inspiration' claim is not fully substantiated since only the local model is trained; the frozen LLM's improvement is indirect at best.\",\n    \"No analysis of failure cases or scenarios where the similarity-based filtering might discard useful training data.\",\n    \"Potential negative societal impact: the framework could be misused for designing molecules with harmful properties (e.g., toxins, chemical weapons), a general concern for drug design tools that is only briefly addressed.\",\n    \"No discussion of potential biases in the ZINC dataset or the objectives used.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 8165,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 8165,
+      "completion_tokens": 1899,
+      "reasoning_tokens": 0,
+      "total_tokens": 10064
+    },
+    "attempts": 1,
+    "response_id": "8c4abe1f-eb5f-42a7-a4a4-a88d6454c13f"
+  },
+  "final_review": {
+    "Summary": "The paper introduces MCCE (Multi-LLM Collaborative Co-evolution), a hybrid optimization framework that combines a frozen closed-source LLM (e.g., GPT-4o) with a lightweight trainable local model (Qwen2.5-7B) for multi-objective discrete optimization, demonstrated on molecular drug design with five objectives (QED, SAscore, DRD2, GSK3β, JNK3). The framework operates in an evolutionary loop where the two models alternate as genetic operators, with the local model periodically fine-tuned via Direct Preference Optimization (DPO) using similarity-filtered preference pairs constructed from successful search trajectories. The authors argue this co-evolution enables mutual inspiration: the large model provides global exploration while the small model internalizes experience through parameter updates. Experiments show that MCCE with DPO achieves the highest Hypervolume and Top-k fitness scores compared to single-model baselines and alternative training paradigms (SFT, RL), with evidence that both models benefit from collaboration.",
+    "Strengths": [
+      "Novel and well-motivated framework combining frozen closed-source LLMs with trainable open-source models in a co-evolutionary loop, addressing a real limitation of purely prompt-based or purely trainable approaches.",
+      "Clear demonstration that DPO outperforms SFT and RL for this setting, with thoughtful analysis of why (catastrophic forgetting for SFT, reward instability for RL).",
+      "The similarity-based data synthesis for DPO is a clever contribution that addresses distribution shift and training instability, with reasonable algorithmic detail and fallback rules.",
+      "Comprehensive evaluation on a challenging 5-objective drug design problem with multiple metrics (Top-k fitness, AUC, uniqueness, diversity, HV, validity), with results reported over 10 runs.",
+      "The framework is presented as general-purpose and extensible to other discrete optimization domains, broadening its potential impact.",
+      "Well-written and organized paper with clear figures and a reproducible methodology description.",
+      "Ablation studies comparing DPO, SFT, and RL co-evolution variants help isolate the contribution of the training paradigm."
+    ],
+    "Weaknesses": [
+      "Critical lack of comparison with the most relevant state-of-the-art baselines, specifically ExLLM (Ran et al., 2025) and MoLLEO (Wang et al., 2024), which are cited as prior work. Without these comparisons, the claim of 'state-of-the-art' is not well-supported.",
+      "No statistical significance testing (e.g., t-tests, Wilcoxon) despite reporting overlapping standard deviations across many metrics; some improvements may not be significant.",
+      "No comparison with strong non-LLM baselines such as traditional multi-objective evolutionary algorithms (NSGA-II, MOEA/D), GFlowNets, or Bayesian optimization, which are standard in molecular optimization.",
+      "The claim of 'mutual inspiration' is overstated since the API model is frozen and only benefits indirectly through improved population quality; the co-evolution is asymmetric.",
+      "Evaluation is limited to a single domain (molecular design), despite claims of generality to other discrete optimization problems.",
+      "The similarity-based data synthesis introduces several hyperparameters (α, I1-I3, μ±σ filter) but lacks sensitivity analysis to show robustness.",
+      "Computational cost (API calls, training time, GPU requirements) is not discussed, which is important for practical adoption.",
+      "The validity of generated molecules decreases for dpo_coevolve (0.820) compared to the frozen LLM (0.902) and even the untrained Qwen (0.838), suggesting a potential trade-off from training that is not adequately discussed.",
+      "The 'co-evolutionary curve' is presented qualitatively without clear quantitative metrics of how the two models complement each other over time."
+    ],
+    "Originality": 3,
+    "Quality": 2,
+    "Clarity": 3,
+    "Significance": 3,
+    "Questions": [
+      "Why were ExLLM and MoLLEO, which are cited as the most relevant prior work, not included as baselines in the experiments? Can you provide a comparison using the same evaluation setup?",
+      "How does MCCE compare to standard multi-objective evolutionary algorithms (e.g., NSGA-II, MOEA/D) or GFlowNets on the same 5-objective task?",
+      "Have you conducted statistical significance tests (e.g., paired t-tests or Wilcoxon signed-rank tests) to confirm that improvements over baselines are significant given the reported standard deviations?",
+      "What is the total computational cost of the framework, including the number of API calls to the frozen LLM, the training time for the local model, and the hardware requirements?",
+      "Can you provide a sensitivity analysis for the key hyperparameters in the similarity-based data synthesis (α, similarity intervals I1-I3, update frequency f, dataset size D)?",
+      "How is the 'breakthrough' trajectory defined exactly? Is it based on Pareto dominance or scalarized score improvement?",
+      "The paper claims 'mutual inspiration'—can you provide evidence that the frozen API model's exploration improves over time due to the local model's learning, beyond population-level metrics?",
+      "What is the balance between the frozen LLM and local model in terms of how many candidates each generates per generation? Is this ratio fixed or adaptive?",
+      "Why does the validity of dpo_coevolve decrease compared to the untrained model? Is this a concern for practical drug design applications?",
+      "How sensitive is the method to the choice of the local model size (e.g., 7B vs smaller/larger)? What happens if the API model is unavailable or changes?"
+    ],
+    "Limitations": [
+      "The evaluation is restricted to a single domain (molecular design); the claimed generality to other discrete optimization problems is not empirically demonstrated.",
+      "The paper does not compare against the most relevant prior work (ExLLM, MoLLEO), which weakens the claim of state-of-the-art performance.",
+      "The improvement over baselines is modest and may not be statistically significant given the reported variances.",
+      "The computational and financial costs of relying on closed-source APIs (GPT-4o) are not discussed, limiting practical accessibility.",
+      "The 'mutual inspiration' claim is not fully substantiated since only the local model is trained; the frozen LLM's improvement is indirect at best.",
+      "No analysis of failure cases or scenarios where the similarity-based filtering might discard useful training data.",
+      "Potential negative societal impact: the framework could be misused for designing molecules with harmful properties (e.g., toxins, chemical weapons), a general concern for drug design tools that is only briefly addressed.",
+      "No discussion of potential biases in the ZINC dataset or the objectives used."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 3,
+    "Contribution": 3,
+    "Overall": 5,
+    "Confidence": 4,
+    "Decision": "Reject"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 77155,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 68195,
+    "completion_tokens": 12513,
+    "reasoning_tokens": 0,
+    "total_tokens": 89668,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.0095473,
+    "output_usd": 0.00350364,
+    "total_usd": 0.01307603
+  },
+  "elapsed_seconds": 35.413,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Reject",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B088",
+    "filename": "B088.txt",
+    "blind_text_sha256": "57b391465faa03eeb1967562660a17bce2dc3e236519314e57dcb14bbd88d470",
+    "characters": 50064,
+    "full_text_saved": false
+  }
+}

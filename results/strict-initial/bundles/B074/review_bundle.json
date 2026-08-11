@@ -1,0 +1,594 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T09:12:06.104652+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "max",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "meta",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper presents a framework for training and rendering large-scale 3D Gaussian Splatting scenes on a single consumer GPU without scene partitioning. Gaussian data is stored in CPU memory, and a hierarchical Level-of-Detail representation combined with Sequential Point Trees (HSPT) is used to stream only the relevant Gaussians to the GPU for each view. The method introduces hierarchy densification during training, GPU caching with view scheduling, and is evaluated on synthetic MatrixCity and real street-level H-3DGS datasets, showing improved quality over chunk-based baselines on multi-scale scenes and significant VRAM reduction.",
+        "Strengths": [
+          "The HSPT data structure is a clever adaptation of Sequential Point Trees to Gaussian hierarchies, enabling fast, parallel LoD cuts with a compact GPU footprint.",
+          "Out-of-core streaming with caching and view scheduling is a practical and effective way to scale past VRAM limits, with ablations showing substantial reductions in RAM-to-GPU transfers and iteration time.",
+          "Densifying and respawning Gaussians directly in the hierarchy during training is a novel contribution that avoids the need for post-hoc hierarchy construction and helps prevent chunk-boundary artifacts.",
+          "Results on MC-small-city+ are considerably better than chunk-based baselines (PSNR 21.59 vs 19.78 for CityGaussian and 12.06 for HorizonGS), and the method trains on a 24GB RTX 3090.",
+          "The paper includes detailed ablations, pseudocode, configuration files, and a discussion of limitations, supporting reproducibility."
+        ],
+        "Weaknesses": [
+          "The primary evaluation relies on synthetic MatrixCity data; real-world validation is limited to smaller street-level datasets, and on Mill19 the method underperforms simpler baselines (e.g., PSNR 23.75 vs 25.77 for CityGaussian on Rubble), weakening the claimed general superiority.",
+          "The reported 25.0GB rendering VRAM for MC-small-city+ conflicts with the 'single consumer-grade GPU' claim: the paper states all models were trained on a 24GB RTX 3090 but evaluations were run on an H200, and it is unclear how the full model is rendered on 24GB.",
+          "Baseline comparisons are not fully apples-to-apples: H-3DGS and OctreeGS OOM at 141GB, CityGaussian and HorizonGS required code modifications or suboptimal COLMAP initialization, and for H-3DGS the COLMAP point cloud substitute likely hurts its quality.",
+          "The theoretical soundness of HSPT under dynamic hierarchy editing is not fully established: if the heap condition is broken, proper cuts are not guaranteed; the paper mentions unreachable Gaussians but does not analyze their impact on cut quality or training stability.",
+          "The method's advantage is tied to multi-scale view distributions; on single-height aerial datasets (Mill19) and single-chunk scenes it is slower and yields lower quality than direct approaches, limiting its general applicability.",
+          "The writing contains typos ('verifiy', 'datastructure'), many redacted cross-references, and some implementation details are left vague (e.g., exact hierarchy rebuild schedule, cache write-back policies, sorting procedure)."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "Can you clarify the exact hardware used for rendering MC-small-city+? How can 25.0GB VRAM fit on a 24GB RTX 3090, and should the consumer-GPU claim be restricted to training only?",
+          "How is the heap condition maintained after dynamic densification and respawning? What happens if it is violated in more than 10% of Gaussians, and how does this affect the properness of HSPT cuts?",
+          "Why do H-3DGS and OctreeGS OOM on a 141GB H200 even though they use chunking or LoD? Would tuning their number of chunks allow them to run, and how would results compare?",
+          "What is the computational and memory overhead of rebuilding the HSPT after every densification step, and how much does this contribute to total training time?",
+          "How does the guided view-selection schedule avoid training bias? Is injecting one random view every 128 iterations theoretically sufficient for unbiased gradient estimates?",
+          "On single-chunk scenes and Mill19, our method underperforms baselines; can you quantify the LoD overhead when there is little scale variation, and is there a way to disable LoD for such cases?",
+          "Have you compared with prior out-of-core or streaming 3DGS methods, and if not, what evidence supports the 'first time' claim?"
+        ],
+        "Limitations": [
+          "Requires about 1GB of RAM per million Gaussians, and loading from disk is 10x slower, so scalability is still bounded by CPU memory and I/O.",
+          "Initialization relies on accurate camera poses and sparse point clouds, which are difficult to obtain at city scale in real-world scenarios.",
+          "The guided view scheduling introduces training bias; the random-view injection is a heuristic without formal convergence guarantees.",
+          "Frustum culling becomes ineffective when the entire scene is inside the frustum, and occlusion culling is not implemented.",
+          "The main large-scale benchmark is synthetic; real-world multi-scale aerial+street datasets are not demonstrated.",
+          "Potential privacy and surveillance implications of city-scale 3D reconstruction are not discussed."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper presents a framework for training and rendering large-scale 3D Gaussian Splatting scenes on a single consumer GPU without scene partitioning. Gaussian data is stored in CPU memory, and a hierarchical Level-of-Detail representation combined with Sequential Point Trees (HSPT) is used to stream only the relevant Gaussians to the GPU for each view. The method introduces hierarchy densification during training, GPU caching with view scheduling, and is evaluated on synthetic MatrixCity and real street-level H-3DGS datasets, showing improved quality over chunk-based baselines on multi-scale scenes and significant VRAM reduction.\",\n  \"Strengths\": [\n    \"The HSPT data structure is a clever adaptation of Sequential Point Trees to Gaussian hierarchies, enabling fast, parallel LoD cuts with a compact GPU footprint.\",\n    \"Out-of-core streaming with caching and view scheduling is a practical and effective way to scale past VRAM limits, with ablations showing substantial reductions in RAM-to-GPU transfers and iteration time.\",\n    \"Densifying and respawning Gaussians directly in the hierarchy during training is a novel contribution that avoids the need for post-hoc hierarchy construction and helps prevent chunk-boundary artifacts.\",\n    \"Results on MC-small-city+ are considerably better than chunk-based baselines (PSNR 21.59 vs 19.78 for CityGaussian and 12.06 for HorizonGS), and the method trains on a 24GB RTX 3090.\",\n    \"The paper includes detailed ablations, pseudocode, configuration files, and a discussion of limitations, supporting reproducibility.\"\n  ],\n  \"Weaknesses\": [\n    \"The primary evaluation relies on synthetic MatrixCity data; real-world validation is limited to smaller street-level datasets, and on Mill19 the method underperforms simpler baselines (e.g., PSNR 23.75 vs 25.77 for CityGaussian on Rubble), weakening the claimed general superiority.\",\n    \"The reported 25.0GB rendering VRAM for MC-small-city+ conflicts with the 'single consumer-grade GPU' claim: the paper states all models were trained on a 24GB RTX 3090 but evaluations were run on an H200, and it is unclear how the full model is rendered on 24GB.\",\n    \"Baseline comparisons are not fully apples-to-apples: H-3DGS and OctreeGS OOM at 141GB, CityGaussian and HorizonGS required code modifications or suboptimal COLMAP initialization, and for H-3DGS the COLMAP point cloud substitute likely hurts its quality.\",\n    \"The theoretical soundness of HSPT under dynamic hierarchy editing is not fully established: if the heap condition is broken, proper cuts are not guaranteed; the paper mentions unreachable Gaussians but does not analyze their impact on cut quality or training stability.\",\n    \"The method's advantage is tied to multi-scale view distributions; on single-height aerial datasets (Mill19) and single-chunk scenes it is slower and yields lower quality than direct approaches, limiting its general applicability.\",\n    \"The writing contains typos ('verifiy', 'datastructure'), many redacted cross-references, and some implementation details are left vague (e.g., exact hierarchy rebuild schedule, cache write-back policies, sorting procedure).\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"Can you clarify the exact hardware used for rendering MC-small-city+? How can 25.0GB VRAM fit on a 24GB RTX 3090, and should the consumer-GPU claim be restricted to training only?\",\n    \"How is the heap condition maintained after dynamic densification and respawning? What happens if it is violated in more than 10% of Gaussians, and how does this affect the properness of HSPT cuts?\",\n    \"Why do H-3DGS and OctreeGS OOM on a 141GB H200 even though they use chunking or LoD? Would tuning their number of chunks allow them to run, and how would results compare?\",\n    \"What is the computational and memory overhead of rebuilding the HSPT after every densification step, and how much does this contribute to total training time?\",\n    \"How does the guided view-selection schedule avoid training bias? Is injecting one random view every 128 iterations theoretically sufficient for unbiased gradient estimates?\",\n    \"On single-chunk scenes and Mill19, our method underperforms baselines; can you quantify the LoD overhead when there is little scale variation, and is there a way to disable LoD for such cases?\",\n    \"Have you compared with prior out-of-core or streaming 3DGS methods, and if not, what evidence supports the 'first time' claim?\"\n  ],\n  \"Limitations\": [\n    \"Requires about 1GB of RAM per million Gaussians, and loading from disk is 10x slower, so scalability is still bounded by CPU memory and I/O.\",\n    \"Initialization relies on accurate camera poses and sparse point clouds, which are difficult to obtain at city scale in real-world scenarios.\",\n    \"The guided view scheduling introduces training bias; the random-view injection is a heuristic without formal convergence guarantees.\",\n    \"Frustum culling becomes ineffective when the entire scene is inside the frustum, and occlusion culling is not implemented.\",\n    \"The main large-scale benchmark is synthetic; real-world multi-scale aerial+street datasets are not demonstrated.\",\n    \"Potential privacy and surveillance implications of city-scale 3D reconstruction are not discussed.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 14871,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 14103,
+        "completion_tokens": 4817,
+        "reasoning_tokens": 3598,
+        "total_tokens": 19688
+      },
+      "attempts": 1,
+      "response_id": "584f3087-3baa-407e-991c-43f18bcb690c"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper introduces 'A LoD of Gaussians', an out-of-core training and rendering framework for ultra-large-scale 3D Gaussian Splatting (3DGS) on a single consumer-grade GPU. It avoids scene partitioning by storing all Gaussians in CPU RAM and streaming only relevant Gaussians to the GPU based on a view-dependent Level-of-Detail (LoD) hierarchy. The method combines a hierarchical LoD representation with Sequential Point Trees (HSPT) for efficient cut computation, a novel hierarchy densification strategy adapted from MCMC-style spawning, GPU caching with view scheduling for temporal coherence, and frustum culling. Evaluations on the synthetic MatrixCity dataset and the H-3DGS real-world datasets show that the method trains on a 24GB RTX 3090 while outperforming chunk-based baselines that require a 141GB H200 or OOM, and achieves strong qualitative results without chunk artifacts. The paper also discusses limitations, including initialization challenges, RAM consumption, and reduced benefits on uniform-scale datasets.",
+        "Strengths": [
+          "Presents a cohesive out-of-core training and rendering framework for 3DGS that removes the need for scene partitioning, directly addressing memory limitations on a single consumer GPU.",
+          "Novel combination of hierarchical LoD with Sequential Point Trees (HSPT) enables fast view-dependent cut computation with modest GPU memory overhead.",
+          "The proposed hierarchy densification strategy based on 3DGS-MCMC-style spawning allows the LoD tree to be refined during training, which prior methods avoid.",
+          "Caching and view scheduling substantially reduce RAM-to-GPU transfers, as shown in ablations; training on a 24GB RTX 3090 compares favorably to baselines that require a 141GB H200 or OOM.",
+          "Strong quantitative results on the combined aerial/street MC-small-city+ dataset and on H-3DGS Campus, with convincing qualitative evidence of reduced chunking artifacts."
+        ],
+        "Weaknesses": [
+          "The paper's technical description is incomplete in several places: the relationship between the SPT cut condition and the 'conservative M_d' is not fully derived; the exact gradient flow through non-leaf hierarchy nodes is not specified; and the conditions for valid cuts when the heap condition is violated are only briefly mentioned.",
+          "The evaluation is narrower than the claims: only one large multi-scale dataset (MatrixCity) is used as a main success case, while the Mill19 results are significantly worse than baselines; the authors acknowledge this but the method is not shown to be generally superior.",
+          "Baselines are placed at a disadvantage: CityGaussian and HorizonGS are adapted from configurations for aerial-only or single-chunk data; H-3DGS uses COLMAP initialization with noise; this limits the strength of the comparative claims.",
+          "The 'GPU cache' and 'view scheduling' are heuristic; the claim that stochasticity improves training is not substantiated with ablations comparing exact vs cached LoD.",
+          "The paper contains several typos and missing figure details due to anonymization, making reproduction from text alone difficult; although code is promised, the provided algorithms are not visible in the submission."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "What happens to gradients of interior (non-leaf) Gaussians when a cut chooses a parent rather than leaves? Are parent parameters updated using aggregated child gradients or are they treated as independent?",
+          "How is the heap condition m_d(i) < m_d(parent(i)) maintained after densification? The paper mentions unreachable Gaussians (<10%) but not the impact on cut validity and training stability.",
+          "Can you provide a quantitative comparison of cache-induced LoD variation versus exact LoD in terms of PSNR and training stability?",
+          "The HSPT construction uses a fixed volume threshold size; how was size chosen and how sensitive are results to it?",
+          "On Mill19, if the method is at a disadvantage due to uniform scale, can the LoD hierarchy be disabled or simplified in such scenarios to match or exceed baseline performance?",
+          "The paper claims 'first time external memory has been used to train and render ultra-large Gaussian scenes seamlessly on consumer GPUs'; what distinguishes this from earlier out-of-core NeRF/3DGS methods (e.g., instant-ngp's use of CPU, or BungeeNeRF streaming)?"
+        ],
+        "Limitations": [
+          "Initialization from sparse point clouds becomes challenging at scale; pose/point cloud errors propagate.",
+          "RAM footprint ~1GB per million Gaussians still constrains scalability; disk loading is 10x slower.",
+          "Per-iteration time is increased due to streaming; success depends on temporal coherence.",
+          "The method's benefits are most pronounced for multi-scale view distributions; on uniform aerial-only datasets, it underperforms chunking baselines.",
+          "Frustum culling is ineffective when whole scene is in frustum; occlusion culling is not implemented.",
+          "Potential biases in baselines due to adaptations; no evaluation on real-world city-scale with both aerial and street views at the highest scale."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 4,
+        "Overall": 8,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper introduces 'A LoD of Gaussians', an out-of-core training and rendering framework for ultra-large-scale 3D Gaussian Splatting (3DGS) on a single consumer-grade GPU. It avoids scene partitioning by storing all Gaussians in CPU RAM and streaming only relevant Gaussians to the GPU based on a view-dependent Level-of-Detail (LoD) hierarchy. The method combines a hierarchical LoD representation with Sequential Point Trees (HSPT) for efficient cut computation, a novel hierarchy densification strategy adapted from MCMC-style spawning, GPU caching with view scheduling for temporal coherence, and frustum culling. Evaluations on the synthetic MatrixCity dataset and the H-3DGS real-world datasets show that the method trains on a 24GB RTX 3090 while outperforming chunk-based baselines that require a 141GB H200 or OOM, and achieves strong qualitative results without chunk artifacts. The paper also discusses limitations, including initialization challenges, RAM consumption, and reduced benefits on uniform-scale datasets.\",\n  \"Strengths\": [\n    \"Presents a cohesive out-of-core training and rendering framework for 3DGS that removes the need for scene partitioning, directly addressing memory limitations on a single consumer GPU.\",\n    \"Novel combination of hierarchical LoD with Sequential Point Trees (HSPT) enables fast view-dependent cut computation with modest GPU memory overhead.\",\n    \"The proposed hierarchy densification strategy based on 3DGS-MCMC-style spawning allows the LoD tree to be refined during training, which prior methods avoid.\",\n    \"Caching and view scheduling substantially reduce RAM-to-GPU transfers, as shown in ablations; training on a 24GB RTX 3090 compares favorably to baselines that require a 141GB H200 or OOM.\",\n    \"Strong quantitative results on the combined aerial/street MC-small-city+ dataset and on H-3DGS Campus, with convincing qualitative evidence of reduced chunking artifacts.\"\n  ],\n  \"Weaknesses\": [\n    \"The paper's technical description is incomplete in several places: the relationship between the SPT cut condition and the 'conservative M_d' is not fully derived; the exact gradient flow through non-leaf hierarchy nodes is not specified; and the conditions for valid cuts when the heap condition is violated are only briefly mentioned.\",\n    \"The evaluation is narrower than the claims: only one large multi-scale dataset (MatrixCity) is used as a main success case, while the Mill19 results are significantly worse than baselines; the authors acknowledge this but the method is not shown to be generally superior.\",\n    \"Baselines are placed at a disadvantage: CityGaussian and HorizonGS are adapted from configurations for aerial-only or single-chunk data; H-3DGS uses COLMAP initialization with noise; this limits the strength of the comparative claims.\",\n    \"The 'GPU cache' and 'view scheduling' are heuristic; the claim that stochasticity improves training is not substantiated with ablations comparing exact vs cached LoD.\",\n    \"The paper contains several typos and missing figure details due to anonymization, making reproduction from text alone difficult; although code is promised, the provided algorithms are not visible in the submission.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"What happens to gradients of interior (non-leaf) Gaussians when a cut chooses a parent rather than leaves? Are parent parameters updated using aggregated child gradients or are they treated as independent?\",\n    \"How is the heap condition m_d(i) < m_d(parent(i)) maintained after densification? The paper mentions unreachable Gaussians (<10%) but not the impact on cut validity and training stability.\",\n    \"Can you provide a quantitative comparison of cache-induced LoD variation versus exact LoD in terms of PSNR and training stability?\",\n    \"The HSPT construction uses a fixed volume threshold size; how was size chosen and how sensitive are results to it?\",\n    \"On Mill19, if the method is at a disadvantage due to uniform scale, can the LoD hierarchy be disabled or simplified in such scenarios to match or exceed baseline performance?\",\n    \"The paper claims 'first time external memory has been used to train and render ultra-large Gaussian scenes seamlessly on consumer GPUs'; what distinguishes this from earlier out-of-core NeRF/3DGS methods (e.g., instant-ngp's use of CPU, or BungeeNeRF streaming)?\"\n  ],\n  \"Limitations\": [\n    \"Initialization from sparse point clouds becomes challenging at scale; pose/point cloud errors propagate.\",\n    \"RAM footprint ~1GB per million Gaussians still constrains scalability; disk loading is 10x slower.\",\n    \"Per-iteration time is increased due to streaming; success depends on temporal coherence.\",\n    \"The method's benefits are most pronounced for multi-scale view distributions; on uniform aerial-only datasets, it underperforms chunking baselines.\",\n    \"Frustum culling is ineffective when whole scene is in frustum; occlusion culling is not implemented.\",\n    \"Potential biases in baselines due to adaptations; no evaluation on real-world city-scale with both aerial and street views at the highest scale.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 4,\n  \"Overall\": 8,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 14871,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 14103,
+        "completion_tokens": 3468,
+        "reasoning_tokens": 2320,
+        "total_tokens": 18339
+      },
+      "attempts": 1,
+      "response_id": "e70ea7d7-d236-45ae-a109-2f3229ad92a6"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper introduces A LoD of Gaussians, a framework for training and rendering ultra-large-scale 3D Gaussian Splatting scenes on a single consumer GPU without scene partitioning. It stores all Gaussian data in CPU RAM and streams only visible Gaussians to the GPU using a hierarchical Level-of-Detail (LoD) representation. A hybrid data structure combining Gaussian hierarchies with Sequential Point Trees (HSPT) enables efficient view-dependent LoD selection. The method includes a hierarchy densification strategy, a caching system, and view scheduling to minimize data transfer. Evaluations on MatrixCity and H-3DGS datasets demonstrate superior quality over chunk-based baselines and significant VRAM reduction.",
+        "Strengths": [
+          "Novel out-of-core training approach for 3DGS that avoids chunking artifacts and enables training on consumer GPUs.",
+          "The hierarchical SPT data structure efficiently computes LoD cuts and is robust to hierarchy modifications during training.",
+          "Strong empirical results: outperforms SOTA baselines in PSNR/SSIM/LPIPS on large-scale datasets while using substantially less VRAM.",
+          "Ablations and system design show practical contributions: caching, view scheduling, and frustum culling improve training and rendering efficiency."
+        ],
+        "Weaknesses": [
+          "Writing is unclear and contains grammatical errors, making the method difficult to follow.",
+          "Evaluation may be unfair: baselines are trained on a subset (MC-smaller-city+) due to memory constraints, while the proposed method is evaluated on the full MC-small-city+; additionally, baselines OOM on 141GB VRAM, which is not a typical consumer setting.",
+          "The paper claims to use a single consumer GPU, but the reported rendering VRAM (25GB) exceeds the 24GB of the training GPU; evaluation metrics are computed on an H200 with 141GB VRAM, so the consumer GPU claim is only partially substantiated.",
+          "The method requires high-quality initialization (COLMAP point cloud), which may be a bottleneck for real-world scenes.",
+          "The ablation study is limited to timing measurements and does not analyze quality impact of each component.",
+          "Some claims are overstated, e.g., 'first time' external memory training, without comparing to other out-of-core or parallel training methods."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 2,
+        "Significance": 4,
+        "Questions": [
+          "How does the method perform if the initial point cloud is noisy or incomplete? Can the hierarchy be built from a denser or sparser initialization?",
+          "What are the exact training time and GPU memory requirements for the MC-small-city+ full dataset, and can the model be rendered within 24GB VRAM at a reasonable LoD?",
+          "How sensitive is the method to the cache size, distance ratio tolerance, and view selection parameters? Is there a risk of overfitting to the view schedule?",
+          "What are the failure modes when the scene has large occluded regions or when the hierarchy becomes unbalanced due to densification?",
+          "Can the method handle scenes with varying appearance (e.g., day/night) or dynamic objects?",
+          "How does the method compare to Grendel or other multi-GPU approaches in terms of total memory usage and training time?"
+        ],
+        "Limitations": [
+          "Initialization requires accurate camera poses and a sparse point cloud; the method does not jointly estimate poses.",
+          "RAM usage is approximately 1GB per million Gaussians, which still limits scalability on consumer systems.",
+          "Loading from disk incurs a 10x slowdown, making the method less suitable for environments without sufficient RAM.",
+          "The method is less beneficial for single-scale scenes where chunking is straightforward.",
+          "The LoD cut condition using SPT may select too coarse or too fine detail for anisotropic Gaussians due to the conservative distance metric.",
+          "The paper does not address dynamic scenes or appearance changes."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 2,
+        "Contribution": 4,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper introduces A LoD of Gaussians, a framework for training and rendering ultra-large-scale 3D Gaussian Splatting scenes on a single consumer GPU without scene partitioning. It stores all Gaussian data in CPU RAM and streams only visible Gaussians to the GPU using a hierarchical Level-of-Detail (LoD) representation. A hybrid data structure combining Gaussian hierarchies with Sequential Point Trees (HSPT) enables efficient view-dependent LoD selection. The method includes a hierarchy densification strategy, a caching system, and view scheduling to minimize data transfer. Evaluations on MatrixCity and H-3DGS datasets demonstrate superior quality over chunk-based baselines and significant VRAM reduction.\",\n  \"Strengths\": [\n    \"Novel out-of-core training approach for 3DGS that avoids chunking artifacts and enables training on consumer GPUs.\",\n    \"The hierarchical SPT data structure efficiently computes LoD cuts and is robust to hierarchy modifications during training.\",\n    \"Strong empirical results: outperforms SOTA baselines in PSNR/SSIM/LPIPS on large-scale datasets while using substantially less VRAM.\",\n    \"Ablations and system design show practical contributions: caching, view scheduling, and frustum culling improve training and rendering efficiency.\"\n  ],\n  \"Weaknesses\": [\n    \"Writing is unclear and contains grammatical errors, making the method difficult to follow.\",\n    \"Evaluation may be unfair: baselines are trained on a subset (MC-smaller-city+) due to memory constraints, while the proposed method is evaluated on the full MC-small-city+; additionally, baselines OOM on 141GB VRAM, which is not a typical consumer setting.\",\n    \"The paper claims to use a single consumer GPU, but the reported rendering VRAM (25GB) exceeds the 24GB of the training GPU; evaluation metrics are computed on an H200 with 141GB VRAM, so the consumer GPU claim is only partially substantiated.\",\n    \"The method requires high-quality initialization (COLMAP point cloud), which may be a bottleneck for real-world scenes.\",\n    \"The ablation study is limited to timing measurements and does not analyze quality impact of each component.\",\n    \"Some claims are overstated, e.g., 'first time' external memory training, without comparing to other out-of-core or parallel training methods.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 2,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"How does the method perform if the initial point cloud is noisy or incomplete? Can the hierarchy be built from a denser or sparser initialization?\",\n    \"What are the exact training time and GPU memory requirements for the MC-small-city+ full dataset, and can the model be rendered within 24GB VRAM at a reasonable LoD?\",\n    \"How sensitive is the method to the cache size, distance ratio tolerance, and view selection parameters? Is there a risk of overfitting to the view schedule?\",\n    \"What are the failure modes when the scene has large occluded regions or when the hierarchy becomes unbalanced due to densification?\",\n    \"Can the method handle scenes with varying appearance (e.g., day/night) or dynamic objects?\",\n    \"How does the method compare to Grendel or other multi-GPU approaches in terms of total memory usage and training time?\"\n  ],\n  \"Limitations\": [\n    \"Initialization requires accurate camera poses and a sparse point cloud; the method does not jointly estimate poses.\",\n    \"RAM usage is approximately 1GB per million Gaussians, which still limits scalability on consumer systems.\",\n    \"Loading from disk incurs a 10x slowdown, making the method less suitable for environments without sufficient RAM.\",\n    \"The method is less beneficial for single-scale scenes where chunking is straightforward.\",\n    \"The LoD cut condition using SPT may select too coarse or too fine detail for anisotropic Gaussians due to the conservative distance metric.\",\n    \"The paper does not address dynamic scenes or appearance changes.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 2,\n  \"Contribution\": 4,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 14871,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 14103,
+        "completion_tokens": 4133,
+        "reasoning_tokens": 3242,
+        "total_tokens": 19004
+      },
+      "attempts": 1,
+      "response_id": "d7143cdb-0870-4087-9a43-89ebbc4accd7"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper introduces 'A LoD of Gaussians', a framework for training and rendering ultra-large-scale 3D Gaussian Splatting scenes on a single consumer-grade GPU without spatial chunking. It stores all Gaussian data in CPU memory (out-of-core) and streams only visible Gaussians to the GPU using a novel hybrid data structure called Hierarchical Sequential Point Trees (HSPT). The method supports progressive level-of-detail selection, dynamic hierarchy densification during training, caching to reduce CPU-GPU transfers, and view scheduling for spatial locality. The authors demonstrate that their pipeline can reconstruct scenes with millions of Gaussians and large scale variations, outperforming chunk-based baselines on a synthetic MatrixCity dataset while using significantly less GPU memory.",
+        "Strengths": [
+          "Novel out-of-core training and rendering approach that avoids spatial chunking artifacts and enables seamless multi-scale reconstruction on consumer hardware.",
+          "Introduction of the hierarchical SPT (HSPT) data structure, which enables fast, parallelizable LoD cut computations while maintaining a proper cut set, even when the hierarchy is modified during training.",
+          "Hierarchy densification strategy that allows the LoD hierarchy to evolve during optimization, building on MCMC-style spawning in a way that is stable for large-scale scenes.",
+          "Comprehensive ablations showing the importance of caching and frustum culling in reducing per-iteration time and memory transfers.",
+          "Strong quantitative results on the large-scale MC-small-city+ dataset, where several baselines run out of memory or produce artifacts, while the proposed method achieves higher PSNR/SSIM/LPIPS.",
+          "The paper provides a detailed memory layout analysis and compares rendering VRAM usage against standard 3DGS and gsplat, demonstrating effective memory reduction."
+        ],
+        "Weaknesses": [
+          "The evaluation is limited to one large-scale aerial+street dataset (MC-small-city+); the H-3DGS and Mill19 datasets are much smaller and do not fully represent the claimed 'ultra-large-scale' setting. Baselines OOM on the full MC-small-city+ set, so the comparison to the strongest baselines is incomplete.",
+          "The comparison to H-3DGS on MC-smaller-city+ uses different initialization: H-3DGS is provided with a sparse point cloud from COLMAP (generated from scratch), while the proposed method uses the dataset's provided sparse point cloud, potentially biasing the results.",
+          "The paper does not report total training time or wall-clock time, only iteration counts and per-iteration times. This makes it difficult to assess whether the method is actually faster than chunk-based approaches in end-to-end training.",
+          "The paper is incomplete as presented: figures, pseudocode (Algorithm 1-3), and some appendix sections are redacted or missing, and references are inconsistently formatted (e.g., 'Hierarchical', '3DGSasMCMC' without proper citations). This hinders reproducibility and verification of the technical claims.",
+          "The stochastic caching heuristic (distance ratio tolerance) introduces variability in the LoD used for a given view depending on cache state. The authors claim this improves robustness, but it also adds non-determinism and could mask reproducibility issues.",
+          "The guided view selection method modifies the training distribution, which could introduce bias. The paper injects random views every 128 iterations but does not provide a thorough analysis of how this affects coverage and final quality.",
+          "The method performs worse than CityGaussian on the Mill19 dataset (single-scale aerial views), indicating the LoD system is a burden when scale differences are absent. This limitation is acknowledged but not deeply explored."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 2,
+        "Significance": 3,
+        "Questions": [
+          "What is the total wall-clock training time for each scene, and how does it compare to the baselines (e.g., CityGaussian, H-3DGS) in terms of end-to-end time?",
+          "How is the initial Gaussian hierarchy constructed after the first 100k iterations? What is the merging criterion for parent nodes (e.g., geometric or color similarity)?",
+          "What is the exact memory overhead of the HSPT metadata (the paper states 680 MB for 60M Gaussians but does not break down the cost per Gaussian)?",
+          "How are D_min and D_max in Equation (7) chosen? How sensitive is the cache hit rate and rendering quality to these thresholds?",
+          "What are the hyperparameters k and W in the view scheduling? How do they affect convergence and final quality? Is there a risk of overfitting to local regions?",
+          "Does the guided view selection lead to any measurable bias in the final reconstruction, for instance in terms of coverage of the scene?",
+          "What is the minimum number (or density) of initial points needed for the hierarchy to be stable? How does the method behave with noisy COLMAP point clouds?",
+          "Could you provide a detailed breakdown of the ~1 GB RAM per million Gaussians? Is the hierarchy structure included in this estimate, and how does it scale with scene size?",
+          "How does the method handle scenes with mixed focal lengths in the training set? Does the base focal length need to be chosen carefully, and does it affect performance?"
+        ],
+        "Limitations": [
+          "The method requires a significant amount of CPU RAM (roughly 1 GB per million Gaussians), which may be prohibitive for extremely large scenes or consumer systems without ample RAM.",
+          "Initialization from a sparse point cloud is still challenging for real-world datasets with noisy or incomplete COLMAP reconstructions, which is acknowledged but not fully addressed.",
+          "The level-of-detail system is not beneficial for scenes with a single viewing scale (e.g., same-height aerial views), where it adds overhead compared to simpler chunk-based methods.",
+          "The paper does not address dynamic scenes, appearance changes (e.g., lighting, weather), or scenes with large exposure variation, which could limit applicability.",
+          "The GPU memory for the SPT metadata and upper hierarchy still scales with the total number of Gaussians, so the method cannot handle arbitrarily large scenes on limited VRAM.",
+          "The cache flushing strategy (every 1,000 iterations) may cause periodic stalls or performance drops during training, which is not analyzed."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 2,
+        "Contribution": 3,
+        "Overall": 5,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper introduces 'A LoD of Gaussians', a framework for training and rendering ultra-large-scale 3D Gaussian Splatting scenes on a single consumer-grade GPU without spatial chunking. It stores all Gaussian data in CPU memory (out-of-core) and streams only visible Gaussians to the GPU using a novel hybrid data structure called Hierarchical Sequential Point Trees (HSPT). The method supports progressive level-of-detail selection, dynamic hierarchy densification during training, caching to reduce CPU-GPU transfers, and view scheduling for spatial locality. The authors demonstrate that their pipeline can reconstruct scenes with millions of Gaussians and large scale variations, outperforming chunk-based baselines on a synthetic MatrixCity dataset while using significantly less GPU memory.\",\n  \"Strengths\": [\n    \"Novel out-of-core training and rendering approach that avoids spatial chunking artifacts and enables seamless multi-scale reconstruction on consumer hardware.\",\n    \"Introduction of the hierarchical SPT (HSPT) data structure, which enables fast, parallelizable LoD cut computations while maintaining a proper cut set, even when the hierarchy is modified during training.\",\n    \"Hierarchy densification strategy that allows the LoD hierarchy to evolve during optimization, building on MCMC-style spawning in a way that is stable for large-scale scenes.\",\n    \"Comprehensive ablations showing the importance of caching and frustum culling in reducing per-iteration time and memory transfers.\",\n    \"Strong quantitative results on the large-scale MC-small-city+ dataset, where several baselines run out of memory or produce artifacts, while the proposed method achieves higher PSNR/SSIM/LPIPS.\",\n    \"The paper provides a detailed memory layout analysis and compares rendering VRAM usage against standard 3DGS and gsplat, demonstrating effective memory reduction.\"\n  ],\n  \"Weaknesses\": [\n    \"The evaluation is limited to one large-scale aerial+street dataset (MC-small-city+); the H-3DGS and Mill19 datasets are much smaller and do not fully represent the claimed 'ultra-large-scale' setting. Baselines OOM on the full MC-small-city+ set, so the comparison to the strongest baselines is incomplete.\",\n    \"The comparison to H-3DGS on MC-smaller-city+ uses different initialization: H-3DGS is provided with a sparse point cloud from COLMAP (generated from scratch), while the proposed method uses the dataset's provided sparse point cloud, potentially biasing the results.\",\n    \"The paper does not report total training time or wall-clock time, only iteration counts and per-iteration times. This makes it difficult to assess whether the method is actually faster than chunk-based approaches in end-to-end training.\",\n    \"The paper is incomplete as presented: figures, pseudocode (Algorithm 1-3), and some appendix sections are redacted or missing, and references are inconsistently formatted (e.g., 'Hierarchical', '3DGSasMCMC' without proper citations). This hinders reproducibility and verification of the technical claims.\",\n    \"The stochastic caching heuristic (distance ratio tolerance) introduces variability in the LoD used for a given view depending on cache state. The authors claim this improves robustness, but it also adds non-determinism and could mask reproducibility issues.\",\n    \"The guided view selection method modifies the training distribution, which could introduce bias. The paper injects random views every 128 iterations but does not provide a thorough analysis of how this affects coverage and final quality.\",\n    \"The method performs worse than CityGaussian on the Mill19 dataset (single-scale aerial views), indicating the LoD system is a burden when scale differences are absent. This limitation is acknowledged but not deeply explored.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"What is the total wall-clock training time for each scene, and how does it compare to the baselines (e.g., CityGaussian, H-3DGS) in terms of end-to-end time?\",\n    \"How is the initial Gaussian hierarchy constructed after the first 100k iterations? What is the merging criterion for parent nodes (e.g., geometric or color similarity)?\",\n    \"What is the exact memory overhead of the HSPT metadata (the paper states 680 MB for 60M Gaussians but does not break down the cost per Gaussian)?\",\n    \"How are D_min and D_max in Equation (7) chosen? How sensitive is the cache hit rate and rendering quality to these thresholds?\",\n    \"What are the hyperparameters k and W in the view scheduling? How do they affect convergence and final quality? Is there a risk of overfitting to local regions?\",\n    \"Does the guided view selection lead to any measurable bias in the final reconstruction, for instance in terms of coverage of the scene?\",\n    \"What is the minimum number (or density) of initial points needed for the hierarchy to be stable? How does the method behave with noisy COLMAP point clouds?\",\n    \"Could you provide a detailed breakdown of the ~1 GB RAM per million Gaussians? Is the hierarchy structure included in this estimate, and how does it scale with scene size?\",\n    \"How does the method handle scenes with mixed focal lengths in the training set? Does the base focal length need to be chosen carefully, and does it affect performance?\"\n  ],\n  \"Limitations\": [\n    \"The method requires a significant amount of CPU RAM (roughly 1 GB per million Gaussians), which may be prohibitive for extremely large scenes or consumer systems without ample RAM.\",\n    \"Initialization from a sparse point cloud is still challenging for real-world datasets with noisy or incomplete COLMAP reconstructions, which is acknowledged but not fully addressed.\",\n    \"The level-of-detail system is not beneficial for scenes with a single viewing scale (e.g., same-height aerial views), where it adds overhead compared to simpler chunk-based methods.\",\n    \"The paper does not address dynamic scenes, appearance changes (e.g., lighting, weather), or scenes with large exposure variation, which could limit applicability.\",\n    \"The GPU memory for the SPT metadata and upper hierarchy still scales with the total number of Gaussians, so the method cannot handle arbitrarily large scenes on limited VRAM.\",\n    \"The cache flushing strategy (every 1,000 iterations) may cause periodic stalls or performance drops during training, which is not analyzed.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 2,\n  \"Contribution\": 3,\n  \"Overall\": 5,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 14871,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 14103,
+        "completion_tokens": 5519,
+        "reasoning_tokens": 4133,
+        "total_tokens": 20390
+      },
+      "attempts": 1,
+      "response_id": "28ba9c8c-af24-4525-b734-ec958880b85e"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper introduces A LoD of Gaussians, a framework for training and rendering ultra-large-scale 3D Gaussian Splatting scenes on a single consumer GPU without scene partitioning. It stores the full Gaussian hierarchy out-of-core in CPU memory and streams only relevant Gaussians to the GPU via a level-of-detail selection mechanism. The method combines Gaussian hierarchies with Sequential Point Trees (SPTs) into a hierarchical SPT (HSPT) for efficient LoD cuts, proposes a densification strategy for dynamically evolving the hierarchy during training, and includes a caching and view scheduling system to reduce CPU-GPU transfer overhead. Evaluations on MatrixCity and H-3DGS datasets demonstrate that the method can reconstruct and render very large scenes (up to 136M Gaussians) on a 24GB GPU, outperforming chunk-based baselines in quality while using significantly less VRAM.",
+        "Strengths": [
+          "The paper presents a novel and significant contribution: training and rendering large-scale 3DGS scenes out-of-core on consumer hardware, avoiding chunking artifacts and the memory limitations of prior methods.",
+          "The hybrid HSPT data structure is an original combination of Gaussian hierarchies and Sequential Point Trees, enabling fast, parallel LoD cuts that are robust to ongoing training changes.",
+          "The proposed densification strategy allows dynamic expansion and restructuring of Gaussian hierarchies during training, which prior methods avoided by constructing hierarchies only after training.",
+          "The comprehensive evaluation, including ablations, shows clear improvements over strong baselines (CityGaussian, H-3DGS, HorizonGS, OctreeGS) on a challenging multi-scale synthetic dataset (MatrixCity) and real street-level datasets.",
+          "The paper includes detailed implementation descriptions, pseudocode, and code release, improving reproducibility."
+        ],
+        "Weaknesses": [
+          "The theoretical guarantee of the conservative M_d bound appears mathematically incorrect: the triangle inequality argument does not imply m_d(i) <= ||mu_i - p_cam|| when M_d(i) <= ||mu_root - p_cam||, as demonstrated by simple counterexamples. This undermines the reliability of LoD selection.",
+          "The main evaluation is on synthetic MatrixCity data, with only limited real-world validation (two street-level scenes from H-3DGS); no real dataset combines aerial and street-level views, which is a key claimed strength.",
+          "The method requires substantial CPU RAM (~1GB per million Gaussians), which may be a practical bottleneck for scaling beyond the tested sizes, and individual training iterations are slower due to streaming.",
+          "Several components rely on heuristics (cache distance ratio, stochastic cut noise, view scheduling) whose impact on final quality is not rigorously analyzed, and the paper does not compare wall-clock training times.",
+          "The paper does not provide quantitative evidence for the claimed chunk artifacts (bleeding/ghosting) or directly compare against baselines on an equal memory budget."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "Can the authors provide a formal proof or a counterexample for the M_d conservative bound? The current triangle inequality argument does not appear to guarantee m_d(i) <= ||mu_i - p_cam||.",
+          "How does the method perform when CPU RAM is insufficient, e.g., when the hierarchy must be partially stored on disk? What is the impact on training time and quality?",
+          "What are the total wall-clock training times for the main experiments compared to baselines, beyond the per-iteration times reported?",
+          "How does the hierarchy densification handle unreachable Gaussians where a child becomes larger than its parent? Does this affect LoD quality, and are there plans to rebalance the hierarchy?",
+          "Is the view scheduling scheme unbiased despite the random injection every 128 iterations? Could the k-NN weighted sampling introduce a bias that affects generalization?",
+          "What is the sensitivity of the cache size and the distance ratio tolerance D_min/D_max? Are there recommended settings and how much do they affect memory usage and quality?"
+        ],
+        "Limitations": [
+          "The SPT conservative bound may be flawed, potentially leading to suboptimal LoD selection and artifacts in some views.",
+          "The method requires large CPU RAM and may not be feasible for scenes exceeding RAM capacity without significant slowdown.",
+          "Training iterations are slower than standard 3DGS due to CPU-GPU streaming, and the method is less beneficial for same-height aerial datasets where chunking is straightforward.",
+          "The main results rely on the synthetic MatrixCity dataset; real-world performance may differ due to pose estimation challenges and less controlled conditions.",
+          "The approach is sensitive to initialization; poor SfM point clouds or camera poses degrade final quality."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 4,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper introduces A LoD of Gaussians, a framework for training and rendering ultra-large-scale 3D Gaussian Splatting scenes on a single consumer GPU without scene partitioning. It stores the full Gaussian hierarchy out-of-core in CPU memory and streams only relevant Gaussians to the GPU via a level-of-detail selection mechanism. The method combines Gaussian hierarchies with Sequential Point Trees (SPTs) into a hierarchical SPT (HSPT) for efficient LoD cuts, proposes a densification strategy for dynamically evolving the hierarchy during training, and includes a caching and view scheduling system to reduce CPU-GPU transfer overhead. Evaluations on MatrixCity and H-3DGS datasets demonstrate that the method can reconstruct and render very large scenes (up to 136M Gaussians) on a 24GB GPU, outperforming chunk-based baselines in quality while using significantly less VRAM.\",\n  \"Strengths\": [\n    \"The paper presents a novel and significant contribution: training and rendering large-scale 3DGS scenes out-of-core on consumer hardware, avoiding chunking artifacts and the memory limitations of prior methods.\",\n    \"The hybrid HSPT data structure is an original combination of Gaussian hierarchies and Sequential Point Trees, enabling fast, parallel LoD cuts that are robust to ongoing training changes.\",\n    \"The proposed densification strategy allows dynamic expansion and restructuring of Gaussian hierarchies during training, which prior methods avoided by constructing hierarchies only after training.\",\n    \"The comprehensive evaluation, including ablations, shows clear improvements over strong baselines (CityGaussian, H-3DGS, HorizonGS, OctreeGS) on a challenging multi-scale synthetic dataset (MatrixCity) and real street-level datasets.\",\n    \"The paper includes detailed implementation descriptions, pseudocode, and code release, improving reproducibility.\"\n  ],\n  \"Weaknesses\": [\n    \"The theoretical guarantee of the conservative M_d bound appears mathematically incorrect: the triangle inequality argument does not imply m_d(i) <= ||mu_i - p_cam|| when M_d(i) <= ||mu_root - p_cam||, as demonstrated by simple counterexamples. This undermines the reliability of LoD selection.\",\n    \"The main evaluation is on synthetic MatrixCity data, with only limited real-world validation (two street-level scenes from H-3DGS); no real dataset combines aerial and street-level views, which is a key claimed strength.\",\n    \"The method requires substantial CPU RAM (~1GB per million Gaussians), which may be a practical bottleneck for scaling beyond the tested sizes, and individual training iterations are slower due to streaming.\",\n    \"Several components rely on heuristics (cache distance ratio, stochastic cut noise, view scheduling) whose impact on final quality is not rigorously analyzed, and the paper does not compare wall-clock training times.\",\n    \"The paper does not provide quantitative evidence for the claimed chunk artifacts (bleeding/ghosting) or directly compare against baselines on an equal memory budget.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"Can the authors provide a formal proof or a counterexample for the M_d conservative bound? The current triangle inequality argument does not appear to guarantee m_d(i) <= ||mu_i - p_cam||.\",\n    \"How does the method perform when CPU RAM is insufficient, e.g., when the hierarchy must be partially stored on disk? What is the impact on training time and quality?\",\n    \"What are the total wall-clock training times for the main experiments compared to baselines, beyond the per-iteration times reported?\",\n    \"How does the hierarchy densification handle unreachable Gaussians where a child becomes larger than its parent? Does this affect LoD quality, and are there plans to rebalance the hierarchy?\",\n    \"Is the view scheduling scheme unbiased despite the random injection every 128 iterations? Could the k-NN weighted sampling introduce a bias that affects generalization?\",\n    \"What is the sensitivity of the cache size and the distance ratio tolerance D_min/D_max? Are there recommended settings and how much do they affect memory usage and quality?\"\n  ],\n  \"Limitations\": [\n    \"The SPT conservative bound may be flawed, potentially leading to suboptimal LoD selection and artifacts in some views.\",\n    \"The method requires large CPU RAM and may not be feasible for scenes exceeding RAM capacity without significant slowdown.\",\n    \"Training iterations are slower than standard 3DGS due to CPU-GPU streaming, and the method is less beneficial for same-height aerial datasets where chunking is straightforward.\",\n    \"The main results rely on the synthetic MatrixCity dataset; real-world performance may differ due to pose estimation challenges and less controlled conditions.\",\n    \"The approach is sensitive to initialization; poor SfM point clouds or camera poses degrade final quality.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 4,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 14871,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 14103,
+        "completion_tokens": 6623,
+        "reasoning_tokens": 5570,
+        "total_tokens": 21494
+      },
+      "attempts": 1,
+      "response_id": "9b99b132-7128-4e98-abfd-483ca7762c4e"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 5,
+      "Reject": 0
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          4,
+          4,
+          4,
+          3,
+          4
+        ],
+        "mean": 3.8,
+        "rounded_mean": 4,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          3,
+          2,
+          2,
+          3
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          4,
+          4,
+          4,
+          3,
+          4
+        ],
+        "mean": 3.8,
+        "rounded_mean": 4,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          3,
+          2,
+          2,
+          3
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          3,
+          4,
+          4,
+          3,
+          4
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Overall": {
+        "values": [
+          6,
+          8,
+          7,
+          5,
+          7
+        ],
+        "mean": 6.6,
+        "rounded_mean": 7,
+        "population_sd": 1.02,
+        "min": 5,
+        "max": 8
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper proposes an out-of-core training and rendering framework for large-scale 3D Gaussian Splatting on a single consumer GPU without spatial partitioning. Gaussian data is stored in CPU memory, and a hierarchical Level-of-Detail (LoD) representation combined with Sequential Point Trees (HSPT) streams only view-relevant Gaussians to the GPU. The method introduces hierarchy densification during training, GPU caching with view scheduling, and is evaluated on synthetic MatrixCity and real street-level H-3DGS datasets, showing improved quality over chunk-based baselines on multi-scale scenes and reduced GPU memory usage.",
+      "Strengths": [
+        "The HSPT data structure is an original and effective combination of Gaussian hierarchies and Sequential Point Trees, enabling fast parallel LoD cuts with modest GPU memory overhead.",
+        "The out-of-core streaming design with caching and view scheduling is a practical approach to training and rendering very large 3DGS scenes on a single consumer GPU without chunking artifacts.",
+        "The proposed hierarchy densification strategy allows the LoD tree to evolve during training, which prior methods avoided by building hierarchies post hoc.",
+        "The method achieves strong quantitative results on the large-scale MC-small-city+ dataset, outperforming chunk-based baselines that require substantially more GPU memory or run out of memory.",
+        "The paper includes detailed ablations, memory analyses, and implementation descriptions, which support reproducibility despite some missing details."
+      ],
+      "Weaknesses": [
+        "The theoretical soundness of the conservative distance bound in HSPT is questioned: the triangle inequality argument as presented does not necessarily guarantee the claimed bound, which could affect LoD cut validity.",
+        "The main evaluation relies on synthetic MatrixCity; real-world validation is limited to smaller street-level datasets, and on Mill19 (uniform-scale aerial views) the method underperforms simpler baselines, weakening the claim of general superiority.",
+        "The consumer-GPU claim is only partially substantiated: training is done on a 24GB RTX 3090, but rendering uses up to 25GB VRAM on an H200; it is unclear how the full model is rendered on 24GB VRAM.",
+        "Baseline comparisons are not fully apples-to-apples: some baselines require modified configurations or are disadvantaged by initializations (e.g., H-3DGS with COLMAP-generated points), and several baselines OOM on the largest dataset.",
+        "The paper is incomplete in places: missing figures, pseudocode, and references, along with typos, make the technical description harder to follow and verify.",
+        "Several components (cache size, distance ratio tolerance, view scheduling, stochastic noise) rely on heuristics whose impact on final quality is not rigorously analyzed, and wall-clock training times are not reported."
+      ],
+      "Originality": 4,
+      "Quality": 3,
+      "Clarity": 3,
+      "Significance": 4,
+      "Questions": [
+        "Can the authors provide a formal proof or a counterexample for the M_d conservative bound? The current triangle inequality argument does not appear to guarantee m_d(i) <= ||mu_i - p_cam|| under the stated assumptions.",
+        "How is rendering performed within 24GB VRAM if the reported rendering VRAM for MC-small-city+ is 25.0GB? Is the consumer-GPU claim only for training, or can the full model be interactively rendered on a 24GB GPU at an appropriate LoD?",
+        "What are the total wall-clock training times for the main experiments compared to baselines? Per-iteration times alone do not establish end-to-end efficiency.",
+        "What happens when the CPU RAM is insufficient or the hierarchy must be partially swapped to disk? How does this affect training time and final quality?",
+        "Why do H-3DGS and OctreeGS OOM on a 141GB H200 even though they use chunking or LoD? Could tuning their configurations allow them to run, and how would the comparison change?",
+        "How sensitive are the results to the cache size, distance ratio tolerance, and view scheduling hyperparameters? Is there a risk of overfitting to the guided view schedule?",
+        "The hierarchy densification can create unreachable Gaussians where a child becomes larger than its parent. How does this affect LoD cut quality and training stability, and is there a rebalancing strategy?"
+      ],
+      "Limitations": [
+        "The method requires approximately 1GB of CPU RAM per million Gaussians, so scalability is still limited by available RAM; disk loading is about 10x slower.",
+        "Initialization relies on accurate camera poses and sparse point clouds, which are difficult to obtain for real-world city-scale scenes; noisy or incomplete SfM reconstructions can degrade quality.",
+        "The guided view scheduling introduces training bias; random-view injection is a heuristic without formal convergence guarantees.",
+        "The LoD hierarchy provides little benefit for scenes with a single viewing scale (e.g., same-height aerial imagery) and can even cause overhead compared to chunk-based methods.",
+        "Frustum culling becomes ineffective when the entire scene is inside the frustum, and occlusion culling is not implemented.",
+        "The paper does not address dynamic scenes, appearance changes, or significant exposure variation, limiting applicability."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 3,
+      "Contribution": 4,
+      "Overall": 7,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "{\n  \"Summary\": \"The paper proposes an out-of-core training and rendering framework for large-scale 3D Gaussian Splatting on a single consumer GPU without spatial partitioning. Gaussian data is stored in CPU memory, and a hierarchical Level-of-Detail (LoD) representation combined with Sequential Point Trees (HSPT) streams only view-relevant Gaussians to the GPU. The method introduces hierarchy densification during training, GPU caching with view scheduling, and is evaluated on synthetic MatrixCity and real street-level H-3DGS datasets, showing improved quality over chunk-based baselines on multi-scale scenes and reduced GPU memory usage.\",\n  \"Strengths\": [\n    \"The HSPT data structure is an original and effective combination of Gaussian hierarchies and Sequential Point Trees, enabling fast parallel LoD cuts with modest GPU memory overhead.\",\n    \"The out-of-core streaming design with caching and view scheduling is a practical approach to training and rendering very large 3DGS scenes on a single consumer GPU without chunking artifacts.\",\n    \"The proposed hierarchy densification strategy allows the LoD tree to evolve during training, which prior methods avoided by building hierarchies post hoc.\",\n    \"The method achieves strong quantitative results on the large-scale MC-small-city+ dataset, outperforming chunk-based baselines that require substantially more GPU memory or run out of memory.\",\n    \"The paper includes detailed ablations, memory analyses, and implementation descriptions, which support reproducibility despite some missing details.\"\n  ],\n  \"Weaknesses\": [\n    \"The theoretical soundness of the conservative distance bound in HSPT is questioned: the triangle inequality argument as presented does not necessarily guarantee the claimed bound, which could affect LoD cut validity.\",\n    \"The main evaluation relies on synthetic MatrixCity; real-world validation is limited to smaller street-level datasets, and on Mill19 (uniform-scale aerial views) the method underperforms simpler baselines, weakening the claim of general superiority.\",\n    \"The consumer-GPU claim is only partially substantiated: training is done on a 24GB RTX 3090, but rendering uses up to 25GB VRAM on an H200; it is unclear how the full model is rendered on 24GB VRAM.\",\n    \"Baseline comparisons are not fully apples-to-apples: some baselines require modified configurations or are disadvantaged by initializations (e.g., H-3DGS with COLMAP-generated points), and several baselines OOM on the largest dataset.\",\n    \"The paper is incomplete in places: missing figures, pseudocode, and references, along with typos, make the technical description harder to follow and verify.\",\n    \"Several components (cache size, distance ratio tolerance, view scheduling, stochastic noise) rely on heuristics whose impact on final quality is not rigorously analyzed, and wall-clock training times are not reported.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"Can the authors provide a formal proof or a counterexample for the M_d conservative bound? The current triangle inequality argument does not appear to guarantee m_d(i) <= ||mu_i - p_cam|| under the stated assumptions.\",\n    \"How is rendering performed within 24GB VRAM if the reported rendering VRAM for MC-small-city+ is 25.0GB? Is the consumer-GPU claim only for training, or can the full model be interactively rendered on a 24GB GPU at an appropriate LoD?\",\n    \"What are the total wall-clock training times for the main experiments compared to baselines? Per-iteration times alone do not establish end-to-end efficiency.\",\n    \"What happens when the CPU RAM is insufficient or the hierarchy must be partially swapped to disk? How does this affect training time and final quality?\",\n    \"Why do H-3DGS and OctreeGS OOM on a 141GB H200 even though they use chunking or LoD? Could tuning their configurations allow them to run, and how would the comparison change?\",\n    \"How sensitive are the results to the cache size, distance ratio tolerance, and view scheduling hyperparameters? Is there a risk of overfitting to the guided view schedule?\",\n    \"The hierarchy densification can create unreachable Gaussians where a child becomes larger than its parent. How does this affect LoD cut quality and training stability, and is there a rebalancing strategy?\"\n  ],\n  \"Limitations\": [\n    \"The method requires approximately 1GB of CPU RAM per million Gaussians, so scalability is still limited by available RAM; disk loading is about 10x slower.\",\n    \"Initialization relies on accurate camera poses and sparse point clouds, which are difficult to obtain for real-world city-scale scenes; noisy or incomplete SfM reconstructions can degrade quality.\",\n    \"The guided view scheduling introduces training bias; random-view injection is a heuristic without formal convergence guarantees.\",\n    \"The LoD hierarchy provides little benefit for scenes with a single viewing scale (e.g., same-height aerial imagery) and can even cause overhead compared to chunk-based methods.\",\n    \"Frustum culling becomes ineffective when the entire scene is inside the frustum, and occlusion culling is not implemented.\",\n    \"The paper does not address dynamic scenes, appearance changes, or significant exposure variation, limiting applicability.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 4,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+    "usage": {
+      "prompt_tokens": 6512,
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 6256,
+      "completion_tokens": 1788,
+      "reasoning_tokens": 634,
+      "total_tokens": 8300
+    },
+    "attempts": 1,
+    "response_id": "90a5c662-64b2-4c15-b91c-0ab01cead80b"
+  },
+  "final_review": {
+    "Summary": "The paper proposes an out-of-core training and rendering framework for large-scale 3D Gaussian Splatting on a single consumer GPU without spatial partitioning. Gaussian data is stored in CPU memory, and a hierarchical Level-of-Detail (LoD) representation combined with Sequential Point Trees (HSPT) streams only view-relevant Gaussians to the GPU. The method introduces hierarchy densification during training, GPU caching with view scheduling, and is evaluated on synthetic MatrixCity and real street-level H-3DGS datasets, showing improved quality over chunk-based baselines on multi-scale scenes and reduced GPU memory usage.",
+    "Strengths": [
+      "The HSPT data structure is an original and effective combination of Gaussian hierarchies and Sequential Point Trees, enabling fast parallel LoD cuts with modest GPU memory overhead.",
+      "The out-of-core streaming design with caching and view scheduling is a practical approach to training and rendering very large 3DGS scenes on a single consumer GPU without chunking artifacts.",
+      "The proposed hierarchy densification strategy allows the LoD tree to evolve during training, which prior methods avoided by building hierarchies post hoc.",
+      "The method achieves strong quantitative results on the large-scale MC-small-city+ dataset, outperforming chunk-based baselines that require substantially more GPU memory or run out of memory.",
+      "The paper includes detailed ablations, memory analyses, and implementation descriptions, which support reproducibility despite some missing details."
+    ],
+    "Weaknesses": [
+      "The theoretical soundness of the conservative distance bound in HSPT is questioned: the triangle inequality argument as presented does not necessarily guarantee the claimed bound, which could affect LoD cut validity.",
+      "The main evaluation relies on synthetic MatrixCity; real-world validation is limited to smaller street-level datasets, and on Mill19 (uniform-scale aerial views) the method underperforms simpler baselines, weakening the claim of general superiority.",
+      "The consumer-GPU claim is only partially substantiated: training is done on a 24GB RTX 3090, but rendering uses up to 25GB VRAM on an H200; it is unclear how the full model is rendered on 24GB VRAM.",
+      "Baseline comparisons are not fully apples-to-apples: some baselines require modified configurations or are disadvantaged by initializations (e.g., H-3DGS with COLMAP-generated points), and several baselines OOM on the largest dataset.",
+      "The paper is incomplete in places: missing figures, pseudocode, and references, along with typos, make the technical description harder to follow and verify.",
+      "Several components (cache size, distance ratio tolerance, view scheduling, stochastic noise) rely on heuristics whose impact on final quality is not rigorously analyzed, and wall-clock training times are not reported."
+    ],
+    "Originality": 4,
+    "Quality": 3,
+    "Clarity": 3,
+    "Significance": 4,
+    "Questions": [
+      "Can the authors provide a formal proof or a counterexample for the M_d conservative bound? The current triangle inequality argument does not appear to guarantee m_d(i) <= ||mu_i - p_cam|| under the stated assumptions.",
+      "How is rendering performed within 24GB VRAM if the reported rendering VRAM for MC-small-city+ is 25.0GB? Is the consumer-GPU claim only for training, or can the full model be interactively rendered on a 24GB GPU at an appropriate LoD?",
+      "What are the total wall-clock training times for the main experiments compared to baselines? Per-iteration times alone do not establish end-to-end efficiency.",
+      "What happens when the CPU RAM is insufficient or the hierarchy must be partially swapped to disk? How does this affect training time and final quality?",
+      "Why do H-3DGS and OctreeGS OOM on a 141GB H200 even though they use chunking or LoD? Could tuning their configurations allow them to run, and how would the comparison change?",
+      "How sensitive are the results to the cache size, distance ratio tolerance, and view scheduling hyperparameters? Is there a risk of overfitting to the guided view schedule?",
+      "The hierarchy densification can create unreachable Gaussians where a child becomes larger than its parent. How does this affect LoD cut quality and training stability, and is there a rebalancing strategy?"
+    ],
+    "Limitations": [
+      "The method requires approximately 1GB of CPU RAM per million Gaussians, so scalability is still limited by available RAM; disk loading is about 10x slower.",
+      "Initialization relies on accurate camera poses and sparse point clouds, which are difficult to obtain for real-world city-scale scenes; noisy or incomplete SfM reconstructions can degrade quality.",
+      "The guided view scheduling introduces training bias; random-view injection is a heuristic without formal convergence guarantees.",
+      "The LoD hierarchy provides little benefit for scenes with a single viewing scale (e.g., same-height aerial imagery) and can even cause overhead compared to chunk-based methods.",
+      "Frustum culling becomes ineffective when the entire scene is inside the frustum, and occlusion culling is not implemented.",
+      "The paper does not address dynamic scenes, appearance changes, or significant exposure variation, limiting applicability."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 3,
+    "Contribution": 4,
+    "Overall": 7,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair model output",
+  "usage": {
+    "prompt_tokens": 80867,
+    "prompt_cache_hit_tokens": 4096,
+    "prompt_cache_miss_tokens": 76771,
+    "completion_tokens": 26348,
+    "reasoning_tokens": 19497,
+    "total_tokens": 107215,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 1.147e-05,
+    "cache_miss_input_usd": 0.01074794,
+    "output_usd": 0.00737744,
+    "total_usd": 0.01813685
+  },
+  "elapsed_seconds": 67.773,
+  "input": {
+    "blind_id": "B074",
+    "filename": "B074.txt",
+    "blind_text_sha256": "23ca70797b72e72256989b79ca15e804179a4a174b10a97ddbdbebc127ee8318",
+    "characters": 59333,
+    "full_text_saved": false
+  }
+}

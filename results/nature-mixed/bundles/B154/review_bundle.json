@@ -1,0 +1,698 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:49:51.936208+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "This paper introduces a variational reasoning framework for training language models to reason. It treats thinking traces as latent variables and derives an evidence lower bound (ELBO) objective, extended to an IWAE-style multi-trace bound for tighter optimization. A forward-KL divergence is proposed to train the variational posterior, preventing collapse and improving stability. The paper also provides theoretical connections showing that rejection sampling finetuning (RFT) and binary-reward RL (including GRPO) can be interpreted as local forward-KL objectives with an implicit accuracy-based weighting that biases toward easier questions. The framework is validated on Qwen2.5 and Qwen3 models across several reasoning benchmarks, showing consistent improvements over strong baselines.",
+        "Strengths": [
+          "Provides a principled probabilistic (variational inference) perspective that unifies SFT/RFT and RL-style methods for reasoning training.",
+          "The derivation showing RFT and GRPO as weighted forward-KL objectives, revealing a bias toward easier questions, is a novel and insightful theoretical contribution.",
+          "Extensive experimental validation across multiple model families (Qwen2.5, Qwen3), sizes (4B-32B), and a wide range of benchmarks (math, code, science, general).",
+          "The IWAE-style bound extension and the variance analysis of different πθ(Yx|x,z) estimators (Theorem 1) are technically sound and well-motivated.",
+          "Good set of ablations, including analysis of the number of traces K, conditioning on hints, different estimators, and computational budget fairness.",
+          "Demonstrates improved training stability (lower loss, fewer gradient spikes) compared to the baseline."
+        ],
+        "Weaknesses": [
+          "The practical implementation deviates from the core theoretical derivations (e.g., geometric mean approximation for the likelihood ratio, single-round training T=1, using only the best trace in the 17k setting). While ablated, this weakens the claim of being a fully 'principled' objective.",
+          "The claimed bias toward easier questions in RFT/GRPO is only theoretically derived and not empirically demonstrated. A direct comparison with a GRPO-trained model under the same setup would strengthen this claim.",
+          "The forward-KL objective for qφ is an approximation (not a bound), and the conditions under which this approximation is reliable are not fully discussed.",
+          "The evaluation shows consistent but often modest gains over the Bespoke-Stratos baseline, which is a strong reasoning distillation baseline. The practical significance of the gains relative to the added complexity of training a separate variational posterior is not fully discussed.",
+          "Results for General-Reasoner-4B differ from official numbers; while explained, this highlights potential evaluation inconsistencies across frameworks."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "The paper theoretically shows that RFT and GRPO have a bias toward easier questions. Can you provide empirical evidence for this bias, for instance, by comparing performance on questions grouped by difficulty level between your method and a GRPO-trained model?",
+          "The forward-KL objective for qφ is an approximation. Under what conditions (e.g., quality of πθ, number of samples M) is this approximation reliable? Could a poor approximation lead to a degenerate qφ?",
+          "In the 17k setting, you use only the best trace (highest eρk) per question. How sensitive are the main results to this choice versus using all 8 traces (as in the 1k setting)? Is there a computational reason for this choice beyond efficiency?",
+          "The geometric mean approximation for the likelihood ratio is justified by variance reduction but introduces bias. Have you considered alternative variance reduction techniques, such as control variates, which might be more 'principled'?",
+          "How does the performance of your method compare to a GRPO-trained model using the same base model (Qwen3-4B-Base) and the same training data (Bespoke-Stratos-17k)? This would provide a more direct empirical comparison for the theoretical connections made in Section 3."
+        ],
+        "Limitations": [
+          "The paper does not explicitly discuss the limitations of the geometric mean approximation or the single-round training, beyond noting them as future work.",
+          "The potential negative societal impact is not discussed. While reasoning models have broad applications, the paper could mention potential misuse (e.g., generating more convincing misinformation).",
+          "The extra computational cost of training a variational posterior and the additional sampling/inference passes are acknowledged but not thoroughly analyzed in terms of total cost-benefit.",
+          "The evaluation is limited to English-language benchmarks; generalization to other languages is not explored."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 4,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces a variational reasoning framework for training LLMs' reasoning capabilities, treating thinking traces as latent variables. It derives an ELBO, extends to IWAE-style multi-trace bounds, and proposes a forward-KL objective for the variational posterior. It also provides theoretical connections to RFT and binary-reward RL (including GRPO), revealing a bias toward easier questions. Experiments on Qwen2.5 and Qwen3 families show improvements over baselines.\n\nStrengths:\n- The variational inference perspective is principled and provides a unified view of existing methods (RFT, GRPO), which is a valuable theoretical contribution.\n- The derivation of the bias toward easier questions in RFT/GRPO (weighting by model accuracy) is an interesting and novel insight.\n- The paper provides thorough experimental validation across multiple model sizes, benchmarks, and ablations.\n- The IWAE extension and the variance analysis of estimators (Theorem 1) are technically sound.\n- Good attention to training stability (Figure 1) and computational cost fairness (Appendix F.11).\n\nWeaknesses:\n- The practical implementation deviates from the theoretical derivation in several places (e.g., geometric mean approximation for likelihood ratio, single-round training, using only the best trace in the 17k setting). While these are ablated, the \"principled\" claim is somewhat weakened.\n- The comparison to GRPO/RFT is theoretical; the paper does not directly compare against GRPO-trained models in the same setup (except General-Reasoner-4B, which uses a different training recipe). The claimed bias toward easier questions is not empirically demonstrated.\n- The forward-KL objective for qφ is an approximation (not a bound), and the paper could clarify when this approximation is reliable.\n- The baseline \"Bespoke-Stratos-4B†\" is trained by the authors, and results for General-Reasoner-4B differ from official numbers; while this is addressed in the appendix, it raises some concerns about evaluation consistency.\n- The paper's contribution is more about the theoretical framing and analysis than a fundamentally new algorithm; the practical gains over strong baselines are consistent but not dramatic.\n\nOriginality: High. The variational framing with the specific forward-KL posterior training and the analysis of RFT/RL biases is novel. The connection to IWAE is a natural extension but well-executed.\n\nQuality: Good. The derivations are careful, and the experimental evaluation is extensive. However, the gap between theory and practice (approximations, single-round) and the lack of direct empirical validation of the \"easy question bias\" are limitations.\n\nClarity: Good. The paper is well-structured and readable. The notation is a bit dense but manageable. The appendices provide necessary details.\n\nSignificance: High. The unified probabilistic perspective could influence future research on reasoning training objectives. The bias analysis is practically relevant.\n\nOverall: This is a solid paper with a valuable theoretical contribution and strong empirical results. The main concerns are the theory-practice gap and the lack of direct empirical demonstration of the claimed bias. I lean toward acceptance.\n\nDecision: Accept\n\nConfidence: 4\nTHOUGHT:\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper introduces a variational reasoning framework for training language models to reason. It treats thinking traces as latent variables and derives an evidence lower bound (ELBO) objective, extended to an IWAE-style multi-trace bound for tighter optimization. A forward-KL divergence is proposed to train the variational posterior, preventing collapse and improving stability. The paper also provides theoretical connections showing that rejection sampling finetuning (RFT) and binary-reward RL (including GRPO) can be interpreted as local forward-KL objectives with an implicit accuracy-based weighting that biases toward easier questions. The framework is validated on Qwen2.5 and Qwen3 models across several reasoning benchmarks, showing consistent improvements over strong baselines.\",\n  \"Strengths\": [\n    \"Provides a principled probabilistic (variational inference) perspective that unifies SFT/RFT and RL-style methods for reasoning training.\",\n    \"The derivation showing RFT and GRPO as weighted forward-KL objectives, revealing a bias toward easier questions, is a novel and insightful theoretical contribution.\",\n    \"Extensive experimental validation across multiple model families (Qwen2.5, Qwen3), sizes (4B-32B), and a wide range of benchmarks (math, code, science, general).\",\n    \"The IWAE-style bound extension and the variance analysis of different πθ(Yx|x,z) estimators (Theorem 1) are technically sound and well-motivated.\",\n    \"Good set of ablations, including analysis of the number of traces K, conditioning on hints, different estimators, and computational budget fairness.\",\n    \"Demonstrates improved training stability (lower loss, fewer gradient spikes) compared to the baseline.\"\n  ],\n  \"Weaknesses\": [\n    \"The practical implementation deviates from the core theoretical derivations (e.g., geometric mean approximation for the likelihood ratio, single-round training T=1, using only the best trace in the 17k setting). While ablated, this weakens the claim of being a fully 'principled' objective.\",\n    \"The claimed bias toward easier questions in RFT/GRPO is only theoretically derived and not empirically demonstrated. A direct comparison with a GRPO-trained model under the same setup would strengthen this claim.\",\n    \"The forward-KL objective for qφ is an approximation (not a bound), and the conditions under which this approximation is reliable are not fully discussed.\",\n    \"The evaluation shows consistent but often modest gains over the Bespoke-Stratos baseline, which is a strong reasoning distillation baseline. The practical significance of the gains relative to the added complexity of training a separate variational posterior is not fully discussed.\",\n    \"Results for General-Reasoner-4B differ from official numbers; while explained, this highlights potential evaluation inconsistencies across frameworks.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"The paper theoretically shows that RFT and GRPO have a bias toward easier questions. Can you provide empirical evidence for this bias, for instance, by comparing performance on questions grouped by difficulty level between your method and a GRPO-trained model?\",\n    \"The forward-KL objective for qφ is an approximation. Under what conditions (e.g., quality of πθ, number of samples M) is this approximation reliable? Could a poor approximation lead to a degenerate qφ?\",\n    \"In the 17k setting, you use only the best trace (highest eρk) per question. How sensitive are the main results to this choice versus using all 8 traces (as in the 1k setting)? Is there a computational reason for this choice beyond efficiency?\",\n    \"The geometric mean approximation for the likelihood ratio is justified by variance reduction but introduces bias. Have you considered alternative variance reduction techniques, such as control variates, which might be more 'principled'?\",\n    \"How does the performance of your method compare to a GRPO-trained model using the same base model (Qwen3-4B-Base) and the same training data (Bespoke-Stratos-17k)? This would provide a more direct empirical comparison for the theoretical connections made in Section 3.\"\n  ],\n  \"Limitations\": [\n    \"The paper does not explicitly discuss the limitations of the geometric mean approximation or the single-round training, beyond noting them as future work.\",\n    \"The potential negative societal impact is not discussed. While reasoning models have broad applications, the paper could mention potential misuse (e.g., generating more convincing misinformation).\",\n    \"The extra computational cost of training a variational posterior and the additional sampling/inference passes are acknowledged but not thoroughly analyzed in terms of total cost-benefit.\",\n    \"The evaluation is limited to English-language benchmarks; generalization to other languages is not explored.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 4,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 40726,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 38934,
+        "completion_tokens": 1710,
+        "reasoning_tokens": 0,
+        "total_tokens": 42436
+      },
+      "attempts": 1,
+      "response_id": "783867e8-ce6f-421c-a1c2-711be73f5e7a"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "This paper introduces a variational reasoning framework for language models that treats thinking traces as latent variables and optimizes them through variational inference. The authors derive an ELBO objective, extend it to an IWAE-style multi-trace formulation for tighter bounds, and propose a forward-KL objective to stabilize variational posterior training. A key theoretical contribution is showing that rejection sampling finetuning (RFT) and binary-reward RL methods like GRPO can be interpreted as local forward-KL objectives with implicit accuracy-based weighting, revealing a bias toward easier questions. The method is empirically validated on Qwen2.5 and Qwen3 model families across diverse reasoning benchmarks (MATH500, AIME, OlympiadBench, LiveCodeBench, GPQA-Diamond, MMLU-Pro), showing consistent improvements over strong baselines.",
+        "Strengths": [
+          "Novel theoretical framework unifying variational inference with RL-style methods for reasoning, providing a principled probabilistic perspective",
+          "Elegant derivation showing RFT and binary-reward RL (including GRPO) as forward-KL objectives with inherent accuracy-based weighting, offering a fresh interpretation of these methods",
+          "Comprehensive empirical validation across multiple model families (Qwen2.5, Qwen3), scales (4B-32B), and diverse reasoning benchmarks",
+          "Extensive ablation studies covering data overlap, verifier accuracy, hint quality, computational budget matching, and estimator choices",
+          "Theoretical analysis comparing likelihood-based vs. accuracy-based estimators with a worst-case variance bound (Theorem 1)",
+          "Practical contributions including the forward-KL objective for posterior training and the geometric mean likelihood ratio to reduce variance"
+        ],
+        "Weaknesses": [
+          "The empirical gains over strong baselines are modest (a few percentage points), and no comparisons with more recent state-of-the-art RL methods (e.g., DAPO, VAPO) are provided",
+          "The claimed novelty of revealing the 'bias toward easier questions' may be overstated, as similar observations exist in the RL literature",
+          "The forward-KL objective for the variational posterior is an approximation, and the paper lacks analysis of when this approximation might fail",
+          "The connection between the theoretical framework and practical performance gains is not fully demonstrated - it's unclear which specific components drive the improvements",
+          "The method requires additional training of a variational posterior and forward passes for weight computation, adding computational overhead that may limit practical adoption",
+          "Limited analysis of failure cases or scenarios where the method might underperform compared to baselines"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "The paper claims the bias toward easier questions in GRPO has not been 'explicitly recognized before.' Could you clarify how this differs from existing observations in the RL literature about reward weighting and difficulty bias?",
+          "What is the computational overhead of training the variational posterior and computing the importance weights compared to the baselines? The paper mentions a computational budget matching experiment but doesn't detail the exact compute costs.",
+          "How sensitive is the method to the quality of the initial reasoning model πθ0? Would the variational posterior training be effective if the initial model is weaker?",
+          "The paper uses only a single training round (T=1). What challenges arise in multi-round training, and are there plans to extend to T>1?",
+          "Could you provide more analysis on why the accuracy-based estimator outperforms the likelihood-based one in practice, given the theoretical conditions in Theorem 1?",
+          "How does the method handle tasks where the set of correct answers Yx is not well-defined or where verification is unreliable?"
+        ],
+        "Limitations": [
+          "The method requires access to reference answers or a verifier for the variational posterior conditioning, which may not be available for all task types",
+          "The single-round training setup may not fully exploit the potential of the iterative variational framework",
+          "The paper doesn't address potential negative societal impacts such as the use of reasoning models for generating misleading or harmful content",
+          "The computational cost of training a separate variational posterior and computing importance weights may limit scalability to very large models",
+          "The evaluation focuses on math and code reasoning; generalization to other reasoning domains (e.g., scientific reasoning, agentic tasks) is not demonstrated"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces a variational reasoning framework for language models, treating thinking traces as latent variables and optimizing them via variational inference. The authors derive an ELBO objective, extend it to an IWAE-style multi-trace bound, and propose a forward-KL formulation for training the variational posterior. They also provide theoretical connections showing that RFT and binary-reward RL (including GRPO) can be viewed as forward-KL objectives with implicit accuracy-based weighting, revealing a bias toward easier questions. The method is validated on Qwen2.5 and Qwen3 model families across multiple reasoning benchmarks.\n\nThe paper has several notable strengths:\n1. The theoretical contribution is significant - providing a unified probabilistic perspective that connects variational inference with RL-style methods is novel and potentially impactful.\n2. The derivation of the connections between RFT/GRPO and forward-KL objectives with accuracy weighting is insightful and provides a fresh perspective on understanding these methods' behavior.\n3. The empirical validation is comprehensive, covering multiple model families, scales, and benchmarks.\n4. The paper includes extensive ablations (data overlap, verifier accuracy, hint quality, computational budget matching) that strengthen the claims.\n\nHowever, there are some weaknesses:\n1. The theoretical contributions, while interesting, may be seen as incremental - the variational formulation for reasoning has been explored in prior work (LaTRO, RWS, etc.), and the connections to RL methods, while elegantly derived, may not translate to substantially new algorithmic insights.\n2. The \"bias toward easier questions\" claim in RFT/GRPO is presented as novel, but this is a well-known phenomenon in the RL/LLM community, and the paper doesn't provide empirical evidence directly demonstrating this bias or showing that their method mitigates it.\n3. The empirical gains, while consistent, are modest (a few percentage points over strong baselines). The paper doesn't include comparisons with more recent RL-based methods (e.g., DAPO, VAPO, or other state-of-the-art reasoning models).\n4. The forward-KL objective for the variational posterior is an approximation, and the paper doesn't deeply analyze when this approximation might fail or how sensitive the method is to the quality of the initial reasoning model.\n5. The paper's claim that \"this effect has not been explicitly recognized before\" regarding the accuracy weighting bias may be overstated, as similar observations exist in the RL literature.\n\nThe presentation is generally clear, with well-organized sections and derivations in the appendix. The experimental setup is thorough, though the evaluation could benefit from including more diverse reasoning tasks (e.g., agentic tasks, tool use).\n\nOverall, this is a solid paper with a meaningful theoretical contribution and comprehensive empirical validation. The main question is whether the theoretical insights translate to practical algorithmic advances of sufficient significance. The consistent improvements across benchmarks and model scales suggest the method has practical value, but the gains are not dramatic. I would lean toward acceptance given the theoretical novelty and thorough evaluation, but with reservations about the incremental nature of the empirical improvements.\n\nFor the ratings:\n- Originality: 3 (high) - The variational framing is novel in this context, and the connections to RL methods are insightful.\n- Quality: 3 (good) - Technically sound with thorough experiments, but some claims could be better supported.\n- Clarity: 3 (good) - Well-written and organized, though some derivations could be clearer.\n- Significance: 3 (high) - The unified perspective is valuable, and the method shows consistent gains.\n- Soundness: 3 (good) - The theory is sound, and experiments are well-designed.\n- Presentation: 3 (good) - Clear writing with good organization.\n- Contribution: 3 (good) - Meaningful contribution with practical and theoretical value.\n- Overall: 7 (Accept) - Technically solid paper with high impact on the reasoning sub-area.\n\nConfidence: 4 - I'm confident in my assessment but not absolutely certain about some details of the theoretical claims.\n\nEthical concerns: No significant ethical issues identified.\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper introduces a variational reasoning framework for language models that treats thinking traces as latent variables and optimizes them through variational inference. The authors derive an ELBO objective, extend it to an IWAE-style multi-trace formulation for tighter bounds, and propose a forward-KL objective to stabilize variational posterior training. A key theoretical contribution is showing that rejection sampling finetuning (RFT) and binary-reward RL methods like GRPO can be interpreted as local forward-KL objectives with implicit accuracy-based weighting, revealing a bias toward easier questions. The method is empirically validated on Qwen2.5 and Qwen3 model families across diverse reasoning benchmarks (MATH500, AIME, OlympiadBench, LiveCodeBench, GPQA-Diamond, MMLU-Pro), showing consistent improvements over strong baselines.\",\n  \"Strengths\": [\n    \"Novel theoretical framework unifying variational inference with RL-style methods for reasoning, providing a principled probabilistic perspective\",\n    \"Elegant derivation showing RFT and binary-reward RL (including GRPO) as forward-KL objectives with inherent accuracy-based weighting, offering a fresh interpretation of these methods\",\n    \"Comprehensive empirical validation across multiple model families (Qwen2.5, Qwen3), scales (4B-32B), and diverse reasoning benchmarks\",\n    \"Extensive ablation studies covering data overlap, verifier accuracy, hint quality, computational budget matching, and estimator choices\",\n    \"Theoretical analysis comparing likelihood-based vs. accuracy-based estimators with a worst-case variance bound (Theorem 1)\",\n    \"Practical contributions including the forward-KL objective for posterior training and the geometric mean likelihood ratio to reduce variance\"\n  ],\n  \"Weaknesses\": [\n    \"The empirical gains over strong baselines are modest (a few percentage points), and no comparisons with more recent state-of-the-art RL methods (e.g., DAPO, VAPO) are provided\",\n    \"The claimed novelty of revealing the 'bias toward easier questions' may be overstated, as similar observations exist in the RL literature\",\n    \"The forward-KL objective for the variational posterior is an approximation, and the paper lacks analysis of when this approximation might fail\",\n    \"The connection between the theoretical framework and practical performance gains is not fully demonstrated - it's unclear which specific components drive the improvements\",\n    \"The method requires additional training of a variational posterior and forward passes for weight computation, adding computational overhead that may limit practical adoption\",\n    \"Limited analysis of failure cases or scenarios where the method might underperform compared to baselines\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"The paper claims the bias toward easier questions in GRPO has not been 'explicitly recognized before.' Could you clarify how this differs from existing observations in the RL literature about reward weighting and difficulty bias?\",\n    \"What is the computational overhead of training the variational posterior and computing the importance weights compared to the baselines? The paper mentions a computational budget matching experiment but doesn't detail the exact compute costs.\",\n    \"How sensitive is the method to the quality of the initial reasoning model πθ0? Would the variational posterior training be effective if the initial model is weaker?\",\n    \"The paper uses only a single training round (T=1). What challenges arise in multi-round training, and are there plans to extend to T>1?\",\n    \"Could you provide more analysis on why the accuracy-based estimator outperforms the likelihood-based one in practice, given the theoretical conditions in Theorem 1?\",\n    \"How does the method handle tasks where the set of correct answers Yx is not well-defined or where verification is unreliable?\"\n  ],\n  \"Limitations\": [\n    \"The method requires access to reference answers or a verifier for the variational posterior conditioning, which may not be available for all task types\",\n    \"The single-round training setup may not fully exploit the potential of the iterative variational framework\",\n    \"The paper doesn't address potential negative societal impacts such as the use of reasoning models for generating misleading or harmful content\",\n    \"The computational cost of training a separate variational posterior and computing importance weights may limit scalability to very large models\",\n    \"The evaluation focuses on math and code reasoning; generalization to other reasoning domains (e.g., scientific reasoning, agentic tasks) is not demonstrated\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 40726,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 38934,
+        "completion_tokens": 1802,
+        "reasoning_tokens": 0,
+        "total_tokens": 42528
+      },
+      "attempts": 1,
+      "response_id": "e34047a0-1624-40c3-b4bb-4a9829ea2e51"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper introduces a variational reasoning framework for language models, treating thinking traces as latent variables and optimizing them through variational inference. The authors derive an ELBO objective, extend it to an IWAE-style multi-trace bound for tighter estimation, and propose a forward-KL formulation for training the variational posterior. The paper also provides theoretical connections showing that rejection sampling finetuning (RFT) and binary-reward RL (including GRPO) can be interpreted as forward-KL objectives with implicit accuracy-based weighting that biases toward easier questions. The method is validated on Qwen2.5 and Qwen3 model families across multiple reasoning benchmarks including MATH500, AIME, OlympiadBench, LiveCodeBench, GPQA-Diamond, and MMLU-Pro, showing consistent improvements over strong baselines.",
+        "Strengths": [
+          "Principled theoretical framework that provides a unified probabilistic perspective connecting variational inference with existing RL-style methods (RFT, GRPO)",
+          "Novel theoretical analysis revealing the implicit bias toward easier questions in existing methods like RFT and GRPO through accuracy-based weighting",
+          "Comprehensive empirical validation across multiple model families (Qwen2.5, Qwen3) and diverse reasoning benchmarks",
+          "Thorough ablation studies covering various design choices (estimators, conditioning on hints, data usage, computational budget)",
+          "Technical soundness of the derivations, including the IWAE-style bound and the forward-KL objective for the variational posterior",
+          "Practical insights such as the variance analysis of likelihood-based vs. accuracy-based estimators"
+        ],
+        "Weaknesses": [
+          "The connection between the theoretical framework and the practical implementation is somewhat loose, particularly with the geometric mean modification to the likelihood ratio which introduces unanalyzed bias",
+          "The main results use a simplified 17K setting that selects only the single best trace per question, deviating from the full Algorithm 1; the superior weighted multi-trace approach is only validated in the smaller 1K setting",
+          "The computational cost comparison with baselines is limited to one model size, and the actual overhead of the method (training variational posterior, sampling, forward passes) is not fully quantified",
+          "The claim of 'unifying variational inference with RL-style methods' may be overstated since the actual method is essentially a weighted SFT approach",
+          "The paper would benefit from more discussion on the limitations of the forward-KL approximation (Eq. 9) and its potential impact on the optimality of the variational posterior",
+          "Related work is deferred to the appendix, which makes it harder to position the contribution within the existing literature"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "The geometric mean modification in Eq. (8) introduces bias in the weight estimation. Can you provide a more rigorous analysis of this bias and its impact on the final objective? Are there conditions under which this modification could lead to suboptimal training?",
+          "In the 17K setting, you select only the single best trace per question based on the weight ρk. Given that the ablation in Table 8 shows the weighted multi-trace approach performs better in the 1K setting, why was this not used in the main experiments? Would the results change significantly if the full Algorithm 1 was used?",
+          "The forward-KL objective in Eq. (9) is an approximation rather than a lower bound. What is the impact of this approximation on the quality of the variational posterior? Could a more principled approach, such as the reweighted wake-sleep algorithm, yield better results?",
+          "The paper claims that GRPO's weighting emphasizes easier questions. In practice, GRPO has been shown to work well on many benchmarks. How do you reconcile this theoretical bias with the empirical success of GRPO? Does the bias become significant only in certain regimes?",
+          "What is the total computational cost of the method compared to baselines? The paper mentions a compute-matched comparison for one model size, but can you provide a more detailed breakdown of the training time, sampling cost, and forward passes required?",
+          "The variational posterior is trained with a forward-KL objective. How sensitive is the method to the training hyperparameters of qϕ (e.g., number of epochs, learning rate)? Is there a risk of overfitting the posterior to the training data?",
+          "The paper focuses on single-round training (T=1). What challenges arise in multi-round training, and how would the framework need to be adapted? Would the variational posterior need to be retrained at each round?"
+        ],
+        "Limitations": [
+          "The method introduces additional computational overhead compared to standard SFT or RL approaches, including training a separate variational posterior model and performing multiple forward passes for weight estimation",
+          "The theoretical framework relies on several approximations (geometric mean modification, forward-KL approximation) whose impact on the final performance is not rigorously characterized",
+          "The empirical validation is limited to math and code reasoning tasks; the applicability to other domains (e.g., general knowledge, open-ended generation) is not demonstrated",
+          "The method currently requires verifiable rewards or reference answers to construct the hint set Yx, which may not be available for all task types",
+          "The paper does not thoroughly discuss potential negative societal impacts, such as the risk of models overfitting to verifiable tasks or potential misuse of improved reasoning capabilities"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces a variational reasoning framework for language models, treating thinking traces as latent variables and optimizing them through variational inference. The authors derive an ELBO objective, extend it to an IWAE-style multi-trace bound, and propose a forward-KL formulation for training the variational posterior. They also provide theoretical connections showing that RFT and binary-reward RL (including GRPO) can be interpreted as forward-KL objectives with implicit accuracy-based weighting that biases toward easier questions. The method is validated on Qwen2.5 and Qwen3 model families across multiple reasoning benchmarks.\n\nThe paper has several notable strengths:\n1. The theoretical framework is principled and well-developed, providing a unified probabilistic perspective that connects variational inference with existing RL-style methods.\n2. The derivation of the IWAE-style bound and the forward-KL objective for the variational posterior is technically sound.\n3. The theoretical analysis of the bias toward easier questions in existing methods (RFT, GRPO) is an interesting and novel contribution.\n4. The empirical validation is thorough, covering multiple model families and benchmarks with consistent improvements over strong baselines.\n5. The ablation studies are comprehensive, covering various design choices (estimators, conditioning on hints, data usage, etc.).\n\nHowever, there are some weaknesses to consider:\n1. The connection between the theoretical framework and the actual implementation is somewhat loose. For instance, the geometric mean modification to the likelihood ratio introduces bias that is not rigorously analyzed.\n2. The main results are reported with a simplified 17K setting that uses only the single best trace per question, which deviates from the full Algorithm 1. The ablation showing the weighted multi-trace approach performs better is only in the 1K setting.\n3. The comparison with baselines could be more thorough. For example, the computational cost comparison is only done for one model size.\n4. The paper claims the framework \"unifies variational inference with RL-style methods,\" but the actual method is essentially a weighted SFT approach, which may limit its novelty compared to existing work.\n5. Some presentation aspects could be improved, such as the placement of related work in the appendix and the density of the main text.\n\nOverall, I believe this is a solid paper with a strong theoretical contribution and good empirical results. The main concerns are about the tightness of the connection between theory and practice, and the extent to which the method truly advances the state of the art beyond simpler baselines. I would rate it as a borderline accept, leaning toward reject due to the gap between the theoretical claims and the practical simplifications.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper introduces a variational reasoning framework for language models, treating thinking traces as latent variables and optimizing them through variational inference. The authors derive an ELBO objective, extend it to an IWAE-style multi-trace bound for tighter estimation, and propose a forward-KL formulation for training the variational posterior. The paper also provides theoretical connections showing that rejection sampling finetuning (RFT) and binary-reward RL (including GRPO) can be interpreted as forward-KL objectives with implicit accuracy-based weighting that biases toward easier questions. The method is validated on Qwen2.5 and Qwen3 model families across multiple reasoning benchmarks including MATH500, AIME, OlympiadBench, LiveCodeBench, GPQA-Diamond, and MMLU-Pro, showing consistent improvements over strong baselines.\",\n  \"Strengths\": [\n    \"Principled theoretical framework that provides a unified probabilistic perspective connecting variational inference with existing RL-style methods (RFT, GRPO)\",\n    \"Novel theoretical analysis revealing the implicit bias toward easier questions in existing methods like RFT and GRPO through accuracy-based weighting\",\n    \"Comprehensive empirical validation across multiple model families (Qwen2.5, Qwen3) and diverse reasoning benchmarks\",\n    \"Thorough ablation studies covering various design choices (estimators, conditioning on hints, data usage, computational budget)\",\n    \"Technical soundness of the derivations, including the IWAE-style bound and the forward-KL objective for the variational posterior\",\n    \"Practical insights such as the variance analysis of likelihood-based vs. accuracy-based estimators\"\n  ],\n  \"Weaknesses\": [\n    \"The connection between the theoretical framework and the practical implementation is somewhat loose, particularly with the geometric mean modification to the likelihood ratio which introduces unanalyzed bias\",\n    \"The main results use a simplified 17K setting that selects only the single best trace per question, deviating from the full Algorithm 1; the superior weighted multi-trace approach is only validated in the smaller 1K setting\",\n    \"The computational cost comparison with baselines is limited to one model size, and the actual overhead of the method (training variational posterior, sampling, forward passes) is not fully quantified\",\n    \"The claim of 'unifying variational inference with RL-style methods' may be overstated since the actual method is essentially a weighted SFT approach\",\n    \"The paper would benefit from more discussion on the limitations of the forward-KL approximation (Eq. 9) and its potential impact on the optimality of the variational posterior\",\n    \"Related work is deferred to the appendix, which makes it harder to position the contribution within the existing literature\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"The geometric mean modification in Eq. (8) introduces bias in the weight estimation. Can you provide a more rigorous analysis of this bias and its impact on the final objective? Are there conditions under which this modification could lead to suboptimal training?\",\n    \"In the 17K setting, you select only the single best trace per question based on the weight ρk. Given that the ablation in Table 8 shows the weighted multi-trace approach performs better in the 1K setting, why was this not used in the main experiments? Would the results change significantly if the full Algorithm 1 was used?\",\n    \"The forward-KL objective in Eq. (9) is an approximation rather than a lower bound. What is the impact of this approximation on the quality of the variational posterior? Could a more principled approach, such as the reweighted wake-sleep algorithm, yield better results?\",\n    \"The paper claims that GRPO's weighting emphasizes easier questions. In practice, GRPO has been shown to work well on many benchmarks. How do you reconcile this theoretical bias with the empirical success of GRPO? Does the bias become significant only in certain regimes?\",\n    \"What is the total computational cost of the method compared to baselines? The paper mentions a compute-matched comparison for one model size, but can you provide a more detailed breakdown of the training time, sampling cost, and forward passes required?\",\n    \"The variational posterior is trained with a forward-KL objective. How sensitive is the method to the training hyperparameters of qϕ (e.g., number of epochs, learning rate)? Is there a risk of overfitting the posterior to the training data?\",\n    \"The paper focuses on single-round training (T=1). What challenges arise in multi-round training, and how would the framework need to be adapted? Would the variational posterior need to be retrained at each round?\"\n  ],\n  \"Limitations\": [\n    \"The method introduces additional computational overhead compared to standard SFT or RL approaches, including training a separate variational posterior model and performing multiple forward passes for weight estimation\",\n    \"The theoretical framework relies on several approximations (geometric mean modification, forward-KL approximation) whose impact on the final performance is not rigorously characterized\",\n    \"The empirical validation is limited to math and code reasoning tasks; the applicability to other domains (e.g., general knowledge, open-ended generation) is not demonstrated\",\n    \"The method currently requires verifiable rewards or reference answers to construct the hint set Yx, which may not be available for all task types\",\n    \"The paper does not thoroughly discuss potential negative societal impacts, such as the risk of models overfitting to verifiable tasks or potential misuse of improved reasoning capabilities\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 40726,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 38934,
+        "completion_tokens": 1730,
+        "reasoning_tokens": 0,
+        "total_tokens": 42456
+      },
+      "attempts": 1,
+      "response_id": "76af7a0b-a802-4ab4-89d8-ed3165c98643"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "This paper introduces a variational reasoning framework for language models that treats thinking traces as latent variables and optimizes them via variational inference. The authors derive an ELBO objective, extend it to an IWAE-style multi-trace lower bound for tighter optimization, and propose a forward-KL objective for training the variational posterior. They further show that rejection sampling finetuning (RFT) and binary-reward RL methods (including GRPO) can be interpreted as local forward-KL objectives with implicit accuracy-based weighting, revealing a previously unnoticed bias toward easier questions. The method is validated on Qwen2.5 and Qwen3 model families across diverse reasoning benchmarks (MATH500, AIME24/25, AMC23, OlympiadBench, LiveCodeBench, GPQA-Diamond, MMLU-Pro), consistently outperforming strong baselines.",
+        "Strengths": [
+          "The variational inference perspective on reasoning is principled and provides a unified framework connecting ELBO, IWAE, RFT, and binary-reward RL methods, offering fresh theoretical insights.",
+          "The derivation of the IWAE-style bound and the gradient estimation via importance weights is technically sound and well-presented, with detailed proofs in the appendix.",
+          "Theorem 1 provides a rigorous variance comparison between likelihood-based and accuracy-based estimators, offering practical guidance for estimator selection.",
+          "The analysis revealing the inherent bias toward easier questions in RFT and GRPO due to implicit accuracy-based weighting is a valuable and novel contribution.",
+          "Extensive empirical validation across multiple model families (Qwen2.5-7B/32B, Qwen3-4B/8B) and diverse benchmarks demonstrates consistent improvements over strong baselines, including out-of-distribution generalization.",
+          "The paper includes thorough ablations (e.g., effect of conditioning on hints, different estimators, scaling K, data overlap, verifier quality) that support the design choices.",
+          "The training dynamics analysis (loss and gradient norm) shows improved stability compared to baselines."
+        ],
+        "Weaknesses": [
+          "The forward-KL gradient approximation in Eq. (9) uses self-normalized importance weights, which introduces bias; the paper acknowledges this is an approximation rather than a lower bound, but the practical implications of this bias are not deeply analyzed.",
+          "The geometric mean modification to the likelihood ratio (Eq. 8) is heuristic and introduces bias. While ablation shows its benefit, a more principled justification would strengthen the work.",
+          "The training pipeline is complex with multiple stages (initial SFT, posterior training, weighted SFT with importance weights), and the computational overhead compared to simpler baselines is not fully detailed in the main text.",
+          "The condition for the accuracy-based estimator's lower variance (πθ(Yx|x,z) ≥ 1/|Yx|) may not hold for hard questions where model accuracy is low, and the practical implications are not fully discussed.",
+          "The comparison with baselines may have fairness concerns, as the method uses additional synthetic data from the variational posterior. While Appendix F.11 addresses compute-matched comparison, the main text could be clearer.",
+          "The paper only trains for a single round (T=1) and leaves multi-round training as future work, which limits the exploration of the full potential of the framework."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "The forward-KL objective in Eq. (9) uses self-normalized importance weights. How sensitive is the method to the number of samples M? Have you analyzed the bias-variance trade-off of this approximation?",
+          "The geometric mean modification to the likelihood ratio is motivated by variance reduction and length bias. Could you provide a more formal analysis of the bias introduced and its impact on the final objective?",
+          "In the 17K data setting, you select only the trace with the highest weight eρk per question and mix with original data. The ablation in Appendix F.3 shows that using all 8 traces without mixing is better in the 1K setting. Why not use this approach for the 17K setting? Is it purely computational?",
+          "The paper shows connections to RFT and binary-reward RL. Could you elaborate on how the proposed framework would perform if used as a direct replacement for RL, e.g., in an online setting with iterative updates?",
+          "The empirical results show improvements on OOD benchmarks like GPQA-Diamond and MMLU-Pro. What properties of the method contribute to this generalization?",
+          "The variational posterior conditions on a hint y'. In practice, how is the hint obtained for new questions at inference time? Is the posterior only used during training, or can it be leveraged at test time?",
+          "The paper mentions that the likelihood-based estimator has zero variance when |Yx|=1, but the accuracy-based estimator is preferred for |Yx|>>1. In practice, how do you estimate |Yx| for a given question?",
+          "How does the method scale to larger models (e.g., 70B+)? Are there any computational bottlenecks or stability issues?"
+        ],
+        "Limitations": [
+          "The method requires a verifier (rule-based or model-based) to compute accuracy-based weights, which may not be available for all tasks (e.g., open-ended generation).",
+          "The training pipeline is complex with multiple stages, which may limit practical adoption compared to simpler SFT or RL baselines.",
+          "The framework is evaluated on math and code tasks; its applicability to other domains (e.g., scientific reasoning, agentic tasks) is not demonstrated.",
+          "The paper does not deeply analyze potential negative societal impacts, such as the risk of amplifying biases in the training data or the computational cost of the method.",
+          "The single-round training (T=1) may not fully realize the potential of iterative variational inference, and multi-round training is left as future work."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 3,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces a variational reasoning framework for language models, treating thinking traces as latent variables and optimizing them through variational inference. The authors derive an ELBO objective, extend it to an IWAE-style multi-trace bound, and propose a forward-KL formulation for training the variational posterior. They also provide theoretical connections showing that RFT and binary-reward RL (including GRPO) can be interpreted as local forward-KL objectives with implicit accuracy-based weighting that biases toward easier questions. Empirically, they validate on Qwen2.5 and Qwen3 model families across multiple reasoning benchmarks.\n\nStrengths:\n1. The theoretical framework is well-developed and provides a principled probabilistic perspective that unifies variational inference with RL-style methods. The connections to RFT and GRPO are insightful and add theoretical value.\n2. The derivation of the IWAE-style bound and the variance analysis of likelihood-based vs. accuracy-based estimators (Theorem 1) is solid and contributes to understanding estimator choices.\n3. The empirical validation is extensive, covering multiple model families (Qwen2.5-7B/32B, Qwen3-4B/8B), diverse benchmarks (math, code, science, general knowledge), and includes thorough ablations.\n4. The paper is generally well-written and organized, with clear derivations in the appendix.\n5. The observation about the bias toward easier questions in RFT/GRPO is a valuable insight.\n\nWeaknesses:\n1. The forward-KL gradient approximation in Eq. (9) is derived using importance sampling with self-normalized weights, which introduces bias. The paper acknowledges this is an approximation rather than a lower bound, but the practical implications of this bias are not deeply analyzed.\n2. The geometric mean modification to the likelihood ratio in Eq. (8) is heuristic and introduces bias. While the paper acknowledges this trade-off and provides ablation evidence, a more principled justification would strengthen the work.\n3. The experimental comparison may have some fairness concerns. For example, the \"Ours\" methods use additional training data (variational posterior samples) compared to some baselines, and the computational cost comparison in Appendix F.11, while addressing this, could be more thorough.\n4. The paper claims the accuracy-based estimator has lower worst-case variance when πθ(Yx|x,z) ≥ 1/|Yx|, but this condition may not always hold in practice, especially for hard questions where accuracy is low. The practical implications of this limitation are not fully discussed.\n5. The training pipeline is complex with multiple stages (initial SFT, posterior training, weighted SFT), which may limit practical adoption. The paper does not provide a detailed computational cost analysis in the main text.\n\nOverall, this is a solid paper with a strong theoretical contribution and extensive empirical validation. The variational perspective on reasoning provides useful insights, and the connections to existing methods (RFT, GRPO) are valuable. The main concerns are the heuristic modifications (geometric mean, forward-KL approximation) and the complexity of the training pipeline. I would lean toward acceptance given the theoretical contributions and strong empirical results, though I have some reservations about the practical complexity and the fairness of comparisons.\n\nFor the ratings:\n- Originality: High (3) - The variational framing of reasoning with thinking traces as latents is not entirely new (related work exists), but the specific IWAE extension, forward-KL posterior training, and the analysis of estimator variance are novel contributions.\n- Quality: Good (3) - The theoretical derivations appear sound, and the empirical validation is extensive with good ablations. Some concerns about the heuristics used.\n- Clarity: Good (3) - The paper is generally well-written, though the training pipeline is complex and could be explained more clearly.\n- Significance: High (3) - The framework provides a principled perspective that could influence future work on reasoning model training.\n\nSoundness: 3 (good)\nPresentation: 3 (good)\nContribution: 3 (good)\nOverall: 6 (Weak Accept)\nConfidence: 3 (fairly confident)\n\nDecision: Accept (leaning toward accept given the theoretical and empirical contributions)\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper introduces a variational reasoning framework for language models that treats thinking traces as latent variables and optimizes them via variational inference. The authors derive an ELBO objective, extend it to an IWAE-style multi-trace lower bound for tighter optimization, and propose a forward-KL objective for training the variational posterior. They further show that rejection sampling finetuning (RFT) and binary-reward RL methods (including GRPO) can be interpreted as local forward-KL objectives with implicit accuracy-based weighting, revealing a previously unnoticed bias toward easier questions. The method is validated on Qwen2.5 and Qwen3 model families across diverse reasoning benchmarks (MATH500, AIME24/25, AMC23, OlympiadBench, LiveCodeBench, GPQA-Diamond, MMLU-Pro), consistently outperforming strong baselines.\",\n  \"Strengths\": [\n    \"The variational inference perspective on reasoning is principled and provides a unified framework connecting ELBO, IWAE, RFT, and binary-reward RL methods, offering fresh theoretical insights.\",\n    \"The derivation of the IWAE-style bound and the gradient estimation via importance weights is technically sound and well-presented, with detailed proofs in the appendix.\",\n    \"Theorem 1 provides a rigorous variance comparison between likelihood-based and accuracy-based estimators, offering practical guidance for estimator selection.\",\n    \"The analysis revealing the inherent bias toward easier questions in RFT and GRPO due to implicit accuracy-based weighting is a valuable and novel contribution.\",\n    \"Extensive empirical validation across multiple model families (Qwen2.5-7B/32B, Qwen3-4B/8B) and diverse benchmarks demonstrates consistent improvements over strong baselines, including out-of-distribution generalization.\",\n    \"The paper includes thorough ablations (e.g., effect of conditioning on hints, different estimators, scaling K, data overlap, verifier quality) that support the design choices.\",\n    \"The training dynamics analysis (loss and gradient norm) shows improved stability compared to baselines.\"\n  ],\n  \"Weaknesses\": [\n    \"The forward-KL gradient approximation in Eq. (9) uses self-normalized importance weights, which introduces bias; the paper acknowledges this is an approximation rather than a lower bound, but the practical implications of this bias are not deeply analyzed.\",\n    \"The geometric mean modification to the likelihood ratio (Eq. 8) is heuristic and introduces bias. While ablation shows its benefit, a more principled justification would strengthen the work.\",\n    \"The training pipeline is complex with multiple stages (initial SFT, posterior training, weighted SFT with importance weights), and the computational overhead compared to simpler baselines is not fully detailed in the main text.\",\n    \"The condition for the accuracy-based estimator's lower variance (πθ(Yx|x,z) ≥ 1/|Yx|) may not hold for hard questions where model accuracy is low, and the practical implications are not fully discussed.\",\n    \"The comparison with baselines may have fairness concerns, as the method uses additional synthetic data from the variational posterior. While Appendix F.11 addresses compute-matched comparison, the main text could be clearer.\",\n    \"The paper only trains for a single round (T=1) and leaves multi-round training as future work, which limits the exploration of the full potential of the framework.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"The forward-KL objective in Eq. (9) uses self-normalized importance weights. How sensitive is the method to the number of samples M? Have you analyzed the bias-variance trade-off of this approximation?\",\n    \"The geometric mean modification to the likelihood ratio is motivated by variance reduction and length bias. Could you provide a more formal analysis of the bias introduced and its impact on the final objective?\",\n    \"In the 17K data setting, you select only the trace with the highest weight eρk per question and mix with original data. The ablation in Appendix F.3 shows that using all 8 traces without mixing is better in the 1K setting. Why not use this approach for the 17K setting? Is it purely computational?\",\n    \"The paper shows connections to RFT and binary-reward RL. Could you elaborate on how the proposed framework would perform if used as a direct replacement for RL, e.g., in an online setting with iterative updates?\",\n    \"The empirical results show improvements on OOD benchmarks like GPQA-Diamond and MMLU-Pro. What properties of the method contribute to this generalization?\",\n    \"The variational posterior conditions on a hint y'. In practice, how is the hint obtained for new questions at inference time? Is the posterior only used during training, or can it be leveraged at test time?\",\n    \"The paper mentions that the likelihood-based estimator has zero variance when |Yx|=1, but the accuracy-based estimator is preferred for |Yx|>>1. In practice, how do you estimate |Yx| for a given question?\",\n    \"How does the method scale to larger models (e.g., 70B+)? Are there any computational bottlenecks or stability issues?\"\n  ],\n  \"Limitations\": [\n    \"The method requires a verifier (rule-based or model-based) to compute accuracy-based weights, which may not be available for all tasks (e.g., open-ended generation).\",\n    \"The training pipeline is complex with multiple stages, which may limit practical adoption compared to simpler SFT or RL baselines.\",\n    \"The framework is evaluated on math and code tasks; its applicability to other domains (e.g., scientific reasoning, agentic tasks) is not demonstrated.\",\n    \"The paper does not deeply analyze potential negative societal impacts, such as the risk of amplifying biases in the training data or the computational cost of the method.\",\n    \"The single-round training (T=1) may not fully realize the potential of iterative variational inference, and multi-round training is left as future work.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 3,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 40726,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 38934,
+        "completion_tokens": 2174,
+        "reasoning_tokens": 0,
+        "total_tokens": 42900
+      },
+      "attempts": 1,
+      "response_id": "fc95340e-e7aa-4f23-bbf9-e5d13aaa00b2"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "This paper introduces a variational reasoning framework for language models that treats thinking traces as latent variables. The authors derive an evidence lower bound (ELBO) objective, extend it to an IWAE-style multi-trace formulation for tighter bounds, and propose a forward-KL objective for training the variational posterior to improve stability. They also provide theoretical connections showing that rejection sampling finetuning (RFT) and binary-reward RL methods like GRPO can be interpreted as local forward-KL objectives with implicit accuracy weighting, revealing a bias toward easier questions. The method is validated on Qwen2.5 and Qwen3 model families across diverse reasoning benchmarks including math, code, and general knowledge tasks, showing consistent improvements over strong baselines.",
+        "Strengths": [
+          "Solid theoretical framework connecting variational inference with RL-style methods for training reasoning models",
+          "Comprehensive experimental evaluation across multiple model families (Qwen2.5, Qwen3) and diverse benchmarks",
+          "Theoretical analysis provides new insights into existing methods like RFT and GRPO, particularly the bias toward easier questions",
+          "Thorough ablation studies examining various design choices including estimators, conditioning on hints, and computational trade-offs",
+          "Good analysis of estimator variance with the theoretical result in Theorem 1 comparing likelihood-based and accuracy-based estimators",
+          "The forward-KL formulation for the variational posterior is well-motivated and addresses practical training stability issues"
+        ],
+        "Weaknesses": [
+          "The method requires training three separate models (initial reasoning model, variational posterior, and final reasoning model), resulting in high computational cost",
+          "The IWAE-style bound and forward-KL derivations are standard variational inference techniques; the novelty is primarily in the application to LLM reasoning",
+          "Performance gains over strong baselines are sometimes modest, especially at larger model scales (e.g., 32B)",
+          "The claim about revealing a 'previously unnoticed' bias in RFT/GRPO may be overstated, as the accuracy weighting in these methods is well-known",
+          "The geometric mean modification to the likelihood ratio is heuristic and introduces bias, though the authors acknowledge this trade-off",
+          "The connection to existing methods (LaTRO, VeriFree, RLT) is discussed but could be more clearly positioned in the main text"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How does the computational cost of the full pipeline compare to standard RL training like GRPO in terms of total GPU hours? The paper mentions a compute-matched baseline but does not provide specific numbers.",
+          "The paper trains the variational posterior qϕ using forward KL with samples from πθ. How sensitive is the performance to the number of training epochs for qϕ? Could more training hurt performance due to overfitting to the prior?",
+          "In the 17k data setting, only the highest-weight trace per question is used. How does this compare to using all 8 traces in terms of final performance? The ablation in the 1k setting suggests weighted multiple traces are better, but is this also true at 17k scale?",
+          "The paper shows that a dummy verifier (all weights set to 0.5) still performs well. Does this suggest that the accuracy-based weighting is not critical, and the main benefit comes from the variational posterior sampling?",
+          "How does the method perform with multi-round training (T > 1)? The paper leaves this as future work, but it would strengthen the practical utility.",
+          "What is the variance of the importance weights ρk across different questions? High variance could indicate instability in the training signal."
+        ],
+        "Limitations": [
+          "The computational overhead of training multiple models and performing additional sampling/forward passes is significant, limiting practical applicability",
+          "The method relies on verifiable rewards or reference answers (hints y'), which may not be available for open-ended reasoning tasks",
+          "The evaluation focuses on math and code benchmarks; general reasoning and open-ended tasks are not extensively covered",
+          "The geometric mean modification introduces bias in the importance weights, and the theoretical justification is heuristic",
+          "The paper does not explore multi-round training, which could potentially amplify the benefits but also risks instability",
+          "The potential negative societal impact is not discussed, though the paper focuses on improving reasoning capabilities which could have dual-use concerns"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces a variational reasoning framework for language models, treating thinking traces as latent variables and optimizing them through variational inference. The authors derive an ELBO objective, extend it to an IWAE-style multi-trace bound, and propose a forward-KL formulation for training the variational posterior. They also provide theoretical connections to existing methods like RFT and GRPO, showing these can be interpreted as forward-KL objectives with implicit accuracy weighting that biases toward easier questions.\n\nThe paper is generally well-written with clear derivations and a comprehensive experimental section. The theoretical contributions are solid, particularly the connections drawn between variational inference and existing RL methods. The empirical evaluation is thorough, covering multiple model families and benchmarks.\n\nHowever, there are several concerns:\n\n1. The method requires training three models (initial reasoning model, variational posterior, and final reasoning model), which is computationally expensive. While the authors address this with the mixed data setting, the total compute is still substantial.\n\n2. The IWAE-style bound derivation seems standard, and the forward-KL formulation for the posterior is similar to existing wake-sleep style approaches. The novelty lies more in the application to LLM reasoning than in the variational inference theory itself.\n\n3. The claim about revealing \"a previously unnoticed bias toward easier questions\" in RFT and GRPO is interesting but the analysis is relatively straightforward given the known accuracy weighting in these methods.\n\n4. The experiments show consistent improvements, but the gains over strong baselines are sometimes modest, especially at larger scales. The ablation studies are thorough but some results (like the dummy verifier still performing well) raise questions about how much the precise weighting matters.\n\n5. The paper's connection to existing work (LaTRO, VeriFree, etc.) is acknowledged in the related work section, but the positioning relative to these methods could be clearer.\n\nOverall, this is a solid paper with good theoretical grounding and comprehensive experiments. The main question is whether the novelty and practical gains justify acceptance at a top venue. The computational cost is significant, and the improvements, while consistent, are not dramatic.\n\nI'll rate this as a borderline accept. The theoretical framework is valuable and the empirical results support the claims, but the practical impact is somewhat limited by the computational requirements and the modest gains over strong baselines.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper introduces a variational reasoning framework for language models that treats thinking traces as latent variables. The authors derive an evidence lower bound (ELBO) objective, extend it to an IWAE-style multi-trace formulation for tighter bounds, and propose a forward-KL objective for training the variational posterior to improve stability. They also provide theoretical connections showing that rejection sampling finetuning (RFT) and binary-reward RL methods like GRPO can be interpreted as local forward-KL objectives with implicit accuracy weighting, revealing a bias toward easier questions. The method is validated on Qwen2.5 and Qwen3 model families across diverse reasoning benchmarks including math, code, and general knowledge tasks, showing consistent improvements over strong baselines.\",\n    \"Strengths\": [\n        \"Solid theoretical framework connecting variational inference with RL-style methods for training reasoning models\",\n        \"Comprehensive experimental evaluation across multiple model families (Qwen2.5, Qwen3) and diverse benchmarks\",\n        \"Theoretical analysis provides new insights into existing methods like RFT and GRPO, particularly the bias toward easier questions\",\n        \"Thorough ablation studies examining various design choices including estimators, conditioning on hints, and computational trade-offs\",\n        \"Good analysis of estimator variance with the theoretical result in Theorem 1 comparing likelihood-based and accuracy-based estimators\",\n        \"The forward-KL formulation for the variational posterior is well-motivated and addresses practical training stability issues\"\n    ],\n    \"Weaknesses\": [\n        \"The method requires training three separate models (initial reasoning model, variational posterior, and final reasoning model), resulting in high computational cost\",\n        \"The IWAE-style bound and forward-KL derivations are standard variational inference techniques; the novelty is primarily in the application to LLM reasoning\",\n        \"Performance gains over strong baselines are sometimes modest, especially at larger model scales (e.g., 32B)\",\n        \"The claim about revealing a 'previously unnoticed' bias in RFT/GRPO may be overstated, as the accuracy weighting in these methods is well-known\",\n        \"The geometric mean modification to the likelihood ratio is heuristic and introduces bias, though the authors acknowledge this trade-off\",\n        \"The connection to existing methods (LaTRO, VeriFree, RLT) is discussed but could be more clearly positioned in the main text\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"How does the computational cost of the full pipeline compare to standard RL training like GRPO in terms of total GPU hours? The paper mentions a compute-matched baseline but does not provide specific numbers.\",\n        \"The paper trains the variational posterior qϕ using forward KL with samples from πθ. How sensitive is the performance to the number of training epochs for qϕ? Could more training hurt performance due to overfitting to the prior?\",\n        \"In the 17k data setting, only the highest-weight trace per question is used. How does this compare to using all 8 traces in terms of final performance? The ablation in the 1k setting suggests weighted multiple traces are better, but is this also true at 17k scale?\",\n        \"The paper shows that a dummy verifier (all weights set to 0.5) still performs well. Does this suggest that the accuracy-based weighting is not critical, and the main benefit comes from the variational posterior sampling?\",\n        \"How does the method perform with multi-round training (T > 1)? The paper leaves this as future work, but it would strengthen the practical utility.\",\n        \"What is the variance of the importance weights ρk across different questions? High variance could indicate instability in the training signal.\"\n    ],\n    \"Limitations\": [\n        \"The computational overhead of training multiple models and performing additional sampling/forward passes is significant, limiting practical applicability\",\n        \"The method relies on verifiable rewards or reference answers (hints y'), which may not be available for open-ended reasoning tasks\",\n        \"The evaluation focuses on math and code benchmarks; general reasoning and open-ended tasks are not extensively covered\",\n        \"The geometric mean modification introduces bias in the importance weights, and the theoretical justification is heuristic\",\n        \"The paper does not explore multi-round training, which could potentially amplify the benefits but also risks instability\",\n        \"The potential negative societal impact is not discussed, though the paper focuses on improving reasoning capabilities which could have dual-use concerns\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 40726,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 38934,
+        "completion_tokens": 1452,
+        "reasoning_tokens": 0,
+        "total_tokens": 42178
+      },
+      "attempts": 1,
+      "response_id": "7538a8b7-d34c-4c26-a7aa-1a24be68ede2"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 5,
+      "Reject": 0
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          4,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          4,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          4,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Overall": {
+        "values": [
+          7,
+          7,
+          6,
+          6,
+          6
+        ],
+        "mean": 6.4,
+        "rounded_mean": 6,
+        "population_sd": 0.49,
+        "min": 6,
+        "max": 7
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          3,
+          4
+        ],
+        "mean": 3.8,
+        "rounded_mean": 4,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "This paper introduces a variational reasoning framework for training language models to reason, treating thinking traces as latent variables. The authors derive an ELBO objective, extend it to an IWAE-style multi-trace bound for tighter optimization, and propose a forward-KL objective for training the variational posterior to improve stability. A key theoretical contribution is showing that rejection sampling finetuning (RFT) and binary-reward RL methods (including GRPO) can be interpreted as local forward-KL objectives with implicit accuracy-based weighting, revealing a bias toward easier questions. The method is validated on Qwen2.5 and Qwen3 model families across diverse reasoning benchmarks (MATH500, AIME, OlympiadBench, LiveCodeBench, GPQA-Diamond, MMLU-Pro), showing consistent improvements over strong baselines.",
+      "Strengths": [
+        "Provides a principled probabilistic (variational inference) perspective that unifies SFT/RFT and RL-style methods for reasoning training.",
+        "The derivation showing RFT and GRPO as weighted forward-KL objectives, revealing a bias toward easier questions, is a novel and insightful theoretical contribution.",
+        "Extensive experimental validation across multiple model families (Qwen2.5, Qwen3), sizes (4B-32B), and a wide range of benchmarks (math, code, science, general).",
+        "The IWAE-style bound extension and the variance analysis of different estimators (Theorem 1) are technically sound and well-motivated.",
+        "Good set of ablations, including analysis of the number of traces K, conditioning on hints, different estimators, and computational budget fairness.",
+        "Demonstrates improved training stability (lower loss, fewer gradient spikes) compared to the baseline."
+      ],
+      "Weaknesses": [
+        "The practical implementation deviates from the core theoretical derivations (e.g., geometric mean approximation for the likelihood ratio, single-round training T=1, using only the best trace in the 17k setting), weakening the claim of being a fully 'principled' objective.",
+        "The claimed bias toward easier questions in RFT/GRPO is only theoretically derived and not empirically demonstrated; a direct comparison with a GRPO-trained model under the same setup would strengthen this claim.",
+        "The forward-KL objective for qφ is an approximation (not a bound), and the conditions under which this approximation is reliable are not fully discussed.",
+        "The evaluation shows consistent but often modest gains over the Bespoke-Stratos baseline; the practical significance of the gains relative to the added complexity of training a separate variational posterior is not fully discussed.",
+        "No comparisons with more recent state-of-the-art RL methods (e.g., DAPO, VAPO) are provided.",
+        "The computational overhead of training multiple models and performing additional sampling/forward passes is significant and not thoroughly quantified in the main text."
+      ],
+      "Originality": 4,
+      "Quality": 3,
+      "Clarity": 3,
+      "Significance": 4,
+      "Questions": [
+        "The paper theoretically shows that RFT and GRPO have a bias toward easier questions. Can you provide empirical evidence for this bias, for instance, by comparing performance on questions grouped by difficulty level between your method and a GRPO-trained model?",
+        "The forward-KL objective for qφ is an approximation. Under what conditions (e.g., quality of πθ, number of samples M) is this approximation reliable? Could a poor approximation lead to a degenerate qφ?",
+        "In the 17k setting, you use only the best trace (highest weight) per question. How sensitive are the main results to this choice versus using all 8 traces (as in the 1k setting)? Is there a computational reason for this choice beyond efficiency?",
+        "The geometric mean approximation for the likelihood ratio is justified by variance reduction but introduces bias. Have you considered alternative variance reduction techniques, such as control variates, which might be more 'principled'?",
+        "How does the performance of your method compare to a GRPO-trained model using the same base model and the same training data? This would provide a more direct empirical comparison for the theoretical connections made in Section 3.",
+        "What is the total computational cost of the full pipeline compared to standard RL training like GRPO in terms of total GPU hours? The paper mentions a compute-matched baseline but does not provide specific numbers.",
+        "How does the method perform with multi-round training (T > 1)? What challenges arise, and how would the framework need to be adapted?",
+        "The paper shows that a dummy verifier (all weights set to 0.5) still performs well. Does this suggest that the accuracy-based weighting is not critical, and the main benefit comes from the variational posterior sampling?"
+      ],
+      "Limitations": [
+        "The method requires access to reference answers or a verifier for the variational posterior conditioning, which may not be available for all task types.",
+        "The single-round training setup (T=1) may not fully exploit the potential of the iterative variational framework.",
+        "The computational cost of training a separate variational posterior and computing importance weights may limit scalability to very large models.",
+        "The evaluation focuses on math and code reasoning; generalization to other reasoning domains (e.g., scientific reasoning, agentic tasks) is not demonstrated.",
+        "The geometric mean modification introduces bias in the importance weights, and the theoretical justification is heuristic.",
+        "The paper does not discuss potential negative societal impacts, such as the risk of models overfitting to verifiable tasks or potential misuse of improved reasoning capabilities."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 3,
+      "Contribution": 4,
+      "Overall": 7,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "THOUGHT:\nThe paper presents a variational inference framework for training LLMs to reason, treating thinking traces as latent variables. It derives ELBO/IWAE-style objectives and a forward-KL objective for the variational posterior, with theoretical connections to RFT and GRPO. All five reviewers agree the paper is technically sound with solid theoretical contributions and comprehensive experiments, but they note several shared weaknesses: the practical implementation deviates from the theory (geometric mean approximation, single-round training, using only best trace); gains over strong baselines are modest; the claimed \"bias toward easier questions\" is theoretically derived but not empirically demonstrated; computational overhead is significant; and the forward-KL approximation's reliability is not fully analyzed.\n\nReviewer scores: 7, 7, 6, 6, 6. All recommend \"Accept\" (though three are borderline at 6). No reviewer recommends rejection. The consensus is a weak-to-moderate accept. The main concerns are about the gap between theory and practice, modest empirical gains, and lack of comparison with more recent RL methods (DAPO, VAPO). However, the theoretical unification of variational inference with RL-style methods is considered novel and valuable by all reviewers.\n\nMy assessment: The paper is technically solid with a principled framework and novel theoretical insights. The empirical validation is extensive across model families and benchmarks. However, the practical gains are modest, and the gap between the elegant theory and the actual implementation (geometric mean heuristic, single-round, best-trace selection) weakens the claims somewhat. The lack of empirical validation of the \"easier question bias\" claim is a notable gap. The computational overhead is a practical concern.\n\nGiven the unanimous accept recommendations (all 5 reviewers chose Accept), and the overall scores ranging from 6-7, I will accept the paper. The theoretical contribution is significant enough to warrant acceptance despite the moderate empirical gains. The weaknesses are mostly about presentation, analysis depth, and computational cost, not fundamental flaws.\n\nDecision: Accept. Overall score: 7 (aligning with the higher end of the reviewer scores, given the strong theoretical contribution and comprehensive evaluation).\n\nI'll set Originality at 4 (novel theoretical unification), Quality at 3 (solid but with noted gaps), Clarity at 3 (well-written but related work in appendix and some unclear implementation details), Significance at 4 (the framework provides new insights and is likely to influence future work).\n\nSoundness: 3 (good - technically sound with acknowledged approximations). Presentation: 3. Contribution: 4. Confidence: 4 (I'm confident in this assessment based on the consistent reviewer opinions).\n\nEthical concerns: false (no reviewer flagged ethical issues).REVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper introduces a variational reasoning framework for training language models to reason, treating thinking traces as latent variables. The authors derive an ELBO objective, extend it to an IWAE-style multi-trace bound for tighter optimization, and propose a forward-KL objective for training the variational posterior to improve stability. A key theoretical contribution is showing that rejection sampling finetuning (RFT) and binary-reward RL methods (including GRPO) can be interpreted as local forward-KL objectives with implicit accuracy-based weighting, revealing a bias toward easier questions. The method is validated on Qwen2.5 and Qwen3 model families across diverse reasoning benchmarks (MATH500, AIME, OlympiadBench, LiveCodeBench, GPQA-Diamond, MMLU-Pro), showing consistent improvements over strong baselines.\",\n  \"Strengths\": [\n    \"Provides a principled probabilistic (variational inference) perspective that unifies SFT/RFT and RL-style methods for reasoning training.\",\n    \"The derivation showing RFT and GRPO as weighted forward-KL objectives, revealing a bias toward easier questions, is a novel and insightful theoretical contribution.\",\n    \"Extensive experimental validation across multiple model families (Qwen2.5, Qwen3), sizes (4B-32B), and a wide range of benchmarks (math, code, science, general).\",\n    \"The IWAE-style bound extension and the variance analysis of different estimators (Theorem 1) are technically sound and well-motivated.\",\n    \"Good set of ablations, including analysis of the number of traces K, conditioning on hints, different estimators, and computational budget fairness.\",\n    \"Demonstrates improved training stability (lower loss, fewer gradient spikes) compared to the baseline.\"\n  ],\n  \"Weaknesses\": [\n    \"The practical implementation deviates from the core theoretical derivations (e.g., geometric mean approximation for the likelihood ratio, single-round training T=1, using only the best trace in the 17k setting), weakening the claim of being a fully 'principled' objective.\",\n    \"The claimed bias toward easier questions in RFT/GRPO is only theoretically derived and not empirically demonstrated; a direct comparison with a GRPO-trained model under the same setup would strengthen this claim.\",\n    \"The forward-KL objective for qφ is an approximation (not a bound), and the conditions under which this approximation is reliable are not fully discussed.\",\n    \"The evaluation shows consistent but often modest gains over the Bespoke-Stratos baseline; the practical significance of the gains relative to the added complexity of training a separate variational posterior is not fully discussed.\",\n    \"No comparisons with more recent state-of-the-art RL methods (e.g., DAPO, VAPO) are provided.\",\n    \"The computational overhead of training multiple models and performing additional sampling/forward passes is significant and not thoroughly quantified in the main text.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"The paper theoretically shows that RFT and GRPO have a bias toward easier questions. Can you provide empirical evidence for this bias, for instance, by comparing performance on questions grouped by difficulty level between your method and a GRPO-trained model?\",\n    \"The forward-KL objective for qφ is an approximation. Under what conditions (e.g., quality of πθ, number of samples M) is this approximation reliable? Could a poor approximation lead to a degenerate qφ?\",\n    \"In the 17k setting, you use only the best trace (highest weight) per question. How sensitive are the main results to this choice versus using all 8 traces (as in the 1k setting)? Is there a computational reason for this choice beyond efficiency?\",\n    \"The geometric mean approximation for the likelihood ratio is justified by variance reduction but introduces bias. Have you considered alternative variance reduction techniques, such as control variates, which might be more 'principled'?\",\n    \"How does the performance of your method compare to a GRPO-trained model using the same base model and the same training data? This would provide a more direct empirical comparison for the theoretical connections made in Section 3.\",\n    \"What is the total computational cost of the full pipeline compared to standard RL training like GRPO in terms of total GPU hours? The paper mentions a compute-matched baseline but does not provide specific numbers.\",\n    \"How does the method perform with multi-round training (T > 1)? What challenges arise, and how would the framework need to be adapted?\",\n    \"The paper shows that a dummy verifier (all weights set to 0.5) still performs well. Does this suggest that the accuracy-based weighting is not critical, and the main benefit comes from the variational posterior sampling?\"\n  ],\n  \"Limitations\": [\n    \"The method requires access to reference answers or a verifier for the variational posterior conditioning, which may not be available for all task types.\",\n    \"The single-round training setup (T=1) may not fully exploit the potential of the iterative variational framework.\",\n    \"The computational cost of training a separate variational posterior and computing importance weights may limit scalability to very large models.\",\n    \"The evaluation focuses on math and code reasoning; generalization to other reasoning domains (e.g., scientific reasoning, agentic tasks) is not demonstrated.\",\n    \"The geometric mean modification introduces bias in the importance weights, and the theoretical justification is heuristic.\",\n    \"The paper does not discuss potential negative societal impacts, such as the risk of models overfitting to verifiable tasks or potential misuse of improved reasoning capabilities.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 4,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 7185,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 7185,
+      "completion_tokens": 1786,
+      "reasoning_tokens": 0,
+      "total_tokens": 8971
+    },
+    "attempts": 1,
+    "response_id": "ba2a9cd0-1377-4310-ae88-cafd9a840c4f"
+  },
+  "final_review": {
+    "Summary": "This paper introduces a variational reasoning framework for training language models to reason, treating thinking traces as latent variables. The authors derive an ELBO objective, extend it to an IWAE-style multi-trace bound for tighter optimization, and propose a forward-KL objective for training the variational posterior to improve stability. A key theoretical contribution is showing that rejection sampling finetuning (RFT) and binary-reward RL methods (including GRPO) can be interpreted as local forward-KL objectives with implicit accuracy-based weighting, revealing a bias toward easier questions. The method is validated on Qwen2.5 and Qwen3 model families across diverse reasoning benchmarks (MATH500, AIME, OlympiadBench, LiveCodeBench, GPQA-Diamond, MMLU-Pro), showing consistent improvements over strong baselines.",
+    "Strengths": [
+      "Provides a principled probabilistic (variational inference) perspective that unifies SFT/RFT and RL-style methods for reasoning training.",
+      "The derivation showing RFT and GRPO as weighted forward-KL objectives, revealing a bias toward easier questions, is a novel and insightful theoretical contribution.",
+      "Extensive experimental validation across multiple model families (Qwen2.5, Qwen3), sizes (4B-32B), and a wide range of benchmarks (math, code, science, general).",
+      "The IWAE-style bound extension and the variance analysis of different estimators (Theorem 1) are technically sound and well-motivated.",
+      "Good set of ablations, including analysis of the number of traces K, conditioning on hints, different estimators, and computational budget fairness.",
+      "Demonstrates improved training stability (lower loss, fewer gradient spikes) compared to the baseline."
+    ],
+    "Weaknesses": [
+      "The practical implementation deviates from the core theoretical derivations (e.g., geometric mean approximation for the likelihood ratio, single-round training T=1, using only the best trace in the 17k setting), weakening the claim of being a fully 'principled' objective.",
+      "The claimed bias toward easier questions in RFT/GRPO is only theoretically derived and not empirically demonstrated; a direct comparison with a GRPO-trained model under the same setup would strengthen this claim.",
+      "The forward-KL objective for qφ is an approximation (not a bound), and the conditions under which this approximation is reliable are not fully discussed.",
+      "The evaluation shows consistent but often modest gains over the Bespoke-Stratos baseline; the practical significance of the gains relative to the added complexity of training a separate variational posterior is not fully discussed.",
+      "No comparisons with more recent state-of-the-art RL methods (e.g., DAPO, VAPO) are provided.",
+      "The computational overhead of training multiple models and performing additional sampling/forward passes is significant and not thoroughly quantified in the main text."
+    ],
+    "Originality": 3,
+    "Quality": 3,
+    "Clarity": 3,
+    "Significance": 3,
+    "Questions": [
+      "The paper theoretically shows that RFT and GRPO have a bias toward easier questions. Can you provide empirical evidence for this bias, for instance, by comparing performance on questions grouped by difficulty level between your method and a GRPO-trained model?",
+      "The forward-KL objective for qφ is an approximation. Under what conditions (e.g., quality of πθ, number of samples M) is this approximation reliable? Could a poor approximation lead to a degenerate qφ?",
+      "In the 17k setting, you use only the best trace (highest weight) per question. How sensitive are the main results to this choice versus using all 8 traces (as in the 1k setting)? Is there a computational reason for this choice beyond efficiency?",
+      "The geometric mean approximation for the likelihood ratio is justified by variance reduction but introduces bias. Have you considered alternative variance reduction techniques, such as control variates, which might be more 'principled'?",
+      "How does the performance of your method compare to a GRPO-trained model using the same base model and the same training data? This would provide a more direct empirical comparison for the theoretical connections made in Section 3.",
+      "What is the total computational cost of the full pipeline compared to standard RL training like GRPO in terms of total GPU hours? The paper mentions a compute-matched baseline but does not provide specific numbers.",
+      "How does the method perform with multi-round training (T > 1)? What challenges arise, and how would the framework need to be adapted?",
+      "The paper shows that a dummy verifier (all weights set to 0.5) still performs well. Does this suggest that the accuracy-based weighting is not critical, and the main benefit comes from the variational posterior sampling?"
+    ],
+    "Limitations": [
+      "The method requires access to reference answers or a verifier for the variational posterior conditioning, which may not be available for all task types.",
+      "The single-round training setup (T=1) may not fully exploit the potential of the iterative variational framework.",
+      "The computational cost of training a separate variational posterior and computing importance weights may limit scalability to very large models.",
+      "The evaluation focuses on math and code reasoning; generalization to other reasoning domains (e.g., scientific reasoning, agentic tasks) is not demonstrated.",
+      "The geometric mean modification introduces bias in the importance weights, and the theoretical justification is heuristic.",
+      "The paper does not discuss potential negative societal impacts, such as the risk of models overfitting to verifiable tasks or potential misuse of improved reasoning capabilities."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 3,
+    "Contribution": 3,
+    "Overall": 6,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 210815,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 201855,
+    "completion_tokens": 10654,
+    "reasoning_tokens": 0,
+    "total_tokens": 221469,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.0282597,
+    "output_usd": 0.00298312,
+    "total_usd": 0.03126791
+  },
+  "elapsed_seconds": 35.19,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Accept",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B154",
+    "filename": "B154.txt",
+    "blind_text_sha256": "5aed88e59c2dcc1aec5f6e2453dab235a97390122fa43146e4a9c98bdee82cf1",
+    "characters": 122327,
+    "full_text_saved": false
+  }
+}

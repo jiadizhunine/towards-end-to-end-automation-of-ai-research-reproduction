@@ -1,0 +1,720 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:44:53.369726+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper introduces CHROMA, a feed-forward transformer-based framework for multi-view appearance harmonization. The key idea is to predict per-frame 3D bilateral grids that correct photometric inconsistencies (exposure, white balance, color shifts) across views, aligning them to a selected reference frame. The model processes hundreds of frames in a single forward pass without scene-specific optimization, enabling seamless integration with existing 3D reconstruction pipelines like 3DGS, 2DGS, and DashGS. The training strategy combines synthetic paired data from DL3DV with parametric ISP simulation and a self-supervised rendering loss using a 3D foundation model (AnySplat) on unpaired real-world data from WildRGB-D. A reference frame selection mechanism uses both DINOv2 semantic similarity and CIE-LAB photometric quality scores. Experiments across three datasets (DL3DV with ISP variations, MipNeRF360-VE with exposure changes, and real-world BilaRF) demonstrate that CHROMA matches or outperforms scene-specific appearance embedding methods while maintaining computational efficiency.",
+        "Strengths": [
+          "Novel decoupling of appearance harmonization from scene-specific 3D reconstruction optimization, addressing a significant computational bottleneck in existing approaches",
+          "Well-designed architecture using alternating frame-wise and global/cross attention, balancing cross-view consistency with memory efficiency",
+          "Comprehensive training strategy combining supervised learning on synthetic data with self-supervised learning via 3D foundation models, enabling generalization to real-world variations",
+          "Strong experimental validation across three distinct datasets with different types of appearance variations",
+          "Demonstrates compatibility with multiple downstream 3D reconstruction models (2DGS, 3DGS, DashGS), showing practical utility",
+          "Thoughtful reference frame selection mechanism that considers both semantic representativeness and photometric quality",
+          "Clear ablation studies isolating the contributions of key components (multi-frame processing, reference selection, self-supervised loss)"
+        ],
+        "Weaknesses": [
+          "Model size (137.84M parameters) is substantial for a preprocessing module, though the paper argues overhead is small relative to reconstruction time",
+          "BilaRF dataset evaluation lacks PSNR metrics (only CC-based metrics reported), making comparisons less complete",
+          "Self-supervised loss quality depends on AnySplat's reconstruction fidelity, which may introduce biases in training signal",
+          "Reference frame selection weights (α=0.5, λ values) are fixed without sensitivity analysis",
+          "Limited comparison with other feed-forward harmonization approaches beyond 2D methods",
+          "The paper could benefit from more analysis of failure cases, particularly for scenes with strong specularities or reflections mentioned in limitations"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "How sensitive is the reference frame selection to the α hyperparameter (currently set to 0.5)? Have you explored different weightings between the LAB-based and DINO-based scores?",
+          "Could you provide more details on the AnySplat-based self-supervised loss? Specifically, how do you handle cases where AnySplat's geometry predictions are inaccurate, and does the confidence masking effectively filter out unreliable regions?",
+          "What is the memory footprint of processing 24 frames at 224×224 resolution? How does the model scale to larger numbers of frames (e.g., 300+ frames in a single pass)?",
+          "Have you considered comparing with per-frame 2D harmonization followed by 3DGS without any appearance modeling, as a stronger baseline for the 'decoupled' paradigm?",
+          "How does the model perform when the reference frame selection picks a frame with unusual but not extreme appearance (e.g., slightly overexposed but semantically rich)?",
+          "Could you elaborate on the choice of VGG perceptual loss over other perceptual losses (e.g., LPIPS with AlexNet) for the self-supervised objective?"
+        ],
+        "Limitations": [
+          "The method requires training a dedicated harmonization network, which is a one-time cost but may be prohibitive for some users",
+          "Bilateral grid transformations are inherently smooth and cannot model high-frequency appearance changes like specular highlights or reflections",
+          "The approach focuses on camera ISP-induced inconsistencies and does not explicitly handle transient objects or occlusions",
+          "Evaluation is limited to static scenes; performance on dynamic scenes is not addressed",
+          "The self-supervised training relies on a pretrained 3D foundation model (AnySplat), which may not be available or optimal for all use cases"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 4,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper presents CHROMA, a feed-forward transformer-based approach for multi-view appearance harmonization using bilateral grids. The key contribution is decoupling appearance harmonization from scene-specific 3D reconstruction optimization, enabling efficient processing of hundreds of frames in a single forward pass.\n\nStrengths:\n1. Novel approach to decouple appearance harmonization from scene optimization, addressing a real bottleneck in 3DGS pipelines\n2. Well-designed architecture using alternating attention mechanisms (adopted from VGGT) that balances cross-view consistency with computational efficiency\n3. Comprehensive training strategy combining synthetic paired data with self-supervised learning via 3D foundation models\n4. Strong experimental validation across three distinct datasets (synthetic ISP variations, exposure changes, real-world captures)\n5. Good integration with multiple downstream 3D reconstruction models (2DGS, 3DGS, DashGS)\n6. Practical reference frame selection mechanism that balances photometric quality with semantic representativeness\n7. Clear ablation studies isolating contributions of key components\n\nWeaknesses:\n1. The model size (137.84M parameters) is substantial for a preprocessing module, though the paper argues the overhead is small relative to reconstruction time\n2. The evaluation on BilaRF dataset lacks PSNR metrics (only CC-based metrics reported), making comparison less complete\n3. The self-supervised loss relies on AnySplat's quality, which may introduce bias or errors in training signal\n4. The reference frame selection uses fixed weights (α=0.5) without sensitivity analysis\n5. Limited comparison with other feed-forward harmonization approaches\n6. The processing time comparison in Table 2 shows CHROMA is slower than 2D methods, though the paper argues this is acceptable\n\nTechnical assessment:\n- The bilateral grid formulation is well-motivated and appropriate for the task\n- The probabilistic loss with confidence prediction is a nice touch for handling uncertainty\n- The training strategy combining supervised (synthetic) and self-supervised (real) data is thoughtful\n- The architecture follows established transformer designs with appropriate modifications\n\nOriginality: High - the combination of bilateral grids with multi-view transformers for appearance harmonization is novel, and the self-supervised training approach using 3D foundation models is creative\n\nQuality: Good - solid experimental validation, though some gaps exist (missing PSNR on BilaRF, limited sensitivity analysis)\n\nClarity: Good - well-written and organized, though some implementation details could be expanded\n\nSignificance: High - addresses an important practical problem in 3D reconstruction with a scalable solution\n\nOverall assessment: This is a solid paper with a practical contribution. The approach is well-motivated, technically sound, and demonstrates clear improvements over existing methods. The main concerns are about evaluation completeness and some implementation details. I would lean toward acceptance given the practical significance and solid execution.\n\nDecision: Accept (with minor revisions suggested in questions)\n\nConfidence: 4 - I'm confident in my assessment but acknowledge I haven't checked all mathematical details carefully.REVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper introduces CHROMA, a feed-forward transformer-based framework for multi-view appearance harmonization. The key idea is to predict per-frame 3D bilateral grids that correct photometric inconsistencies (exposure, white balance, color shifts) across views, aligning them to a selected reference frame. The model processes hundreds of frames in a single forward pass without scene-specific optimization, enabling seamless integration with existing 3D reconstruction pipelines like 3DGS, 2DGS, and DashGS. The training strategy combines synthetic paired data from DL3DV with parametric ISP simulation and a self-supervised rendering loss using a 3D foundation model (AnySplat) on unpaired real-world data from WildRGB-D. A reference frame selection mechanism uses both DINOv2 semantic similarity and CIE-LAB photometric quality scores. Experiments across three datasets (DL3DV with ISP variations, MipNeRF360-VE with exposure changes, and real-world BilaRF) demonstrate that CHROMA matches or outperforms scene-specific appearance embedding methods while maintaining computational efficiency.\",\n    \"Strengths\": [\n        \"Novel decoupling of appearance harmonization from scene-specific 3D reconstruction optimization, addressing a significant computational bottleneck in existing approaches\",\n        \"Well-designed architecture using alternating frame-wise and global/cross attention, balancing cross-view consistency with memory efficiency\",\n        \"Comprehensive training strategy combining supervised learning on synthetic data with self-supervised learning via 3D foundation models, enabling generalization to real-world variations\",\n        \"Strong experimental validation across three distinct datasets with different types of appearance variations\",\n        \"Demonstrates compatibility with multiple downstream 3D reconstruction models (2DGS, 3DGS, DashGS), showing practical utility\",\n        \"Thoughtful reference frame selection mechanism that considers both semantic representativeness and photometric quality\",\n        \"Clear ablation studies isolating the contributions of key components (multi-frame processing, reference selection, self-supervised loss)\"\n    ],\n    \"Weaknesses\": [\n        \"Model size (137.84M parameters) is substantial for a preprocessing module, though the paper argues overhead is small relative to reconstruction time\",\n        \"BilaRF dataset evaluation lacks PSNR metrics (only CC-based metrics reported), making comparisons less complete\",\n        \"Self-supervised loss quality depends on AnySplat's reconstruction fidelity, which may introduce biases in training signal\",\n        \"Reference frame selection weights (α=0.5, λ values) are fixed without sensitivity analysis\",\n        \"Limited comparison with other feed-forward harmonization approaches beyond 2D methods\",\n        \"The paper could benefit from more analysis of failure cases, particularly for scenes with strong specularities or reflections mentioned in limitations\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 4,\n    \"Questions\": [\n        \"How sensitive is the reference frame selection to the α hyperparameter (currently set to 0.5)? Have you explored different weightings between the LAB-based and DINO-based scores?\",\n        \"Could you provide more details on the AnySplat-based self-supervised loss? Specifically, how do you handle cases where AnySplat's geometry predictions are inaccurate, and does the confidence masking effectively filter out unreliable regions?\",\n        \"What is the memory footprint of processing 24 frames at 224×224 resolution? How does the model scale to larger numbers of frames (e.g., 300+ frames in a single pass)?\",\n        \"Have you considered comparing with per-frame 2D harmonization followed by 3DGS without any appearance modeling, as a stronger baseline for the 'decoupled' paradigm?\",\n        \"How does the model perform when the reference frame selection picks a frame with unusual but not extreme appearance (e.g., slightly overexposed but semantically rich)?\",\n        \"Could you elaborate on the choice of VGG perceptual loss over other perceptual losses (e.g., LPIPS with AlexNet) for the self-supervised objective?\"\n    ],\n    \"Limitations\": [\n        \"The method requires training a dedicated harmonization network, which is a one-time cost but may be prohibitive for some users\",\n        \"Bilateral grid transformations are inherently smooth and cannot model high-frequency appearance changes like specular highlights or reflections\",\n        \"The approach focuses on camera ISP-induced inconsistencies and does not explicitly handle transient objects or occlusions\",\n        \"Evaluation is limited to static scenes; performance on dynamic scenes is not addressed\",\n        \"The self-supervised training relies on a pretrained 3D foundation model (AnySplat), which may not be available or optimal for all use cases\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 4,\n    \"Overall\": 7,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 15904,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 14112,
+        "completion_tokens": 1639,
+        "reasoning_tokens": 0,
+        "total_tokens": 17543
+      },
+      "attempts": 1,
+      "response_id": "c30a3bb1-8a13-493f-b49b-115622786bb0"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper proposes CHROMA, a feed-forward transformer-based framework for multi-view appearance harmonization in 3D reconstruction. The method predicts spatially adaptive bilateral grids to correct photometric inconsistencies across views, conditioned on a reference frame. Key contributions include: (1) a multi-view aware transformer architecture with alternating self and cross-attention for consistent harmonization, (2) a reference frame selection strategy combining photometric quality and semantic representativeness, (3) a hybrid training approach using synthetic paired data and self-supervised learning via 3D foundation models, and (4) demonstrated integration with multiple 3D reconstruction pipelines (3DGS, 2DGS, DashGS) without scene-specific optimization. The method shows competitive or superior performance compared to per-scene appearance embedding methods while maintaining computational efficiency.",
+        "Strengths": [
+          "Novel decoupling of appearance harmonization from scene optimization, enabling feed-forward processing without per-scene optimization",
+          "Comprehensive evaluation across three datasets with different appearance variation types (ISP, exposure, real-world)",
+          "Self-supervised training strategy using 3D foundation models to leverage unpaired real-world data is innovative",
+          "Efficient architecture with 137.84M parameters, processing hundreds of frames in a single forward pass",
+          "Integration with multiple 3D reconstruction baselines demonstrates generalizability",
+          "Good ablations showing the contribution of each component (multi-frame processing, reference selection, self-supervised loss)"
+        ],
+        "Weaknesses": [
+          "Improvements over per-scene optimization baselines are modest in some cases (e.g., 0.5-1 dB PSNR CC gains)",
+          "Requires training a dedicated network, which is an upfront cost not present in per-scene methods",
+          "Reference frame selection heuristic seems somewhat ad-hoc and may not be optimal for all scenarios",
+          "Self-supervised loss depends on AnySplat quality, which may limit generalization to scenes where the foundation model performs poorly",
+          "Limited discussion of failure cases, particularly for complex appearance changes like specularities or view-dependent effects",
+          "Training details are sparse (e.g., exact hyperparameters for loss weights, training data composition)"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "1. How does the method perform when the reference frame selection fails (e.g., all frames are poorly exposed)? Is there a fallback mechanism?\n2. What is the sensitivity to the number of input frames N? Does performance degrade with very few or very many frames?\n3. How does the model handle scenes with moving objects or dynamic elements, given the static scene assumption?\n4. Could you provide more details on the training data balance between DL3DV and WildRGB-D? What is the ratio of paired to unpaired data?\n5. How does the method handle extreme appearance variations, such as complete darkness or overexposure where information is irrecoverably lost?\n6. What is the memory footprint when processing 300+ frames in a single forward pass? Does the batch size need to be reduced?\n7. How sensitive is the method to the choice of reference frame? Could you show results with different reference frames for the same scene?"
+        ],
+        "Limitations": [
+          "The method does not explicitly handle view-dependent effects like specular highlights or reflections, which bilateral grids cannot model well",
+          "The approach requires training a dedicated network, which is an upfront cost compared to per-scene methods",
+          "The self-supervised loss relies on the quality of the 3D foundation model (AnySplat), which may limit generalization",
+          "The method assumes static scenes and does not handle transient objects or dynamic content",
+          "Potential negative societal impact is not discussed, though the application is benign (3D reconstruction)"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper presents CHROMA, a feed-forward transformer-based approach for multi-view appearance harmonization using bilateral grids. The key idea is to decouple appearance harmonization from 3D reconstruction optimization, which is a novel and practical contribution. The method predicts per-frame bilateral grids conditioned on a reference frame, enabling consistent harmonization across views without scene-specific optimization.\n\nStrengths:\n1. Novel formulation: Decoupling appearance harmonization from scene optimization is a fresh perspective compared to existing per-scene appearance embedding methods.\n2. Efficient: The feed-forward design avoids expensive per-scene optimization, making it practical for large-scale reconstruction.\n3. Comprehensive evaluation: Tests on three datasets (synthetic ISP variations, exposure variations, real-world captures) with multiple baseline comparisons.\n4. Self-supervised training strategy: Using a 3D foundation model as a pretext task to train on unpaired real data is clever and addresses the lack of paired data.\n5. Multi-view consistency: The transformer architecture with cross-attention ensures consistency across views.\n\nWeaknesses:\n1. The paper claims to match or outperform per-scene optimization methods, but the improvements are modest in some cases (e.g., PSNR CC gains of 0.5-1 dB).\n2. The method requires a trained network, which is a significant upfront cost compared to per-scene methods that don't need pre-training.\n3. The reference frame selection heuristic seems somewhat ad-hoc and may not generalize to all scenarios.\n4. The self-supervised loss relies on AnySplat, which may limit generalization to scenes where AnySplat performs poorly.\n5. The paper doesn't thoroughly discuss failure cases or limitations of the bilateral grid representation for complex appearance changes (e.g., specularities, view-dependent effects).\n\nThe paper is technically sound with good experimental validation. The contribution is meaningful for the 3D reconstruction community, particularly for practical applications where training time matters. However, the improvements over baselines are not dramatic, and there are some concerns about the generalizability of the approach.\n\nOverall, I'd rate this as a solid paper with good contributions, but not groundbreaking. The evaluation is thorough, and the method is well-motivated. I'd lean toward acceptance given the novelty of the feed-forward approach and the practical benefits in terms of efficiency.\n\nREVIEW JSON:\n```json\n{\n\"Summary\": \"The paper proposes CHROMA, a feed-forward transformer-based framework for multi-view appearance harmonization in 3D reconstruction. The method predicts spatially adaptive bilateral grids to correct photometric inconsistencies across views, conditioned on a reference frame. Key contributions include: (1) a multi-view aware transformer architecture with alternating self and cross-attention for consistent harmonization, (2) a reference frame selection strategy combining photometric quality and semantic representativeness, (3) a hybrid training approach using synthetic paired data and self-supervised learning via 3D foundation models, and (4) demonstrated integration with multiple 3D reconstruction pipelines (3DGS, 2DGS, DashGS) without scene-specific optimization. The method shows competitive or superior performance compared to per-scene appearance embedding methods while maintaining computational efficiency.\",\n\"Strengths\": [\n\"Novel decoupling of appearance harmonization from scene optimization, enabling feed-forward processing without per-scene optimization\",\n\"Comprehensive evaluation across three datasets with different appearance variation types (ISP, exposure, real-world)\",\n\"Self-supervised training strategy using 3D foundation models to leverage unpaired real-world data is innovative\",\n\"Efficient architecture with 137.84M parameters, processing hundreds of frames in a single forward pass\",\n\"Integration with multiple 3D reconstruction baselines demonstrates generalizability\",\n\"Good ablations showing the contribution of each component (multi-frame processing, reference selection, self-supervised loss)\"\n],\n\"Weaknesses\": [\n\"Improvements over per-scene optimization baselines are modest in some cases (e.g., 0.5-1 dB PSNR CC gains)\",\n\"Requires training a dedicated network, which is an upfront cost not present in per-scene methods\",\n\"Reference frame selection heuristic seems somewhat ad-hoc and may not be optimal for all scenarios\",\n\"Self-supervised loss depends on AnySplat quality, which may limit generalization to scenes where the foundation model performs poorly\",\n\"Limited discussion of failure cases, particularly for complex appearance changes like specularities or view-dependent effects\",\n\"Training details are sparse (e.g., exact hyperparameters for loss weights, training data composition)\"\n],\n\"Originality\": 4,\n\"Quality\": 3,\n\"Clarity\": 3,\n\"Significance\": 3,\n\"Questions\": [\n\"1. How does the method perform when the reference frame selection fails (e.g., all frames are poorly exposed)? Is there a fallback mechanism?\\n2. What is the sensitivity to the number of input frames N? Does performance degrade with very few or very many frames?\\n3. How does the model handle scenes with moving objects or dynamic elements, given the static scene assumption?\\n4. Could you provide more details on the training data balance between DL3DV and WildRGB-D? What is the ratio of paired to unpaired data?\\n5. How does the method handle extreme appearance variations, such as complete darkness or overexposure where information is irrecoverably lost?\\n6. What is the memory footprint when processing 300+ frames in a single forward pass? Does the batch size need to be reduced?\\n7. How sensitive is the method to the choice of reference frame? Could you show results with different reference frames for the same scene?\"\n],\n\"Limitations\": [\n\"The method does not explicitly handle view-dependent effects like specular highlights or reflections, which bilateral grids cannot model well\",\n\"The approach requires training a dedicated network, which is an upfront cost compared to per-scene methods\",\n\"The self-supervised loss relies on the quality of the 3D foundation model (AnySplat), which may limit generalization\",\n\"The method assumes static scenes and does not handle transient objects or dynamic content\",\n\"Potential negative societal impact is not discussed, though the application is benign (3D reconstruction)\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 3,\n\"Contribution\": 3,\n\"Overall\": 7,\n\"Confidence\": 4,\n\"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 15904,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 14112,
+        "completion_tokens": 1305,
+        "reasoning_tokens": 0,
+        "total_tokens": 17209
+      },
+      "attempts": 1,
+      "response_id": "1caed6f7-a68e-4bf4-a237-e7340cb46195"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "This paper introduces CHROMA, a feed-forward transformer-based framework for multi-view appearance harmonization via bilateral grid prediction. The method takes multiple views of a scene with photometric inconsistencies (exposure, white balance, color shifts) and a reference frame, then predicts per-view 3D bilateral grids that align all source frames with the reference appearance. The key contributions are: (1) a multi-view aware transformer with alternating self/cross-attention that processes all frames jointly for consistent harmonization, (2) a reference frame selection strategy combining DINOv2 semantic similarity with LAB-based photometric quality scoring, (3) a hybrid training approach using synthetic paired data from DL3DV with simulated ISP variations and self-supervised rendering loss from a 3D foundation model (AnySplat) on unpaired real data (WildRGB-D), and (4) uncertainty-aware confidence grids predicted alongside bilateral grids. The method is designed to integrate seamlessly with existing 3D reconstruction pipelines (3DGS, 2DGS, DashGS) without scene-specific retraining, providing cross-scene generalization. Experiments on three datasets (DL3DV with ISP variations, MipNeRF360-VE with exposure changes, and BilaRF with real-world captures) show that CHROMA matches or exceeds per-scene appearance embedding methods while being significantly faster.",
+        "Strengths": [
+          "Novel and practical problem formulation: decoupling appearance harmonization from 3D reconstruction, enabling feed-forward processing without scene-specific optimization",
+          "Well-designed architecture using alternating attention patterns (frame-wise and global/cross) that effectively captures multi-view consistency while maintaining computational efficiency",
+          "Comprehensive training strategy addressing the lack of paired real-world data through a hybrid approach combining synthetic paired data with self-supervised rendering loss from a 3D foundation model",
+          "Strong experimental evaluation across three datasets with different types of appearance variations (ISP, exposure, real-world), demonstrating consistent improvements over baselines",
+          "Integration with multiple 3D reconstruction backbones (2DGS, 3DGS, DashGS) shows generalizability of the harmonization module",
+          "Significant efficiency gains compared to appearance embedding methods - e.g., 3DGS+Ours takes ~4 minutes vs 2+ hours for WildGaussians",
+          "Thoughtful uncertainty modeling through confidence grids and probabilistic loss",
+          "Clear and well-organized presentation with good figures illustrating the architecture and results"
+        ],
+        "Weaknesses": [
+          "Generalization claims are somewhat overstated - evaluation is limited to datasets with specific characteristics, and generalizability to truly unconstrained photo collections (e.g., PhotoTourism-style) is not demonstrated",
+          "The self-supervised loss depends on AnySplat, which is a recently proposed model; the sensitivity of results to the choice of foundation model and potential failure modes of AnySplat are not analyzed",
+          "Reference frame selection combines DINO and LAB scores with fixed weights (α=0.5); sensitivity to these hyperparameters is not explored, and the method may not be optimal for all scene types",
+          "Memory implications of processing hundreds of frames jointly in a transformer are not discussed - the paper claims 'hundreds of frames in a single forward pass' but does not specify memory requirements or how this scales",
+          "Comparison with baselines could be more thorough - some cited methods (e.g., SWAG, DAVIGS, Scaffold-GS, WE-GS) are not included in experiments",
+          "The time comparison in Table 1 may be somewhat misleading since 'Ours' methods include harmonization overhead but appearance embedding baselines' additional training time is implicitly included in their reported times without clear breakdown",
+          "Ablation on reference frame selection is limited - only comparing random, DINO-only, and full method; the individual contributions of the LAB score and the combination weight are not analyzed"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 4,
+        "Questions": [
+          "How does the method scale with the number of input frames? At what point does memory become a bottleneck, and are there approximations or strategies for handling very large sequences (e.g., 1000+ frames)?",
+          "What is the sensitivity of the reference frame selection to the hyperparameters λent, λov, λun, and α? Have you explored adaptive or learned weighting schemes?",
+          "How robust is the self-supervised loss to the quality of AnySplat predictions? Have you tested with alternative feed-forward models (e.g., VGGT, MapAnything) or analyzed failure cases where AnySplat produces poor geometry?",
+          "The paper mentions that the bilateral grid cannot model high-frequency changes like specularities. In the BilaRF dataset (which has flash illumination), are there visible artifacts in specular regions? How does this limitation manifest in the results?",
+          "For the DL3DV synthetic dataset, how realistic is the ISP simulation? Have you validated that the simulation covers the range of variations seen in real-world data?",
+          "The model has 137.84M parameters and processes images at 224x224. How does performance change with higher input resolution? Is there a resolution limit for the bilateral grid representation?",
+          "Could you provide more details on the confidence grid prediction and how it is used during inference? Is it used only for training or also for post-processing?",
+          "How does the method handle scenes with dynamic objects or transient elements? The current formulation assumes static scenes - is this a limitation that needs to be addressed?"
+        ],
+        "Limitations": [
+          "The method requires training a dedicated harmonization network, which adds a preprocessing step before reconstruction; this may not be ideal for one-off scene reconstructions where per-scene optimization is acceptable",
+          "Bilateral grid transformations are inherently smooth and cannot model high-frequency photometric changes such as specular highlights, reflections, or strong view-dependent effects",
+          "The method assumes static scenes and does not handle transient objects or dynamic content",
+          "The reference frame selection strategy is heuristic and may fail in scenarios where no single frame is representative of the scene appearance",
+          "The approach is evaluated on datasets with limited scene diversity; generalization to extreme lighting conditions (e.g., very low light, HDR scenes) or unusual camera ISPs is not demonstrated",
+          "Potential negative societal impact: the harmonization could be used to manipulate or misrepresent visual evidence in photo collections, though this is a general concern for any image editing method",
+          "The computational cost of training (137M parameter transformer) may limit accessibility for researchers with limited resources"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 4,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper presents CHROMA, a feed-forward transformer-based method for multi-view appearance harmonization using bilateral grids. The key idea is to decouple appearance correction from 3D reconstruction, processing all views jointly to predict per-view bilateral grids that align each frame with a selected reference frame. This is a well-motivated problem with practical significance, as photometric inconsistencies are common in real-world captures and existing solutions (per-scene appearance embeddings) significantly increase training time.\n\nThe paper has several notable strengths:\n1. The problem formulation is clear and the proposed solution (decoupling harmonization from reconstruction) is novel and practical\n2. The method architecture is well-designed, leveraging transformer attention patterns for multi-view consistency\n3. The training strategy with hybrid self-supervised and supervised losses is thoughtful, addressing the lack of paired real-world data\n4. Comprehensive evaluation across three datasets with different types of appearance variations\n5. Integration with multiple 3D reconstruction baselines (2DGS, 3DGS, DashGS) demonstrates generalizability\n6. The efficiency gains are substantial compared to appearance embedding methods\n\nHowever, there are some concerns:\n1. The paper claims to be \"generalizable\" but the evaluation is limited to specific datasets; the generalization to truly unconstrained photo collections (like PhotoTourism) is not demonstrated\n2. The self-supervised loss relies on AnySplat, which is a recent model; the dependency on this specific foundation model and its limitations are not deeply discussed\n3. The reference frame selection seems somewhat heuristic, combining DINO and LAB-based scores with fixed weights; the sensitivity to these hyperparameters is not explored\n4. The paper mentions handling \"hundreds of frames in a single forward pass\" but the memory implications of processing 300+ frames at 224x224 with a transformer are not discussed\n5. The comparison with baselines could be more thorough - some state-of-the-art methods like SWAG are cited but not compared\n6. The time comparison in Table 1 is somewhat misleading since the \"Ours\" methods include harmonization time, but the baselines with appearance embeddings don't report the additional overhead clearly\n\nOverall, this is a solid paper with a practical contribution. The method is technically sound, the experiments are reasonably comprehensive, and the results show clear improvements over baselines. The main concerns are around generalization claims, some experimental details, and the practical limitations of the approach.\n\nI would rate this as a strong paper with minor concerns. The contribution is significant - decoupling appearance harmonization from reconstruction is a useful direction that could benefit many downstream applications. The paper is well-written and the technical details are clear.\n\nMy ratings:\n- Originality: 4 (very high) - The idea of feed-forward multi-view harmonization via bilateral grids is novel\n- Quality: 3 (high) - Technically sound but some experimental concerns\n- Clarity: 4 (very high) - Well-written and well-organized\n- Significance: 4 (very high) - Practical contribution with clear benefits\n- Soundness: 3 (good) - Reasonably supported but some gaps\n- Presentation: 4 (excellent) - Clear writing and good figures\n- Contribution: 4 (very high) - Valuable contribution to the field\n\nOverall: 7 (Accept) - Technically solid with high impact potential, but some concerns about generalization claims and experimental details\n\nDecision: AcceptREVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper introduces CHROMA, a feed-forward transformer-based framework for multi-view appearance harmonization via bilateral grid prediction. The method takes multiple views of a scene with photometric inconsistencies (exposure, white balance, color shifts) and a reference frame, then predicts per-view 3D bilateral grids that align all source frames with the reference appearance. The key contributions are: (1) a multi-view aware transformer with alternating self/cross-attention that processes all frames jointly for consistent harmonization, (2) a reference frame selection strategy combining DINOv2 semantic similarity with LAB-based photometric quality scoring, (3) a hybrid training approach using synthetic paired data from DL3DV with simulated ISP variations and self-supervised rendering loss from a 3D foundation model (AnySplat) on unpaired real data (WildRGB-D), and (4) uncertainty-aware confidence grids predicted alongside bilateral grids. The method is designed to integrate seamlessly with existing 3D reconstruction pipelines (3DGS, 2DGS, DashGS) without scene-specific retraining, providing cross-scene generalization. Experiments on three datasets (DL3DV with ISP variations, MipNeRF360-VE with exposure changes, and BilaRF with real-world captures) show that CHROMA matches or exceeds per-scene appearance embedding methods while being significantly faster.\",\n    \"Strengths\": [\n        \"Novel and practical problem formulation: decoupling appearance harmonization from 3D reconstruction, enabling feed-forward processing without scene-specific optimization\",\n        \"Well-designed architecture using alternating attention patterns (frame-wise and global/cross) that effectively captures multi-view consistency while maintaining computational efficiency\",\n        \"Comprehensive training strategy addressing the lack of paired real-world data through a hybrid approach combining synthetic paired data with self-supervised rendering loss from a 3D foundation model\",\n        \"Strong experimental evaluation across three datasets with different types of appearance variations (ISP, exposure, real-world), demonstrating consistent improvements over baselines\",\n        \"Integration with multiple 3D reconstruction backbones (2DGS, 3DGS, DashGS) shows generalizability of the harmonization module\",\n        \"Significant efficiency gains compared to appearance embedding methods - e.g., 3DGS+Ours takes ~4 minutes vs 2+ hours for WildGaussians\",\n        \"Thoughtful uncertainty modeling through confidence grids and probabilistic loss\",\n        \"Clear and well-organized presentation with good figures illustrating the architecture and results\"\n    ],\n    \"Weaknesses\": [\n        \"Generalization claims are somewhat overstated - evaluation is limited to datasets with specific characteristics, and generalizability to truly unconstrained photo collections (e.g., PhotoTourism-style) is not demonstrated\",\n        \"The self-supervised loss depends on AnySplat, which is a recently proposed model; the sensitivity of results to the choice of foundation model and potential failure modes of AnySplat are not analyzed\",\n        \"Reference frame selection combines DINO and LAB scores with fixed weights (α=0.5); sensitivity to these hyperparameters is not explored, and the method may not be optimal for all scene types\",\n        \"Memory implications of processing hundreds of frames jointly in a transformer are not discussed - the paper claims 'hundreds of frames in a single forward pass' but does not specify memory requirements or how this scales\",\n        \"Comparison with baselines could be more thorough - some cited methods (e.g., SWAG, DAVIGS, Scaffold-GS, WE-GS) are not included in experiments\",\n        \"The time comparison in Table 1 may be somewhat misleading since 'Ours' methods include harmonization overhead but appearance embedding baselines' additional training time is implicitly included in their reported times without clear breakdown\",\n        \"Ablation on reference frame selection is limited - only comparing random, DINO-only, and full method; the individual contributions of the LAB score and the combination weight are not analyzed\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 4,\n    \"Significance\": 4,\n    \"Questions\": [\n        \"How does the method scale with the number of input frames? At what point does memory become a bottleneck, and are there approximations or strategies for handling very large sequences (e.g., 1000+ frames)?\",\n        \"What is the sensitivity of the reference frame selection to the hyperparameters λent, λov, λun, and α? Have you explored adaptive or learned weighting schemes?\",\n        \"How robust is the self-supervised loss to the quality of AnySplat predictions? Have you tested with alternative feed-forward models (e.g., VGGT, MapAnything) or analyzed failure cases where AnySplat produces poor geometry?\",\n        \"The paper mentions that the bilateral grid cannot model high-frequency changes like specularities. In the BilaRF dataset (which has flash illumination), are there visible artifacts in specular regions? How does this limitation manifest in the results?\",\n        \"For the DL3DV synthetic dataset, how realistic is the ISP simulation? Have you validated that the simulation covers the range of variations seen in real-world data?\",\n        \"The model has 137.84M parameters and processes images at 224x224. How does performance change with higher input resolution? Is there a resolution limit for the bilateral grid representation?\",\n        \"Could you provide more details on the confidence grid prediction and how it is used during inference? Is it used only for training or also for post-processing?\",\n        \"How does the method handle scenes with dynamic objects or transient elements? The current formulation assumes static scenes - is this a limitation that needs to be addressed?\"\n    ],\n    \"Limitations\": [\n        \"The method requires training a dedicated harmonization network, which adds a preprocessing step before reconstruction; this may not be ideal for one-off scene reconstructions where per-scene optimization is acceptable\",\n        \"Bilateral grid transformations are inherently smooth and cannot model high-frequency photometric changes such as specular highlights, reflections, or strong view-dependent effects\",\n        \"The method assumes static scenes and does not handle transient objects or dynamic content\",\n        \"The reference frame selection strategy is heuristic and may fail in scenarios where no single frame is representative of the scene appearance\",\n        \"The approach is evaluated on datasets with limited scene diversity; generalization to extreme lighting conditions (e.g., very low light, HDR scenes) or unusual camera ISPs is not demonstrated\",\n        \"Potential negative societal impact: the harmonization could be used to manipulate or misrepresent visual evidence in photo collections, though this is a general concern for any image editing method\",\n        \"The computational cost of training (137M parameter transformer) may limit accessibility for researchers with limited resources\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 4,\n    \"Contribution\": 4,\n    \"Overall\": 7,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 15904,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 14112,
+        "completion_tokens": 2152,
+        "reasoning_tokens": 0,
+        "total_tokens": 18056
+      },
+      "attempts": 1,
+      "response_id": "e2305a56-f75e-4db1-9579-3d3c5095a60e"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper introduces CHROMA, a feed-forward transformer-based framework for multi-view appearance harmonization in 3D reconstruction. The method predicts per-frame 3D bilateral grids of affine transformations to align all views with a selected reference frame, addressing photometric inconsistencies (exposure, white balance, color shifts) that degrade novel view synthesis. The approach decouples appearance harmonization from scene-specific optimization, enabling efficient processing of hundreds of frames in a single forward pass. Key contributions include: (1) a multi-view aware transformer architecture with alternating self/cross-attention for consistent bilateral grid prediction, (2) a reference frame selection mechanism combining photometric and semantic scores, (3) a hybrid training strategy using synthetic paired data and self-supervised learning via 3D foundation models, and (4) extensive evaluation showing improved reconstruction quality across multiple datasets and integration with various 3DGS-based methods.",
+        "Strengths": [
+          "Novel problem formulation: Decoupling appearance harmonization from scene-specific 3D reconstruction optimization is a meaningful and practical contribution that addresses computational inefficiency in existing approaches",
+          "Comprehensive evaluation: The paper evaluates on three diverse datasets (synthetic ISP variations, exposure variations, real-world captures) with multiple baselines including both appearance embedding methods and 2D correction approaches",
+          "Efficiency advantage: The feed-forward design provides significant speed improvements (e.g., 3-4 minutes vs 2+ hours for WildGaussians) while maintaining or improving reconstruction quality",
+          "Creative self-supervised training: Using 3D foundation models as a pretext task for learning from unpaired real-world data is innovative and addresses the fundamental lack of paired training data",
+          "Good integration: The method integrates seamlessly with multiple 3DGS variants (3DGS, 2DGS, DashGS) demonstrating generalizability",
+          "Clear writing: The paper is well-organized with clear explanations of the methodology, training strategy, and experimental setup"
+        ],
+        "Weaknesses": [
+          "Limited architectural novelty: The transformer architecture largely follows VGGT's alternating attention design, and bilateral grids are well-established; the contribution is primarily in the combination and application rather than new technical components",
+          "No statistical significance analysis: Results are reported without error bars or significance testing, making it difficult to assess the reliability of performance differences",
+          "Limited hyperparameter sensitivity analysis: The reference frame selection weights (α=0.5, λ values) and training loss weights (λtv=0.5, λss=0.1) are chosen heuristically without systematic sensitivity analysis",
+          "Scalability questions: While the paper claims processing 'hundreds of frames in a single step', the memory requirements and scaling behavior for very large captures are not thoroughly analyzed",
+          "Limited failure case analysis: The paper mentions limitations with specular highlights and reflections but provides no examples or analysis of such failures",
+          "Qualitative results limited: Only a few qualitative examples are shown, making it difficult to assess visual quality comprehensively"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How does the method scale with increasing number of input frames? What is the memory consumption for processing 300+ frames jointly, and is there a practical limit?",
+          "Could you provide statistical significance analysis (e.g., confidence intervals or paired tests) for the reported improvements?",
+          "How sensitive is the reference frame selection to the hyperparameters α, λent, λov, and λun? Have you explored different weight configurations?",
+          "What happens when the scene contains significant geometric variation that the bilateral grid cannot handle? Could you show failure cases and analyze them?",
+          "How does the method perform on scenes with extreme appearance variations beyond those tested (e.g., day-night transitions with drastic illumination changes)?",
+          "Is the self-supervised loss sensitive to the choice of 3D foundation model? Would any feed-forward reconstruction model work, or does AnySplat have specific properties that make it suitable?",
+          "What is the computational cost breakdown between the bilateral grid prediction and the 3D reconstruction? Could the harmonization be done in real-time for video sequences?"
+        ],
+        "Limitations": [
+          "The method requires training a dedicated network, which is a one-time cost but may be a barrier for practitioners who need immediate deployment",
+          "The approach focuses on camera ISP-induced photometric inconsistencies and does not explicitly handle transient objects, specular highlights, or strong reflections",
+          "The bilateral grid representation is inherently smooth and cannot model high-frequency appearance changes caused by reflectance or specularities",
+          "The reference frame selection assumes there is a 'good' reference frame in the sequence; scenes where all frames are poorly exposed may lead to suboptimal harmonization",
+          "Potential negative societal impact: The appearance harmonization could potentially be misused to manipulate or fabricate visual evidence by altering the appearance of captured scenes",
+          "The method's performance on truly in-the-wild photo collections (with varying viewpoints, transient objects, and complex lighting) remains unexplored"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper presents CHROMA, a feed-forward transformer-based approach for multi-view appearance harmonization using bilateral grids. The core idea is to decouple appearance harmonization from scene-specific 3D reconstruction optimization, enabling efficient processing of large-scale multi-view captures with photometric inconsistencies.\n\nKey strengths:\n1. Novel problem formulation: Decoupling appearance harmonization as a generalizable feed-forward task rather than scene-specific optimization is a meaningful contribution.\n2. Technical soundness: The architecture combining alternating attention (from VGGT), bilateral grid prediction, and confidence-based probabilistic loss is well-motivated and technically sound.\n3. Comprehensive evaluation: The paper evaluates on three diverse datasets (synthetic ISP variations, exposure variations, real-world captures) and compares against both appearance embedding methods and 2D correction baselines.\n4. Efficiency advantage: The feed-forward design provides significant speed improvements over scene-specific optimization methods while maintaining or improving quality.\n5. Self-supervised training strategy: The use of 3D foundation models as a pretext task for real-world unpaired data is creative and addresses the lack of paired data.\n\nKey weaknesses:\n1. Limited architectural novelty: The transformer architecture largely follows VGGT's alternating attention design, and bilateral grids are well-established. The main contribution is the combination and application, which is valid but not groundbreaking.\n2. Evaluation gaps: The paper doesn't provide error bars or statistical significance testing. Also, the qualitative results are limited to a few examples.\n3. Hyperparameter sensitivity: The reference frame selection combines multiple heuristics with chosen weights (α=0.5, λ values) without thorough sensitivity analysis.\n4. Scalability concerns: The model processes all frames jointly, which may have memory limitations for very large captures. The paper mentions handling \"hundreds of frames\" but doesn't discuss scaling behavior.\n5. Limited analysis of failure cases: The paper mentions limitations with specular highlights but doesn't provide examples or analysis of such failure cases.\n\nThe paper is technically sound with strong empirical results. The main questions are about generalizability to truly in-the-wild scenarios and the practical significance of the speed improvements. The writing is clear and well-organized.\n\nI would rate this as a solid paper with good contributions - overall score around 7 (Accept).\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper introduces CHROMA, a feed-forward transformer-based framework for multi-view appearance harmonization in 3D reconstruction. The method predicts per-frame 3D bilateral grids of affine transformations to align all views with a selected reference frame, addressing photometric inconsistencies (exposure, white balance, color shifts) that degrade novel view synthesis. The approach decouples appearance harmonization from scene-specific optimization, enabling efficient processing of hundreds of frames in a single forward pass. Key contributions include: (1) a multi-view aware transformer architecture with alternating self/cross-attention for consistent bilateral grid prediction, (2) a reference frame selection mechanism combining photometric and semantic scores, (3) a hybrid training strategy using synthetic paired data and self-supervised learning via 3D foundation models, and (4) extensive evaluation showing improved reconstruction quality across multiple datasets and integration with various 3DGS-based methods.\",\n    \"Strengths\": [\n        \"Novel problem formulation: Decoupling appearance harmonization from scene-specific 3D reconstruction optimization is a meaningful and practical contribution that addresses computational inefficiency in existing approaches\",\n        \"Comprehensive evaluation: The paper evaluates on three diverse datasets (synthetic ISP variations, exposure variations, real-world captures) with multiple baselines including both appearance embedding methods and 2D correction approaches\",\n        \"Efficiency advantage: The feed-forward design provides significant speed improvements (e.g., 3-4 minutes vs 2+ hours for WildGaussians) while maintaining or improving reconstruction quality\",\n        \"Creative self-supervised training: Using 3D foundation models as a pretext task for learning from unpaired real-world data is innovative and addresses the fundamental lack of paired training data\",\n        \"Good integration: The method integrates seamlessly with multiple 3DGS variants (3DGS, 2DGS, DashGS) demonstrating generalizability\",\n        \"Clear writing: The paper is well-organized with clear explanations of the methodology, training strategy, and experimental setup\"\n    ],\n    \"Weaknesses\": [\n        \"Limited architectural novelty: The transformer architecture largely follows VGGT's alternating attention design, and bilateral grids are well-established; the contribution is primarily in the combination and application rather than new technical components\",\n        \"No statistical significance analysis: Results are reported without error bars or significance testing, making it difficult to assess the reliability of performance differences\",\n        \"Limited hyperparameter sensitivity analysis: The reference frame selection weights (α=0.5, λ values) and training loss weights (λtv=0.5, λss=0.1) are chosen heuristically without systematic sensitivity analysis\",\n        \"Scalability questions: While the paper claims processing 'hundreds of frames in a single step', the memory requirements and scaling behavior for very large captures are not thoroughly analyzed\",\n        \"Limited failure case analysis: The paper mentions limitations with specular highlights and reflections but provides no examples or analysis of such failures\",\n        \"Qualitative results limited: Only a few qualitative examples are shown, making it difficult to assess visual quality comprehensively\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"How does the method scale with increasing number of input frames? What is the memory consumption for processing 300+ frames jointly, and is there a practical limit?\",\n        \"Could you provide statistical significance analysis (e.g., confidence intervals or paired tests) for the reported improvements?\",\n        \"How sensitive is the reference frame selection to the hyperparameters α, λent, λov, and λun? Have you explored different weight configurations?\",\n        \"What happens when the scene contains significant geometric variation that the bilateral grid cannot handle? Could you show failure cases and analyze them?\",\n        \"How does the method perform on scenes with extreme appearance variations beyond those tested (e.g., day-night transitions with drastic illumination changes)?\",\n        \"Is the self-supervised loss sensitive to the choice of 3D foundation model? Would any feed-forward reconstruction model work, or does AnySplat have specific properties that make it suitable?\",\n        \"What is the computational cost breakdown between the bilateral grid prediction and the 3D reconstruction? Could the harmonization be done in real-time for video sequences?\"\n    ],\n    \"Limitations\": [\n        \"The method requires training a dedicated network, which is a one-time cost but may be a barrier for practitioners who need immediate deployment\",\n        \"The approach focuses on camera ISP-induced photometric inconsistencies and does not explicitly handle transient objects, specular highlights, or strong reflections\",\n        \"The bilateral grid representation is inherently smooth and cannot model high-frequency appearance changes caused by reflectance or specularities\",\n        \"The reference frame selection assumes there is a 'good' reference frame in the sequence; scenes where all frames are poorly exposed may lead to suboptimal harmonization\",\n        \"Potential negative societal impact: The appearance harmonization could potentially be misused to manipulate or fabricate visual evidence by altering the appearance of captured scenes\",\n        \"The method's performance on truly in-the-wild photo collections (with varying viewpoints, transient objects, and complex lighting) remains unexplored\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 7,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 15904,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 14112,
+        "completion_tokens": 1595,
+        "reasoning_tokens": 0,
+        "total_tokens": 17499
+      },
+      "attempts": 1,
+      "response_id": "5cd37b4d-783b-4d7c-a0fb-8fd6a6d15c26"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper presents CHROMA, a feed-forward transformer-based approach for multi-view appearance harmonization in 3D reconstruction. The method predicts per-view 3D bilateral grids that transform input images to match a reference frame's appearance, ensuring photometric consistency across views. Key contributions include: (1) a multi-view aware transformer architecture with alternating self and cross-attention for consistent bilateral grid prediction, (2) a reference frame selection mechanism combining photometric quality and semantic representativeness, (3) a hybrid training strategy using synthetic paired data and self-supervised rendering loss from 3D foundation models, and (4) uncertainty-aware confidence prediction. The method integrates seamlessly with existing 3D reconstruction pipelines (3DGS, 2DGS, DashGS) without scene-specific retraining, achieving state-of-the-art results on DL3DV, MipNeRF360-VE, and BilaRF datasets while maintaining competitive training times.",
+        "Strengths": [
+          "Novel decoupling of appearance harmonization from scene-specific optimization, enabling generalizable feed-forward processing",
+          "Well-motivated use of bilateral grids as compact and expressive representation for appearance transformations",
+          "Clever self-supervised training strategy using 3D foundation models to learn from unpaired real-world data",
+          "Comprehensive evaluation across multiple datasets (ISP variations, exposure changes, real-world captures) and multiple 3D reconstruction baselines",
+          "Thoughtful reference frame selection mechanism combining photometric quality (LAB-based) with semantic representativeness (DINOv2)",
+          "Uncertainty-aware confidence prediction improves robustness in challenging regions",
+          "Clear writing and well-organized presentation of methodology and experiments"
+        ],
+        "Weaknesses": [
+          "The model has 137.84M parameters, which may limit deployment in resource-constrained settings",
+          "Limited analysis of failure cases, particularly for scenes with severe appearance variations or complex reflectance properties",
+          "Comparison with 2D methods only on exposure variations, not on full ISP variations with color shifts",
+          "The final appearance quality depends heavily on reference frame selection, which may not always be optimal despite the proposed mechanism",
+          "Ablation study is limited - does not explore sensitivity to bilateral grid resolution, guidance dimension, or number of transformer layers",
+          "The paper does not provide detailed analysis of the model's inference time breakdown (attention computation vs. grid slicing)"
+        ],
+        "Originality": 4,
+        "Quality": 4,
+        "Clarity": 4,
+        "Significance": 4,
+        "Questions": [
+          "How does the model perform when the reference frame selection fails (e.g., all frames have poor quality)? Is there a fallback mechanism?",
+          "What is the sensitivity of the method to the bilateral grid resolution (Hs, Ws) and guidance dimension D? Were these hyperparameters tuned?",
+          "How does the model handle scenes with dynamic objects or transient elements that violate the static scene assumption?",
+          "The self-supervised loss uses AnySplat as the 3D foundation model. How sensitive is the method to the choice of foundation model? Would other models like VGGT or MapAnything work equally well?",
+          "Can you provide more details on the computational cost breakdown - how much time is spent on attention computation vs. grid slicing vs. reference frame selection?",
+          "How does the method handle scenes with more than 24 frames during training? Is there a specific sampling strategy for selecting which frames to use?",
+          "What happens when the input views have very different resolutions or aspect ratios? Is the patch-based processing affected?"
+        ],
+        "Limitations": [
+          "The method requires training a dedicated network for image harmonization, which may not be practical for users who only need to process a single scene",
+          "Bilateral grid transformations are inherently smooth and cannot model high-frequency appearance changes such as specular highlights or reflections",
+          "The method focuses on camera ISP-induced photometric inconsistencies and does not explicitly handle scene illumination changes or shadow variations",
+          "The reference frame selection mechanism may not be optimal for all scenarios, and manual selection may be needed for specific use cases",
+          "The model's performance on extreme appearance variations (e.g., very dark or very bright scenes) is not thoroughly analyzed",
+          "Potential negative societal impact is minimal, but the method could potentially be used to manipulate images in ways that misrepresent reality"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 4,
+        "Presentation": 4,
+        "Contribution": 4,
+        "Overall": 8,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces CHROMA, a feed-forward transformer-based approach for multi-view appearance harmonization using bilateral grids. The key contribution is decoupling appearance harmonization from scene-specific 3D reconstruction optimization, enabling a generalizable solution that can be applied to various 3DGS-based methods without retraining.\n\nThe paper is well-structured and addresses a significant problem in novel view synthesis - photometric inconsistencies across views that degrade reconstruction quality. The approach is novel in its use of bilateral grids predicted by a multi-view transformer, with a self-supervised training strategy leveraging 3D foundation models.\n\nStrengths:\n1. The decoupling of appearance harmonization from scene optimization is a meaningful contribution that addresses computational inefficiency in existing per-scene optimization methods.\n2. The bilateral grid representation is well-motivated and provides a compact, expressive parameterization for appearance transformations.\n3. The self-supervised training approach using 3D foundation models is clever and addresses the lack of paired real-world data.\n4. The reference frame selection mechanism is thoughtful, combining photometric quality with semantic representativeness.\n5. The method demonstrates strong results across multiple datasets and integrates with several 3DGS variants.\n6. The paper is well-written and clearly explains the methodology.\n\nWeaknesses:\n1. The model is relatively large (137.84M parameters) which may limit practical deployment.\n2. The evaluation, while comprehensive, could benefit from more analysis of failure cases, particularly for scenes with severe appearance variations.\n3. The comparison with 2D methods is somewhat limited - only tested on exposure variations, not on full ISP variations.\n4. The method's reliance on a reference frame means the final appearance is dependent on reference selection quality, which may not always be optimal.\n5. The paper does not deeply discuss the computational cost of the model itself during inference, beyond the total pipeline time.\n6. The ablation study is somewhat limited - particularly, the effect of the bilateral grid resolution and guidance dimension is not explored.\n\nThe paper makes a solid contribution to the field with good experimental validation. The idea is novel and practical, addressing a real problem in 3D reconstruction. The results are convincing, showing improvements over both vanilla baselines and appearance embedding methods while maintaining computational efficiency.\n\nOverall, I believe this is a strong paper that should be accepted. The technical approach is sound, the evaluation is thorough, and the contribution is significant for the 3D reconstruction community. The paper is well-written and the methodology is clearly explained.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper presents CHROMA, a feed-forward transformer-based approach for multi-view appearance harmonization in 3D reconstruction. The method predicts per-view 3D bilateral grids that transform input images to match a reference frame's appearance, ensuring photometric consistency across views. Key contributions include: (1) a multi-view aware transformer architecture with alternating self and cross-attention for consistent bilateral grid prediction, (2) a reference frame selection mechanism combining photometric quality and semantic representativeness, (3) a hybrid training strategy using synthetic paired data and self-supervised rendering loss from 3D foundation models, and (4) uncertainty-aware confidence prediction. The method integrates seamlessly with existing 3D reconstruction pipelines (3DGS, 2DGS, DashGS) without scene-specific retraining, achieving state-of-the-art results on DL3DV, MipNeRF360-VE, and BilaRF datasets while maintaining competitive training times.\",\n    \"Strengths\": [\n        \"Novel decoupling of appearance harmonization from scene-specific optimization, enabling generalizable feed-forward processing\",\n        \"Well-motivated use of bilateral grids as compact and expressive representation for appearance transformations\",\n        \"Clever self-supervised training strategy using 3D foundation models to learn from unpaired real-world data\",\n        \"Comprehensive evaluation across multiple datasets (ISP variations, exposure changes, real-world captures) and multiple 3D reconstruction baselines\",\n        \"Thoughtful reference frame selection mechanism combining photometric quality (LAB-based) with semantic representativeness (DINOv2)\",\n        \"Uncertainty-aware confidence prediction improves robustness in challenging regions\",\n        \"Clear writing and well-organized presentation of methodology and experiments\"\n    ],\n    \"Weaknesses\": [\n        \"The model has 137.84M parameters, which may limit deployment in resource-constrained settings\",\n        \"Limited analysis of failure cases, particularly for scenes with severe appearance variations or complex reflectance properties\",\n        \"Comparison with 2D methods only on exposure variations, not on full ISP variations with color shifts\",\n        \"The final appearance quality depends heavily on reference frame selection, which may not always be optimal despite the proposed mechanism\",\n        \"Ablation study is limited - does not explore sensitivity to bilateral grid resolution, guidance dimension, or number of transformer layers\",\n        \"The paper does not provide detailed analysis of the model's inference time breakdown (attention computation vs. grid slicing)\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 4,\n    \"Clarity\": 4,\n    \"Significance\": 4,\n    \"Questions\": [\n        \"How does the model perform when the reference frame selection fails (e.g., all frames have poor quality)? Is there a fallback mechanism?\",\n        \"What is the sensitivity of the method to the bilateral grid resolution (Hs, Ws) and guidance dimension D? Were these hyperparameters tuned?\",\n        \"How does the model handle scenes with dynamic objects or transient elements that violate the static scene assumption?\",\n        \"The self-supervised loss uses AnySplat as the 3D foundation model. How sensitive is the method to the choice of foundation model? Would other models like VGGT or MapAnything work equally well?\",\n        \"Can you provide more details on the computational cost breakdown - how much time is spent on attention computation vs. grid slicing vs. reference frame selection?\",\n        \"How does the method handle scenes with more than 24 frames during training? Is there a specific sampling strategy for selecting which frames to use?\",\n        \"What happens when the input views have very different resolutions or aspect ratios? Is the patch-based processing affected?\"\n    ],\n    \"Limitations\": [\n        \"The method requires training a dedicated network for image harmonization, which may not be practical for users who only need to process a single scene\",\n        \"Bilateral grid transformations are inherently smooth and cannot model high-frequency appearance changes such as specular highlights or reflections\",\n        \"The method focuses on camera ISP-induced photometric inconsistencies and does not explicitly handle scene illumination changes or shadow variations\",\n        \"The reference frame selection mechanism may not be optimal for all scenarios, and manual selection may be needed for specific use cases\",\n        \"The model's performance on extreme appearance variations (e.g., very dark or very bright scenes) is not thoroughly analyzed\",\n        \"Potential negative societal impact is minimal, but the method could potentially be used to manipulate images in ways that misrepresent reality\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 4,\n    \"Presentation\": 4,\n    \"Contribution\": 4,\n    \"Overall\": 8,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 15904,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 14112,
+        "completion_tokens": 1489,
+        "reasoning_tokens": 0,
+        "total_tokens": 17393
+      },
+      "attempts": 1,
+      "response_id": "6350842f-5d0c-4327-91fa-5ee414334bb1"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 5,
+      "Reject": 0
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          4,
+          4,
+          4,
+          3,
+          4
+        ],
+        "mean": 3.8,
+        "rounded_mean": 4,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          4
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Clarity": {
+        "values": [
+          3,
+          3,
+          4,
+          3,
+          4
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Significance": {
+        "values": [
+          4,
+          3,
+          4,
+          3,
+          4
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          4
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Presentation": {
+        "values": [
+          3,
+          3,
+          4,
+          3,
+          4
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Contribution": {
+        "values": [
+          4,
+          3,
+          4,
+          3,
+          4
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Overall": {
+        "values": [
+          7,
+          7,
+          7,
+          7,
+          8
+        ],
+        "mean": 7.2,
+        "rounded_mean": 7,
+        "population_sd": 0.4,
+        "min": 7,
+        "max": 8
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper introduces CHROMA, a feed-forward transformer-based framework for multi-view appearance harmonization in 3D reconstruction. The method predicts per-frame 3D bilateral grids that transform input images to match a selected reference frame's appearance, correcting photometric inconsistencies such as exposure, white balance, and color shifts. Key contributions include: (1) a multi-view aware transformer with alternating self and cross-attention for consistent bilateral grid prediction, (2) a reference frame selection mechanism combining photometric quality (LAB-based) and semantic representativeness (DINOv2), (3) a hybrid training strategy using synthetic paired data from DL3DV with simulated ISP variations and a self-supervised rendering loss via 3D foundation models (AnySplat) on unpaired real-world data, and (4) uncertainty-aware confidence grid prediction. The method is designed to integrate seamlessly with existing 3D reconstruction pipelines (3DGS, 2DGS, DashGS) without scene-specific optimization. Experiments on three datasets (DL3DV with ISP variations, MipNeRF360-VE with exposure changes, and BilaRF with real-world captures) demonstrate that CHROMA matches or outperforms per-scene appearance embedding methods while being significantly more efficient.",
+      "Strengths": [
+        "Novel decoupling of appearance harmonization from scene-specific 3D reconstruction optimization, enabling feed-forward processing without per-scene retraining and providing significant computational efficiency gains.",
+        "Well-designed transformer architecture with alternating frame-wise and global/cross-attention that balances cross-view consistency with memory efficiency.",
+        "Comprehensive training strategy combining supervised learning on synthetic paired data with self-supervised learning via 3D foundation models, effectively addressing the lack of paired real-world data.",
+        "Strong experimental validation across three diverse datasets with different types of appearance variations (ISP, exposure, real-world), demonstrating consistent improvements over baselines.",
+        "Integration with multiple 3D reconstruction backbones (3DGS, 2DGS, DashGS) shows generalizability and practical utility.",
+        "Thoughtful reference frame selection mechanism that considers both semantic representativeness and photometric quality.",
+        "Uncertainty-aware confidence grid prediction improves robustness in challenging regions.",
+        "Clear and well-organized presentation with good figures illustrating the architecture and results."
+      ],
+      "Weaknesses": [
+        "The model has 137.84M parameters, which is substantial for a preprocessing module and may limit deployment in resource-constrained settings.",
+        "Limited analysis of failure cases, particularly for scenes with severe appearance variations, specular highlights, reflections, or dynamic content.",
+        "The self-supervised loss depends on the quality of AnySplat, and the sensitivity to the choice of 3D foundation model is not analyzed.",
+        "Reference frame selection uses fixed hyperparameters (α=0.5, λ values) without sensitivity analysis or adaptive weighting.",
+        "Scalability for very large frame counts (300+ frames) is claimed but memory requirements and practical limits are not thoroughly analyzed.",
+        "No statistical significance analysis (error bars or significance tests) is provided for the reported experimental improvements.",
+        "Comparison with 2D harmonization baselines is limited to exposure variations, not full ISP variations with color shifts.",
+        "Ablations do not explore sensitivity to bilateral grid resolution, guidance dimension, or number of transformer layers."
+      ],
+      "Originality": 4,
+      "Quality": 3,
+      "Clarity": 3,
+      "Significance": 4,
+      "Questions": [
+        "How does the method scale with the number of input frames? What is the memory footprint when processing 300+ frames in a single forward pass, and are there approximations or strategies for handling very large captures?",
+        "How sensitive is the reference frame selection to the hyperparameters α, λent, λov, and λun? Have you explored adaptive or learned weighting schemes?",
+        "How robust is the self-supervised loss to the quality of AnySplat predictions? Would alternative feed-forward models (e.g., VGGT, MapAnything) work equally well, and are there known failure cases of AnySplat that affect training?",
+        "Can you provide statistical significance analysis (e.g., confidence intervals or paired tests) for the reported improvements?",
+        "How does the method handle scenes with dynamic objects or transient elements, given the static scene assumption?",
+        "What happens when the reference frame selection fails (e.g., all frames are poorly exposed)? Is there a fallback mechanism?",
+        "Could you provide a breakdown of the computational cost between attention computation, grid slicing, and reference frame selection? Is the harmonization real-time capable?",
+        "How does the method handle extreme appearance variations (e.g., complete darkness or overexposure where information is irrecoverably lost)?",
+        "For the BilaRF dataset with flash illumination, are there visible artifacts in specular regions due to the smooth bilateral grid representation?",
+        "What is the training data composition between DL3DV and WildRGB-D? What is the ratio of paired to unpaired data?"
+      ],
+      "Limitations": [
+        "The method requires training a dedicated harmonization network, which adds an upfront cost and may be prohibitive for one-off scene reconstructions.",
+        "Bilateral grid transformations are inherently smooth and cannot model high-frequency photometric changes such as specular highlights, reflections, or strong view-dependent effects.",
+        "The approach assumes static scenes and does not handle transient objects or dynamic content.",
+        "The reference frame selection is heuristic and may fail in scenarios where no single frame is representative of the scene appearance.",
+        "The self-supervised training relies on a pretrained 3D foundation model (AnySplat), which may not be available or optimal for all use cases.",
+        "Evaluation is limited to datasets with specific characteristics; generalization to truly unconstrained photo collections (e.g., PhotoTourism-style) or extreme lighting conditions is not demonstrated.",
+        "Potential negative societal impact: The appearance harmonization could be misused to manipulate or fabricate visual evidence in photo collections, though this is a general concern for any image editing method.",
+        "The computational cost of training a 137M parameter transformer may limit accessibility for researchers with limited resources."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 3,
+      "Contribution": 4,
+      "Overall": 7,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "THOUGHT:\nAll five reviewers recommend acceptance with overall scores of 7 or 8. The consensus is that the paper presents a novel and practically valuable approach to multi-view appearance harmonization, with strong experimental validation and integration with multiple 3D reconstruction pipelines. The main weaknesses consistently noted across reviews are: (1) limited analysis of failure cases and sensitivity to hyperparameters, (2) scalability and memory concerns for very large frame counts, (3) dependence on the AnySplat foundation model for self-supervised training, and (4) the inherent smoothness limitation of bilateral grids for high-frequency appearance changes. No reviewer raised ethical concerns, and all rated soundness and presentation as good (3) or excellent (4). The paper is technically solid, original in its decoupling of harmonization from scene optimization, and demonstrates clear practical impact. The decision should be Accept, as the strengths clearly outweigh the weaknesses, which are mostly opportunities for further analysis rather than fundamental flaws.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper introduces CHROMA, a feed-forward transformer-based framework for multi-view appearance harmonization in 3D reconstruction. The method predicts per-frame 3D bilateral grids that transform input images to match a selected reference frame's appearance, correcting photometric inconsistencies such as exposure, white balance, and color shifts. Key contributions include: (1) a multi-view aware transformer with alternating self and cross-attention for consistent bilateral grid prediction, (2) a reference frame selection mechanism combining photometric quality (LAB-based) and semantic representativeness (DINOv2), (3) a hybrid training strategy using synthetic paired data from DL3DV with simulated ISP variations and a self-supervised rendering loss via 3D foundation models (AnySplat) on unpaired real-world data, and (4) uncertainty-aware confidence grid prediction. The method is designed to integrate seamlessly with existing 3D reconstruction pipelines (3DGS, 2DGS, DashGS) without scene-specific optimization. Experiments on three datasets (DL3DV with ISP variations, MipNeRF360-VE with exposure changes, and BilaRF with real-world captures) demonstrate that CHROMA matches or outperforms per-scene appearance embedding methods while being significantly more efficient.\",\n  \"Strengths\": [\n    \"Novel decoupling of appearance harmonization from scene-specific 3D reconstruction optimization, enabling feed-forward processing without per-scene retraining and providing significant computational efficiency gains.\",\n    \"Well-designed transformer architecture with alternating frame-wise and global/cross-attention that balances cross-view consistency with memory efficiency.\",\n    \"Comprehensive training strategy combining supervised learning on synthetic paired data with self-supervised learning via 3D foundation models, effectively addressing the lack of paired real-world data.\",\n    \"Strong experimental validation across three diverse datasets with different types of appearance variations (ISP, exposure, real-world), demonstrating consistent improvements over baselines.\",\n    \"Integration with multiple 3D reconstruction backbones (3DGS, 2DGS, DashGS) shows generalizability and practical utility.\",\n    \"Thoughtful reference frame selection mechanism that considers both semantic representativeness and photometric quality.\",\n    \"Uncertainty-aware confidence grid prediction improves robustness in challenging regions.\",\n    \"Clear and well-organized presentation with good figures illustrating the architecture and results.\"\n  ],\n  \"Weaknesses\": [\n    \"The model has 137.84M parameters, which is substantial for a preprocessing module and may limit deployment in resource-constrained settings.\",\n    \"Limited analysis of failure cases, particularly for scenes with severe appearance variations, specular highlights, reflections, or dynamic content.\",\n    \"The self-supervised loss depends on the quality of AnySplat, and the sensitivity to the choice of 3D foundation model is not analyzed.\",\n    \"Reference frame selection uses fixed hyperparameters (α=0.5, λ values) without sensitivity analysis or adaptive weighting.\",\n    \"Scalability for very large frame counts (300+ frames) is claimed but memory requirements and practical limits are not thoroughly analyzed.\",\n    \"No statistical significance analysis (error bars or significance tests) is provided for the reported experimental improvements.\",\n    \"Comparison with 2D harmonization baselines is limited to exposure variations, not full ISP variations with color shifts.\",\n    \"Ablations do not explore sensitivity to bilateral grid resolution, guidance dimension, or number of transformer layers.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"How does the method scale with the number of input frames? What is the memory footprint when processing 300+ frames in a single forward pass, and are there approximations or strategies for handling very large captures?\",\n    \"How sensitive is the reference frame selection to the hyperparameters α, λent, λov, and λun? Have you explored adaptive or learned weighting schemes?\",\n    \"How robust is the self-supervised loss to the quality of AnySplat predictions? Would alternative feed-forward models (e.g., VGGT, MapAnything) work equally well, and are there known failure cases of AnySplat that affect training?\",\n    \"Can you provide statistical significance analysis (e.g., confidence intervals or paired tests) for the reported improvements?\",\n    \"How does the method handle scenes with dynamic objects or transient elements, given the static scene assumption?\",\n    \"What happens when the reference frame selection fails (e.g., all frames are poorly exposed)? Is there a fallback mechanism?\",\n    \"Could you provide a breakdown of the computational cost between attention computation, grid slicing, and reference frame selection? Is the harmonization real-time capable?\",\n    \"How does the method handle extreme appearance variations (e.g., complete darkness or overexposure where information is irrecoverably lost)?\",\n    \"For the BilaRF dataset with flash illumination, are there visible artifacts in specular regions due to the smooth bilateral grid representation?\",\n    \"What is the training data composition between DL3DV and WildRGB-D? What is the ratio of paired to unpaired data?\"\n  ],\n  \"Limitations\": [\n    \"The method requires training a dedicated harmonization network, which adds an upfront cost and may be prohibitive for one-off scene reconstructions.\",\n    \"Bilateral grid transformations are inherently smooth and cannot model high-frequency photometric changes such as specular highlights, reflections, or strong view-dependent effects.\",\n    \"The approach assumes static scenes and does not handle transient objects or dynamic content.\",\n    \"The reference frame selection is heuristic and may fail in scenarios where no single frame is representative of the scene appearance.\",\n    \"The self-supervised training relies on a pretrained 3D foundation model (AnySplat), which may not be available or optimal for all use cases.\",\n    \"Evaluation is limited to datasets with specific characteristics; generalization to truly unconstrained photo collections (e.g., PhotoTourism-style) or extreme lighting conditions is not demonstrated.\",\n    \"Potential negative societal impact: The appearance harmonization could be misused to manipulate or fabricate visual evidence in photo collections, though this is a general concern for any image editing method.\",\n    \"The computational cost of training a 137M parameter transformer may limit accessibility for researchers with limited resources.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 4,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 7107,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 7107,
+      "completion_tokens": 1555,
+      "reasoning_tokens": 0,
+      "total_tokens": 8662
+    },
+    "attempts": 1,
+    "response_id": "2c9ee537-621e-46ad-a6dc-85eddfbecffd"
+  },
+  "final_review": {
+    "Summary": "The paper introduces CHROMA, a feed-forward transformer-based framework for multi-view appearance harmonization in 3D reconstruction. The method predicts per-frame 3D bilateral grids that transform input images to match a selected reference frame's appearance, correcting photometric inconsistencies such as exposure, white balance, and color shifts. Key contributions include: (1) a multi-view aware transformer with alternating self and cross-attention for consistent bilateral grid prediction, (2) a reference frame selection mechanism combining photometric quality (LAB-based) and semantic representativeness (DINOv2), (3) a hybrid training strategy using synthetic paired data from DL3DV with simulated ISP variations and a self-supervised rendering loss via 3D foundation models (AnySplat) on unpaired real-world data, and (4) uncertainty-aware confidence grid prediction. The method is designed to integrate seamlessly with existing 3D reconstruction pipelines (3DGS, 2DGS, DashGS) without scene-specific optimization. Experiments on three datasets (DL3DV with ISP variations, MipNeRF360-VE with exposure changes, and BilaRF with real-world captures) demonstrate that CHROMA matches or outperforms per-scene appearance embedding methods while being significantly more efficient.",
+    "Strengths": [
+      "Novel decoupling of appearance harmonization from scene-specific 3D reconstruction optimization, enabling feed-forward processing without per-scene retraining and providing significant computational efficiency gains.",
+      "Well-designed transformer architecture with alternating frame-wise and global/cross-attention that balances cross-view consistency with memory efficiency.",
+      "Comprehensive training strategy combining supervised learning on synthetic paired data with self-supervised learning via 3D foundation models, effectively addressing the lack of paired real-world data.",
+      "Strong experimental validation across three diverse datasets with different types of appearance variations (ISP, exposure, real-world), demonstrating consistent improvements over baselines.",
+      "Integration with multiple 3D reconstruction backbones (3DGS, 2DGS, DashGS) shows generalizability and practical utility.",
+      "Thoughtful reference frame selection mechanism that considers both semantic representativeness and photometric quality.",
+      "Uncertainty-aware confidence grid prediction improves robustness in challenging regions.",
+      "Clear and well-organized presentation with good figures illustrating the architecture and results."
+    ],
+    "Weaknesses": [
+      "The model has 137.84M parameters, which is substantial for a preprocessing module and may limit deployment in resource-constrained settings.",
+      "Limited analysis of failure cases, particularly for scenes with severe appearance variations, specular highlights, reflections, or dynamic content.",
+      "The self-supervised loss depends on the quality of AnySplat, and the sensitivity to the choice of 3D foundation model is not analyzed.",
+      "Reference frame selection uses fixed hyperparameters (α=0.5, λ values) without sensitivity analysis or adaptive weighting.",
+      "Scalability for very large frame counts (300+ frames) is claimed but memory requirements and practical limits are not thoroughly analyzed.",
+      "No statistical significance analysis (error bars or significance tests) is provided for the reported experimental improvements.",
+      "Comparison with 2D harmonization baselines is limited to exposure variations, not full ISP variations with color shifts.",
+      "Ablations do not explore sensitivity to bilateral grid resolution, guidance dimension, or number of transformer layers."
+    ],
+    "Originality": 4,
+    "Quality": 3,
+    "Clarity": 3,
+    "Significance": 4,
+    "Questions": [
+      "How does the method scale with the number of input frames? What is the memory footprint when processing 300+ frames in a single forward pass, and are there approximations or strategies for handling very large captures?",
+      "How sensitive is the reference frame selection to the hyperparameters α, λent, λov, and λun? Have you explored adaptive or learned weighting schemes?",
+      "How robust is the self-supervised loss to the quality of AnySplat predictions? Would alternative feed-forward models (e.g., VGGT, MapAnything) work equally well, and are there known failure cases of AnySplat that affect training?",
+      "Can you provide statistical significance analysis (e.g., confidence intervals or paired tests) for the reported improvements?",
+      "How does the method handle scenes with dynamic objects or transient elements, given the static scene assumption?",
+      "What happens when the reference frame selection fails (e.g., all frames are poorly exposed)? Is there a fallback mechanism?",
+      "Could you provide a breakdown of the computational cost between attention computation, grid slicing, and reference frame selection? Is the harmonization real-time capable?",
+      "How does the method handle extreme appearance variations (e.g., complete darkness or overexposure where information is irrecoverably lost)?",
+      "For the BilaRF dataset with flash illumination, are there visible artifacts in specular regions due to the smooth bilateral grid representation?",
+      "What is the training data composition between DL3DV and WildRGB-D? What is the ratio of paired to unpaired data?"
+    ],
+    "Limitations": [
+      "The method requires training a dedicated harmonization network, which adds an upfront cost and may be prohibitive for one-off scene reconstructions.",
+      "Bilateral grid transformations are inherently smooth and cannot model high-frequency photometric changes such as specular highlights, reflections, or strong view-dependent effects.",
+      "The approach assumes static scenes and does not handle transient objects or dynamic content.",
+      "The reference frame selection is heuristic and may fail in scenarios where no single frame is representative of the scene appearance.",
+      "The self-supervised training relies on a pretrained 3D foundation model (AnySplat), which may not be available or optimal for all use cases.",
+      "Evaluation is limited to datasets with specific characteristics; generalization to truly unconstrained photo collections (e.g., PhotoTourism-style) or extreme lighting conditions is not demonstrated.",
+      "Potential negative societal impact: The appearance harmonization could be misused to manipulate or fabricate visual evidence in photo collections, though this is a general concern for any image editing method.",
+      "The computational cost of training a 137M parameter transformer may limit accessibility for researchers with limited resources."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 3,
+    "Contribution": 4,
+    "Overall": 7,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 86627,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 77667,
+    "completion_tokens": 9735,
+    "reasoning_tokens": 0,
+    "total_tokens": 96362,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.01087338,
+    "output_usd": 0.0027258,
+    "total_usd": 0.01362427
+  },
+  "elapsed_seconds": 35.171,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Accept",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B069",
+    "filename": "B069.txt",
+    "blind_text_sha256": "3f454d3e10e712de62df756626ca153fea10e372de22e3b71cced478713fd16b",
+    "characters": 51004,
+    "full_text_saved": false
+  }
+}

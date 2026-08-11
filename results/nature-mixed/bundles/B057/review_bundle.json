@@ -1,0 +1,719 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:44:19.449010+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "This paper presents a systematic study of how Supervised Fine-Tuning (SFT) and Reinforcement Learning (RL) shape exploration strategies of Large Language Models (LLMs) in multi-armed bandit (MAB) tasks. The authors train Qwen 2.5 3B/7B models using SFT on UCB expert trajectories and RL with three reward signals: original bandit rewards (RL-OG), strategic regret-shaped rewards (RL-STG), and algorithmic rewards that provide binary imitation signals from a UCB oracle (RL-ALG). They evaluate performance on in-distribution and out-of-distribution bandit environments, including generalization to longer horizons (6×) and larger action spaces. The key findings are: (1) trained agents achieve performance comparable to theoretical baselines like UCB and Thompson Sampling; (2) RL-ALG and SFT consistently outperform RL-OG; (3) behavioral analysis reveals that learned policies develop exploitative biases, showing higher suffix failure rates and greedy tendencies; (4) RL-ALG agents discover UCB variants with per-arm exploration terms that allow premature abandonment of exploration, enabling them to outperform their UCB teacher in some settings; (5) SFT policies show fragile OOD generalization due to arithmetic degradation on unseen reward ranges. The paper advocates for tailored reward design and evaluation beyond average regret to promote robust exploration.",
+        "Strengths": [
+          "Comprehensive empirical study comparing SFT and multiple RL reward designs (original, strategic, algorithmic) across two model sizes and diverse bandit environments",
+          "Novel reward designs: regret-shaped strategic reward and algorithmic (UCB-imitation) reward, with clear motivation and theoretical justification for the strategic reward as variance reduction",
+          "Behavioral analysis goes beyond aggregate regret to reveal mechanism-level differences (suffix failures, greedy tendencies, bimodal best-arm distributions), providing important insights into failure modes of trained LLM agents",
+          "Demonstration that RL-ALG agents discover exploitative UCB variants (e.g., exploration term depending only on per-arm pulls) and can outperform their teacher, with supporting rationale analysis",
+          "Robust evaluation including 6× length generalization, OOD distribution shifts, and scaling to 10 arms",
+          "Clear presentation of the two-level MDP formulation for token-level PPO with dual (γ, λ) GAE",
+          "Reproducibility details provided in appendices (hyperparameters, environments, training configurations)"
+        ],
+        "Weaknesses": [
+          "The paper is largely confirmatory of prior findings (e.g., SFT works well, RL is harder) rather than introducing fundamentally new methods; the main novelty is the behavioral analysis",
+          "Statistical significance of differences between methods is not rigorously established—only boxplots with medians/IQRs are shown, no confidence intervals or hypothesis tests",
+          "The strategic reward (RL-STG) shows limited benefit over RL-OG in many settings, and its OOD generalization is actually worse, weakening the claim of its advantage",
+          "The contextual bandit experiment (MovieLens) is relegated to the appendix and has acknowledged memorization issues, limiting its contribution",
+          "The paper identifies the exploitation bias problem but does not propose or test any mitigation strategies, leaving the work somewhat incomplete",
+          "The claim that 'RL policies yield more robust generalization compared to SFT' is nuanced—RL-OG and RL-STG show worse OOD generalization in several cases, and only RL-ALG is consistently robust",
+          "The analysis of why greediness emerges is somewhat high-level; a deeper investigation (e.g., ablations on reward shaping, exploration bonuses) would strengthen the conclusions"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How statistically significant are the differences between the methods (e.g., RL-ALG vs SFT vs RL-STG) in the cumulative regret comparisons? Are the observed differences consistent across random seeds, and have you considered reporting confidence intervals or performing significance tests?",
+          "The paper shows that RL-ALG agents discover a UCB variant with exploration term sqrt(log(N_t(a)+1)/N_t(a)). What is the theoretical regret of this variant? Does it have known sublinear regret guarantees, or does it suffer linear regret in some cases?",
+          "You mention that the greedy bias emerges due to 'imbalance in training data where sparse exploration signals are overwhelmed by frequent exploitation.' Could you elaborate on what specific mechanisms in the PPO objective or reward design drive this? Would adding an exploration bonus (e.g., count-based or information-gain-based) mitigate this?",
+          "How sensitive are the results to the UCB exploration constant C=0.5 used for the teacher? Would a more exploratory teacher (e.g., C=1.0 or C=2.0) change the exploitation bias of the learned policies?",
+          "For the SFT policy trained on Bernoulli5_Uniform, you observe catastrophic forgetting of negative reward arithmetic. Is this specific to Qwen models, or have you tested other base models? Could mixed training data with negative rewards (even if not from the training distribution) alleviate this?",
+          "The 3B model fails to learn with RL-OG/RL-STG but succeeds with RL-ALG. Is this purely a credit assignment issue, or could it be due to optimization instability (e.g., value function divergence)? Have you analyzed the value loss or advantage estimates during training?",
+          "In Figure 6, the best-arm histogram for learned policies becomes bimodal. Does this bimodality correlate with the suffix failure metric, or are these capturing different failure modes?",
+          "You evaluate at horizon 300 for generalization, but training is at 50. Have you tested even longer horizons (e.g., 1000) to see if the greedy bias leads to eventual linear regret?"
+        ],
+        "Limitations": [
+          "The study is limited to simple MAB tasks; real-world sequential decision-making problems are more complex, and the findings may not directly transfer",
+          "The paper identifies the exploitation bias but does not propose concrete solutions or mitigation strategies, limiting its practical impact",
+          "The contextual bandit experiment on MovieLens has a memorization issue (the agent learns a static mapping rather than exploring), which the authors acknowledge but do not resolve",
+          "Only Qwen models are tested; results may not generalize to other LLM architectures or sizes",
+          "The computational cost of RL training (500 iterations with 64 parallel environments) may be prohibitive for many practitioners, and the paper does not discuss efficiency trade-offs",
+          "Potential negative societal impacts are not discussed, though the setting (bandit tasks) has minimal direct societal risk; however, the broader implication that RL-trained LLM agents become exploitatively biased could have implications for deployed systems"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper investigates how SFT and RL training shape LLM exploration behavior in multi-armed bandit tasks. The key contributions are: (1) a systematic comparison of SFT vs. RL with different reward signals (original, strategic/regret-shaped, algorithmic/UCB-imitation), (2) behavioral analysis revealing that learned policies exhibit exploitative biases and can outperform their UCB teacher by adopting greedier variants, and (3) robust evaluation across distribution shifts and longer horizons.\n\nThe paper is technically solid with comprehensive experiments (7B and 3B models, multiple bandit families, generalization tests). The behavioral analysis is a notable strength—it moves beyond aggregate regret to examine failure modes like suffix failures and greedy tendencies. The finding that RL-ALG discovers a UCB variant with exploration term depending only on per-arm pulls (not total pulls) is insightful.\n\nWeaknesses: The paper is somewhat incremental, building on prior work (Nie et al., Schmied et al.) without a fundamentally new method. The strategic reward (regret-shaped) shows limited benefit over original rewards in some settings. The contextual bandit experiment is relegated to appendix and has acknowledged limitations (memorization issue). The analysis of \"emergent exploitation bias\" is interesting but could be deeper—e.g., what mechanisms drive this? The paper doesn't propose a solution to the greediness problem, only identifies it. Statistical significance of differences between methods is not rigorously established (boxplots only). The claim about \"outperforming teacher\" is interesting but the mechanism (greedier variants) is somewhat expected given RL optimizes for reward, not fidelity.\n\nOverall, this is a well-executed empirical study with meaningful insights, but it's more confirmatory than groundbreaking. The behavioral analysis is the most valuable contribution. I'd lean toward acceptance given the thoroughness and the practical implications for training LLM agents.\n\nFor the review: Originality 3 (medium-high, novel reward designs and behavioral analysis), Quality 3 (good, thorough but some statistical rigor missing), Clarity 3 (good, well-organized but dense), Significance 3 (good, useful insights for LLM agent training). Overall around 7 (Accept).\n\nSoundness: 3 (good). Presentation: 3 (good). Contribution: 3 (good).\n\nQuestions: about statistical significance, the mechanism of greediness, comparison with prior work's RL results, sensitivity to UCB constant, and whether the observed greediness is specific to LLMs or general to RL agents.\n\nLimitations: no proposed solution to greediness, limited to simple bandit tasks, contextual bandit results have memorization issues, potential negative impact not discussed (though minimal for this setting).\n\nEthical concerns: none significant.\n\nDecision: Accept.REVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper presents a systematic study of how Supervised Fine-Tuning (SFT) and Reinforcement Learning (RL) shape exploration strategies of Large Language Models (LLMs) in multi-armed bandit (MAB) tasks. The authors train Qwen 2.5 3B/7B models using SFT on UCB expert trajectories and RL with three reward signals: original bandit rewards (RL-OG), strategic regret-shaped rewards (RL-STG), and algorithmic rewards that provide binary imitation signals from a UCB oracle (RL-ALG). They evaluate performance on in-distribution and out-of-distribution bandit environments, including generalization to longer horizons (6×) and larger action spaces. The key findings are: (1) trained agents achieve performance comparable to theoretical baselines like UCB and Thompson Sampling; (2) RL-ALG and SFT consistently outperform RL-OG; (3) behavioral analysis reveals that learned policies develop exploitative biases, showing higher suffix failure rates and greedy tendencies; (4) RL-ALG agents discover UCB variants with per-arm exploration terms that allow premature abandonment of exploration, enabling them to outperform their UCB teacher in some settings; (5) SFT policies show fragile OOD generalization due to arithmetic degradation on unseen reward ranges. The paper advocates for tailored reward design and evaluation beyond average regret to promote robust exploration.\",\n  \"Strengths\": [\n    \"Comprehensive empirical study comparing SFT and multiple RL reward designs (original, strategic, algorithmic) across two model sizes and diverse bandit environments\",\n    \"Novel reward designs: regret-shaped strategic reward and algorithmic (UCB-imitation) reward, with clear motivation and theoretical justification for the strategic reward as variance reduction\",\n    \"Behavioral analysis goes beyond aggregate regret to reveal mechanism-level differences (suffix failures, greedy tendencies, bimodal best-arm distributions), providing important insights into failure modes of trained LLM agents\",\n    \"Demonstration that RL-ALG agents discover exploitative UCB variants (e.g., exploration term depending only on per-arm pulls) and can outperform their teacher, with supporting rationale analysis\",\n    \"Robust evaluation including 6× length generalization, OOD distribution shifts, and scaling to 10 arms\",\n    \"Clear presentation of the two-level MDP formulation for token-level PPO with dual (γ, λ) GAE\",\n    \"Reproducibility details provided in appendices (hyperparameters, environments, training configurations)\"\n  ],\n  \"Weaknesses\": [\n    \"The paper is largely confirmatory of prior findings (e.g., SFT works well, RL is harder) rather than introducing fundamentally new methods; the main novelty is the behavioral analysis\",\n    \"Statistical significance of differences between methods is not rigorously established—only boxplots with medians/IQRs are shown, no confidence intervals or hypothesis tests\",\n    \"The strategic reward (RL-STG) shows limited benefit over RL-OG in many settings, and its OOD generalization is actually worse, weakening the claim of its advantage\",\n    \"The contextual bandit experiment (MovieLens) is relegated to the appendix and has acknowledged memorization issues, limiting its contribution\",\n    \"The paper identifies the exploitation bias problem but does not propose or test any mitigation strategies, leaving the work somewhat incomplete\",\n    \"The claim that 'RL policies yield more robust generalization compared to SFT' is nuanced—RL-OG and RL-STG show worse OOD generalization in several cases, and only RL-ALG is consistently robust\",\n    \"The analysis of why greediness emerges is somewhat high-level; a deeper investigation (e.g., ablations on reward shaping, exploration bonuses) would strengthen the conclusions\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How statistically significant are the differences between the methods (e.g., RL-ALG vs SFT vs RL-STG) in the cumulative regret comparisons? Are the observed differences consistent across random seeds, and have you considered reporting confidence intervals or performing significance tests?\",\n    \"The paper shows that RL-ALG agents discover a UCB variant with exploration term sqrt(log(N_t(a)+1)/N_t(a)). What is the theoretical regret of this variant? Does it have known sublinear regret guarantees, or does it suffer linear regret in some cases?\",\n    \"You mention that the greedy bias emerges due to 'imbalance in training data where sparse exploration signals are overwhelmed by frequent exploitation.' Could you elaborate on what specific mechanisms in the PPO objective or reward design drive this? Would adding an exploration bonus (e.g., count-based or information-gain-based) mitigate this?\",\n    \"How sensitive are the results to the UCB exploration constant C=0.5 used for the teacher? Would a more exploratory teacher (e.g., C=1.0 or C=2.0) change the exploitation bias of the learned policies?\",\n    \"For the SFT policy trained on Bernoulli5_Uniform, you observe catastrophic forgetting of negative reward arithmetic. Is this specific to Qwen models, or have you tested other base models? Could mixed training data with negative rewards (even if not from the training distribution) alleviate this?\",\n    \"The 3B model fails to learn with RL-OG/RL-STG but succeeds with RL-ALG. Is this purely a credit assignment issue, or could it be due to optimization instability (e.g., value function divergence)? Have you analyzed the value loss or advantage estimates during training?\",\n    \"In Figure 6, the best-arm histogram for learned policies becomes bimodal. Does this bimodality correlate with the suffix failure metric, or are these capturing different failure modes?\",\n    \"You evaluate at horizon 300 for generalization, but training is at 50. Have you tested even longer horizons (e.g., 1000) to see if the greedy bias leads to eventual linear regret?\"\n  ],\n  \"Limitations\": [\n    \"The study is limited to simple MAB tasks; real-world sequential decision-making problems are more complex, and the findings may not directly transfer\",\n    \"The paper identifies the exploitation bias but does not propose concrete solutions or mitigation strategies, limiting its practical impact\",\n    \"The contextual bandit experiment on MovieLens has a memorization issue (the agent learns a static mapping rather than exploring), which the authors acknowledge but do not resolve\",\n    \"Only Qwen models are tested; results may not generalize to other LLM architectures or sizes\",\n    \"The computational cost of RL training (500 iterations with 64 parallel environments) may be prohibitive for many practitioners, and the paper does not discuss efficiency trade-offs\",\n    \"Potential negative societal impacts are not discussed, though the setting (bandit tasks) has minimal direct societal risk; however, the broader implication that RL-trained LLM agents become exploitatively biased could have implications for deployed systems\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 30776,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 28984,
+        "completion_tokens": 2067,
+        "reasoning_tokens": 0,
+        "total_tokens": 32843
+      },
+      "attempts": 1,
+      "response_id": "1b30af5d-d2a4-48ae-a1f4-16751ccb1dd7"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "This paper presents a systematic study of how supervised fine-tuning (SFT) and reinforcement learning (RL) shape exploration strategies in Large Language Models (LLMs) for multi-armed bandit (MAB) tasks. The authors train Qwen 2.5 3B and 7B models using SFT on UCB expert trajectories and RL with three reward signals: original stochastic rewards (RL-OG), a strategic regret-shaped reward (RL-STG), and an algorithmic oracle-imitation reward (RL-ALG). They evaluate performance on in-distribution and out-of-distribution environments, including length generalization to 6× longer horizons and generalization to larger action spaces. Key contributions include: (1) a unified comparison of SFT and RL training paradigms for meta-bandit LLM agents, (2) two novel reward designs that improve training efficiency and performance, (3) robust generalization results across bandit families, and (4) a behavioral analysis revealing that learned policies exhibit emergent exploitation bias—they achieve lower average regret but are more prone to premature abandonment of exploration and catastrophic failure. The paper shows that imitation learning policies can outperform their UCB teacher by adopting greedier variants of the algorithm, highlighting the need for evaluation beyond average regret.",
+        "Strengths": [
+          "Novel systematic comparison of SFT vs RL paradigms for training LLMs as meta-bandit agents, moving beyond prior work that studied each in isolation",
+          "Introduction of two principled reward designs—strategic (regret-shaped) and algorithmic (oracle-imitation) rewards—that improve over existing baselines and are well-motivated",
+          "Comprehensive experimental evaluation across multiple environments (Gaussian and Bernoulli families), model sizes (3B and 7B), and evaluation protocols including OOD generalization, length generalization, and scaling to larger action spaces",
+          "Insightful behavioral analysis revealing emergent exploitation bias in learned policies, including the finding that RL-ALG policies can outperform their UCB teacher by discovering greedier UCB variants",
+          "Clear and honest discussion of limitations, including the contextual bandit experiment caveats and the fragility of SFT generalization",
+          "Reproducibility considerations with detailed hyperparameters and commitment to releasing code and data"
+        ],
+        "Weaknesses": [
+          "The paper is primarily empirical with limited theoretical analysis of why the emergent exploitation bias occurs; a theoretical framework or analysis of the credit assignment issue would strengthen the contribution",
+          "The claim that RL policies generalize more robustly than SFT is nuanced and depends on the specific environment and metric; in some cases (e.g., Bernoulli-trained policies), SFT shows competitive or better OOD performance",
+          "The contextual bandit experiment in the appendix reveals that the approach can rely on memorization rather than genuine in-context learning in that setting, which somewhat undermines the generalizability claims of the main text",
+          "The analysis of RL-ALG discovering 'UCB variants' is based on inspection of generated rationales, which may not perfectly reflect the actual policy behavior; more rigorous analysis of policy behavior would be valuable",
+          "Evaluation is limited to relatively small models (3B, 7B) and simple bandit environments; scaling to larger models (e.g., 70B+) and more complex sequential decision-making tasks is unclear",
+          "The paper could benefit from more discussion of practical implications—when should practitioners prefer SFT vs RL, and what interventions could mitigate the emergent exploitation bias"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "The paper claims that RL policies generalize more robustly than SFT, but the results show this depends on the specific setting. Could you clarify under what conditions each paradigm is preferable? For instance, is RL-ALG always the best choice, or are there scenarios where SFT is more reliable?",
+          "The behavioral analysis of RL-ALG discovering UCB variants is based on generated rationales. How confident are you that these rationales accurately reflect the policy's decision-making process? Could the model be using different internal heuristics that happen to correlate with the stated formulas?",
+          "The emergent exploitation bias is attributed to the imbalance between exploration and exploitation signals in training data. Have you considered interventions to mitigate this, such as reweighting experiences based on information gain or using curriculum-based training? What preliminary results, if any, do you have on such interventions?",
+          "The contextual bandit experiment shows that the model can rely on memorization rather than genuine in-context learning. How does this affect the interpretation of the MAB results? Could similar memorization effects be present in the MAB setting, particularly for the Bernoulli-trained policies?",
+          "The paper uses a fixed UCB exploration constant C=0.5 for both training and evaluation. How sensitive are the results to this choice? Would different values of C lead to different conclusions about the emergent exploitation bias?",
+          "The 3B model fails to learn from environmental feedback (RL-OG and RL-STG) but can learn with teacher guidance. What is the minimum model scale needed for effective RL training on task rewards, and how does this relate to the credit assignment challenges discussed?",
+          "The suffix failure rate analysis shows that learned policies have higher failure rates than baselines. Could you provide more granular analysis of when these failures occur and what triggers them? For example, do failures correlate with specific reward patterns or action histories?"
+        ],
+        "Limitations": [
+          "The paper focuses on simple MAB environments and does not address more complex sequential decision-making tasks (e.g., contextual bandits with richer features, RLHF-style problems), limiting the generalizability of the findings",
+          "The contextual bandit experiment in the appendix reveals that the approach can rely on memorization rather than genuine in-context learning, raising questions about the robustness of the training approach in more realistic settings",
+          "The emergent exploitation bias is identified but not fully addressed; the paper does not propose concrete solutions to mitigate this issue, which could be a significant practical limitation",
+          "The evaluation is limited to Qwen 2.5 models (3B and 7B); results may not transfer to other model families or larger scales",
+          "Potential negative societal impact: if these training methods are applied to real-world LLM agents (e.g., recommendation systems, autonomous decision-making), the emergent exploitation bias could lead to premature abandonment of exploration and suboptimal long-term outcomes, potentially causing harm in high-stakes applications. The paper does not explicitly discuss this societal implication"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper investigates how SFT and RL training shape exploration strategies in LLMs for multi-armed bandit tasks. The authors train Qwen 2.5 3B and 7B models using SFT on UCB expert trajectories and RL with different reward signals (original, strategic/regret-shaped, and algorithmic/oracle-imitation), then evaluate performance and generalization, and analyze behavioral patterns.\n\nKey strengths:\n- Novel systematic comparison of SFT vs RL paradigms for meta-bandit LLM training, moving beyond simple performance metrics to behavioral analysis\n- Introduction of two principled reward designs (strategic/regret-shaped and algorithmic/oracle-imitation) that improve over prior baselines\n- Robust experimental setup with multiple environments, model sizes, and evaluation protocols including OOD generalization and length generalization\n- Insightful behavioral analysis revealing emergent exploitation bias in learned policies, including the finding that imitation learning can outperform the teacher by adopting greedier variants\n- Good discussion of limitations and contextual bandit generalization\n\nKey weaknesses:\n- Limited theoretical analysis of why the emergent exploitation bias occurs; the paper is primarily empirical\n- The claim that RL policies generalize more robustly than SFT is somewhat nuanced and depends on the specific environment and metric\n- The contextual bandit experiment in the appendix reveals limitations of the approach in that setting, which could undermine the generalizability claims\n- The analysis of RL-ALG discovering \"UCB variants\" is based on rationale inspection, which may not perfectly reflect actual policy behavior\n- Evaluation is limited to relatively small models (3B, 7B) and simple bandit environments; scaling to larger models and more complex tasks is unclear\n- The paper could benefit from more discussion of practical implications and when each training paradigm is preferable in real-world applications\n\nOverall, this is a solid empirical contribution with novel insights into LLM exploration behavior. The behavioral analysis is particularly valuable and could inform future work on training more robust exploration policies. The paper is well-written and the experiments are thorough. However, the lack of theoretical grounding and the limitations of the contextual bandit experiment are notable weaknesses.\n\nI rate this as a strong accept (7/10), as the paper makes a meaningful contribution to understanding LLM training for sequential decision-making, with good experimental methodology and insightful behavioral analysis. The findings about emergent exploitation bias are important and could have significant implications for training LLM agents.REVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper presents a systematic study of how supervised fine-tuning (SFT) and reinforcement learning (RL) shape exploration strategies in Large Language Models (LLMs) for multi-armed bandit (MAB) tasks. The authors train Qwen 2.5 3B and 7B models using SFT on UCB expert trajectories and RL with three reward signals: original stochastic rewards (RL-OG), a strategic regret-shaped reward (RL-STG), and an algorithmic oracle-imitation reward (RL-ALG). They evaluate performance on in-distribution and out-of-distribution environments, including length generalization to 6× longer horizons and generalization to larger action spaces. Key contributions include: (1) a unified comparison of SFT and RL training paradigms for meta-bandit LLM agents, (2) two novel reward designs that improve training efficiency and performance, (3) robust generalization results across bandit families, and (4) a behavioral analysis revealing that learned policies exhibit emergent exploitation bias—they achieve lower average regret but are more prone to premature abandonment of exploration and catastrophic failure. The paper shows that imitation learning policies can outperform their UCB teacher by adopting greedier variants of the algorithm, highlighting the need for evaluation beyond average regret.\",\n  \"Strengths\": [\n    \"Novel systematic comparison of SFT vs RL paradigms for training LLMs as meta-bandit agents, moving beyond prior work that studied each in isolation\",\n    \"Introduction of two principled reward designs—strategic (regret-shaped) and algorithmic (oracle-imitation) rewards—that improve over existing baselines and are well-motivated\",\n    \"Comprehensive experimental evaluation across multiple environments (Gaussian and Bernoulli families), model sizes (3B and 7B), and evaluation protocols including OOD generalization, length generalization, and scaling to larger action spaces\",\n    \"Insightful behavioral analysis revealing emergent exploitation bias in learned policies, including the finding that RL-ALG policies can outperform their UCB teacher by discovering greedier UCB variants\",\n    \"Clear and honest discussion of limitations, including the contextual bandit experiment caveats and the fragility of SFT generalization\",\n    \"Reproducibility considerations with detailed hyperparameters and commitment to releasing code and data\"\n  ],\n  \"Weaknesses\": [\n    \"The paper is primarily empirical with limited theoretical analysis of why the emergent exploitation bias occurs; a theoretical framework or analysis of the credit assignment issue would strengthen the contribution\",\n    \"The claim that RL policies generalize more robustly than SFT is nuanced and depends on the specific environment and metric; in some cases (e.g., Bernoulli-trained policies), SFT shows competitive or better OOD performance\",\n    \"The contextual bandit experiment in the appendix reveals that the approach can rely on memorization rather than genuine in-context learning in that setting, which somewhat undermines the generalizability claims of the main text\",\n    \"The analysis of RL-ALG discovering 'UCB variants' is based on inspection of generated rationales, which may not perfectly reflect the actual policy behavior; more rigorous analysis of policy behavior would be valuable\",\n    \"Evaluation is limited to relatively small models (3B, 7B) and simple bandit environments; scaling to larger models (e.g., 70B+) and more complex sequential decision-making tasks is unclear\",\n    \"The paper could benefit from more discussion of practical implications—when should practitioners prefer SFT vs RL, and what interventions could mitigate the emergent exploitation bias\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 4,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"The paper claims that RL policies generalize more robustly than SFT, but the results show this depends on the specific setting. Could you clarify under what conditions each paradigm is preferable? For instance, is RL-ALG always the best choice, or are there scenarios where SFT is more reliable?\",\n    \"The behavioral analysis of RL-ALG discovering UCB variants is based on generated rationales. How confident are you that these rationales accurately reflect the policy's decision-making process? Could the model be using different internal heuristics that happen to correlate with the stated formulas?\",\n    \"The emergent exploitation bias is attributed to the imbalance between exploration and exploitation signals in training data. Have you considered interventions to mitigate this, such as reweighting experiences based on information gain or using curriculum-based training? What preliminary results, if any, do you have on such interventions?\",\n    \"The contextual bandit experiment shows that the model can rely on memorization rather than genuine in-context learning. How does this affect the interpretation of the MAB results? Could similar memorization effects be present in the MAB setting, particularly for the Bernoulli-trained policies?\",\n    \"The paper uses a fixed UCB exploration constant C=0.5 for both training and evaluation. How sensitive are the results to this choice? Would different values of C lead to different conclusions about the emergent exploitation bias?\",\n    \"The 3B model fails to learn from environmental feedback (RL-OG and RL-STG) but can learn with teacher guidance. What is the minimum model scale needed for effective RL training on task rewards, and how does this relate to the credit assignment challenges discussed?\",\n    \"The suffix failure rate analysis shows that learned policies have higher failure rates than baselines. Could you provide more granular analysis of when these failures occur and what triggers them? For example, do failures correlate with specific reward patterns or action histories?\"\n  ],\n  \"Limitations\": [\n    \"The paper focuses on simple MAB environments and does not address more complex sequential decision-making tasks (e.g., contextual bandits with richer features, RLHF-style problems), limiting the generalizability of the findings\",\n    \"The contextual bandit experiment in the appendix reveals that the approach can rely on memorization rather than genuine in-context learning, raising questions about the robustness of the training approach in more realistic settings\",\n    \"The emergent exploitation bias is identified but not fully addressed; the paper does not propose concrete solutions to mitigate this issue, which could be a significant practical limitation\",\n    \"The evaluation is limited to Qwen 2.5 models (3B and 7B); results may not transfer to other model families or larger scales\",\n    \"Potential negative societal impact: if these training methods are applied to real-world LLM agents (e.g., recommendation systems, autonomous decision-making), the emergent exploitation bias could lead to premature abandonment of exploration and suboptimal long-term outcomes, potentially causing harm in high-stakes applications. The paper does not explicitly discuss this societal implication\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 4,\n  \"Contribution\": 3,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 30776,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 28984,
+        "completion_tokens": 1920,
+        "reasoning_tokens": 0,
+        "total_tokens": 32696
+      },
+      "attempts": 1,
+      "response_id": "bf765c63-bfd5-4270-91fa-9d3a0e1d2419"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "This paper investigates how supervised fine-tuning (SFT) and reinforcement learning (RL) shape exploration behavior in LLMs on multi-armed bandit tasks. The authors train Qwen 2.5 3B/7B models using SFT on UCB trajectories, RL with original environmental rewards, RL with regret-shaped strategic rewards, and RL with algorithmic rewards that provide oracle-matching binary signals. They evaluate in-distribution and out-of-distribution performance, length generalization (6x horizon), and generalization to larger action spaces. Beyond aggregate regret, they perform behavioral analysis using metrics like suffix failure rates, greedy frequency, and match rates against oracle decisions. Key findings include: (1) RL/ SFT agents achieve performance comparable to UCB/TS, (2) RL policies generalize more robustly than SFT, (3) learned policies often exhibit exploitative behavior, prematurely abandoning exploration, (4) RL-ALG agents learn UCB variants that outperform the teacher by being greedier, and (5) SFT policies can suffer from catastrophic forgetting of arithmetic skills when generalizing across distributions. The paper contributes a systematic comparison of training paradigms, novel reward designs, and behavioral diagnostics for evaluating exploration quality.",
+        "Strengths": [
+          "Systematic comparison of SFT and multiple RL reward designs (original, regret-shaped, algorithmic) on a unified benchmark",
+          "Novel reward designs: regret-shaped reward for variance reduction and algorithmic reward for oracle imitation via RL, with clear motivation",
+          "Behavioral analysis beyond aggregate regret (suffix failures, match rates, rationale inspection) reveals subtle failure modes that average metrics miss",
+          "Comprehensive evaluation: length generalization, OOD transfer across distribution families, larger action spaces, multiple model sizes",
+          "Honest and nuanced discussion of limitations, including the contextual bandit caveat and small-model failures",
+          "Reproducibility considerations: code release, hyperparameter details, checkpoint selection protocol"
+        ],
+        "Weaknesses": [
+          "The core finding of 'emergent exploitation bias' is somewhat expected given RL's reward maximization objective; novelty is moderate",
+          "Statistical rigor is limited: only 64 evaluation episodes, no significance tests or confidence intervals on many key metrics",
+          "The claim that 'RL policies generalize more robustly than SFT' is nuanced and not consistently supported across all environments (e.g., SFT is competitive in some OOD settings)",
+          "SFT generalization failures are attributed to arithmetic errors, but this is largely qualitative/anecdotal without systematic error analysis",
+          "Contextual bandit experiment is limited (single instance, memorization concerns) and somewhat undermines the main contribution by showing RL-ALG underperforms there",
+          "The analysis of why RL-ALG outperforms its teacher relies on qualitative rationale inspection; more quantitative evidence (e.g., controlled ablations) would strengthen the claim",
+          "Some implementation details (e.g., exact value function architecture, KL penalty omission justification) could be clearer"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "1. How sensitive are the results to the number of evaluation episodes (64)? Have you considered reporting confidence intervals or running significance tests (e.g., bootstrap) for the key regret comparisons?",
+          "2. The RL-ALG policy outperforms the UCB teacher in several environments. Could this be due to the specific choice of UCB exploration constant (C=0.5)? Would a better-tuned teacher (e.g., C optimized per environment) still be outperformed?",
+          "3. For the SFT arithmetic failure analysis, could you quantify the error rates more systematically (e.g., error distribution across operation types) and show whether this is a known limitation of Qwen models?",
+          "4. The paper claims RL policies generalize more robustly than SFT. However, in Figure 3, SFT trained on Gaussian appears competitive in Bernoulli environments. Could you clarify the specific conditions under which RL is more robust?",
+          "5. How does the choice of prompt summary (sufficient statistics vs. raw history) interact with the training paradigms? Would the exploitation bias be reduced with a different observation format?",
+          "6. The strategic reward (RL-STG) is claimed to reduce variance without altering the optimal policy. Could you provide theoretical justification or empirical evidence (e.g., training curves showing variance reduction)?",
+          "7. For the contextual bandit experiment, the RL-ALG underperformance is attributed to task complexity. Could you elaborate on how the algorithmic reward could be adapted to handle more complex oracle policies?",
+          "8. Have you explored the effect of the KL penalty omission? Could adding a KL term to the PPO objective mitigate the exploitation bias?"
+        ],
+        "Limitations": [
+          "The study is limited to simple MAB tasks; conclusions may not generalize to more complex sequential decision-making problems",
+          "Only two base models (Qwen 2.5 3B/7B) are evaluated; results may differ for other architectures or scales",
+          "The contextual bandit experiment is acknowledged as limited due to memorization concerns, but this limits the scope of the claims",
+          "The behavioral analysis relies on surrogate metrics (suffix failures, match rates) that may not fully capture exploration quality",
+          "Potential negative societal impact is not explicitly discussed, though the work is foundational and low-risk",
+          "The paper does not address potential biases in reward design or evaluation that could favor particular training paradigms"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper investigates how SFT and RL shape exploration behavior in LLMs on multi-armed bandit tasks. The authors train Qwen 2.5 3B/7B models using SFT on UCB trajectories, RL with original rewards, RL with regret-shaped rewards, and RL with algorithmic (oracle-matching) rewards. They evaluate in-distribution and out-of-distribution performance, length generalization, and behavioral metrics like suffix failure rates.\n\nStrengths:\n- Systematic comparison of SFT vs. multiple RL reward designs\n- Novel reward designs (regret-shaped, algorithmic) with clear motivation\n- Behavioral analysis beyond aggregate regret (suffix failures, match rates, rationales)\n- Good generalization evaluation (6x horizon, OOD, larger action spaces)\n- Honest discussion of limitations (small models, contextual bandit caveats)\n\nWeaknesses:\n- The \"emergent exploitation bias\" finding is somewhat expected given RL's reward maximization; novelty is moderate\n- Statistical rigor limited: only 64 episodes, no significance tests reported\n- The algorithmic reward (RL-ALG) essentially does imitation learning via RL, so outperforming the teacher is interesting but the mechanism (greedy variants) is qualitatively analyzed\n- SFT generalization failures are attributed to arithmetic errors, but this is somewhat anecdotal\n- Contextual bandit experiment is limited and frankly undermines the main contribution by showing RL-ALG underperforms there\n- Some claims like \"RL policies generalize more robustly than SFT\" are nuanced and not consistently supported across all environments\n- The paper is well-written but some details (e.g., exact PPO implementation, value function details) need more clarity\n\nOriginality: The combination of reward designs and behavioral analysis is somewhat novel, but builds heavily on prior work (Nie et al., Schmied et al., Krishnamurthy et al.). The finding that imitation policies outperform their teacher via exploitative variants is interesting.\n\nQuality: Technically sound overall. The experimental setup is reasonable, but statistical rigor is limited (no error bars on many metrics, no significance testing). The behavioral analysis is thoughtful but sometimes qualitative.\n\nClarity: Well-written and organized. The methodology is explained with sufficient detail. Figures are informative.\n\nSignificance: Moderate. The findings are useful for practitioners training LLM agents, but the MAB setting is simple and the conclusions may not generalize to more complex tasks. The behavioral insights (exploitation bias, SFT arithmetic fragility) are valuable.\n\nOverall: I lean towards accept. The paper is solid, addresses an important question, and provides useful insights. However, the novelty is moderate and the statistical rigor could be improved. The main contribution is the behavioral analysis revealing exploitation bias, which is a cautionary tale for LLM agent training.\n\nDecision: Accept (borderline but justifiable given the insights and thorough evaluation)\n\nConfidence: 4 (I'm fairly confident but not an expert on all related work)\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper investigates how supervised fine-tuning (SFT) and reinforcement learning (RL) shape exploration behavior in LLMs on multi-armed bandit tasks. The authors train Qwen 2.5 3B/7B models using SFT on UCB trajectories, RL with original environmental rewards, RL with regret-shaped strategic rewards, and RL with algorithmic rewards that provide oracle-matching binary signals. They evaluate in-distribution and out-of-distribution performance, length generalization (6x horizon), and generalization to larger action spaces. Beyond aggregate regret, they perform behavioral analysis using metrics like suffix failure rates, greedy frequency, and match rates against oracle decisions. Key findings include: (1) RL/ SFT agents achieve performance comparable to UCB/TS, (2) RL policies generalize more robustly than SFT, (3) learned policies often exhibit exploitative behavior, prematurely abandoning exploration, (4) RL-ALG agents learn UCB variants that outperform the teacher by being greedier, and (5) SFT policies can suffer from catastrophic forgetting of arithmetic skills when generalizing across distributions. The paper contributes a systematic comparison of training paradigms, novel reward designs, and behavioral diagnostics for evaluating exploration quality.\",\n  \"Strengths\": [\n    \"Systematic comparison of SFT and multiple RL reward designs (original, regret-shaped, algorithmic) on a unified benchmark\",\n    \"Novel reward designs: regret-shaped reward for variance reduction and algorithmic reward for oracle imitation via RL, with clear motivation\",\n    \"Behavioral analysis beyond aggregate regret (suffix failures, match rates, rationale inspection) reveals subtle failure modes that average metrics miss\",\n    \"Comprehensive evaluation: length generalization, OOD transfer across distribution families, larger action spaces, multiple model sizes\",\n    \"Honest and nuanced discussion of limitations, including the contextual bandit caveat and small-model failures\",\n    \"Reproducibility considerations: code release, hyperparameter details, checkpoint selection protocol\"\n  ],\n  \"Weaknesses\": [\n    \"The core finding of 'emergent exploitation bias' is somewhat expected given RL's reward maximization objective; novelty is moderate\",\n    \"Statistical rigor is limited: only 64 evaluation episodes, no significance tests or confidence intervals on many key metrics\",\n    \"The claim that 'RL policies generalize more robustly than SFT' is nuanced and not consistently supported across all environments (e.g., SFT is competitive in some OOD settings)\",\n    \"SFT generalization failures are attributed to arithmetic errors, but this is largely qualitative/anecdotal without systematic error analysis\",\n    \"Contextual bandit experiment is limited (single instance, memorization concerns) and somewhat undermines the main contribution by showing RL-ALG underperforms there\",\n    \"The analysis of why RL-ALG outperforms its teacher relies on qualitative rationale inspection; more quantitative evidence (e.g., controlled ablations) would strengthen the claim\",\n    \"Some implementation details (e.g., exact value function architecture, KL penalty omission justification) could be clearer\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 4,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"1. How sensitive are the results to the number of evaluation episodes (64)? Have you considered reporting confidence intervals or running significance tests (e.g., bootstrap) for the key regret comparisons?\",\n    \"2. The RL-ALG policy outperforms the UCB teacher in several environments. Could this be due to the specific choice of UCB exploration constant (C=0.5)? Would a better-tuned teacher (e.g., C optimized per environment) still be outperformed?\",\n    \"3. For the SFT arithmetic failure analysis, could you quantify the error rates more systematically (e.g., error distribution across operation types) and show whether this is a known limitation of Qwen models?\",\n    \"4. The paper claims RL policies generalize more robustly than SFT. However, in Figure 3, SFT trained on Gaussian appears competitive in Bernoulli environments. Could you clarify the specific conditions under which RL is more robust?\",\n    \"5. How does the choice of prompt summary (sufficient statistics vs. raw history) interact with the training paradigms? Would the exploitation bias be reduced with a different observation format?\",\n    \"6. The strategic reward (RL-STG) is claimed to reduce variance without altering the optimal policy. Could you provide theoretical justification or empirical evidence (e.g., training curves showing variance reduction)?\",\n    \"7. For the contextual bandit experiment, the RL-ALG underperformance is attributed to task complexity. Could you elaborate on how the algorithmic reward could be adapted to handle more complex oracle policies?\",\n    \"8. Have you explored the effect of the KL penalty omission? Could adding a KL term to the PPO objective mitigate the exploitation bias?\"\n  ],\n  \"Limitations\": [\n    \"The study is limited to simple MAB tasks; conclusions may not generalize to more complex sequential decision-making problems\",\n    \"Only two base models (Qwen 2.5 3B/7B) are evaluated; results may differ for other architectures or scales\",\n    \"The contextual bandit experiment is acknowledged as limited due to memorization concerns, but this limits the scope of the claims\",\n    \"The behavioral analysis relies on surrogate metrics (suffix failures, match rates) that may not fully capture exploration quality\",\n    \"Potential negative societal impact is not explicitly discussed, though the work is foundational and low-risk\",\n    \"The paper does not address potential biases in reward design or evaluation that could favor particular training paradigms\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 4,\n  \"Contribution\": 3,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 30776,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 28984,
+        "completion_tokens": 1835,
+        "reasoning_tokens": 0,
+        "total_tokens": 32611
+      },
+      "attempts": 1,
+      "response_id": "49c86dea-bbb0-4b26-8d64-f0ce5d10fd26"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "This paper studies how supervised fine-tuning (SFT) and reinforcement learning (RL) shape exploration strategies in Large Language Models (LLMs) for multi-armed bandit (MAB) tasks. The authors train Qwen 2.5 3B/7B models using SFT on UCB expert trajectories and RL with three reward signals: original bandit rewards (RL-OG), regret-shaped strategic rewards (RL-STG), and binary oracle-imitation rewards (RL-ALG). They evaluate performance on multiple Gaussian and Bernoulli bandit environments, including length generalization (6× longer horizons) and out-of-distribution transfer. Their key findings are: (1) trained agents achieve performance comparable to classical baselines like UCB and Thompson Sampling; (2) RL-ALG and SFT consistently outperform reward-only RL; (3) RL policies generalize more robustly than SFT across distribution shifts; (4) behavioral analysis reveals that learned policies often adopt exploitative strategies - e.g., RL-ALG discovers a UCB variant with per-arm logarithmic terms that prematurely abandons exploration, and SFT policies exhibit arithmetic failures on OOD data. The paper concludes that while training improves average regret, it incentivizes short-sighted exploitation that can sacrifice long-term robustness, advocating for evaluation beyond aggregate regret.",
+        "Strengths": [
+          "Comprehensive experimental evaluation across diverse bandit environments (Gaussian, Bernoulli, various parameterizations), two model sizes (3B, 7B), and multiple training paradigms",
+          "Novel reward designs: strategic regret-shaped reward (RL-STG) and algorithmic oracle-imitation reward (RL-ALG) are well-motivated and show clear practical benefits",
+          "Valuable behavioral analysis that goes beyond average regret to reveal emergent exploitation bias - a critical and often overlooked failure mode",
+          "Honest assessment of limitations, including 3B model failures, SFT arithmetic degradation, and contextual bandit limitations",
+          "Good contextualization with prior work (Nie et al., Schmied et al., Krishnamurthy et al.) and clear positioning of novel contributions",
+          "Reproducibility details provided in appendices, including hyperparameters and implementation specifics",
+          "The finding that imitation agents can outperform their teacher (UCB) through learned exploitative variants is intriguing and well-documented"
+        ],
+        "Weaknesses": [
+          "Behavioral analysis relies heavily on qualitative inspection of LLM rationales, which may not fully reflect the true decision-making process; more rigorous quantitative analysis of the discovered UCB variants would strengthen claims",
+          "Lack of formal statistical significance testing - boxplots show distributions but no confidence intervals or hypothesis tests for key comparisons",
+          "The contextual bandit experiment on MovieLens is acknowledged as limited and the authors note the model may be memorizing rather than exploring; this section adds little to the main contributions",
+          "The 'emergent exploitation bias' finding, while interesting, is not deeply mechanistically explained - the paper describes the phenomenon but does not fully explain why RL training converges to these greedy variants",
+          "Limited investigation of how sensitive results are to hyperparameters (e.g., UCB exploration constant C=0.5, PPO settings) - the conclusions may not hold across different configurations",
+          "The paper only uses Qwen models; generalization to other LLM architectures is unclear",
+          "The length generalization claim (6× longer horizon) is based on 300 steps, which is still a relatively short horizon for bandit problems"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How statistically significant are the performance differences between methods? Have you considered reporting confidence intervals or conducting hypothesis tests (e.g., bootstrap or permutation tests) for key comparisons like RL-ALG vs SFT or RL-ALG vs UCB?",
+          "The claim that RL-ALG outperforms the UCB teacher is interesting. Is this consistent across all evaluation environments? What is the variance in this outperformance, and does it depend on the exploration constant C of the teacher?",
+          "For the discovery of the UCB variant (Qt(a) + C × sqrt(log(Nt(a)+1)/Nt(a))), how many rollouts were manually inspected? Could you provide a quantitative analysis of how often the policy follows this variant vs the oracle UCB across different environments?",
+          "How sensitive are your conclusions to the UCB exploration constant C=0.5? Would different values (e.g., C=0.2 or C=1.0) change the relative performance of the learned policies or the emergent exploitation findings?",
+          "The strategic reward (RL-STG) shows instability in OOD evaluation. Can you elaborate on the conditions under which RL-STG helps vs hurts? Is there a principled way to decide when to use regret-shaped rewards?",
+          "For the SFT arithmetic failure on negative rewards - is this specific to Qwen models or would other base models (e.g., Llama, Mistral) exhibit similar issues? Have you tested other base models?",
+          "Table 2 shows that all learned agents have higher suffix failure rates than baselines. Could you provide a more detailed analysis of when these failures occur (e.g., early vs late in episodes) and whether they correlate with specific environment characteristics?",
+          "The paper mentions that RL-ALG policies 'converge to templated heuristics.' Could you quantify the diversity of strategies across different seeds or training runs? Is the discovered UCB variant stable across runs?"
+        ],
+        "Limitations": [
+          "The paper only evaluates on Qwen 2.5 models; results may not generalize to other LLM architectures or sizes",
+          "The '6× longer horizon' evaluation is only 300 steps, which is relatively short for bandit problems where asymptotic behavior matters",
+          "The behavioral analysis relies on LLM-generated rationales, which may not accurately reflect the true decision-making process (LLMs can hallucinate reasoning)",
+          "The computational cost of training is not discussed, which could be a practical barrier for adoption",
+          "Potential negative societal impact of training LLMs to be more exploitative is not discussed - this could be relevant for deployment in interactive systems where user trust and long-term engagement matter",
+          "The paper acknowledges that the contextual bandit experiment is limited and the model may be memorizing rather than exploring; this limits the generalizability claims beyond simple MAB settings",
+          "The discovered UCB variants are analyzed qualitatively; more rigorous formal analysis of their regret bounds or convergence properties would strengthen the findings"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper investigates how SFT and RL training shape exploration strategies in LLMs for multi-armed bandit tasks. The authors train Qwen 2.5 3B/7B models using SFT on UCB expert trajectories and RL with various reward signals (original, strategic/regret-shaped, and algorithmic/oracle-imitation). They find that trained agents achieve performance comparable to UCB/TS, generalize to longer horizons and OOD environments, but behavioral analysis reveals they learn exploitative variants that can prematurely abandon exploration. Key contributions include: (1) systematic comparison of SFT vs RL paradigms, (2) novel reward designs (strategic and algorithmic), (3) behavioral analysis revealing emergent greediness, (4) finding that imitation agents can outperform their teacher.\n\nStrengths:\n- Comprehensive experimental setup with multiple environments (Gaussian, Bernoulli, various parameterizations), two model sizes (3B, 7B), and thorough evaluation including length generalization and OOD transfer\n- Novel reward designs (strategic regret-shaped, algorithmic oracle-imitation) that are well-motivated and show clear benefits\n- Important behavioral analysis going beyond aggregate regret to reveal exploitative tendencies - this is a valuable contribution\n- Good contextualization with related work (Nie et al., Schmied et al., Krishnamurthy et al.)\n- Honest about limitations and failures (e.g., 3B model struggles, SFT arithmetic failures)\n- Reproducibility details provided in appendix\n\nWeaknesses:\n- The behavioral analysis is somewhat superficial - the \"emergent exploitation bias\" finding is interesting but not deeply mechanistically explained\n- The claim that agents \"outperform their teacher\" is interesting but the analysis of why (UCB-var variant) is based on qualitative rationale inspection rather than rigorous quantitative analysis\n- Limited theoretical grounding - the paper is purely empirical\n- The contextual bandit experiment (MovieLens) is weak and the authors acknowledge it's limited\n- Statistical significance of some comparisons is unclear - boxplots show distributions but no formal significance testing\n- The reward design for RL-STG (strategic reward) seems straightforward but the paper doesn't deeply analyze when it helps vs hurts\n- The finding about SFT arithmetic failures is interesting but not deeply investigated\n\nOriginality: The paper presents a novel combination of ideas - applying RL with different reward signals to LLM bandit agents, and the behavioral analysis framework is valuable. The specific finding about learned exploitative UCB variants is novel. Rating: high (3)\n\nQuality: The experimental methodology is generally sound with comprehensive evaluations. However, some claims could be better supported (e.g., the mechanism behind outperforming the teacher). The paper is honest about limitations. Rating: good (3)\n\nClarity: The paper is well-written and organized. The methodology is clearly explained, and the behavioral analysis is presented in an accessible way. Some figures are dense but generally interpretable. Rating: good (3)\n\nSignificance: The finding that RL-trained agents develop exploitative strategies that sacrifice long-term robustness is important for the LLM agent community. The reward designs could be useful for practitioners. The paper advances understanding of how training paradigms shape exploration behavior. Rating: high (3)\n\nQuestions for authors:\n1. How statistically significant are the differences between methods? The boxplots show distributions but formal significance testing would strengthen claims.\n2. The claim that RL-ALG outperforms UCB teacher - is this consistent across all environments? What is the variance?\n3. Can you provide more quantitative evidence for the \"UCB-var\" discovery claim? How many rollouts were manually inspected?\n4. How sensitive are the results to the UCB exploration constant C=0.5? Would different values change the conclusions?\n5. The strategic reward RL-STG shows instability in OOD - can you elaborate on when this reward helps vs hurts?\n6. For the SFT arithmetic failure - is this specific to Qwen models or would other base models show similar issues?\n7. How does the performance compare to simply using the UCB policy directly without LLM? The paper shows learned agents match but don't clearly beat UCB in most cases.\n\nLimitations:\n- The paper acknowledges limitations but could be more thorough about:\n  - Single base model family (Qwen) - generalization to other LLMs unclear\n  - The \"6x longer horizon\" is only 300 steps, which is still quite short\n  - The behavioral analysis relies on qualitative inspection of rationales which may not reflect true decision processes\n  - Potential negative societal impact of training LLMs to be more exploitative is not discussed\n  - The computational cost of training is not discussed\n\nEthical concerns: No significant ethical issues. The work is basic research on LLM training.\n\nSoundness: The paper is technically sound with good experimental methodology. Claims are generally well-supported, though some behavioral analysis claims could be stronger. Rating: 3 (good)\n\nPresentation: Well-written and organized. Figures are informative. Rating: 3 (good)\n\nContribution: The paper makes a solid contribution to understanding LLM exploration behavior and training. The behavioral analysis framework is valuable. Rating: 3 (good)\n\nOverall: This is a solid paper with important findings about emergent exploitation bias in LLM training. The experimental work is comprehensive and the behavioral analysis is a valuable contribution. However, the paper is not groundbreaking - it builds on prior work and the main findings, while interesting, are somewhat expected (RL tends to exploit). The analysis could be deeper in places. I would rate this as a borderline accept - the work is solid but not exceptional. The behavioral findings are the most novel contribution and could be strengthened with more rigorous analysis.\n\nDecision: Accept (borderline, but the behavioral analysis and reward designs are valuable contributions to the community)\n\nConfidence: 4 (confident in assessment, familiar with related work)REVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper studies how supervised fine-tuning (SFT) and reinforcement learning (RL) shape exploration strategies in Large Language Models (LLMs) for multi-armed bandit (MAB) tasks. The authors train Qwen 2.5 3B/7B models using SFT on UCB expert trajectories and RL with three reward signals: original bandit rewards (RL-OG), regret-shaped strategic rewards (RL-STG), and binary oracle-imitation rewards (RL-ALG). They evaluate performance on multiple Gaussian and Bernoulli bandit environments, including length generalization (6× longer horizons) and out-of-distribution transfer. Their key findings are: (1) trained agents achieve performance comparable to classical baselines like UCB and Thompson Sampling; (2) RL-ALG and SFT consistently outperform reward-only RL; (3) RL policies generalize more robustly than SFT across distribution shifts; (4) behavioral analysis reveals that learned policies often adopt exploitative strategies - e.g., RL-ALG discovers a UCB variant with per-arm logarithmic terms that prematurely abandons exploration, and SFT policies exhibit arithmetic failures on OOD data. The paper concludes that while training improves average regret, it incentivizes short-sighted exploitation that can sacrifice long-term robustness, advocating for evaluation beyond aggregate regret.\",\n    \"Strengths\": [\n        \"Comprehensive experimental evaluation across diverse bandit environments (Gaussian, Bernoulli, various parameterizations), two model sizes (3B, 7B), and multiple training paradigms\",\n        \"Novel reward designs: strategic regret-shaped reward (RL-STG) and algorithmic oracle-imitation reward (RL-ALG) are well-motivated and show clear practical benefits\",\n        \"Valuable behavioral analysis that goes beyond average regret to reveal emergent exploitation bias - a critical and often overlooked failure mode\",\n        \"Honest assessment of limitations, including 3B model failures, SFT arithmetic degradation, and contextual bandit limitations\",\n        \"Good contextualization with prior work (Nie et al., Schmied et al., Krishnamurthy et al.) and clear positioning of novel contributions\",\n        \"Reproducibility details provided in appendices, including hyperparameters and implementation specifics\",\n        \"The finding that imitation agents can outperform their teacher (UCB) through learned exploitative variants is intriguing and well-documented\"\n    ],\n    \"Weaknesses\": [\n        \"Behavioral analysis relies heavily on qualitative inspection of LLM rationales, which may not fully reflect the true decision-making process; more rigorous quantitative analysis of the discovered UCB variants would strengthen claims\",\n        \"Lack of formal statistical significance testing - boxplots show distributions but no confidence intervals or hypothesis tests for key comparisons\",\n        \"The contextual bandit experiment on MovieLens is acknowledged as limited and the authors note the model may be memorizing rather than exploring; this section adds little to the main contributions\",\n        \"The 'emergent exploitation bias' finding, while interesting, is not deeply mechanistically explained - the paper describes the phenomenon but does not fully explain why RL training converges to these greedy variants\",\n        \"Limited investigation of how sensitive results are to hyperparameters (e.g., UCB exploration constant C=0.5, PPO settings) - the conclusions may not hold across different configurations\",\n        \"The paper only uses Qwen models; generalization to other LLM architectures is unclear\",\n        \"The length generalization claim (6× longer horizon) is based on 300 steps, which is still a relatively short horizon for bandit problems\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"How statistically significant are the performance differences between methods? Have you considered reporting confidence intervals or conducting hypothesis tests (e.g., bootstrap or permutation tests) for key comparisons like RL-ALG vs SFT or RL-ALG vs UCB?\",\n        \"The claim that RL-ALG outperforms the UCB teacher is interesting. Is this consistent across all evaluation environments? What is the variance in this outperformance, and does it depend on the exploration constant C of the teacher?\",\n        \"For the discovery of the UCB variant (Qt(a) + C × sqrt(log(Nt(a)+1)/Nt(a))), how many rollouts were manually inspected? Could you provide a quantitative analysis of how often the policy follows this variant vs the oracle UCB across different environments?\",\n        \"How sensitive are your conclusions to the UCB exploration constant C=0.5? Would different values (e.g., C=0.2 or C=1.0) change the relative performance of the learned policies or the emergent exploitation findings?\",\n        \"The strategic reward (RL-STG) shows instability in OOD evaluation. Can you elaborate on the conditions under which RL-STG helps vs hurts? Is there a principled way to decide when to use regret-shaped rewards?\",\n        \"For the SFT arithmetic failure on negative rewards - is this specific to Qwen models or would other base models (e.g., Llama, Mistral) exhibit similar issues? Have you tested other base models?\",\n        \"Table 2 shows that all learned agents have higher suffix failure rates than baselines. Could you provide a more detailed analysis of when these failures occur (e.g., early vs late in episodes) and whether they correlate with specific environment characteristics?\",\n        \"The paper mentions that RL-ALG policies 'converge to templated heuristics.' Could you quantify the diversity of strategies across different seeds or training runs? Is the discovered UCB variant stable across runs?\"\n    ],\n    \"Limitations\": [\n        \"The paper only evaluates on Qwen 2.5 models; results may not generalize to other LLM architectures or sizes\",\n        \"The '6× longer horizon' evaluation is only 300 steps, which is relatively short for bandit problems where asymptotic behavior matters\",\n        \"The behavioral analysis relies on LLM-generated rationales, which may not accurately reflect the true decision-making process (LLMs can hallucinate reasoning)\",\n        \"The computational cost of training is not discussed, which could be a practical barrier for adoption\",\n        \"Potential negative societal impact of training LLMs to be more exploitative is not discussed - this could be relevant for deployment in interactive systems where user trust and long-term engagement matter\",\n        \"The paper acknowledges that the contextual bandit experiment is limited and the model may be memorizing rather than exploring; this limits the generalizability claims beyond simple MAB settings\",\n        \"The discovered UCB variants are analyzed qualitatively; more rigorous formal analysis of their regret bounds or convergence properties would strengthen the findings\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 30776,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 28984,
+        "completion_tokens": 2653,
+        "reasoning_tokens": 0,
+        "total_tokens": 33429
+      },
+      "attempts": 1,
+      "response_id": "90c3a204-9df2-44b1-8f07-3dd7d3f0ba6f"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "This paper investigates how supervised fine-tuning (SFT) and reinforcement learning (RL) shape exploration behavior in Large Language Models (LLMs) on multi-armed bandit (MAB) tasks. The authors train Qwen 2.5 3B/7B models using SFT on UCB expert trajectories and RL with three reward signals: original stochastic rewards (RL-OG), regret-shaped strategic rewards (RL-STG), and binary algorithmic rewards for UCB imitation (RL-ALG). They evaluate on a range of Gaussian and Bernoulli bandit environments, testing in-distribution performance, length generalization (6x longer horizons), and out-of-distribution transfer. Key findings: (1) learned policies achieve regret comparable to classical baselines (UCB, Thompson Sampling), (2) RL-ALG and SFT outperform RL-OG, with RL-ALG matching or exceeding the UCB teacher's performance, (3) RL policies generalize more robustly than SFT, (4) behavioral analysis reveals that training induces 'emergent exploitation bias' - policies become greedier, with higher suffix failure rates and bimodal best-arm selection distributions, and RL-ALG agents learn exploitative UCB variants that can prematurely abandon exploration. The paper contributes a systematic comparison of training paradigms and novel reward designs, along with behavioral diagnostics beyond aggregate regret.",
+        "Strengths": [
+          "Systematic comparison of SFT and RL paradigms for LLM exploration training with multiple reward designs (original, strategic, algorithmic)",
+          "Behavioral analysis beyond aggregate regret reveals mechanistic differences (greedy tendencies, suffix failures, bimodal distributions, discovered UCB variants in rationales)",
+          "Comprehensive evaluation: 15 environment parameterizations, two model sizes, length generalization, and OOD transfer",
+          "Intriguing finding that RL-ALG agents outperform their UCB teacher by learning exploitative UCB variants",
+          "Honest about limitations (e.g., small model struggles, contextual bandit memorization) and provides detailed appendices"
+        ],
+        "Weaknesses": [
+          "Lack of statistical significance testing (no confidence intervals, error bars, or significance tests) for regret comparisons",
+          "The variance-reduction claim for RL-STG is not directly quantified",
+          "The exploitation bias analysis is descriptive; no causal intervention to demonstrate the mechanism or mitigate it",
+          "Contextual bandit experiment is limited and acknowledges memorization, weakening generalizability claims",
+          "Only 64 evaluation episodes, which may lead to noisy estimates without reported standard errors"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 4,
+        "Questions": [
+          "Have you computed confidence intervals or statistical significance tests for the regret comparisons in Figure 3? If not, how can readers be confident that differences between methods (e.g., RL-ALG vs SFT) are not due to noise?",
+          "Can you provide quantitative evidence (e.g., training reward variance, learning curves) that RL-STG reduces variance compared to RL-OG, as claimed?",
+          "Have you attempted any intervention to mitigate the emergent greediness (e.g., re-weighting exploration rewards, curriculum learning)? This would strengthen the causal claim about exploitation bias.",
+          "Why was UCB (C=0.5) chosen as the oracle? How sensitive are the results to the exploration constant or to using a different teacher (e.g., Thompson Sampling)?",
+          "With only 64 evaluation episodes, what are the standard errors of the regret estimates? Are the boxplot differences robust to this sample size?"
+        ],
+        "Limitations": [
+          "The paper adequately addresses most limitations (e.g., contextual bandit memorization, small model struggles), but could more explicitly discuss the potential negative societal impact of training LLMs to be greedier, which may be relevant for deployment in real-world decision-making systems (e.g., recommendation, resource allocation).",
+          "The evaluation is limited to relatively simple MAB tasks; scaling to more complex sequential decision-making (e.g., contextual bandits with rich features, RLHF-style tasks) is not demonstrated.",
+          "The computational cost of training (500 PPO iterations with 64 parallel environments) may limit reproducibility for researchers with fewer resources."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 4,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper investigates how SFT and RL training shape exploration behavior in LLMs on multi-armed bandit tasks. The authors train Qwen 2.5 3B/7B models using SFT on UCB expert trajectories and RL with three reward signals (original stochastic rewards, regret-shaped strategic rewards, and binary algorithmic rewards for UCB imitation). They find that learned policies match or exceed classical baselines like UCB and Thompson Sampling in terms of cumulative regret, generalize to 6x longer horizons and out-of-distribution environments, but exhibit \"emergent exploitation bias\" - they become greedier, with higher suffix failure rates and bimodal best-arm selection distributions compared to pre-trained models. A key finding is that RL-ALG agents learn UCB variants that can prematurely abandon exploration, sometimes outperforming the teacher UCB.\n\nStrengths:\n1. The paper provides a systematic, unified comparison of SFT and RL paradigms for training LLM exploration policies, with multiple reward designs (original, strategic, algorithmic).\n2. The behavioral analysis goes beyond aggregate regret to reveal mechanistic differences (greedy tendencies, suffix failures, bimodal distributions, UCB variants in rationales), which is a valuable contribution.\n3. The evaluation is thorough: multiple environments (Gaussian/Bernoulli families, 15 parameterizations), two model sizes (3B, 7B), length generalization (50→300), and OOD transfer.\n4. The finding that RL-ALG agents outperform their UCB teacher by learning exploitative UCB variants is intriguing and well-supported by match-rate analysis and rationale inspection.\n5. The paper is honest about limitations (e.g., small models struggle with RL, contextual bandit setup issues) and provides a clear conclusion.\n\nWeaknesses:\n1. The paper lacks statistical significance testing. Boxplots are shown, but no error bars or significance tests (e.g., bootstrap, t-tests) are reported for the regret comparisons. This makes it hard to judge whether differences between methods are meaningful.\n2. The \"strategic reward\" (RL-STG) claim of reducing variance is not directly evaluated; the paper shows it improves performance in Gaussian settings but doesn't quantify variance reduction in training.\n3. The analysis of \"emergent exploitation bias\" is somewhat descriptive; it would be stronger with a causal analysis or an intervention (e.g., re-weighting exploration signals) to demonstrate the mechanism.\n4. The contextual bandit experiment (Appendix D) is limited and the paper itself notes the memorization issue, which weakens the claim of generalizability beyond MAB.\n5. The number of evaluation episodes (64) is relatively small for LLM inference cost reasons, and the paper acknowledges this but doesn't provide confidence intervals.\n\nOriginality: The work is a novel combination of existing techniques (PPO with two-scale GAE, SFT on expert trajectories, multiple reward designs) applied to LLM bandit training. The behavioral analysis of emergent exploitation bias is a new contribution. The paper clearly differentiates from prior work (Nie et al., Schmied et al.) by focusing on mechanism rather than just performance.\n\nQuality: The paper is technically sound in its methodology. However, the lack of statistical rigor (no significance tests, no error bars) is a notable weakness. The claims about \"outperforming the teacher\" and \"robust generalization\" would be stronger with such analysis. The paper is honest about limitations and provides detailed appendices.\n\nClarity: The paper is well-written and organized. The methodology is clearly explained, especially the two-scale GAE and reward designs. Figures are informative. Minor issues: some notation is dense (e.g., the GAE product formula), and the distinction between RL-OG and RL-STG could be clearer in the main text.\n\nSignificance: The paper addresses an important problem (how to train LLMs to explore) and provides new insights into the failure modes of such training. The finding that imitation learning can lead to exploitative variants that outperform the teacher is significant for the RL community. The work is likely to be built upon by researchers studying LLM exploration and meta-bandit learning.\n\nQuestions for authors:\n1. Statistical significance: Did you compute confidence intervals or significance tests for the regret comparisons in Figure 3? If not, how can we be confident that differences between methods (e.g., RL-ALG vs SFT) are not due to noise?\n2. RL-STG variance: Can you provide quantitative evidence (e.g., training reward variance, learning curves) that RL-STG reduces variance compared to RL-OG, as claimed?\n3. Exploitation bias mechanism: Have you tried any intervention to mitigate the emergent greediness (e.g., re-weighting exploration rewards, curriculum learning)? This would strengthen the causal claim.\n4. Teacher choice: Why UCB (C=0.5) as the oracle? How sensitive are the results to the choice of exploration constant or the choice of teacher (e.g., Thompson Sampling)?\n5. Evaluation episodes: With only 64 episodes, what is the standard error of the regret estimates? Are the boxplot differences robust to this?\n\nLimitations:\n- The paper adequately addresses most limitations (e.g., contextual bandit memorization, small model struggles). However, it could more explicitly discuss the potential negative societal impact of training LLMs to be greedier, which might be relevant for deployment in real-world decision-making (e.g., recommendation systems). The paper mentions this implicitly in the conclusion but could be more explicit.\n\nEthical concerns: No significant ethical issues. The work is on training methods for bandit tasks, which is benign. The paper includes an LLM use disclosure.\n\nOverall assessment: The paper is a solid contribution to the study of LLM exploration training. It provides new insights and thorough evaluation. However, the lack of statistical rigor and some missing causal analysis prevent it from being a top-tier paper. I would rate it as a weak accept (borderline), with the main concerns being statistical significance and the depth of the exploitation bias analysis.\n\nDecision: Given the strengths (novel analysis, comprehensive evaluation) and weaknesses (statistical rigor), I lean toward Accept, but with reservations. The paper is technically sound and the findings are valuable, but the lack of significance testing is a notable gap. I'll rate overall as 6 (Weak Accept) and decision as Accept.\n\nConfidence: 4 - I'm confident in my assessment, having checked the methodology and results, but I haven't verified all math details.\n\nJSON:\n{\n  \"Summary\": \"This paper investigates how supervised fine-tuning (SFT) and reinforcement learning (RL) shape exploration behavior in Large Language Models (LLMs) on multi-armed bandit (MAB) tasks. The authors train Qwen 2.5 3B/7B models using SFT on UCB expert trajectories and RL with three reward signals: original stochastic rewards (RL-OG), regret-shaped strategic rewards (RL-STG), and binary algorithmic rewards for UCB imitation (RL-ALG). They evaluate on a range of Gaussian and Bernoulli bandit environments, testing in-distribution performance, length generalization (6x longer horizons), and out-of-distribution transfer. Key findings: (1) learned policies achieve regret comparable to classical baselines (UCB, Thompson Sampling), (2) RL-ALG and SFT outperform RL-OG, with RL-ALG matching or exceeding the UCB teacher's performance, (3) RL policies generalize more robustly than SFT, (4) behavioral analysis reveals that training induces 'emergent exploitation bias' - policies become greedier, with higher suffix failure rates and bimodal best-arm selection distributions, and RL-ALG agents learn exploitative UCB variants that can prematurely abandon exploration. The paper contributes a systematic comparison of training paradigms and novel reward designs, along with behavioral diagnostics beyond aggregate regret.\",\n  \"Strengths\": [\n    \"Systematic comparison of SFT and RL paradigms for LLM exploration training with multiple reward designs (original, strategic, algorithmic)\",\n    \"Behavioral analysis beyond aggregate regret reveals mechanistic differences (greedy tendencies, suffix failures, bimodal distributions, discovered UCB variants in rationales)\",\n    \"Comprehensive evaluation: 15 environment parameterizations, two model sizes, length generalization, and OOD transfer\",\n    \"Intriguing finding that RL-ALG agents outperform their UCB teacher by learning exploitative UCB variants\",\n    \"Honest about limitations (e.g., small model struggles, contextual bandit memorization) and provides detailed appendices\"\n  ],\n  \"Weaknesses\": [\n    \"Lack of statistical significance testing (no confidence intervals, error bars, or significance tests) for regret comparisons\",\n    \"The variance-reduction claim for RL-STG is not directly quantified\",\n    \"The exploitation bias analysis is descriptive; no causal intervention to demonstrate the mechanism or mitigate it\",\n    \"Contextual bandit experiment is limited and acknowledges memorization, weakening generalizability claims\",\n    \"Only 64 evaluation episodes, which may lead to noisy estimates without reported standard errors\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 4,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"Have you computed confidence intervals or statistical significance tests for the regret comparisons in Figure 3? If not, how can readers be confident that differences between methods (e.g., RL-ALG vs SFT) are not due to noise?\",\n    \"Can you provide quantitative evidence (e.g., training reward variance, learning curves) that RL-STG reduces variance compared to RL-OG, as claimed?\",\n    \"Have you attempted any intervention to mitigate the emergent greediness (e.g., re-weighting exploration rewards, curriculum learning)? This would strengthen the causal claim about exploitation bias.\",\n    \"Why was UCB (C=0.5) chosen as the oracle? How sensitive are the results to the exploration constant or to using a different teacher (e.g., Thompson Sampling)?\",\n    \"With only 64 evaluation episodes, what are the standard errors of the regret estimates? Are the boxplot differences robust to this sample size?\"\n  ],\n  \"Limitations\": [\n    \"The paper adequately addresses most limitations (e.g., contextual bandit memorization, small model struggles), but could more explicitly discuss the potential negative societal impact of training LLMs to be greedier, which may be relevant for deployment in real-world decision-making systems (e.g., recommendation, resource allocation).\",\n    \"The evaluation is limited to relatively simple MAB tasks; scaling to more complex sequential decision-making (e.g., contextual bandits with rich features, RLHF-style tasks) is not demonstrated.\",\n    \"The computational cost of training (500 PPO iterations with 64 parallel environments) may limit reproducibility for researchers with fewer resources.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 4,\n  \"Contribution\": 4,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 30776,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 28984,
+        "completion_tokens": 2286,
+        "reasoning_tokens": 0,
+        "total_tokens": 33062
+      },
+      "attempts": 1,
+      "response_id": "93002de3-3d2c-4495-aa42-835349849bfa"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 5,
+      "Reject": 0
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          3,
+          4,
+          3,
+          3,
+          4
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          4,
+          4,
+          3,
+          4
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Significance": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          4
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          4,
+          4,
+          3,
+          4
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Contribution": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          4
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Overall": {
+        "values": [
+          7,
+          7,
+          7,
+          6,
+          6
+        ],
+        "mean": 6.6,
+        "rounded_mean": 7,
+        "population_sd": 0.49,
+        "min": 6,
+        "max": 7
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "This paper systematically studies how Supervised Fine-Tuning (SFT) and Reinforcement Learning (RL) shape exploration strategies of Large Language Models (LLMs) in multi-armed bandit (MAB) tasks. The authors train Qwen 2.5 3B/7B models using SFT on UCB expert trajectories and RL with three reward signals: original bandit rewards (RL-OG), strategic regret-shaped rewards (RL-STG), and algorithmic rewards providing binary imitation signals from a UCB oracle (RL-ALG). Evaluation covers in-distribution and out-of-distribution bandit environments, including generalization to longer horizons (6×) and larger action spaces. Key findings: (1) trained agents achieve performance comparable to UCB/Thompson Sampling baselines; (2) RL-ALG and SFT consistently outperform reward-only RL; (3) RL policies generalize more robustly than SFT in several settings; (4) behavioral analysis reveals an emergent exploitation bias—learned policies become greedier, with higher suffix failure rates and premature abandonment of exploration; (5) RL-ALG agents discover exploitative UCB variants that can outperform their teacher; (6) SFT policies show fragile OOD generalization due to arithmetic degradation. The paper advocates for tailored reward design and evaluation beyond average regret to promote robust exploration.",
+      "Strengths": [
+        "Comprehensive systematic comparison of SFT and multiple RL reward designs (original, strategic, algorithmic) across two model sizes and diverse bandit environments",
+        "Novel reward designs—regret-shaped strategic reward and algorithmic (UCB-imitation) reward—are well-motivated and show practical benefits",
+        "Behavioral analysis goes beyond aggregate regret to reveal mechanism-level differences (greedy tendencies, suffix failures, bimodal best-arm distributions), providing important insights into failure modes of trained LLM agents",
+        "Demonstration that RL-ALG agents can discover exploitative UCB variants and outperform their teacher, with supporting rationale analysis",
+        "Robust evaluation including length generalization, OOD distribution shifts, scaling to larger action spaces, and multiple environment parameterizations",
+        "Clear presentation of the two-level MDP formulation for token-level PPO and detailed reproducibility information in appendices",
+        "Honest and nuanced discussion of limitations, including contextual bandit caveats and small-model failures"
+      ],
+      "Weaknesses": [
+        "Lack of statistical significance testing—only boxplots with medians/IQRs are shown, no confidence intervals or hypothesis tests, and only 64 evaluation episodes per setting",
+        "Behavioral analysis relies heavily on qualitative inspection of LLM rationales, which may not fully reflect the actual policy decision-making process",
+        "The emergent exploitation bias is identified but not deeply mechanistically explained, and no mitigation strategies are proposed",
+        "The contextual bandit experiment (MovieLens) is limited, acknowledges memorization issues, and somewhat undermines generalizability claims",
+        "The claim that 'RL policies generalize more robustly than SFT' is nuanced and not consistently supported across all environments; in some cases SFT is competitive or better",
+        "The variance-reduction benefit of the strategic reward (RL-STG) is claimed but not directly quantified, and RL-STG shows unstable OOD performance",
+        "Limited to Qwen models (3B/7B) and simple MAB tasks; generalizability to other architectures and more complex sequential decision-making is unclear",
+        "Analysis of the discovered UCB variants is qualitative; more rigorous quantitative analysis (e.g., how often the policy follows the stated formula) would strengthen the claims"
+      ],
+      "Originality": 3,
+      "Quality": 3,
+      "Clarity": 4,
+      "Significance": 3,
+      "Questions": [
+        "How statistically significant are the performance differences between methods (e.g., RL-ALG vs SFT vs RL-STG)? Have you considered reporting confidence intervals or performing significance tests (e.g., bootstrap) on the regret comparisons?",
+        "The paper shows RL-ALG agents discover a UCB variant with exploration term sqrt(log(N_t(a)+1)/N_t(a)). What is the theoretical regret of this variant? Does it have known sublinear regret guarantees, or could it suffer linear regret in some cases?",
+        "How sensitive are the results to the UCB exploration constant C=0.5 used for the teacher? Would a more exploratory teacher (e.g., C=1.0 or C=2.0) change the observed exploitation bias or the relative performance of learned policies?",
+        "Could you quantify the diversity and stability of the discovered UCB variants across different random seeds or training runs?",
+        "For the SFT arithmetic failure on negative rewards—is this specific to Qwen models, or have you tested other base models? Could mixed training data with negative rewards alleviate this?",
+        "The 3B model fails to learn with RL-OG/RL-STG but succeeds with RL-ALG. Is this purely a credit assignment issue, or could it be due to optimization instability (e.g., value function divergence)? Have you analyzed value loss or advantage estimates during training?",
+        "Have you considered interventions to mitigate the emergent greediness (e.g., re-weighting exploration rewards, curriculum learning, or adding exploration bonuses)? Any preliminary results?",
+        "Can you provide quantitative evidence (e.g., training reward variance, learning curves) that RL-STG reduces variance compared to RL-OG, as claimed?",
+        "How does the choice of prompt summary (sufficient statistics vs. raw history) interact with the training paradigms? Would the exploitation bias be reduced with a different observation format?",
+        "With only 64 evaluation episodes, what are the standard errors of the regret estimates? Are the boxplot differences robust to this sample size?"
+      ],
+      "Limitations": [
+        "The study is limited to simple MAB tasks; conclusions may not generalize to more complex sequential decision-making problems (e.g., contextual bandits with rich features, RLHF-style tasks)",
+        "Only Qwen 2.5 3B/7B models are evaluated; results may not transfer to other LLM architectures or larger scales",
+        "The contextual bandit experiment is acknowledged as limited due to memorization concerns, which limits the scope of the claims",
+        "The paper identifies the exploitation bias but does not propose concrete solutions or mitigation strategies, limiting practical impact",
+        "The behavioral analysis relies on surrogate metrics (suffix failures, match rates) and LLM-generated rationales, which may not fully capture exploration quality",
+        "The computational cost of training (500 PPO iterations with 64 parallel environments) may be prohibitive for many practitioners, and efficiency trade-offs are not discussed",
+        "Potential negative societal impact is not explicitly discussed: if these training methods are applied to real-world LLM agents (e.g., recommendation systems, autonomous decision-making), the emergent exploitation bias could lead to premature abandonment of exploration and suboptimal long-term outcomes, potentially causing harm in high-stakes applications"
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 4,
+      "Contribution": 3,
+      "Overall": 7,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "THOUGHT:\nThe paper presents a systematic empirical study of SFT vs. RL for training LLMs as meta-bandit agents, with novel reward designs (regret-shaped and algorithmic/oracle-imitation) and a behavioral analysis that goes beyond aggregate regret. All five reviewers rate it as a solid contribution (overall scores 6–7, all recommending \"Accept\"). The consensus is that the work is technically sound, well-presented, and provides valuable insights into exploration/exploitation trade-offs in LLM agents, but with notable weaknesses: lack of statistical significance testing, reliance on qualitative rationale inspection for the \"discovered UCB variants,\" limited generalizability (simple MAB tasks, Qwen models only), and no proposed mitigation for the identified exploitation bias.\n\nGiven the consistent \"Accept\" recommendations and reasonable scores (Soundness 3, Presentation 3–4, Contribution 3–4, Overall 6–7), the meta-review should recommend \"Accept\" while noting the shared concerns. The paper is not groundbreaking but is a solid, well-executed study with clear contributions. The main critical points—statistical rigor, mechanistic explanation of exploitation bias, and generalizability—should be highlighted as areas for improvement but do not warrant rejection.\n\nI will aggregate the strengths and weaknesses, set ratings at: Originality 3, Quality 3, Clarity 4, Significance 3, Soundness 3, Presentation 4, Contribution 3, Overall 7, Confidence 4, Decision \"Accept\". These reflect the reviewers' median assessments and the overall positive but cautious tone.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper systematically studies how Supervised Fine-Tuning (SFT) and Reinforcement Learning (RL) shape exploration strategies of Large Language Models (LLMs) in multi-armed bandit (MAB) tasks. The authors train Qwen 2.5 3B/7B models using SFT on UCB expert trajectories and RL with three reward signals: original bandit rewards (RL-OG), strategic regret-shaped rewards (RL-STG), and algorithmic rewards providing binary imitation signals from a UCB oracle (RL-ALG). Evaluation covers in-distribution and out-of-distribution bandit environments, including generalization to longer horizons (6×) and larger action spaces. Key findings: (1) trained agents achieve performance comparable to UCB/Thompson Sampling baselines; (2) RL-ALG and SFT consistently outperform reward-only RL; (3) RL policies generalize more robustly than SFT in several settings; (4) behavioral analysis reveals an emergent exploitation bias—learned policies become greedier, with higher suffix failure rates and premature abandonment of exploration; (5) RL-ALG agents discover exploitative UCB variants that can outperform their teacher; (6) SFT policies show fragile OOD generalization due to arithmetic degradation. The paper advocates for tailored reward design and evaluation beyond average regret to promote robust exploration.\",\n    \"Strengths\": [\n        \"Comprehensive systematic comparison of SFT and multiple RL reward designs (original, strategic, algorithmic) across two model sizes and diverse bandit environments\",\n        \"Novel reward designs—regret-shaped strategic reward and algorithmic (UCB-imitation) reward—are well-motivated and show practical benefits\",\n        \"Behavioral analysis goes beyond aggregate regret to reveal mechanism-level differences (greedy tendencies, suffix failures, bimodal best-arm distributions), providing important insights into failure modes of trained LLM agents\",\n        \"Demonstration that RL-ALG agents can discover exploitative UCB variants and outperform their teacher, with supporting rationale analysis\",\n        \"Robust evaluation including length generalization, OOD distribution shifts, scaling to larger action spaces, and multiple environment parameterizations\",\n        \"Clear presentation of the two-level MDP formulation for token-level PPO and detailed reproducibility information in appendices\",\n        \"Honest and nuanced discussion of limitations, including contextual bandit caveats and small-model failures\"\n    ],\n    \"Weaknesses\": [\n        \"Lack of statistical significance testing—only boxplots with medians/IQRs are shown, no confidence intervals or hypothesis tests, and only 64 evaluation episodes per setting\",\n        \"Behavioral analysis relies heavily on qualitative inspection of LLM rationales, which may not fully reflect the actual policy decision-making process\",\n        \"The emergent exploitation bias is identified but not deeply mechanistically explained, and no mitigation strategies are proposed\",\n        \"The contextual bandit experiment (MovieLens) is limited, acknowledges memorization issues, and somewhat undermines generalizability claims\",\n        \"The claim that 'RL policies generalize more robustly than SFT' is nuanced and not consistently supported across all environments; in some cases SFT is competitive or better\",\n        \"The variance-reduction benefit of the strategic reward (RL-STG) is claimed but not directly quantified, and RL-STG shows unstable OOD performance\",\n        \"Limited to Qwen models (3B/7B) and simple MAB tasks; generalizability to other architectures and more complex sequential decision-making is unclear\",\n        \"Analysis of the discovered UCB variants is qualitative; more rigorous quantitative analysis (e.g., how often the policy follows the stated formula) would strengthen the claims\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 3,\n    \"Clarity\": 4,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"How statistically significant are the performance differences between methods (e.g., RL-ALG vs SFT vs RL-STG)? Have you considered reporting confidence intervals or performing significance tests (e.g., bootstrap) on the regret comparisons?\",\n        \"The paper shows RL-ALG agents discover a UCB variant with exploration term sqrt(log(N_t(a)+1)/N_t(a)). What is the theoretical regret of this variant? Does it have known sublinear regret guarantees, or could it suffer linear regret in some cases?\",\n        \"How sensitive are the results to the UCB exploration constant C=0.5 used for the teacher? Would a more exploratory teacher (e.g., C=1.0 or C=2.0) change the observed exploitation bias or the relative performance of learned policies?\",\n        \"Could you quantify the diversity and stability of the discovered UCB variants across different random seeds or training runs?\",\n        \"For the SFT arithmetic failure on negative rewards—is this specific to Qwen models, or have you tested other base models? Could mixed training data with negative rewards alleviate this?\",\n        \"The 3B model fails to learn with RL-OG/RL-STG but succeeds with RL-ALG. Is this purely a credit assignment issue, or could it be due to optimization instability (e.g., value function divergence)? Have you analyzed value loss or advantage estimates during training?\",\n        \"Have you considered interventions to mitigate the emergent greediness (e.g., re-weighting exploration rewards, curriculum learning, or adding exploration bonuses)? Any preliminary results?\",\n        \"Can you provide quantitative evidence (e.g., training reward variance, learning curves) that RL-STG reduces variance compared to RL-OG, as claimed?\",\n        \"How does the choice of prompt summary (sufficient statistics vs. raw history) interact with the training paradigms? Would the exploitation bias be reduced with a different observation format?\",\n        \"With only 64 evaluation episodes, what are the standard errors of the regret estimates? Are the boxplot differences robust to this sample size?\"\n    ],\n    \"Limitations\": [\n        \"The study is limited to simple MAB tasks; conclusions may not generalize to more complex sequential decision-making problems (e.g., contextual bandits with rich features, RLHF-style tasks)\",\n        \"Only Qwen 2.5 3B/7B models are evaluated; results may not transfer to other LLM architectures or larger scales\",\n        \"The contextual bandit experiment is acknowledged as limited due to memorization concerns, which limits the scope of the claims\",\n        \"The paper identifies the exploitation bias but does not propose concrete solutions or mitigation strategies, limiting practical impact\",\n        \"The behavioral analysis relies on surrogate metrics (suffix failures, match rates) and LLM-generated rationales, which may not fully capture exploration quality\",\n        \"The computational cost of training (500 PPO iterations with 64 parallel environments) may be prohibitive for many practitioners, and efficiency trade-offs are not discussed\",\n        \"Potential negative societal impact is not explicitly discussed: if these training methods are applied to real-world LLM agents (e.g., recommendation systems, autonomous decision-making), the emergent exploitation bias could lead to premature abandonment of exploration and suboptimal long-term outcomes, potentially causing harm in high-stakes applications\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 4,\n    \"Contribution\": 3,\n    \"Overall\": 7,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 8200,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 8200,
+      "completion_tokens": 1851,
+      "reasoning_tokens": 0,
+      "total_tokens": 10051
+    },
+    "attempts": 1,
+    "response_id": "cfd2f172-bc84-4a7f-9783-6af383b31c40"
+  },
+  "final_review": {
+    "Summary": "This paper systematically studies how Supervised Fine-Tuning (SFT) and Reinforcement Learning (RL) shape exploration strategies of Large Language Models (LLMs) in multi-armed bandit (MAB) tasks. The authors train Qwen 2.5 3B/7B models using SFT on UCB expert trajectories and RL with three reward signals: original bandit rewards (RL-OG), strategic regret-shaped rewards (RL-STG), and algorithmic rewards providing binary imitation signals from a UCB oracle (RL-ALG). Evaluation covers in-distribution and out-of-distribution bandit environments, including generalization to longer horizons (6×) and larger action spaces. Key findings: (1) trained agents achieve performance comparable to UCB/Thompson Sampling baselines; (2) RL-ALG and SFT consistently outperform reward-only RL; (3) RL policies generalize more robustly than SFT in several settings; (4) behavioral analysis reveals an emergent exploitation bias—learned policies become greedier, with higher suffix failure rates and premature abandonment of exploration; (5) RL-ALG agents discover exploitative UCB variants that can outperform their teacher; (6) SFT policies show fragile OOD generalization due to arithmetic degradation. The paper advocates for tailored reward design and evaluation beyond average regret to promote robust exploration.",
+    "Strengths": [
+      "Comprehensive systematic comparison of SFT and multiple RL reward designs (original, strategic, algorithmic) across two model sizes and diverse bandit environments",
+      "Novel reward designs—regret-shaped strategic reward and algorithmic (UCB-imitation) reward—are well-motivated and show practical benefits",
+      "Behavioral analysis goes beyond aggregate regret to reveal mechanism-level differences (greedy tendencies, suffix failures, bimodal best-arm distributions), providing important insights into failure modes of trained LLM agents",
+      "Demonstration that RL-ALG agents can discover exploitative UCB variants and outperform their teacher, with supporting rationale analysis",
+      "Robust evaluation including length generalization, OOD distribution shifts, scaling to larger action spaces, and multiple environment parameterizations",
+      "Clear presentation of the two-level MDP formulation for token-level PPO and detailed reproducibility information in appendices",
+      "Honest and nuanced discussion of limitations, including contextual bandit caveats and small-model failures"
+    ],
+    "Weaknesses": [
+      "Lack of statistical significance testing—only boxplots with medians/IQRs are shown, no confidence intervals or hypothesis tests, and only 64 evaluation episodes per setting",
+      "Behavioral analysis relies heavily on qualitative inspection of LLM rationales, which may not fully reflect the actual policy decision-making process",
+      "The emergent exploitation bias is identified but not deeply mechanistically explained, and no mitigation strategies are proposed",
+      "The contextual bandit experiment (MovieLens) is limited, acknowledges memorization issues, and somewhat undermines generalizability claims",
+      "The claim that 'RL policies generalize more robustly than SFT' is nuanced and not consistently supported across all environments; in some cases SFT is competitive or better",
+      "The variance-reduction benefit of the strategic reward (RL-STG) is claimed but not directly quantified, and RL-STG shows unstable OOD performance",
+      "Limited to Qwen models (3B/7B) and simple MAB tasks; generalizability to other architectures and more complex sequential decision-making is unclear",
+      "Analysis of the discovered UCB variants is qualitative; more rigorous quantitative analysis (e.g., how often the policy follows the stated formula) would strengthen the claims"
+    ],
+    "Originality": 3,
+    "Quality": 3,
+    "Clarity": 4,
+    "Significance": 3,
+    "Questions": [
+      "How statistically significant are the performance differences between methods (e.g., RL-ALG vs SFT vs RL-STG)? Have you considered reporting confidence intervals or performing significance tests (e.g., bootstrap) on the regret comparisons?",
+      "The paper shows RL-ALG agents discover a UCB variant with exploration term sqrt(log(N_t(a)+1)/N_t(a)). What is the theoretical regret of this variant? Does it have known sublinear regret guarantees, or could it suffer linear regret in some cases?",
+      "How sensitive are the results to the UCB exploration constant C=0.5 used for the teacher? Would a more exploratory teacher (e.g., C=1.0 or C=2.0) change the observed exploitation bias or the relative performance of learned policies?",
+      "Could you quantify the diversity and stability of the discovered UCB variants across different random seeds or training runs?",
+      "For the SFT arithmetic failure on negative rewards—is this specific to Qwen models, or have you tested other base models? Could mixed training data with negative rewards alleviate this?",
+      "The 3B model fails to learn with RL-OG/RL-STG but succeeds with RL-ALG. Is this purely a credit assignment issue, or could it be due to optimization instability (e.g., value function divergence)? Have you analyzed value loss or advantage estimates during training?",
+      "Have you considered interventions to mitigate the emergent greediness (e.g., re-weighting exploration rewards, curriculum learning, or adding exploration bonuses)? Any preliminary results?",
+      "Can you provide quantitative evidence (e.g., training reward variance, learning curves) that RL-STG reduces variance compared to RL-OG, as claimed?",
+      "How does the choice of prompt summary (sufficient statistics vs. raw history) interact with the training paradigms? Would the exploitation bias be reduced with a different observation format?",
+      "With only 64 evaluation episodes, what are the standard errors of the regret estimates? Are the boxplot differences robust to this sample size?"
+    ],
+    "Limitations": [
+      "The study is limited to simple MAB tasks; conclusions may not generalize to more complex sequential decision-making problems (e.g., contextual bandits with rich features, RLHF-style tasks)",
+      "Only Qwen 2.5 3B/7B models are evaluated; results may not transfer to other LLM architectures or larger scales",
+      "The contextual bandit experiment is acknowledged as limited due to memorization concerns, which limits the scope of the claims",
+      "The paper identifies the exploitation bias but does not propose concrete solutions or mitigation strategies, limiting practical impact",
+      "The behavioral analysis relies on surrogate metrics (suffix failures, match rates) and LLM-generated rationales, which may not fully capture exploration quality",
+      "The computational cost of training (500 PPO iterations with 64 parallel environments) may be prohibitive for many practitioners, and efficiency trade-offs are not discussed",
+      "Potential negative societal impact is not explicitly discussed: if these training methods are applied to real-world LLM agents (e.g., recommendation systems, autonomous decision-making), the emergent exploitation bias could lead to premature abandonment of exploration and suboptimal long-term outcomes, potentially causing harm in high-stakes applications"
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 4,
+    "Contribution": 3,
+    "Overall": 7,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 162080,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 153120,
+    "completion_tokens": 12612,
+    "reasoning_tokens": 0,
+    "total_tokens": 174692,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.0214368,
+    "output_usd": 0.00353136,
+    "total_usd": 0.02499325
+  },
+  "elapsed_seconds": 41.721,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Accept",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B057",
+    "filename": "B057.txt",
+    "blind_text_sha256": "69c67f56dd2b3fb04882942da11ce0c20889e56719a783d09247bbd41f864b76",
+    "characters": 92864,
+    "full_text_saved": false
+  }
+}

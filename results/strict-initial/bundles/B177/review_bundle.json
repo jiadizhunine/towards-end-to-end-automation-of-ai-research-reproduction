@@ -1,0 +1,579 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T09:49:22.189175+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "max",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "meta",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper proposes ZeroSiam, a test-time entropy minimization method that augments a single-branch entropy objective with an asymmetric Siamese-style architecture: a lightweight learnable predictor on an 'online' branch and a stop-gradient 'target' branch, both computed from the same encoder feature in one forward pass. This adds an asymmetric divergence alignment term to entropy minimization, aiming to prevent collapsed solutions (e.g., constant one-hot predictions) that plague plain entropy minimization. The authors provide empirical observations that the predictor absorbs biased learning signals and that the asymmetry suppresses logit-norm inflation and class dominance, plus a theoretical theorem intended to characterize stability. Extensive experiments on ImageNet-C across five backbones and several wild TTA scenarios, as well as mathematical reasoning with Llama-3.1-8B, show consistent gains over prior entropy-based TTA methods with negligible runtime overhead.",
+        "Strengths": [
+          "The proposed method is simple and efficient: it introduces only a single linear predictor and stop-gradient, requiring no augmentations, extra encoder passes, or teacher models, and the efficiency table shows runtime comparable to Tent.",
+          "The empirical evaluation is broad and convincing: five vision backbones (including collapse-prone tiny models) under mixed shifts, label shifts, batch size 1, blind-spot subsets, and noise pre-adaptation, plus four mathematical reasoning benchmarks, with consistent improvements over strong baselines such as EATA, SAR, DeYO, and COME.",
+          "The paper provides useful ablations, including predictor design, stop-gradient necessity, learning-rate sensitivity, and alpha sensitivity, which help isolate the contribution of asymmetry and guide practical use.",
+          "The 'blind-spot' and 'resistance to learning from noise' stress tests are well-designed and demonstrate a robustness advantage over prior methods that rely on sample selection, which is practically important."
+        ],
+        "Weaknesses": [
+          "The theoretical analysis (Theorem 1 and its proof) is not rigorous and contains at least one clear error: the claimed lower bound H(p^r) >= -log(1-(1-|C|)delta) is not a positive lower bound for |C|>2; the expression is typically negative, so the constructed h_min is not guaranteed positive even when alpha is large. Thus the theorem does not actually prove that collapse is avoided.",
+          "The proof of Lemma 2 defines a collapse direction v somewhat arbitrarily and does not rigorously connect the Hessian in logit space to the Hessian in parameter space; the claim that lambda_min is attained along v is not established.",
+          "The claimed role of the predictor as an 'absorber of biased learning signals' is supported mainly by correlational evidence (e.g., predictor deviation under imbalance), but no causal experiment or formal mechanism is provided; alternative explanations (e.g., implicit regularization from the extra nonlinearity) are not ruled out.",
+          "The paper repeatedly references 'Table 10' for ablations on divergence terms, integration with prior methods, and generality, but that table is missing from the provided manuscript; this hampers reproducibility and completeness.",
+          "LLM reasoning experiments are narrow: only one model (Llama-3.1-8B-Instruct) is used, AIME24 contains only 30 problems so a +10% gain corresponds to 3 questions, and no variance or significance testing is reported. Similarly, vision results appear to lack multiple seeds/error bars."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "Can the authors provide a corrected, fully rigorous version of Theorem 1 with a valid positive lower bound on entropy? Specifically, for ImageNet-C with |C|=1000, what is an explicit h_min > 0 under the given assumptions?",
+          "Is the alignment term with stop-gradient guaranteed to prevent logit-norm inflation over arbitrarily long adaptation, or does it merely slow it down? Is there a formal bound on the logit norm or prediction entropy during optimization?",
+          "What exactly is the mechanism by which the predictor 'absorbs' biased learning signals? Could the improvement be explained simply as a form of consistency regularization or an additional implicit bias from the predictor's parameterization?",
+          "Why is Table 10, referenced for divergence choices, integration with prior methods, and predictor designs, not included in the paper? Can these results be provided, and do the integration results actually show consistent improvements over ZeroSiam alone?",
+          "In the LLM reasoning experiments, what is the variance across multiple runs or subsets? With AIME24 having only 30 problems, is the +10% gain statistically meaningful, and how does entropy minimization on the first 8 output tokens affect answer correctness versus output calibration?",
+          "How sensitive is ZeroSiam to the choice of predictor initialization (identity vs. random) and to the divergence type (symmetric KL vs. KL vs. L2) across all tested models, not just ViT-Base?"
+        ],
+        "Limitations": [
+          "The theoretical stability guarantee is not established due to errors and gaps in the proof; the paper's central claim of 'inherently avoids collapse' remains primarily empirical.",
+          "Empirical results lack statistical significance testing and multiple seeds, which is important in TTA where online streams and stochastic optimization can yield high variance.",
+          "The LLM reasoning study is limited to a single 8B model and small evaluation sets; the generality to larger models or other reasoning domains is unknown.",
+          "The method requires an extra predictor and a divergence hyperparameter alpha, even though alpha=1 works well; the paper does not fully explore interactions between alpha and different data streams or models.",
+          "The 'absorber' and 'regularizer' interpretations are speculative; the paper does not provide a rigorous causal analysis of why the predictor learns biased shortcuts and why the alignment term prevents them from harming the shared encoder.",
+          "No negative societal impact is discussed, but test-time adaptation on sensitive user data could raise privacy or fairness concerns if deployed in real-world systems without safeguards."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes ZeroSiam, a test-time entropy minimization method that augments a single-branch entropy objective with an asymmetric Siamese-style architecture: a lightweight learnable predictor on an 'online' branch and a stop-gradient 'target' branch, both computed from the same encoder feature in one forward pass. This adds an asymmetric divergence alignment term to entropy minimization, aiming to prevent collapsed solutions (e.g., constant one-hot predictions) that plague plain entropy minimization. The authors provide empirical observations that the predictor absorbs biased learning signals and that the asymmetry suppresses logit-norm inflation and class dominance, plus a theoretical theorem intended to characterize stability. Extensive experiments on ImageNet-C across five backbones and several wild TTA scenarios, as well as mathematical reasoning with Llama-3.1-8B, show consistent gains over prior entropy-based TTA methods with negligible runtime overhead.\",\n  \"Strengths\": [\n    \"The proposed method is simple and efficient: it introduces only a single linear predictor and stop-gradient, requiring no augmentations, extra encoder passes, or teacher models, and the efficiency table shows runtime comparable to Tent.\",\n    \"The empirical evaluation is broad and convincing: five vision backbones (including collapse-prone tiny models) under mixed shifts, label shifts, batch size 1, blind-spot subsets, and noise pre-adaptation, plus four mathematical reasoning benchmarks, with consistent improvements over strong baselines such as EATA, SAR, DeYO, and COME.\",\n    \"The paper provides useful ablations, including predictor design, stop-gradient necessity, learning-rate sensitivity, and alpha sensitivity, which help isolate the contribution of asymmetry and guide practical use.\",\n    \"The 'blind-spot' and 'resistance to learning from noise' stress tests are well-designed and demonstrate a robustness advantage over prior methods that rely on sample selection, which is practically important.\"\n  ],\n  \"Weaknesses\": [\n    \"The theoretical analysis (Theorem 1 and its proof) is not rigorous and contains at least one clear error: the claimed lower bound H(p^r) >= -log(1-(1-|C|)delta) is not a positive lower bound for |C|>2; the expression is typically negative, so the constructed h_min is not guaranteed positive even when alpha is large. Thus the theorem does not actually prove that collapse is avoided.\",\n    \"The proof of Lemma 2 defines a collapse direction v somewhat arbitrarily and does not rigorously connect the Hessian in logit space to the Hessian in parameter space; the claim that lambda_min is attained along v is not established.\",\n    \"The claimed role of the predictor as an 'absorber of biased learning signals' is supported mainly by correlational evidence (e.g., predictor deviation under imbalance), but no causal experiment or formal mechanism is provided; alternative explanations (e.g., implicit regularization from the extra nonlinearity) are not ruled out.\",\n    \"The paper repeatedly references 'Table 10' for ablations on divergence terms, integration with prior methods, and generality, but that table is missing from the provided manuscript; this hampers reproducibility and completeness.\",\n    \"LLM reasoning experiments are narrow: only one model (Llama-3.1-8B-Instruct) is used, AIME24 contains only 30 problems so a +10% gain corresponds to 3 questions, and no variance or significance testing is reported. Similarly, vision results appear to lack multiple seeds/error bars.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"Can the authors provide a corrected, fully rigorous version of Theorem 1 with a valid positive lower bound on entropy? Specifically, for ImageNet-C with |C|=1000, what is an explicit h_min > 0 under the given assumptions?\",\n    \"Is the alignment term with stop-gradient guaranteed to prevent logit-norm inflation over arbitrarily long adaptation, or does it merely slow it down? Is there a formal bound on the logit norm or prediction entropy during optimization?\",\n    \"What exactly is the mechanism by which the predictor 'absorbs' biased learning signals? Could the improvement be explained simply as a form of consistency regularization or an additional implicit bias from the predictor's parameterization?\",\n    \"Why is Table 10, referenced for divergence choices, integration with prior methods, and predictor designs, not included in the paper? Can these results be provided, and do the integration results actually show consistent improvements over ZeroSiam alone?\",\n    \"In the LLM reasoning experiments, what is the variance across multiple runs or subsets? With AIME24 having only 30 problems, is the +10% gain statistically meaningful, and how does entropy minimization on the first 8 output tokens affect answer correctness versus output calibration?\",\n    \"How sensitive is ZeroSiam to the choice of predictor initialization (identity vs. random) and to the divergence type (symmetric KL vs. KL vs. L2) across all tested models, not just ViT-Base?\"\n  ],\n  \"Limitations\": [\n    \"The theoretical stability guarantee is not established due to errors and gaps in the proof; the paper's central claim of 'inherently avoids collapse' remains primarily empirical.\",\n    \"Empirical results lack statistical significance testing and multiple seeds, which is important in TTA where online streams and stochastic optimization can yield high variance.\",\n    \"The LLM reasoning study is limited to a single 8B model and small evaluation sets; the generality to larger models or other reasoning domains is unknown.\",\n    \"The method requires an extra predictor and a divergence hyperparameter alpha, even though alpha=1 works well; the paper does not fully explore interactions between alpha and different data streams or models.\",\n    \"The 'absorber' and 'regularizer' interpretations are speculative; the paper does not provide a rigorous causal analysis of why the predictor learns biased shortcuts and why the alignment term prevents them from harming the shared encoder.\",\n    \"No negative societal impact is discussed, but test-time adaptation on sensitive user data could raise privacy or fairness concerns if deployed in real-world systems without safeguards.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 47937,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 47169,
+        "completion_tokens": 3902,
+        "reasoning_tokens": 2573,
+        "total_tokens": 51839
+      },
+      "attempts": 1,
+      "response_id": "cd4bbb05-da74-4cda-b9c2-ea3cefffe554"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper proposes ZeroSiam, an asymmetric Siamese architecture for test-time entropy minimization that prevents collapsed solutions (e.g., constant one-hot outputs) by introducing a lightweight learnable predictor on an online branch and a stop-gradient on a target branch, with a symmetric KL alignment term. The method requires no augmentations, extra backbone passes, or teacher models. The authors provide empirical and theoretical evidence that ZeroSiam not only avoids collapse but also absorbs and regularizes biased learning signals, improving performance even without collapse. Extensive experiments on ImageNet-C across multiple vision models and on LLM mathematical reasoning benchmarks show consistent gains over prior TTA methods with negligible overhead.",
+        "Strengths": [
+          "The proposed architecture is simple, efficient, and requires minimal changes to existing entropy minimization pipelines, making it practical for online deployment.",
+          "The paper conducts extensive experiments across diverse vision models (ResNet, ViT, ConvNeXt, Swin) and challenging wild TTA scenarios (label shift, batch size 1, blind-spot, noise pre-adaptation), demonstrating consistent improvements over strong baselines.",
+          "The inclusion of theoretical insights, while not fully rigorous, attempts to explain why the asymmetry prevents collapse and is supported by empirical visualizations of predictor deviation, logit norm, and center dominance.",
+          "Ablation studies confirm the necessity of both the predictor and the stop-gradient, and show that the method is robust to hyperparameter choices (e.g., learning rates, alpha)."
+        ],
+        "Weaknesses": [
+          "The theoretical analysis (Theorem 1 and lemmas) is not rigorous: it relies on strong assumptions, and the proofs contain gaps (e.g., the existence of k>1 is not guaranteed in practice, and h_min depends on V(0)/alpha without verification). The central claim that the predictor 'absorbs biased signals' is not formally established.",
+          "The novelty is limited: the method is a straightforward adaptation of SimSiam-style asymmetry (predictor + stop-gradient) to entropy minimization, and the alignment term effectively acts as a trust-region regularizer. A clearer comparison with a simpler regularizer aligning to original logits (without a predictor) is missing.",
+          "The stress-test protocols (e.g., adapting on a blind-spot subset of misclassified samples, pre-adapting on pure Gaussian noise) are non-standard and may not reflect real-world TTA conditions, potentially exaggerating the benefits of ZeroSiam.",
+          "LLM experiments are on very small benchmarks (e.g., AIME24 has only 30 questions), so improvements of a few correct answers are not statistically significant, and no uncertainty intervals are reported.",
+          "The paper does not compare against a baseline that adds a predictor but without stop-gradient in a controlled setting, nor does it isolate the effect of the alignment term from the predictor's parameterization; the observed gains could partly arise from the extra regularization rather than the asymmetry itself."
+        ],
+        "Originality": 2,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 2,
+        "Questions": [
+          "How does ZeroSiam compare to a simple baseline that adds an alignment regularizer D(p||sg[p_r]) without the predictor (i.e., p_o = p_r)? This would isolate the role of the predictor in preventing collapse.",
+          "In the theoretical analysis, the conclusion that |ΔH(p^o)| > |ΔH(p^r)| requires η_min/η_max > L/||∇H||; is this condition satisfied under the learning rates used in practice, especially for ViT-Base where η_h = η_f?",
+          "What is the statistical significance of the LLM improvements given the small number of problems (e.g., AIME24 has 30 questions)? Would the conclusions change with multiple seeds or confidence intervals?",
+          "For the blind-spot adaptation protocol, why is it valid to adapt only on misclassified samples and then evaluate on the full dataset? How would results differ under the standard full-test-set TTA protocol?",
+          "Were the hyperparameters for prior methods (e.g., SAR, DeYO) tuned separately for the weaker models (ConvNeXt-Tiny, Swin-Tiny) that were not in the original papers? Could the performance gap be due to suboptimal hyperparameters?"
+        ],
+        "Limitations": [
+          "The theoretical framework relies on strong assumptions (Lipschitz continuity, smoothness) and does not provide practical guarantees for the method's stability or the claimed 'h_min' bound.",
+          "The empirical evaluations on LLM reasoning use small benchmarks, limiting the statistical power of the reported improvements.",
+          "The stress-test scenarios are synthetic and may not capture the diversity of real-world deployment; the method's advantage under these artificial conditions may not translate to practical gains.",
+          "The predictor is described as an 'absorber' of biased signals, but this interpretation is not rigorously validated; the method could be seen as an implicit trust-region regularizer, which may not be fundamentally different from existing anti-forgetting techniques.",
+          "The paper does not explore the method's behavior on longer adaptation sequences or non-stationary distributions beyond the tested scenarios."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes ZeroSiam, an asymmetric Siamese architecture for test-time entropy minimization that prevents collapsed solutions (e.g., constant one-hot outputs) by introducing a lightweight learnable predictor on an online branch and a stop-gradient on a target branch, with a symmetric KL alignment term. The method requires no augmentations, extra backbone passes, or teacher models. The authors provide empirical and theoretical evidence that ZeroSiam not only avoids collapse but also absorbs and regularizes biased learning signals, improving performance even without collapse. Extensive experiments on ImageNet-C across multiple vision models and on LLM mathematical reasoning benchmarks show consistent gains over prior TTA methods with negligible overhead.\",\n  \"Strengths\": [\n    \"The proposed architecture is simple, efficient, and requires minimal changes to existing entropy minimization pipelines, making it practical for online deployment.\",\n    \"The paper conducts extensive experiments across diverse vision models (ResNet, ViT, ConvNeXt, Swin) and challenging wild TTA scenarios (label shift, batch size 1, blind-spot, noise pre-adaptation), demonstrating consistent improvements over strong baselines.\",\n    \"The inclusion of theoretical insights, while not fully rigorous, attempts to explain why the asymmetry prevents collapse and is supported by empirical visualizations of predictor deviation, logit norm, and center dominance.\",\n    \"Ablation studies confirm the necessity of both the predictor and the stop-gradient, and show that the method is robust to hyperparameter choices (e.g., learning rates, alpha).\"\n  ],\n  \"Weaknesses\": [\n    \"The theoretical analysis (Theorem 1 and lemmas) is not rigorous: it relies on strong assumptions, and the proofs contain gaps (e.g., the existence of k>1 is not guaranteed in practice, and h_min depends on V(0)/alpha without verification). The central claim that the predictor 'absorbs biased signals' is not formally established.\",\n    \"The novelty is limited: the method is a straightforward adaptation of SimSiam-style asymmetry (predictor + stop-gradient) to entropy minimization, and the alignment term effectively acts as a trust-region regularizer. A clearer comparison with a simpler regularizer aligning to original logits (without a predictor) is missing.\",\n    \"The stress-test protocols (e.g., adapting on a blind-spot subset of misclassified samples, pre-adapting on pure Gaussian noise) are non-standard and may not reflect real-world TTA conditions, potentially exaggerating the benefits of ZeroSiam.\",\n    \"LLM experiments are on very small benchmarks (e.g., AIME24 has only 30 questions), so improvements of a few correct answers are not statistically significant, and no uncertainty intervals are reported.\",\n    \"The paper does not compare against a baseline that adds a predictor but without stop-gradient in a controlled setting, nor does it isolate the effect of the alignment term from the predictor's parameterization; the observed gains could partly arise from the extra regularization rather than the asymmetry itself.\"\n  ],\n  \"Originality\": 2,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"How does ZeroSiam compare to a simple baseline that adds an alignment regularizer D(p||sg[p_r]) without the predictor (i.e., p_o = p_r)? This would isolate the role of the predictor in preventing collapse.\",\n    \"In the theoretical analysis, the conclusion that |ΔH(p^o)| > |ΔH(p^r)| requires η_min/η_max > L/||∇H||; is this condition satisfied under the learning rates used in practice, especially for ViT-Base where η_h = η_f?\",\n    \"What is the statistical significance of the LLM improvements given the small number of problems (e.g., AIME24 has 30 questions)? Would the conclusions change with multiple seeds or confidence intervals?\",\n    \"For the blind-spot adaptation protocol, why is it valid to adapt only on misclassified samples and then evaluate on the full dataset? How would results differ under the standard full-test-set TTA protocol?\",\n    \"Were the hyperparameters for prior methods (e.g., SAR, DeYO) tuned separately for the weaker models (ConvNeXt-Tiny, Swin-Tiny) that were not in the original papers? Could the performance gap be due to suboptimal hyperparameters?\"\n  ],\n  \"Limitations\": [\n    \"The theoretical framework relies on strong assumptions (Lipschitz continuity, smoothness) and does not provide practical guarantees for the method's stability or the claimed 'h_min' bound.\",\n    \"The empirical evaluations on LLM reasoning use small benchmarks, limiting the statistical power of the reported improvements.\",\n    \"The stress-test scenarios are synthetic and may not capture the diversity of real-world deployment; the method's advantage under these artificial conditions may not translate to practical gains.\",\n    \"The predictor is described as an 'absorber' of biased signals, but this interpretation is not rigorously validated; the method could be seen as an implicit trust-region regularizer, which may not be fundamentally different from existing anti-forgetting techniques.\",\n    \"The paper does not explore the method's behavior on longer adaptation sequences or non-stationary distributions beyond the tested scenarios.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 47937,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 47169,
+        "completion_tokens": 4948,
+        "reasoning_tokens": 3805,
+        "total_tokens": 52885
+      },
+      "attempts": 1,
+      "response_id": "f5bd403b-4e47-4091-8c0f-12b19f2008c3"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper proposes ZeroSiam, a lightweight asymmetric Siamese architecture for test-time entropy minimization. It introduces a learnable predictor on an online branch and a stop-gradient target branch, both derived from a single encoder feature, and minimizes entropy on the online branch while aligning it to the target distribution. This design aims to prevent collapsed solutions such as constant one-hot outputs. The authors provide empirical and theoretical arguments that ZeroSiam not only avoids collapse but also absorbs and regularizes biased learning signals, improving performance even without collapse. Extensive experiments on ImageNet-C across five vision architectures and multiple wild TTA settings, as well as on mathematical reasoning benchmarks with Llama3.1-8B, show that ZeroSiam outperforms prior entropy-based TTA methods with negligible computational overhead.",
+        "Strengths": [
+          "The method is simple, elegant, and efficient: it requires only a single linear predictor and a stop-gradient, with no augmentations, no extra backbone passes, and no teacher model, leading to the same GPU time as Tent.",
+          "The empirical evaluation is extensive and covers diverse and challenging scenarios: mixed distribution shifts, online label shifts, batch size 1, blind-spot adaptation, and mild settings, across five different vision backbones including collapse-prone tiny models, plus LLM math reasoning tasks.",
+          "ZeroSiam shows clear robustness advantages in stress tests: it maintains stable accuracy when adapting solely on misclassified (blind-spot) samples and after pre-adaptation on pure noise, where prior methods often collapse below the no-adaptation baseline.",
+          "Ablation studies are thorough and informative: they examine predictor design, stop-gradient necessity, integration with previous methods, sensitivity to learning rates and alpha, and convergence behavior, which strengthen the empirical claims.",
+          "The paper identifies an important practical problem—entropy minimization collapse in TTA—and offers a principled architectural solution that is easy to implement and reproduce."
+        ],
+        "Weaknesses": [
+          "The theoretical analysis is not rigorous. In Theorem 1, conclusion (1) relies on unstated learning-rate conditions and essentially restates gradient-norm inequalities; conclusion (2) does not actually prove convergence p^o -> p^r, and the lower bound h_min depends on unknown quantities (V(0), alpha) without practical verification. The paper overclaims that ZeroSiam is 'theoretically grounded'.",
+          "The claim that the predictor 'absorbs and regularizes biased learning signals' is speculative. The empirical evidence (e.g., deviation of theta_h, logit norm, center dominance) is indirect and does not separate absorption from generic regularization effects.",
+          "Baseline hyperparameters may not have been tuned as carefully for each model and scenario; for example, DeYO's catastrophic collapse to 0.1% on ViT-Small noise under label shifts suggests possible misconfiguration rather than inherent algorithmic failure. No error bars, standard deviations, or repeated-run statistics are provided.",
+          "The LLM experiment is very limited: only one model (Llama3.1-8B) is used, and AIME24 contains only 30 problems (so +10.00% corresponds to 3 questions), making the reported gains potentially not statistically reliable.",
+          "The method still requires per-model learning rates for the predictor and encoder, which somewhat undercuts the 'minimal tuning' message; no automatic selection or sensitivity study across all models is provided.",
+          "Missing formal limitations: no analysis of failure cases, no long-horizon continual shifts beyond ImageNet-C, no discussion of what happens when the target branch itself becomes unreliable, and no comparison with other entropy-regularization approaches that do not use a predictor."
+        ],
+        "Originality": 2,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "What are the precise conditions (e.g., on learning rates and gradient norms) for conclusion (1) of Theorem 1 to hold, and how does the Lyapunov argument actually show p^o -> p^r when the SKL divergence is only bounded rather than shown to vanish?",
+          "Could the observed improvement over Tent be achieved by adding a KL regularizer to a fixed reference distribution (e.g., a uniform prior) without a learnable predictor? What is the marginal role of the predictor beyond breaking symmetry?",
+          "Were the baselines' hyperparameters (especially DeYO's PLPD threshold and COME's uncertainty mass) re-tuned for each smaller model and for the LLM task? If not, how much of the performance gap is due to suboptimal baseline settings?",
+          "What is the statistical significance of the LLM results given that AIME24 has only 30 questions? Can confidence intervals or multiple random seeds be provided?",
+          "Can the 'absorbing biased signals' hypothesis be tested more directly—for example, by examining whether the predictor's output directions correlate with the biased gradient directions, or by comparing a learned predictor with a fixed random predictor under the same alignment loss?",
+          "What happens if the predictor learning rate is less than or equal to the encoder learning rate? Is a larger predictor learning rate necessary for collapse prevention?"
+        ],
+        "Limitations": [
+          "The theoretical guarantees are incomplete and not practically verifiable: the lower bound h_min depends on unknown initial values and the proof does not establish convergence of p^o to p^r.",
+          "No statistical significance or error bars are reported; many results may be within noise, especially for small benchmarks and single-seed evaluations.",
+          "The LLM reasoning evaluation is narrow, using one model and very small competitive math sets (AIME24 with 30 questions).",
+          "The method requires per-model learning rate selection for the predictor and encoder; there is no automated strategy or guidance for choosing them in new domains.",
+          "Experiments are limited to image classification and one LLM; applicability to other tasks such as segmentation, detection, or reinforcement learning is not demonstrated.",
+          "Potential negative societal impact is minimal, but online adaptation using unlabeled data could reinforce biases in the model's predictions if the stream itself is biased."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes ZeroSiam, a lightweight asymmetric Siamese architecture for test-time entropy minimization. It introduces a learnable predictor on an online branch and a stop-gradient target branch, both derived from a single encoder feature, and minimizes entropy on the online branch while aligning it to the target distribution. This design aims to prevent collapsed solutions such as constant one-hot outputs. The authors provide empirical and theoretical arguments that ZeroSiam not only avoids collapse but also absorbs and regularizes biased learning signals, improving performance even without collapse. Extensive experiments on ImageNet-C across five vision architectures and multiple wild TTA settings, as well as on mathematical reasoning benchmarks with Llama3.1-8B, show that ZeroSiam outperforms prior entropy-based TTA methods with negligible computational overhead.\",\n  \"Strengths\": [\n    \"The method is simple, elegant, and efficient: it requires only a single linear predictor and a stop-gradient, with no augmentations, no extra backbone passes, and no teacher model, leading to the same GPU time as Tent.\",\n    \"The empirical evaluation is extensive and covers diverse and challenging scenarios: mixed distribution shifts, online label shifts, batch size 1, blind-spot adaptation, and mild settings, across five different vision backbones including collapse-prone tiny models, plus LLM math reasoning tasks.\",\n    \"ZeroSiam shows clear robustness advantages in stress tests: it maintains stable accuracy when adapting solely on misclassified (blind-spot) samples and after pre-adaptation on pure noise, where prior methods often collapse below the no-adaptation baseline.\",\n    \"Ablation studies are thorough and informative: they examine predictor design, stop-gradient necessity, integration with previous methods, sensitivity to learning rates and alpha, and convergence behavior, which strengthen the empirical claims.\",\n    \"The paper identifies an important practical problem—entropy minimization collapse in TTA—and offers a principled architectural solution that is easy to implement and reproduce.\"\n  ],\n  \"Weaknesses\": [\n    \"The theoretical analysis is not rigorous. In Theorem 1, conclusion (1) relies on unstated learning-rate conditions and essentially restates gradient-norm inequalities; conclusion (2) does not actually prove convergence p^o -> p^r, and the lower bound h_min depends on unknown quantities (V(0), alpha) without practical verification. The paper overclaims that ZeroSiam is 'theoretically grounded'.\",\n    \"The claim that the predictor 'absorbs and regularizes biased learning signals' is speculative. The empirical evidence (e.g., deviation of theta_h, logit norm, center dominance) is indirect and does not separate absorption from generic regularization effects.\",\n    \"Baseline hyperparameters may not have been tuned as carefully for each model and scenario; for example, DeYO's catastrophic collapse to 0.1% on ViT-Small noise under label shifts suggests possible misconfiguration rather than inherent algorithmic failure. No error bars, standard deviations, or repeated-run statistics are provided.\",\n    \"The LLM experiment is very limited: only one model (Llama3.1-8B) is used, and AIME24 contains only 30 problems (so +10.00% corresponds to 3 questions), making the reported gains potentially not statistically reliable.\",\n    \"The method still requires per-model learning rates for the predictor and encoder, which somewhat undercuts the 'minimal tuning' message; no automatic selection or sensitivity study across all models is provided.\",\n    \"Missing formal limitations: no analysis of failure cases, no long-horizon continual shifts beyond ImageNet-C, no discussion of what happens when the target branch itself becomes unreliable, and no comparison with other entropy-regularization approaches that do not use a predictor.\"\n  ],\n  \"Originality\": 2,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"What are the precise conditions (e.g., on learning rates and gradient norms) for conclusion (1) of Theorem 1 to hold, and how does the Lyapunov argument actually show p^o -> p^r when the SKL divergence is only bounded rather than shown to vanish?\",\n    \"Could the observed improvement over Tent be achieved by adding a KL regularizer to a fixed reference distribution (e.g., a uniform prior) without a learnable predictor? What is the marginal role of the predictor beyond breaking symmetry?\",\n    \"Were the baselines' hyperparameters (especially DeYO's PLPD threshold and COME's uncertainty mass) re-tuned for each smaller model and for the LLM task? If not, how much of the performance gap is due to suboptimal baseline settings?\",\n    \"What is the statistical significance of the LLM results given that AIME24 has only 30 questions? Can confidence intervals or multiple random seeds be provided?\",\n    \"Can the 'absorbing biased signals' hypothesis be tested more directly—for example, by examining whether the predictor's output directions correlate with the biased gradient directions, or by comparing a learned predictor with a fixed random predictor under the same alignment loss?\",\n    \"What happens if the predictor learning rate is less than or equal to the encoder learning rate? Is a larger predictor learning rate necessary for collapse prevention?\"\n  ],\n  \"Limitations\": [\n    \"The theoretical guarantees are incomplete and not practically verifiable: the lower bound h_min depends on unknown initial values and the proof does not establish convergence of p^o to p^r.\",\n    \"No statistical significance or error bars are reported; many results may be within noise, especially for small benchmarks and single-seed evaluations.\",\n    \"The LLM reasoning evaluation is narrow, using one model and very small competitive math sets (AIME24 with 30 questions).\",\n    \"The method requires per-model learning rate selection for the predictor and encoder; there is no automated strategy or guidance for choosing them in new domains.\",\n    \"Experiments are limited to image classification and one LLM; applicability to other tasks such as segmentation, detection, or reinforcement learning is not demonstrated.\",\n    \"Potential negative societal impact is minimal, but online adaptation using unlabeled data could reinforce biases in the model's predictions if the stream itself is biased.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 47937,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 47169,
+        "completion_tokens": 5216,
+        "reasoning_tokens": 3878,
+        "total_tokens": 53153
+      },
+      "attempts": 1,
+      "response_id": "9386e2d2-c621-473c-a3a5-c2cfda238b86"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper proposes ZeroSiam, an asymmetric Siamese architecture for test-time entropy minimization. It adds a learnable predictor and stop-gradient to create two asymmetric views from a single feature, combining entropy minimization on the online branch with an alignment regularizer to the target branch. The method is designed to prevent collapsed constant-output solutions without augmentations, extra backbone passes, or teacher models. The authors provide empirical and theoretical arguments that ZeroSiam absorbs biased learning signals and improves stability, and they evaluate it on ImageNet-C test-time adaptation across several vision architectures and on LLM mathematical reasoning benchmarks.",
+        "Strengths": [
+          "Simple and efficient anti-collapse mechanism: reuses the predictor+stop-gradient asymmetry from SimSiam/BYOL in a single forward pass, requiring no augmentations or extra encoder passes, with negligible overhead measured on GPU time.",
+          "Extensive experimental evaluation across diverse architectures (ResNet-50-GN, ViT-B/S, ConvNeXt-Tiny, Swin-Tiny), corruption types, and online regimes (label shifts, batch size 1, mixed shifts, blind-spot misclassified subsets, noise pre-adaptation) shows consistent improvements over prior TTA methods.",
+          "Ablation studies justify design choices: predictor design, stop-gradient necessity, learning-rate sensitivity, alpha sensitivity, and integration with prior methods all support the proposed architecture.",
+          "Demonstrates broader applicability by adapting LLMs online for mathematical reasoning, achieving gains on AIME24, Math-500, and average accuracy, suggesting the method generalizes beyond vision."
+        ],
+        "Weaknesses": [
+          "The theoretical analysis is flawed. The Hessian of entropy with respect to logits is positive semidefinite, not negative along the claimed collapse directions; Lemma 2's Hessian formula is incorrect and the assertion of negative curvature is wrong. Consequently, Theorem 1 does not rigorously establish the claimed collapse-prevention or the 'filtering' role of the predictor.",
+          "The novelty is incremental: the core asymmetry mechanism is directly borrowed from SSL (BYOL/SimSiam) and adapted to entropy minimization. The contribution is more an engineering adaptation than a fundamentally new learning principle.",
+          "Some experimental results are surprisingly strong (e.g., blind-spot adaptation from 29.0% to 52.0% average accuracy) and are not accompanied by deeper analysis, error bars, or multiple runs, raising concerns about overfitting to the specific benchmark or evaluation protocol.",
+          "LLM evaluations are limited to a few mathematical benchmarks, with AIME24 containing only 30 problems; the reported +10.00% corresponds to 3 additional correct problems, and no broader reasoning or safety evaluation is provided.",
+          "The paper does not discuss possible forgetting of source-domain knowledge or performance degradation on clean data, which is an important concern for online adaptation methods."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "What is the exact role of the predictor initialization? Does performance remain stable under different random initializations or if the predictor is initialized as a small perturbation around identity?",
+          "How does ZeroSiam behave on models without normalization layers, or when only a subset of parameters (e.g., LoRA) is adapted? Does the stop-gradient asymmetry still prevent collapse in those settings?",
+          "Can the authors provide evidence that the gains on the blind-spot subset are not due to evaluation on a non-representative subset or label leakage? What is the per-severity or per-corruption performance on the full ImageNet-C?",
+          "Does ZeroSiam hurt performance on the original source distribution after TTA? Is there any catastrophic forgetting analysis?",
+          "Can the theoretical claims be corrected to provide a rigorous explanation of why the alignment term prevents collapse, given that entropy minimization on the online branch and the similarity alignment have non-trivial interactions?"
+        ],
+        "Limitations": [
+          "The theoretical results are not mathematically sound; the Hessian of entropy with respect to logits is positive semidefinite, contradicting the claimed negative curvature along collapse directions.",
+          "Evaluations are limited to ImageNet-C and a few math reasoning benchmarks; no results on other common TTA benchmarks (e.g., CIFAR-10/100-C, ImageNet-R) or on more diverse LLM tasks are reported.",
+          "The method is not compared to other asymmetric or Siamese-based TTA approaches, so it is unclear whether the benefit arises specifically from the predictor-stop-gradient design or from the alignment regularizer in general.",
+          "The paper does not discuss potential negative societal impacts, such as enabling more confident but incorrect LLM reasoning during online adaptation, which could be risky in high-stakes applications.",
+          "No code or model checkpoints are released, hindering reproducibility for the community."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes ZeroSiam, an asymmetric Siamese architecture for test-time entropy minimization. It adds a learnable predictor and stop-gradient to create two asymmetric views from a single feature, combining entropy minimization on the online branch with an alignment regularizer to the target branch. The method is designed to prevent collapsed constant-output solutions without augmentations, extra backbone passes, or teacher models. The authors provide empirical and theoretical arguments that ZeroSiam absorbs biased learning signals and improves stability, and they evaluate it on ImageNet-C test-time adaptation across several vision architectures and on LLM mathematical reasoning benchmarks.\",\n  \"Strengths\": [\n    \"Simple and efficient anti-collapse mechanism: reuses the predictor+stop-gradient asymmetry from SimSiam/BYOL in a single forward pass, requiring no augmentations or extra encoder passes, with negligible overhead measured on GPU time.\",\n    \"Extensive experimental evaluation across diverse architectures (ResNet-50-GN, ViT-B/S, ConvNeXt-Tiny, Swin-Tiny), corruption types, and online regimes (label shifts, batch size 1, mixed shifts, blind-spot misclassified subsets, noise pre-adaptation) shows consistent improvements over prior TTA methods.\",\n    \"Ablation studies justify design choices: predictor design, stop-gradient necessity, learning-rate sensitivity, alpha sensitivity, and integration with prior methods all support the proposed architecture.\",\n    \"Demonstrates broader applicability by adapting LLMs online for mathematical reasoning, achieving gains on AIME24, Math-500, and average accuracy, suggesting the method generalizes beyond vision.\"\n  ],\n  \"Weaknesses\": [\n    \"The theoretical analysis is flawed. The Hessian of entropy with respect to logits is positive semidefinite, not negative along the claimed collapse directions; Lemma 2's Hessian formula is incorrect and the assertion of negative curvature is wrong. Consequently, Theorem 1 does not rigorously establish the claimed collapse-prevention or the 'filtering' role of the predictor.\",\n    \"The novelty is incremental: the core asymmetry mechanism is directly borrowed from SSL (BYOL/SimSiam) and adapted to entropy minimization. The contribution is more an engineering adaptation than a fundamentally new learning principle.\",\n    \"Some experimental results are surprisingly strong (e.g., blind-spot adaptation from 29.0% to 52.0% average accuracy) and are not accompanied by deeper analysis, error bars, or multiple runs, raising concerns about overfitting to the specific benchmark or evaluation protocol.\",\n    \"LLM evaluations are limited to a few mathematical benchmarks, with AIME24 containing only 30 problems; the reported +10.00% corresponds to 3 additional correct problems, and no broader reasoning or safety evaluation is provided.\",\n    \"The paper does not discuss possible forgetting of source-domain knowledge or performance degradation on clean data, which is an important concern for online adaptation methods.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"What is the exact role of the predictor initialization? Does performance remain stable under different random initializations or if the predictor is initialized as a small perturbation around identity?\",\n    \"How does ZeroSiam behave on models without normalization layers, or when only a subset of parameters (e.g., LoRA) is adapted? Does the stop-gradient asymmetry still prevent collapse in those settings?\",\n    \"Can the authors provide evidence that the gains on the blind-spot subset are not due to evaluation on a non-representative subset or label leakage? What is the per-severity or per-corruption performance on the full ImageNet-C?\",\n    \"Does ZeroSiam hurt performance on the original source distribution after TTA? Is there any catastrophic forgetting analysis?\",\n    \"Can the theoretical claims be corrected to provide a rigorous explanation of why the alignment term prevents collapse, given that entropy minimization on the online branch and the similarity alignment have non-trivial interactions?\"\n  ],\n  \"Limitations\": [\n    \"The theoretical results are not mathematically sound; the Hessian of entropy with respect to logits is positive semidefinite, contradicting the claimed negative curvature along collapse directions.\",\n    \"Evaluations are limited to ImageNet-C and a few math reasoning benchmarks; no results on other common TTA benchmarks (e.g., CIFAR-10/100-C, ImageNet-R) or on more diverse LLM tasks are reported.\",\n    \"The method is not compared to other asymmetric or Siamese-based TTA approaches, so it is unclear whether the benefit arises specifically from the predictor-stop-gradient design or from the alignment regularizer in general.\",\n    \"The paper does not discuss potential negative societal impacts, such as enabling more confident but incorrect LLM reasoning during online adaptation, which could be risky in high-stakes applications.\",\n    \"No code or model checkpoints are released, hindering reproducibility for the community.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 47937,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 47169,
+        "completion_tokens": 6526,
+        "reasoning_tokens": 5454,
+        "total_tokens": 54463
+      },
+      "attempts": 1,
+      "response_id": "880f82e3-b11f-487a-8e04-8b194d5b23f6"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper introduces ZeroSiam, a test-time entropy minimization method that adds an asymmetric Siamese design (a learnable predictor and a stop-gradient branch) to prevent collapse and improve adaptation stability. The method requires no augmentations, extra encoder passes, or teacher models, and is evaluated on both vision (ImageNet-C) and large language model reasoning tasks. The authors provide empirical and theoretical evidence that ZeroSiam absorbs biased learning signals and avoids trivial constant-output solutions, achieving consistent gains over prior TTA methods, especially on small models and under challenging online scenarios such as label shift, single-sample streams, blind-spot adaptation, and noise pre-adaptation.",
+        "Strengths": [
+          "The proposed method is simple, efficient, and adds negligible computational overhead compared to baseline Tent while improving stability and accuracy.",
+          "Extensive empirical evaluation across diverse architectures (ResNet, ViT, ConvNeXt, Swin) and tasks (image corruption, mathematical reasoning) shows consistent and often substantial gains over prior TTA methods.",
+          "The stress tests (blind-spot adaptation on misclassified samples, pre-adaptation to pure noise) are novel and convincingly demonstrate ZeroSiam's robustness to unreliable pseudo-labels, a critical real-world concern.",
+          "Ablations on predictor design, stop-gradient, learning rates, and integration with prior methods provide practical insights and support the value of the asymmetry."
+        ],
+        "Weaknesses": [
+          "The theoretical analysis is not rigorous and contains logical errors. In Lemma 1, the claim that |ΔH^o| > |ΔH^r| can always be ensured by choosing η_h > η_f is false because the ratio η_min/η_max decreases as η_h increases, and the actual experiments use η_h > η_f, contradicting the proof's requirement. The convergence proof for p^o→p^r is incomplete: the bound D_SKL ≤ V(0)/α does not imply convergence to zero, and the construction of h_min requires an α that may not hold for the fixed α=1 used in experiments.",
+          "The theoretical statements are vague and do not clearly establish how the predictor 'absorbs' biased signals; the empirical evidence in Figure 2 is only correlational.",
+          "The novelty is incremental: the method directly transplants SimSiam's predictor–stop-gradient asymmetry into entropy minimization. The paper does not compare against a simpler variant that uses a consistency regularizer to a fixed reference without a learnable predictor.",
+          "The paper overclaims that asymmetry 'inherently rules out collapsed constant solutions as valid minima' without rigorous proof; the fixed-random-predictor ablation shows improvement but does not preclude the learnable predictor itself from collapsing.",
+          "Reproducibility is limited by missing details: the role of the predictor during inference after adaptation is not discussed, and LLM experiments report only single-run accuracies without variance or statistical significance."
+        ],
+        "Originality": 2,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How do the authors reconcile the proof of Lemma 1 with the experimental setting η_h > η_f? The proof appears to require η_h < η_f for |ΔH^o| > |ΔH^r|, but the implementation uses larger predictor learning rates.",
+          "What guarantees that the learnable predictor itself does not collapse (e.g., to a constant mapping) during adaptation? The fixed-random-predictor ablation helps, but could the learned predictor become degenerate?",
+          "The convergence proof requires α to be large enough for h_min > 0, yet α is fixed to 1 in experiments. Are the bounds on V(0) and δ known for the tested settings?",
+          "Is the predictor used for final predictions after adaptation, or only as an auxiliary module? If it is removed, what is the effect on deployment?",
+          "Could the improvements be obtained by simply adding a KL regularizer to a stop-gradient copy of the model without a predictor? What is the role of the predictor in that case?",
+          "The LLM experiments use a single model (Llama3.1-8B). How does ZeroSiam perform on other LLM sizes or architectures? Are the reported single-run accuracies stable?"
+        ],
+        "Limitations": [
+          "The theoretical guarantees are not established under the actual hyperparameter settings; the proof of convergence relies on conditions not verified in practice.",
+          "The method is only evaluated on image corruption and math reasoning; generalization to other TTA tasks (e.g., segmentation, detection) is unknown.",
+          "Adaptation is limited to normalization-layer affine parameters (vision) or LoRA (LLM); behavior under full fine-tuning is unexplored.",
+          "The blind-spot and noise pre-adaptation are synthetic stress tests; real-world streams may not exhibit such extreme conditions.",
+          "The paper does not discuss the risk of catastrophic forgetting or whether the predictor could inadvertently amplify model biases."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper introduces ZeroSiam, a test-time entropy minimization method that adds an asymmetric Siamese design (a learnable predictor and a stop-gradient branch) to prevent collapse and improve adaptation stability. The method requires no augmentations, extra encoder passes, or teacher models, and is evaluated on both vision (ImageNet-C) and large language model reasoning tasks. The authors provide empirical and theoretical evidence that ZeroSiam absorbs biased learning signals and avoids trivial constant-output solutions, achieving consistent gains over prior TTA methods, especially on small models and under challenging online scenarios such as label shift, single-sample streams, blind-spot adaptation, and noise pre-adaptation.\",\n  \"Strengths\": [\n    \"The proposed method is simple, efficient, and adds negligible computational overhead compared to baseline Tent while improving stability and accuracy.\",\n    \"Extensive empirical evaluation across diverse architectures (ResNet, ViT, ConvNeXt, Swin) and tasks (image corruption, mathematical reasoning) shows consistent and often substantial gains over prior TTA methods.\",\n    \"The stress tests (blind-spot adaptation on misclassified samples, pre-adaptation to pure noise) are novel and convincingly demonstrate ZeroSiam's robustness to unreliable pseudo-labels, a critical real-world concern.\",\n    \"Ablations on predictor design, stop-gradient, learning rates, and integration with prior methods provide practical insights and support the value of the asymmetry.\"\n  ],\n  \"Weaknesses\": [\n    \"The theoretical analysis is not rigorous and contains logical errors. In Lemma 1, the claim that |ΔH^o| > |ΔH^r| can always be ensured by choosing η_h > η_f is false because the ratio η_min/η_max decreases as η_h increases, and the actual experiments use η_h > η_f, contradicting the proof's requirement. The convergence proof for p^o→p^r is incomplete: the bound D_SKL ≤ V(0)/α does not imply convergence to zero, and the construction of h_min requires an α that may not hold for the fixed α=1 used in experiments.\",\n    \"The theoretical statements are vague and do not clearly establish how the predictor 'absorbs' biased signals; the empirical evidence in Figure 2 is only correlational.\",\n    \"The novelty is incremental: the method directly transplants SimSiam's predictor–stop-gradient asymmetry into entropy minimization. The paper does not compare against a simpler variant that uses a consistency regularizer to a fixed reference without a learnable predictor.\",\n    \"The paper overclaims that asymmetry 'inherently rules out collapsed constant solutions as valid minima' without rigorous proof; the fixed-random-predictor ablation shows improvement but does not preclude the learnable predictor itself from collapsing.\",\n    \"Reproducibility is limited by missing details: the role of the predictor during inference after adaptation is not discussed, and LLM experiments report only single-run accuracies without variance or statistical significance.\"\n  ],\n  \"Originality\": 2,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How do the authors reconcile the proof of Lemma 1 with the experimental setting η_h > η_f? The proof appears to require η_h < η_f for |ΔH^o| > |ΔH^r|, but the implementation uses larger predictor learning rates.\",\n    \"What guarantees that the learnable predictor itself does not collapse (e.g., to a constant mapping) during adaptation? The fixed-random-predictor ablation helps, but could the learned predictor become degenerate?\",\n    \"The convergence proof requires α to be large enough for h_min > 0, yet α is fixed to 1 in experiments. Are the bounds on V(0) and δ known for the tested settings?\",\n    \"Is the predictor used for final predictions after adaptation, or only as an auxiliary module? If it is removed, what is the effect on deployment?\",\n    \"Could the improvements be obtained by simply adding a KL regularizer to a stop-gradient copy of the model without a predictor? What is the role of the predictor in that case?\",\n    \"The LLM experiments use a single model (Llama3.1-8B). How does ZeroSiam perform on other LLM sizes or architectures? Are the reported single-run accuracies stable?\"\n  ],\n  \"Limitations\": [\n    \"The theoretical guarantees are not established under the actual hyperparameter settings; the proof of convergence relies on conditions not verified in practice.\",\n    \"The method is only evaluated on image corruption and math reasoning; generalization to other TTA tasks (e.g., segmentation, detection) is unknown.\",\n    \"Adaptation is limited to normalization-layer affine parameters (vision) or LoRA (LLM); behavior under full fine-tuning is unexplored.\",\n    \"The blind-spot and noise pre-adaptation are synthetic stress tests; real-world streams may not exhibit such extreme conditions.\",\n    \"The paper does not discuss the risk of catastrophic forgetting or whether the predictor could inadvertently amplify model biases.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 47937,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 47169,
+        "completion_tokens": 6736,
+        "reasoning_tokens": 5632,
+        "total_tokens": 54673
+      },
+      "attempts": 1,
+      "response_id": "13af7169-7c7a-41e5-b1ff-42f315b1f9d4"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 2,
+      "Reject": 3
+    },
+    "unanimous_decision": false,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          3,
+          2,
+          2,
+          3,
+          2
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Quality": {
+        "values": [
+          2,
+          2,
+          2,
+          3,
+          2
+        ],
+        "mean": 2.2,
+        "rounded_mean": 2,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          3,
+          2,
+          3,
+          3,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Soundness": {
+        "values": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "mean": 2,
+        "rounded_mean": 2,
+        "population_sd": 0.0,
+        "min": 2,
+        "max": 2
+      },
+      "Presentation": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          3,
+          2,
+          3,
+          3,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          6,
+          4,
+          6,
+          4,
+          4
+        ],
+        "mean": 4.8,
+        "rounded_mean": 5,
+        "population_sd": 0.98,
+        "min": 4,
+        "max": 6
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper proposes ZeroSiam, a test-time entropy minimization method enhanced with an asymmetric Siamese-style architecture: a lightweight learnable predictor on an online branch and a stop-gradient target branch, both computed from the same feature in one forward pass. This adds a divergence alignment term to entropy minimization to prevent collapsed constant-output solutions. The method is evaluated on ImageNet-C across five vision backbones and on mathematical reasoning with an LLM, showing consistent gains over prior entropy-based TTA methods with negligible computational overhead.",
+      "Strengths": [
+        "Simple, efficient design: only a single linear predictor and stop-gradient, no augmentations or extra encoder passes, with runtime comparable to Tent.",
+        "Broad empirical evaluation across diverse vision architectures and challenging online scenarios (mixed shifts, label shift, batch size 1, blind-spot subsets, noise pre-adaptation), with consistent gains over strong baselines.",
+        "Well-designed ablation studies that isolate the roles of the predictor, stop-gradient, learning rates, and the alignment hyperparameter.",
+        "Novel stress tests (adapting on misclassified blind-spot samples and pre-adapting on pure noise) demonstrate robustness against unreliable adaptation signals.",
+        "Cross-domain applicability is shown by adapting an LLM for mathematical reasoning, suggesting generality beyond vision."
+      ],
+      "Weaknesses": [
+        "The theoretical analysis is not rigorous and contains errors: the Hessian in logit space is positive semidefinite, not negative along the claimed collapse directions; the lower bound h_min is not guaranteed positive; and the convergence proof of p_o to p_r is incomplete. The central claim that asymmetry inherently avoids collapse is not formally established.",
+        "The proposed method is an incremental adaptation of SimSiam/BYOL-style predictor+stop-gradient asymmetry to entropy minimization; a comparison with a simpler consistency regularizer to a fixed reference without a learnable predictor is missing.",
+        "Empirical results lack multiple seeds, error bars, or statistical significance tests, which is concerning for online TTA where stochasticity can be high.",
+        "LLM experiments are limited to one 8B model and very small benchmarks (e.g., AIME24 with 30 problems); a +10% gain corresponds to only 3 additional correct answers and may not be statistically reliable.",
+        "Baseline hyperparameters may not have been carefully tuned for each model and scenario; for instance, DeYO's collapse to 0.1% in some settings suggests possible misconfiguration rather than inherent failure.",
+        "The role of the predictor during inference is not discussed, and integration with prior methods references a missing Table 10, hampering reproducibility."
+      ],
+      "Originality": 3,
+      "Quality": 2,
+      "Clarity": 3,
+      "Significance": 3,
+      "Questions": [
+        "Can the authors provide a corrected, rigorous proof of Theorem 1 that actually establishes a positive lower bound on entropy under the experimental settings (e.g., |C|=1000, alpha=1)?",
+        "What is the precise role of the learnable predictor versus a simple KL regularizer to a stop-gradient copy without a predictor? Does the method collapse without the predictor's parameterization?",
+        "How do the theoretical proofs reconcile with the experimental choice of predictor learning rate eta_h > eta_f, when the proof appears to require eta_h < eta_f?",
+        "What is the statistical significance of the LLM improvements given that AIME24 has only 30 questions? Can confidence intervals or multiple runs be provided?",
+        "Were the hyperparameters of all baselines (e.g., DeYO, COME, EATA) re-tuned for each smaller model and for the LLM task? Could suboptimal baseline settings explain some of the gains?",
+        "Does ZeroSiam degrade accuracy on the original clean source distribution after adaptation, and is there any catastrophic forgetting analysis?",
+        "What happens if the alignment term is weighted by alpha > 1 or alpha < 0.1 across different models? Is the fixed alpha=1 always optimal?"
+      ],
+      "Limitations": [
+        "The theoretical stability guarantee is not sound due to errors and gaps; the method's collapse-prevention remains empirically motivated rather than mathematically proven.",
+        "No statistical significance or multiple-seed results are reported, limiting confidence in the magnitude of gains, especially on small benchmarks.",
+        "The LLM exploration is narrow: one model, small math sets, and no safety or bias analysis.",
+        "The method is only tested on image classification and one math reasoning task; generalization to segmentation, detection, or other LLM tasks is unknown.",
+        "The blind-spot and noise pre-adaptation stress tests are synthetic and may not represent typical real-world TTA conditions.",
+        "The paper does not discuss potential negative societal impacts, such as enabling more confident but incorrect LLM reasoning during online adaptation in high-stakes applications."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 2,
+      "Presentation": 3,
+      "Contribution": 3,
+      "Overall": 4,
+      "Confidence": 4,
+      "Decision": "Reject"
+    },
+    "raw_response": "{\n  \"Summary\": \"The paper proposes ZeroSiam, a test-time entropy minimization method enhanced with an asymmetric Siamese-style architecture: a lightweight learnable predictor on an online branch and a stop-gradient target branch, both computed from the same feature in one forward pass. This adds a divergence alignment term to entropy minimization to prevent collapsed constant-output solutions. The method is evaluated on ImageNet-C across five vision backbones and on mathematical reasoning with an LLM, showing consistent gains over prior entropy-based TTA methods with negligible computational overhead.\",\n  \"Strengths\": [\n    \"Simple, efficient design: only a single linear predictor and stop-gradient, no augmentations or extra encoder passes, with runtime comparable to Tent.\",\n    \"Broad empirical evaluation across diverse vision architectures and challenging online scenarios (mixed shifts, label shift, batch size 1, blind-spot subsets, noise pre-adaptation), with consistent gains over strong baselines.\",\n    \"Well-designed ablation studies that isolate the roles of the predictor, stop-gradient, learning rates, and the alignment hyperparameter.\",\n    \"Novel stress tests (adapting on misclassified blind-spot samples and pre-adapting on pure noise) demonstrate robustness against unreliable adaptation signals.\",\n    \"Cross-domain applicability is shown by adapting an LLM for mathematical reasoning, suggesting generality beyond vision.\"\n  ],\n  \"Weaknesses\": [\n    \"The theoretical analysis is not rigorous and contains errors: the Hessian in logit space is positive semidefinite, not negative along the claimed collapse directions; the lower bound h_min is not guaranteed positive; and the convergence proof of p_o to p_r is incomplete. The central claim that asymmetry inherently avoids collapse is not formally established.\",\n    \"The proposed method is an incremental adaptation of SimSiam/BYOL-style predictor+stop-gradient asymmetry to entropy minimization; a comparison with a simpler consistency regularizer to a fixed reference without a learnable predictor is missing.\",\n    \"Empirical results lack multiple seeds, error bars, or statistical significance tests, which is concerning for online TTA where stochasticity can be high.\",\n    \"LLM experiments are limited to one 8B model and very small benchmarks (e.g., AIME24 with 30 problems); a +10% gain corresponds to only 3 additional correct answers and may not be statistically reliable.\",\n    \"Baseline hyperparameters may not have been carefully tuned for each model and scenario; for instance, DeYO's collapse to 0.1% in some settings suggests possible misconfiguration rather than inherent failure.\",\n    \"The role of the predictor during inference is not discussed, and integration with prior methods references a missing Table 10, hampering reproducibility.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"Can the authors provide a corrected, rigorous proof of Theorem 1 that actually establishes a positive lower bound on entropy under the experimental settings (e.g., |C|=1000, alpha=1)?\",\n    \"What is the precise role of the learnable predictor versus a simple KL regularizer to a stop-gradient copy without a predictor? Does the method collapse without the predictor's parameterization?\",\n    \"How do the theoretical proofs reconcile with the experimental choice of predictor learning rate eta_h > eta_f, when the proof appears to require eta_h < eta_f?\",\n    \"What is the statistical significance of the LLM improvements given that AIME24 has only 30 questions? Can confidence intervals or multiple runs be provided?\",\n    \"Were the hyperparameters of all baselines (e.g., DeYO, COME, EATA) re-tuned for each smaller model and for the LLM task? Could suboptimal baseline settings explain some of the gains?\",\n    \"Does ZeroSiam degrade accuracy on the original clean source distribution after adaptation, and is there any catastrophic forgetting analysis?\",\n    \"What happens if the alignment term is weighted by alpha > 1 or alpha < 0.1 across different models? Is the fixed alpha=1 always optimal?\"\n  ],\n  \"Limitations\": [\n    \"The theoretical stability guarantee is not sound due to errors and gaps; the method's collapse-prevention remains empirically motivated rather than mathematically proven.\",\n    \"No statistical significance or multiple-seed results are reported, limiting confidence in the magnitude of gains, especially on small benchmarks.\",\n    \"The LLM exploration is narrow: one model, small math sets, and no safety or bias analysis.\",\n    \"The method is only tested on image classification and one math reasoning task; generalization to segmentation, detection, or other LLM tasks is unknown.\",\n    \"The blind-spot and noise pre-adaptation stress tests are synthetic and may not represent typical real-world TTA conditions.\",\n    \"The paper does not discuss potential negative societal impacts, such as enabling more confident but incorrect LLM reasoning during online adaptation in high-stakes applications.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+    "usage": {
+      "prompt_tokens": 6801,
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 6545,
+      "completion_tokens": 1384,
+      "reasoning_tokens": 311,
+      "total_tokens": 8185
+    },
+    "attempts": 1,
+    "response_id": "f7b73e4a-68d2-4160-964e-7aacfe03c0fc"
+  },
+  "final_review": {
+    "Summary": "The paper proposes ZeroSiam, a test-time entropy minimization method enhanced with an asymmetric Siamese-style architecture: a lightweight learnable predictor on an online branch and a stop-gradient target branch, both computed from the same feature in one forward pass. This adds a divergence alignment term to entropy minimization to prevent collapsed constant-output solutions. The method is evaluated on ImageNet-C across five vision backbones and on mathematical reasoning with an LLM, showing consistent gains over prior entropy-based TTA methods with negligible computational overhead.",
+    "Strengths": [
+      "Simple, efficient design: only a single linear predictor and stop-gradient, no augmentations or extra encoder passes, with runtime comparable to Tent.",
+      "Broad empirical evaluation across diverse vision architectures and challenging online scenarios (mixed shifts, label shift, batch size 1, blind-spot subsets, noise pre-adaptation), with consistent gains over strong baselines.",
+      "Well-designed ablation studies that isolate the roles of the predictor, stop-gradient, learning rates, and the alignment hyperparameter.",
+      "Novel stress tests (adapting on misclassified blind-spot samples and pre-adapting on pure noise) demonstrate robustness against unreliable adaptation signals.",
+      "Cross-domain applicability is shown by adapting an LLM for mathematical reasoning, suggesting generality beyond vision."
+    ],
+    "Weaknesses": [
+      "The theoretical analysis is not rigorous and contains errors: the Hessian in logit space is positive semidefinite, not negative along the claimed collapse directions; the lower bound h_min is not guaranteed positive; and the convergence proof of p_o to p_r is incomplete. The central claim that asymmetry inherently avoids collapse is not formally established.",
+      "The proposed method is an incremental adaptation of SimSiam/BYOL-style predictor+stop-gradient asymmetry to entropy minimization; a comparison with a simpler consistency regularizer to a fixed reference without a learnable predictor is missing.",
+      "Empirical results lack multiple seeds, error bars, or statistical significance tests, which is concerning for online TTA where stochasticity can be high.",
+      "LLM experiments are limited to one 8B model and very small benchmarks (e.g., AIME24 with 30 problems); a +10% gain corresponds to only 3 additional correct answers and may not be statistically reliable.",
+      "Baseline hyperparameters may not have been carefully tuned for each model and scenario; for instance, DeYO's collapse to 0.1% in some settings suggests possible misconfiguration rather than inherent failure.",
+      "The role of the predictor during inference is not discussed, and integration with prior methods references a missing Table 10, hampering reproducibility."
+    ],
+    "Originality": 3,
+    "Quality": 2,
+    "Clarity": 3,
+    "Significance": 3,
+    "Questions": [
+      "Can the authors provide a corrected, rigorous proof of Theorem 1 that actually establishes a positive lower bound on entropy under the experimental settings (e.g., |C|=1000, alpha=1)?",
+      "What is the precise role of the learnable predictor versus a simple KL regularizer to a stop-gradient copy without a predictor? Does the method collapse without the predictor's parameterization?",
+      "How do the theoretical proofs reconcile with the experimental choice of predictor learning rate eta_h > eta_f, when the proof appears to require eta_h < eta_f?",
+      "What is the statistical significance of the LLM improvements given that AIME24 has only 30 questions? Can confidence intervals or multiple runs be provided?",
+      "Were the hyperparameters of all baselines (e.g., DeYO, COME, EATA) re-tuned for each smaller model and for the LLM task? Could suboptimal baseline settings explain some of the gains?",
+      "Does ZeroSiam degrade accuracy on the original clean source distribution after adaptation, and is there any catastrophic forgetting analysis?",
+      "What happens if the alignment term is weighted by alpha > 1 or alpha < 0.1 across different models? Is the fixed alpha=1 always optimal?"
+    ],
+    "Limitations": [
+      "The theoretical stability guarantee is not sound due to errors and gaps; the method's collapse-prevention remains empirically motivated rather than mathematically proven.",
+      "No statistical significance or multiple-seed results are reported, limiting confidence in the magnitude of gains, especially on small benchmarks.",
+      "The LLM exploration is narrow: one model, small math sets, and no safety or bias analysis.",
+      "The method is only tested on image classification and one math reasoning task; generalization to segmentation, detection, or other LLM tasks is unknown.",
+      "The blind-spot and noise pre-adaptation stress tests are synthetic and may not represent typical real-world TTA conditions.",
+      "The paper does not discuss potential negative societal impacts, such as enabling more confident but incorrect LLM reasoning during online adaptation in high-stakes applications."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 2,
+    "Presentation": 3,
+    "Contribution": 3,
+    "Overall": 4,
+    "Confidence": 4,
+    "Decision": "Reject"
+  },
+  "final_review_source": "Area Chair model output",
+  "usage": {
+    "prompt_tokens": 246486,
+    "prompt_cache_hit_tokens": 4096,
+    "prompt_cache_miss_tokens": 242390,
+    "completion_tokens": 28712,
+    "reasoning_tokens": 21653,
+    "total_tokens": 275198,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 1.147e-05,
+    "cache_miss_input_usd": 0.0339346,
+    "output_usd": 0.00803936,
+    "total_usd": 0.04198543
+  },
+  "elapsed_seconds": 70.342,
+  "input": {
+    "blind_id": "B177",
+    "filename": "B177.txt",
+    "blind_text_sha256": "90c78a44e6f35c21c6c8702903cdce3af98e9e92e400e337b5c576700b0fe362",
+    "characters": 129878,
+    "full_text_saved": false
+  }
+}

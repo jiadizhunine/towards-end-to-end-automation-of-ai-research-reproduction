@@ -1,0 +1,701 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:49:33.558562+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper introduces WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that addresses the quality-speed trade-off inherent in these models. WINO employs a parallel draft-and-verify mechanism: the draft module aggressively unmasks multiple tokens using a low confidence threshold, while a verify module uses a shadow block with specially designed attention masks to re-evaluate and re-mask low-confidence tokens. This makes decoding 'revokable,' allowing the model to correct early errors as context becomes richer. Experiments on LLaDA and MMaDA show consistent improvements in both accuracy (e.g., +2.58% on GSM8K) and inference speed (up to 10× step reduction), across language and multimodal benchmarks.",
+        "Strengths": [
+          "Novel and well-motivated concept of 'revokable decoding' that directly addresses a fundamental limitation of DLLMs.",
+          "Training-free and plug-and-play design, making it easily applicable to existing models.",
+          "Comprehensive experimental evaluation across diverse benchmarks (8 language + 6 multimodal), demonstrating consistent quality and speed improvements.",
+          "Thorough ablations including comparison with dynamic samplers, verification module necessity, information leakage analysis, threshold tuning, and stochastic sampling extension.",
+          "Excellent case studies showing the decoding dynamics and error correction in action.",
+          "Appropriate discussion of limitations, including the dependence on base model capability and potential for training-phase integration."
+        ],
+        "Weaknesses": [
+          "The theoretical justification for why the verification mechanism works is somewhat limited; the paper relies primarily on empirical evidence and intuitive arguments rather than formal analysis.",
+          "The threshold parameters (τ1, τ2) require tuning, though the paper shows robustness across a reasonable range. The selection of τ1 from {0.5, 0.6, 0.7} is not fully justified for all tasks.",
+          "The comparison with naive parallel sampling in the introduction uses extreme settings (M=4 or 8 tokens/step) which may not reflect typical usage; however, the appendix provides fairer comparisons with advanced samplers.",
+          "The verification confidence (pθ) may not always be well-calibrated, which could affect the effectiveness of the revocation mechanism in edge cases, though empirical results suggest this is not a major issue.",
+          "The paper does not explore the interaction of WINO with KV cache acceleration techniques, which could be a relevant future direction."
+        ],
+        "Originality": 4,
+        "Quality": 4,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "How sensitive is WINO to the choice of verification threshold τ2? The paper fixes it at 0.9; would different values (e.g., 0.8 or 0.95) significantly change the results on more challenging tasks like MATH-500?",
+          "The paper mentions that WINO supports stochastic sampling via Gumbel noise. How does this interact with the verification module? Does the verification become less reliable with stochastic drafts?",
+          "Have you considered combining WINO with KV cache techniques (e.g., dLLM-cache) for further speedup? Would the revocable nature of WINO complicate caching strategies?",
+          "The indirect attention path within Ycur could theoretically leak information to Yshad. The ablation shows blocking direct attention is sufficient, but could you quantify the extent of indirect leakage in practice?",
+          "How does WINO perform on longer generation sequences (e.g., >1024 tokens) where the block length might need to increase? Are there memory or effectiveness concerns?"
+        ],
+        "Limitations": [
+          "The degree of acceleration is dependent on the base model's capability; weaker models may draft lower-quality tokens, requiring more verification steps and reducing speedup.",
+          "The paper does not address potential negative societal impacts beyond those of the underlying base models. While the training-free nature mitigates new risks, the improved efficiency could lower barriers for misuse.",
+          "The memory overhead, while small (2.4% for standard settings), scales with block length and could become non-negligible for very long contexts.",
+          "The method introduces two hyperparameters (τ1, τ2) that may require per-task or per-model tuning for optimal performance, although the paper shows robustness."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 4,
+        "Presentation": 3,
+        "Contribution": 4,
+        "Overall": 8,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThe paper introduces WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs). The core idea is to enable \"revokable decoding\" through a parallel draft-and-verify mechanism. The draft module aggressively unmasks multiple tokens with a low confidence threshold (τ1), while the verify module re-evaluates previously unmasked tokens using a shadow block with carefully designed attention masks, re-masking those with confidence below τ2. This breaks the irreversibility of standard DLLM decoding, allowing error correction while enabling faster parallel generation.\n\nThe paper is technically sound with strong experimental validation across language (GSM8K, MATH-500, HumanEval, MBPP, etc.) and multimodal (Flickr30k, AI2D, MMMU, etc.) benchmarks. Results show consistent improvements in both accuracy and speed (e.g., 6.10× step reduction and +2.58% accuracy on GSM8K). The ablation studies are thorough, including comparisons with dynamic samplers, verification module necessity, leakage analysis, threshold tuning, stochastic sampling extension, and GPU memory overhead.\n\nKey strengths:\n1. Novel and well-motivated approach: The concept of revokable decoding addresses a fundamental limitation of DLLMs.\n2. Strong empirical results: Consistent improvements across diverse benchmarks and tasks.\n3. Training-free and plug-and-play: Easy adoption for existing models.\n4. Comprehensive ablations and analysis.\n\nKey weaknesses:\n1. Limited theoretical analysis of why verification works (mostly empirical justification).\n2. The threshold tuning (τ1, τ2) may require per-task adjustment, though the paper shows robustness.\n3. The comparison with \"naive parallel sampling\" in the abstract/intro uses extreme settings (M=4 or 8 tokens/step) which may not be a fair baseline, though they do compare with more advanced samplers in the appendix.\n4. The paper claims \"revokable\" decoding, but the verification depends on the model's confidence estimates, which may not always be well-calibrated.\n\nThe paper is clearly written, well-organized, and provides sufficient details for reproduction. The ethical considerations are appropriately addressed.\n\nI would rate this as a strong paper. The originality is high, quality is excellent, clarity is good, and significance is high for the DLLM community. I would assign: Soundness=4, Presentation=3 (some minor clarity issues), Contribution=4, Overall=8 (Strong Accept). Confidence=4.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper introduces WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that addresses the quality-speed trade-off inherent in these models. WINO employs a parallel draft-and-verify mechanism: the draft module aggressively unmasks multiple tokens using a low confidence threshold, while a verify module uses a shadow block with specially designed attention masks to re-evaluate and re-mask low-confidence tokens. This makes decoding 'revokable,' allowing the model to correct early errors as context becomes richer. Experiments on LLaDA and MMaDA show consistent improvements in both accuracy (e.g., +2.58% on GSM8K) and inference speed (up to 10× step reduction), across language and multimodal benchmarks.\",\n    \"Strengths\": [\n        \"Novel and well-motivated concept of 'revokable decoding' that directly addresses a fundamental limitation of DLLMs.\",\n        \"Training-free and plug-and-play design, making it easily applicable to existing models.\",\n        \"Comprehensive experimental evaluation across diverse benchmarks (8 language + 6 multimodal), demonstrating consistent quality and speed improvements.\",\n        \"Thorough ablations including comparison with dynamic samplers, verification module necessity, information leakage analysis, threshold tuning, and stochastic sampling extension.\",\n        \"Excellent case studies showing the decoding dynamics and error correction in action.\",\n        \"Appropriate discussion of limitations, including the dependence on base model capability and potential for training-phase integration.\"\n    ],\n    \"Weaknesses\": [\n        \"The theoretical justification for why the verification mechanism works is somewhat limited; the paper relies primarily on empirical evidence and intuitive arguments rather than formal analysis.\",\n        \"The threshold parameters (τ1, τ2) require tuning, though the paper shows robustness across a reasonable range. The selection of τ1 from {0.5, 0.6, 0.7} is not fully justified for all tasks.\",\n        \"The comparison with naive parallel sampling in the introduction uses extreme settings (M=4 or 8 tokens/step) which may not reflect typical usage; however, the appendix provides fairer comparisons with advanced samplers.\",\n        \"The verification confidence (pθ) may not always be well-calibrated, which could affect the effectiveness of the revocation mechanism in edge cases, though empirical results suggest this is not a major issue.\",\n        \"The paper does not explore the interaction of WINO with KV cache acceleration techniques, which could be a relevant future direction.\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 4,\n    \"Clarity\": 3,\n    \"Significance\": 4,\n    \"Questions\": [\n        \"How sensitive is WINO to the choice of verification threshold τ2? The paper fixes it at 0.9; would different values (e.g., 0.8 or 0.95) significantly change the results on more challenging tasks like MATH-500?\",\n        \"The paper mentions that WINO supports stochastic sampling via Gumbel noise. How does this interact with the verification module? Does the verification become less reliable with stochastic drafts?\",\n        \"Have you considered combining WINO with KV cache techniques (e.g., dLLM-cache) for further speedup? Would the revocable nature of WINO complicate caching strategies?\",\n        \"The indirect attention path within Ycur could theoretically leak information to Yshad. The ablation shows blocking direct attention is sufficient, but could you quantify the extent of indirect leakage in practice?\",\n        \"How does WINO perform on longer generation sequences (e.g., >1024 tokens) where the block length might need to increase? Are there memory or effectiveness concerns?\"\n    ],\n    \"Limitations\": [\n        \"The degree of acceleration is dependent on the base model's capability; weaker models may draft lower-quality tokens, requiring more verification steps and reducing speedup.\",\n        \"The paper does not address potential negative societal impacts beyond those of the underlying base models. While the training-free nature mitigates new risks, the improved efficiency could lower barriers for misuse.\",\n        \"The memory overhead, while small (2.4% for standard settings), scales with block length and could become non-negligible for very long contexts.\",\n        \"The method introduces two hyperparameters (τ1, τ2) that may require per-task or per-model tuning for optimal performance, although the paper shows robustness.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 4,\n    \"Presentation\": 3,\n    \"Contribution\": 4,\n    \"Overall\": 8,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 20087,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 18295,
+        "completion_tokens": 1491,
+        "reasoning_tokens": 0,
+        "total_tokens": 21578
+      },
+      "attempts": 1,
+      "response_id": "b37839da-1851-4a87-8d1e-eca4d18913ff"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "This paper introduces WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that addresses the quality-speed trade-off inherent in these models. The key insight is that standard DLLM decoding is irreversible - once tokens are decoded, they cannot be revised even when richer context becomes available. WINO makes decoding revokable through a parallel draft-and-verify mechanism: a draft module aggressively unmasks multiple tokens based on a lenient confidence threshold (Wide-In), while a verify module uses a carefully designed shadow block with position ID sharing and attention masking to re-evaluate previously decoded tokens and re-mask those that fail a stricter verification threshold (Narrow-Out). The method is evaluated on LLaDA (8 language benchmarks) and MMaDA (6 multimodal benchmarks), achieving up to 10x speedup with improved or maintained accuracy. The authors provide comprehensive ablations, comparison with other dynamic samplers, and case studies demonstrating the effectiveness of the revokable decoding mechanism.",
+        "Strengths": [
+          "The core insight is novel and well-motivated: identifying the irreversibility of standard DLLM decoding as a fundamental limitation and addressing it with a revokable mechanism is a fresh perspective in the field.",
+          "The technical design is elegant and practical - the shadow block with position ID sharing and attention masking is a clever way to enable position-wise verification without leaking information from the target tokens.",
+          "Comprehensive evaluation across diverse tasks (8 language + 6 multimodal benchmarks) with two different model families (LLaDA and MMaDA) provides strong empirical evidence for the method's effectiveness and generality.",
+          "The method is training-free and plug-and-play, making it immediately applicable to existing DLLMs without additional training costs.",
+          "The ablation studies are thorough and informative, isolating the contribution of the verification module, the attention mask design, and the threshold sensitivity.",
+          "The comparison with other dynamic samplers (Fast-dLLM-parallel, EB sampler) clearly demonstrates that the revocation mechanism, not just aggressive drafting, is the key to breaking the quality-speed trade-off.",
+          "The case studies provide intuitive and concrete evidence of how WINO corrects early errors through iterative refinement, making the mechanism's benefits tangible.",
+          "The paper is well-written and clearly organized, with sufficient detail for reproducibility (pseudocode provided)."
+        ],
+        "Weaknesses": [
+          "The theoretical justification for the verification mechanism is somewhat heuristic. The claim that the shadow block's output can effectively verify token quality relies on intuition rather than rigorous analysis of what the model's predictions on [MASK] tokens represent in this configuration.",
+          "The threshold selection (τ1, τ2) appears task-dependent, and while the paper reports tuning τ1 from {0.5, 0.6, 0.7}, it doesn't provide clear guidance or a principled method for selecting these values on new tasks or models.",
+          "The evaluation is limited to 8B models. It's unclear how the method scales to larger models (e.g., 70B+ parameters) or whether the benefits diminish with model scale.",
+          "The memory overhead analysis is brief. While the 2.4% overhead in the standard setting is acceptable, the up to 8% overhead in the full diffusion setting (Lb=L=512) raises questions about scalability to very long generation lengths.",
+          "The paper doesn't deeply analyze scenarios where WINO might fail or underperform. For instance, on MBPP the accuracy is unchanged, and the reasons for this are not discussed.",
+          "The relationship between the verification threshold τ2 and the model's calibration is not explored. A poorly calibrated model might undermine the effectiveness of the verification mechanism."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 4,
+        "Questions": [
+          "Can you provide more theoretical insight into why the shadow block's prediction on a [MASK] token, when attending to all context except the corresponding decoded token, serves as a reliable verification signal? Is there a formal connection to the model's uncertainty estimation?",
+          "How sensitive is WINO's performance to the choice of τ1 and τ2 across different tasks? In practice, would users need to tune these per task, or are there general guidelines for setting them based on model confidence distributions?",
+          "Have you tested WINO on larger models (e.g., 30B+ parameters)? If so, how do the speedup and quality gains compare to the 8B results? If not, are there any expected challenges with scaling?",
+          "The MBPP task shows no accuracy improvement with WINO. Can you explain why this task behaves differently from others? Is it related to the nature of code generation vs. reasoning tasks?",
+          "Regarding the indirect attention paths within Ycur that could theoretically leak information to Yshad - have you quantified the extent of this leakage in practice? The ablation with 'Full Leakage' shows a performance drop, but how much indirect leakage actually occurs in the proposed mask?",
+          "Could the verification mechanism be applied to the drafting tokens themselves in a single forward pass, or does it fundamentally require the two-phase (draft then verify) approach?",
+          "Have you considered making the verification threshold τ2 adaptive based on the decoding step or the confidence distribution of the draft tokens?",
+          "Does WINO interact with KV-cache-based acceleration methods (e.g., Block Diffusion, dLLM-cache)? Since the shadow block changes the attention pattern, does it preclude or complicate caching strategies?"
+        ],
+        "Limitations": [
+          "The paper's own limitation section (in the appendix) acknowledges that the degree of acceleration depends on the base model's capabilities. This is a fair and honest assessment, but the paper could more thoroughly discuss what types of models or tasks might not benefit from WINO.",
+          "The method introduces two hyperparameters (τ1 and τ2) that require tuning, which could be a barrier to practical adoption. The paper could provide more guidance on setting these based on model characteristics rather than task-specific tuning.",
+          "The ethical considerations are briefly addressed but primarily defer to the base models. While this is reasonable for a decoding algorithm, the paper could more explicitly discuss potential negative impacts of faster generation (e.g., increased potential for generating harmful content at scale).",
+          "The evaluation focuses on English-language and vision-language tasks. The method's behavior on non-English languages or code-specific DLLMs is not explored.",
+          "The paper doesn't discuss the environmental impact of the additional computation from the shadow block, though it's noted to be minimal in terms of memory overhead."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 4,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes WINO, a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that enables \"revokable decoding\" via a parallel draft-and-verify mechanism. The key idea is to aggressively draft multiple tokens (Wide-In) and then use a shadow block with carefully designed attention masks to verify and potentially re-mask previously decoded tokens (Narrow-Out). The method is evaluated on LLaDA and MMaDA across language and multimodal benchmarks, showing significant speedups (up to 10x) with improved or maintained accuracy.\n\nStrengths:\n1. The core insight is novel and well-motivated: identifying the irreversibility of standard DLLM decoding as a fundamental limitation and addressing it with a revokable mechanism.\n2. The technical design is elegant - the shadow block with position ID sharing and attention masking is clever and well-thought-out.\n3. Comprehensive evaluation across diverse tasks (8 language + 6 multimodal benchmarks) with both LLaDA and MMaDA.\n4. The method is training-free and plug-and-play, making it practical and broadly applicable.\n5. Good ablation studies isolating the contribution of verification, attention mask design (leakage), and threshold sensitivity.\n6. The case studies provide intuitive understanding of the mechanism's benefits.\n7. The comparison with other dynamic samplers (Fast-dLLM-parallel, EB sampler) clearly demonstrates the added value of the revocation mechanism.\n8. The paper is well-written and clearly organized.\n\nWeaknesses:\n1. The theoretical justification for why the shadow block verification works is somewhat heuristic. The claim that \"the former provides progressively richer contextual semantics\" while \"the latter serves to regularize confidence\" is plausible but not rigorously established.\n2. The threshold tuning (τ1, τ2) seems task-dependent and may require per-task tuning in practice. The paper mentions tuning τ1 from {0.5, 0.6, 0.7} but doesn't provide clear guidance on how to select these values for new tasks.\n3. The evaluation is limited to 8B models; it's unclear how the method scales to larger models or different architectures.\n4. The memory overhead analysis is brief - while the ~2.4% overhead is claimed, the full diffusion case shows up to 8% which could be significant for very long sequences.\n5. The comparison with standard decoding uses the \"optimal\" 1-token-per-step setting for baselines, but it's unclear if this is truly optimal for all tasks. Some tasks might benefit from different step counts.\n6. The paper doesn't deeply analyze failure cases or scenarios where WINO might hurt performance.\n7. The \"verification\" mechanism's theoretical soundness could be questioned - the shadow block attends to context but the indirect attention paths within Ycur could still leak information (though the ablation suggests this is negligible in practice).\n\nOverall, this is a solid paper with a novel and practical contribution. The method is well-motivated, technically sound, and empirically validated across diverse benchmarks. The main concerns are around the theoretical understanding of the verification mechanism and the practical guidance for hyperparameter selection. I would lean toward acceptance given the clear contributions and comprehensive evaluation.\n\nREVIEW JSON:\n```json\n{\n\"Summary\": \"This paper introduces WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that addresses the quality-speed trade-off inherent in these models. The key insight is that standard DLLM decoding is irreversible - once tokens are decoded, they cannot be revised even when richer context becomes available. WINO makes decoding revokable through a parallel draft-and-verify mechanism: a draft module aggressively unmasks multiple tokens based on a lenient confidence threshold (Wide-In), while a verify module uses a carefully designed shadow block with position ID sharing and attention masking to re-evaluate previously decoded tokens and re-mask those that fail a stricter verification threshold (Narrow-Out). The method is evaluated on LLaDA (8 language benchmarks) and MMaDA (6 multimodal benchmarks), achieving up to 10x speedup with improved or maintained accuracy. The authors provide comprehensive ablations, comparison with other dynamic samplers, and case studies demonstrating the effectiveness of the revokable decoding mechanism.\",\n\"Strengths\": [\n\"The core insight is novel and well-motivated: identifying the irreversibility of standard DLLM decoding as a fundamental limitation and addressing it with a revokable mechanism is a fresh perspective in the field.\",\n\"The technical design is elegant and practical - the shadow block with position ID sharing and attention masking is a clever way to enable position-wise verification without leaking information from the target tokens.\",\n\"Comprehensive evaluation across diverse tasks (8 language + 6 multimodal benchmarks) with two different model families (LLaDA and MMaDA) provides strong empirical evidence for the method's effectiveness and generality.\",\n\"The method is training-free and plug-and-play, making it immediately applicable to existing DLLMs without additional training costs.\",\n\"The ablation studies are thorough and informative, isolating the contribution of the verification module, the attention mask design, and the threshold sensitivity.\",\n\"The comparison with other dynamic samplers (Fast-dLLM-parallel, EB sampler) clearly demonstrates that the revocation mechanism, not just aggressive drafting, is the key to breaking the quality-speed trade-off.\",\n\"The case studies provide intuitive and concrete evidence of how WINO corrects early errors through iterative refinement, making the mechanism's benefits tangible.\",\n\"The paper is well-written and clearly organized, with sufficient detail for reproducibility (pseudocode provided).\"\n],\n\"Weaknesses\": [\n\"The theoretical justification for the verification mechanism is somewhat heuristic. The claim that the shadow block's output can effectively verify token quality relies on intuition rather than rigorous analysis of what the model's predictions on [MASK] tokens represent in this configuration.\",\n\"The threshold selection (τ1, τ2) appears task-dependent, and while the paper reports tuning τ1 from {0.5, 0.6, 0.7}, it doesn't provide clear guidance or a principled method for selecting these values on new tasks or models.\",\n\"The evaluation is limited to 8B models. It's unclear how the method scales to larger models (e.g., 70B+ parameters) or whether the benefits diminish with model scale.\",\n\"The memory overhead analysis is brief. While the 2.4% overhead in the standard setting is acceptable, the up to 8% overhead in the full diffusion setting (Lb=L=512) raises questions about scalability to very long generation lengths.\",\n\"The paper doesn't deeply analyze scenarios where WINO might fail or underperform. For instance, on MBPP the accuracy is unchanged, and the reasons for this are not discussed.\",\n\"The relationship between the verification threshold τ2 and the model's calibration is not explored. A poorly calibrated model might undermine the effectiveness of the verification mechanism.\"\n],\n\"Originality\": 4,\n\"Quality\": 3,\n\"Clarity\": 4,\n\"Significance\": 4,\n\"Questions\": [\n\"Can you provide more theoretical insight into why the shadow block's prediction on a [MASK] token, when attending to all context except the corresponding decoded token, serves as a reliable verification signal? Is there a formal connection to the model's uncertainty estimation?\",\n\"How sensitive is WINO's performance to the choice of τ1 and τ2 across different tasks? In practice, would users need to tune these per task, or are there general guidelines for setting them based on model confidence distributions?\",\n\"Have you tested WINO on larger models (e.g., 30B+ parameters)? If so, how do the speedup and quality gains compare to the 8B results? If not, are there any expected challenges with scaling?\",\n\"The MBPP task shows no accuracy improvement with WINO. Can you explain why this task behaves differently from others? Is it related to the nature of code generation vs. reasoning tasks?\",\n\"Regarding the indirect attention paths within Ycur that could theoretically leak information to Yshad - have you quantified the extent of this leakage in practice? The ablation with 'Full Leakage' shows a performance drop, but how much indirect leakage actually occurs in the proposed mask?\",\n\"Could the verification mechanism be applied to the drafting tokens themselves in a single forward pass, or does it fundamentally require the two-phase (draft then verify) approach?\",\n\"Have you considered making the verification threshold τ2 adaptive based on the decoding step or the confidence distribution of the draft tokens?\",\n\"Does WINO interact with KV-cache-based acceleration methods (e.g., Block Diffusion, dLLM-cache)? Since the shadow block changes the attention pattern, does it preclude or complicate caching strategies?\"\n],\n\"Limitations\": [\n\"The paper's own limitation section (in the appendix) acknowledges that the degree of acceleration depends on the base model's capabilities. This is a fair and honest assessment, but the paper could more thoroughly discuss what types of models or tasks might not benefit from WINO.\",\n\"The method introduces two hyperparameters (τ1 and τ2) that require tuning, which could be a barrier to practical adoption. The paper could provide more guidance on setting these based on model characteristics rather than task-specific tuning.\",\n\"The ethical considerations are briefly addressed but primarily defer to the base models. While this is reasonable for a decoding algorithm, the paper could more explicitly discuss potential negative impacts of faster generation (e.g., increased potential for generating harmful content at scale).\",\n\"The evaluation focuses on English-language and vision-language tasks. The method's behavior on non-English languages or code-specific DLLMs is not explored.\",\n\"The paper doesn't discuss the environmental impact of the additional computation from the shadow block, though it's noted to be minimal in terms of memory overhead.\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 4,\n\"Contribution\": 4,\n\"Overall\": 7,\n\"Confidence\": 4,\n\"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 20087,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 18295,
+        "completion_tokens": 2054,
+        "reasoning_tokens": 0,
+        "total_tokens": 22141
+      },
+      "attempts": 1,
+      "response_id": "892bb550-61fd-4d31-9ecd-56192f8063c0"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper introduces WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that addresses the quality-speed trade-off by enabling 'revokable' decoding. WINO uses a parallel draft-and-verify mechanism: it aggressively drafts multiple tokens per step (Wide-In) while simultaneously using the model's bidirectional context to verify previously decoded tokens and re-mask those that fail a confidence threshold (Narrow-Out). This breaks the irreversibility of standard DLLM decoding, allowing early errors to be corrected. The method is model-agnostic and evaluated on LLaDA (language tasks) and MMaDA (multimodal tasks), achieving 2-10× speedups while maintaining or improving accuracy across benchmarks like GSM8K, Flickr30K, and MMMU. Extensive ablations validate the design choices including the shadow block attention mask and threshold settings.",
+        "Strengths": [
+          "Novel approach: Introduces the concept of revokable decoding for DLLMs, addressing a fundamental limitation of standard decoding (irreversibility) rather than just optimizing sampling heuristics.",
+          "Training-free and model-agnostic: Can be applied to any existing DLLM without retraining, making it broadly useful and practical.",
+          "Comprehensive evaluation: Tested across 8 language benchmarks and 6 multimodal benchmarks with two different model families (LLaDA and MMaDA), demonstrating consistent improvements in both quality and speed.",
+          "Strong empirical results: Achieves 2-10× speedups while often improving accuracy (e.g., +2.58% on GSM8K, +5.44% on MMMU-val), breaking the typical quality-speed trade-off.",
+          "Well-designed ablations: Validates the necessity of the verification module, the attention mask design (leakage analysis), and threshold sensitivity, providing insight into the method's behavior.",
+          "Clear presentation: The paper is well-organized, with clear figures (overview, attention mask) and pseudocode that aids reproducibility.",
+          "Practical considerations addressed: Includes GPU memory overhead analysis and latency comparison showing minimal additional cost.",
+          "Stochastic sampling support: Shows the method works beyond greedy decoding, extending to temperature-based sampling.",
+          "Public code release: Facilitates reproducibility and further research."
+        ],
+        "Weaknesses": [
+          "Limited theoretical analysis: The paper relies heavily on empirical validation but lacks a formal analysis of why the verification mechanism works or under what conditions it might fail (e.g., when the model's self-verification is unreliable).",
+          "Threshold sensitivity: While ablations show robustness, the choice of τ1 and τ2 is heuristic and may require per-task tuning. The paper doesn't provide clear guidance for selecting these in new settings.",
+          "Incomplete comparison to latest work: The paper mentions COVER as a follow-up but doesn't compare against it, and the comparison with Fast-dLLM-parallel and EB sampler is relegated to the appendix rather than the main text.",
+          "Limited exploration of failure cases: No systematic analysis of when WINO fails to improve performance or when verification introduces new errors (e.g., oscillating between draft and verify).",
+          "Potential over-claiming: The paper states WINO 'decisively improves' quality-speed trade-off, but on some benchmarks (e.g., MBPP, Flickr30K) the accuracy gain is marginal (0-0.16%), and the primary benefit is speed.",
+          "Memory overhead scaling: The shadow block doubles the sequence length in full diffusion settings, which may be problematic for very long generations (the paper only tests up to 512).",
+          "The 'revokable' terminology might oversimplify: The method only revokes tokens that fail a threshold; it doesn't provide a mechanism for global coherence checking beyond local confidence."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "How sensitive is WINO to the choice of τ1 and τ2 across different models (e.g., smaller models, different architectures)? Is there a principled way to set these thresholds automatically?",
+          "The verification uses the shadow block to check token quality. Could there be cases where the model consistently fails to identify its own errors (e.g., overconfident wrong predictions)? Have you analyzed cases where verification fails to correct errors?",
+          "In the full diffusion setting, WINO shows dramatic improvements (e.g., +23.88% on GSM8K). Why is the benefit so much larger in full diffusion compared to semi-autoregressive? Is it because the baseline is particularly weak in that setting?",
+          "The paper mentions stochastic sampling with Gumbel noise. How does the verification threshold interact with sampling temperature? Does higher temperature require lower τ2 to avoid excessive re-masking?",
+          "Have you considered adaptive thresholds that change over decoding steps? Early steps might benefit from more aggressive revocation while later steps could be more lenient.",
+          "The ablation 'Only Draft' with τ1=0.6 shows significant degradation, but with τ1=0.9 it's closer to baseline. This suggests the verification is most valuable when drafting is aggressive. Is there a point where verification hurts performance (e.g., when drafts are already very accurate)?",
+          "How does WINO handle tasks requiring strict formatting (e.g., JSON output, code with specific syntax)? The revocation mechanism might disrupt format consistency."
+        ],
+        "Limitations": [
+          "The method's effectiveness depends on the base model's ability to provide meaningful verification signals; models with poor self-evaluation may not benefit as much.",
+          "The shadow block increases memory usage, which could be a bottleneck for very long generations or resource-constrained environments.",
+          "The paper focuses on greedy decoding primarily, with stochastic sampling as an extension. The interaction between sampling temperature and verification thresholds is not deeply explored.",
+          "No analysis of potential negative societal impacts beyond the standard statement that the method inherits base model biases. The paper could discuss implications for deployment of faster DLLMs (e.g., increased generation of harmful content at scale)."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 4,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThe paper introduces WINO, a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that enables \"revokable\" decoding through a parallel draft-and-verify mechanism. The key idea is to allow the model to correct previously decoded tokens by re-masking them when they fail a verification check, breaking the irreversibility of standard decoding. This addresses the quality-speed trade-off in DLLMs by enabling more aggressive parallel token generation while maintaining or improving output quality.\n\nThe paper is well-structured with clear motivation, methodology, and extensive experiments. It demonstrates significant improvements on both language (LLaDA) and multimodal (MMaDA) benchmarks, achieving 2-10× speedups while often improving accuracy. The ablation studies are thorough, validating design choices like the shadow block attention mask and threshold settings.\n\nStrengths:\n- Novel approach to a known problem (quality-speed trade-off in DLLMs) with a clear mechanism (revokable decoding)\n- Training-free and model-agnostic, making it broadly applicable\n- Comprehensive evaluation across multiple domains (language, vision-language) and tasks\n- Detailed ablations validating the verification mechanism and attention mask design\n- Clear writing and good contextualization with related work\n- Strong empirical results with consistent improvements\n\nWeaknesses:\n- The verification mechanism relies on threshold-based confidence checks, which may be sensitive to threshold choices across different models/tasks\n- The paper doesn't deeply analyze why the verification works theoretically - it's mostly empirical\n- The \"Wide-In, Narrow-Out\" framing is somewhat marketing-like; the core contribution is the draft-and-verify with shadow block\n- Limited analysis of failure cases or when the method might not work\n- The paper doesn't compare against more recent work (e.g., COVER mentioned in related work)\n- The memory overhead analysis is brief; more detail on scaling to longer sequences would be valuable\n- The method adds an extra forward pass component (shadow block) which increases computational cost per step, though this is offset by fewer steps\n\nThe paper is technically sound with strong experimental support. The originality is good - applying verification/revocation to DLLM decoding is a reasonable novel contribution. The significance is moderate-high given the growing interest in DLLMs. The presentation is clear and well-organized.\n\nI would rate this as a solid paper with some minor concerns. The main questions are about threshold sensitivity, theoretical justification, and generalizability to other model architectures.\n\nOverall score: 7 (Accept) - technically solid with good evaluation and clear contributions.\n\nFor the decision, I'm leaning toward Accept given the strong empirical results and the clear utility of the method. The weaknesses are not fatal and mostly relate to depth of analysis rather than technical flaws.REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper introduces WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that addresses the quality-speed trade-off by enabling 'revokable' decoding. WINO uses a parallel draft-and-verify mechanism: it aggressively drafts multiple tokens per step (Wide-In) while simultaneously using the model's bidirectional context to verify previously decoded tokens and re-mask those that fail a confidence threshold (Narrow-Out). This breaks the irreversibility of standard DLLM decoding, allowing early errors to be corrected. The method is model-agnostic and evaluated on LLaDA (language tasks) and MMaDA (multimodal tasks), achieving 2-10× speedups while maintaining or improving accuracy across benchmarks like GSM8K, Flickr30K, and MMMU. Extensive ablations validate the design choices including the shadow block attention mask and threshold settings.\",\n  \"Strengths\": [\n    \"Novel approach: Introduces the concept of revokable decoding for DLLMs, addressing a fundamental limitation of standard decoding (irreversibility) rather than just optimizing sampling heuristics.\",\n    \"Training-free and model-agnostic: Can be applied to any existing DLLM without retraining, making it broadly useful and practical.\",\n    \"Comprehensive evaluation: Tested across 8 language benchmarks and 6 multimodal benchmarks with two different model families (LLaDA and MMaDA), demonstrating consistent improvements in both quality and speed.\",\n    \"Strong empirical results: Achieves 2-10× speedups while often improving accuracy (e.g., +2.58% on GSM8K, +5.44% on MMMU-val), breaking the typical quality-speed trade-off.\",\n    \"Well-designed ablations: Validates the necessity of the verification module, the attention mask design (leakage analysis), and threshold sensitivity, providing insight into the method's behavior.\",\n    \"Clear presentation: The paper is well-organized, with clear figures (overview, attention mask) and pseudocode that aids reproducibility.\",\n    \"Practical considerations addressed: Includes GPU memory overhead analysis and latency comparison showing minimal additional cost.\",\n    \"Stochastic sampling support: Shows the method works beyond greedy decoding, extending to temperature-based sampling.\",\n    \"Public code release: Facilitates reproducibility and further research.\"\n  ],\n  \"Weaknesses\": [\n    \"Limited theoretical analysis: The paper relies heavily on empirical validation but lacks a formal analysis of why the verification mechanism works or under what conditions it might fail (e.g., when the model's self-verification is unreliable).\",\n    \"Threshold sensitivity: While ablations show robustness, the choice of τ1 and τ2 is heuristic and may require per-task tuning. The paper doesn't provide clear guidance for selecting these in new settings.\",\n    \"Incomplete comparison to latest work: The paper mentions COVER as a follow-up but doesn't compare against it, and the comparison with Fast-dLLM-parallel and EB sampler is relegated to the appendix rather than the main text.\",\n    \"Limited exploration of failure cases: No systematic analysis of when WINO fails to improve performance or when verification introduces new errors (e.g., oscillating between draft and verify).\",\n    \"Potential over-claiming: The paper states WINO 'decisively improves' quality-speed trade-off, but on some benchmarks (e.g., MBPP, Flickr30K) the accuracy gain is marginal (0-0.16%), and the primary benefit is speed.\",\n    \"Memory overhead scaling: The shadow block doubles the sequence length in full diffusion settings, which may be problematic for very long generations (the paper only tests up to 512).\",\n    \"The 'revokable' terminology might oversimplify: The method only revokes tokens that fail a threshold; it doesn't provide a mechanism for global coherence checking beyond local confidence.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 4,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How sensitive is WINO to the choice of τ1 and τ2 across different models (e.g., smaller models, different architectures)? Is there a principled way to set these thresholds automatically?\",\n    \"The verification uses the shadow block to check token quality. Could there be cases where the model consistently fails to identify its own errors (e.g., overconfident wrong predictions)? Have you analyzed cases where verification fails to correct errors?\",\n    \"In the full diffusion setting, WINO shows dramatic improvements (e.g., +23.88% on GSM8K). Why is the benefit so much larger in full diffusion compared to semi-autoregressive? Is it because the baseline is particularly weak in that setting?\",\n    \"The paper mentions stochastic sampling with Gumbel noise. How does the verification threshold interact with sampling temperature? Does higher temperature require lower τ2 to avoid excessive re-masking?\",\n    \"Have you considered adaptive thresholds that change over decoding steps? Early steps might benefit from more aggressive revocation while later steps could be more lenient.\",\n    \"The ablation 'Only Draft' with τ1=0.6 shows significant degradation, but with τ1=0.9 it's closer to baseline. This suggests the verification is most valuable when drafting is aggressive. Is there a point where verification hurts performance (e.g., when drafts are already very accurate)?\",\n    \"How does WINO handle tasks requiring strict formatting (e.g., JSON output, code with specific syntax)? The revocation mechanism might disrupt format consistency.\"\n  ],\n  \"Limitations\": [\n    \"The method's effectiveness depends on the base model's ability to provide meaningful verification signals; models with poor self-evaluation may not benefit as much.\",\n    \"The shadow block increases memory usage, which could be a bottleneck for very long generations or resource-constrained environments.\",\n    \"The paper focuses on greedy decoding primarily, with stochastic sampling as an extension. The interaction between sampling temperature and verification thresholds is not deeply explored.\",\n    \"No analysis of potential negative societal impacts beyond the standard statement that the method inherits base model biases. The paper could discuss implications for deployment of faster DLLMs (e.g., increased generation of harmful content at scale).\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 4,\n  \"Presentation\": 4,\n  \"Contribution\": 3,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 20087,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 18295,
+        "completion_tokens": 1911,
+        "reasoning_tokens": 0,
+        "total_tokens": 21998
+      },
+      "attempts": 1,
+      "response_id": "0180ea21-aca4-4136-b2ee-03a89e9bb1e2"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "This paper introduces WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that enables revocable decoding to address the quality-speed trade-off inherent in these models. The method employs a parallel draft-and-verify mechanism: a draft module aggressively unmasks multiple tokens based on a lenient threshold (Wide-In), while a verify module uses a specially designed shadow block with position IDs and attention masks to re-evaluate previously generated tokens and re-mask those failing a stricter verification check (Narrow-Out). This breaks the irreversibility of standard DLLM decoding, allowing early errors to be corrected as context becomes richer. The authors evaluate WINO on LLaDA and MMaDA across 8 language benchmarks and 6 multimodal benchmarks, demonstrating consistent improvements in both inference speed (up to 10×) and output quality (up to +22% accuracy) compared to standard decoding and other parallel sampling strategies. The paper includes comprehensive ablation studies on verification mechanism, attention mask design, threshold sensitivity, memory overhead, and stochastic sampling support.",
+        "Strengths": [
+          "Novel and well-motivated approach: The concept of revokable decoding directly addresses a fundamental limitation of DLLMs (irreversibility of standard decoding) with a clear theoretical motivation.",
+          "Training-free and plug-and-play: WINO can be applied to existing open-source models (LLaDA, MMaDA) without any fine-tuning, making it highly practical and widely applicable.",
+          "Comprehensive evaluation: Experiments cover diverse tasks (math reasoning, code generation, logical reasoning, commonsense reasoning, captioning, chart understanding, multimodal reasoning) with multiple benchmarks, providing strong evidence of generalizability.",
+          "Good ablation studies: The paper carefully analyzes the necessity of the verification module, the attention mask design (including leakage concerns), threshold sensitivity, and memory overhead, providing deep insights into the method's workings.",
+          "Strong results: WINO consistently achieves significant speedups (2.5× to 10×) while simultaneously improving or maintaining accuracy across most benchmarks, effectively breaking the quality-speed trade-off.",
+          "Clear and honest evaluation: The paper compares against advanced dynamic samplers (Fast-dLLM-parallel, EB sampler) and discusses cases where performance gains are modest (e.g., MBPP), showing scientific rigor."
+        ],
+        "Weaknesses": [
+          "The theoretical justification for the verification mechanism's effectiveness could be more rigorous. The claim that blocking the direct attention path is sufficient to prevent information leakage relies primarily on empirical evidence rather than formal analysis of indirect attention paths.",
+          "The paper lacks a detailed analysis of failure cases or scenarios where WINO might underperform. For example, MBPP shows no improvement, and the reasons (task-specific characteristics, model confidence patterns) are not thoroughly discussed.",
+          "The hyperparameter selection (τ1 from {0.5, 0.6, 0.7}) requires some tuning, though the ablation suggests robustness. A more systematic analysis of threshold interaction effects would strengthen the practical guidance.",
+          "The memory overhead analysis is limited to specific settings (L=256, L=512). The scaling behavior for very long sequences (e.g., L=1024 or beyond) is not explored, which could be relevant for practical deployment.",
+          "The comparison with COVER (cited as a follow-up work optimizing the revokable decoding framework) is only mentioned in related work without experimental comparison. Including this baseline would strengthen the evaluation."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "Could you provide a more formal analysis of why the shadow block verification works? Specifically, how does blocking the direct attention path prevent information leakage when indirect paths through Ycur exist? What are the theoretical guarantees, if any?",
+          "For the MBPP benchmark where WINO shows no improvement over the baseline, could you analyze the failure modes? Is this task-specific or related to model confidence patterns? What insights can be drawn for applying WINO to different task types?",
+          "How does WINO's performance scale with generation length beyond 512? Have you tested longer sequences (e.g., 1024 or 2048 tokens) and observed any degradation in the draft-verify efficiency or memory overhead?",
+          "The paper mentions that WINO supports stochastic sampling via Gumbel-Max. How does the verification threshold τ2 interact with the sampling temperature? Are there any theoretical or empirical considerations for tuning these jointly?",
+          "Could you elaborate on the computational overhead of the shadow block in more detail? Specifically, how does the additional forward pass cost compare to the savings from reduced decoding steps in different scenarios (short vs. long generations)?",
+          "Have you considered applying WINO to other DLLM architectures beyond LLaDA and MMaDA (e.g., MDLM, RADD)? Are there any architectural requirements for WINO to work effectively?"
+        ],
+        "Limitations": [
+          "The acceleration and quality gains are inherently dependent on the base model's capabilities. Models with lower confidence in their predictions may require more refinement steps, reducing the speedup benefits.",
+          "The verification mechanism adds computational overhead (shadow block computation), which while minimal in the tested settings, could become non-negligible for very long sequences or resource-constrained deployments.",
+          "The paper focuses on masked diffusion models (absorbing-state diffusion). The applicability of WINO to other types of discrete diffusion formulations (e.g., D3PM with different transition matrices) is not explored.",
+          "The threshold parameters (τ1, τ2) require tuning for optimal performance, though the ablation suggests robustness across a reasonable range. Automatic adaptation of these thresholds could be a future direction.",
+          "The paper does not address potential negative societal impacts beyond noting that WINO inherits the biases of the base models. However, as a decoding algorithm that improves efficiency and quality, it could amplify the impact of any biases present in the underlying DLLMs."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces WINO, a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that enables revocable decoding through a parallel draft-and-verify mechanism. The key contribution is addressing the quality-speed trade-off in DLLMs by allowing previously generated tokens to be re-masked and refined, breaking the irreversibility of standard decoding.\n\nThe paper is well-structured and presents a clear problem statement, method, and comprehensive experiments across multiple benchmarks (8 language tasks, 6 multimodal tasks) using LLaDA and MMaDA models. The results show significant improvements in both speed (up to 10×) and quality (up to +22% accuracy), which is impressive.\n\nStrengths:\n1. Novel and well-motivated approach: The concept of revokable decoding is novel and directly addresses a fundamental limitation of DLLMs.\n2. Training-free and plug-and-play: Can be applied to existing models without fine-tuning, making it practical and widely applicable.\n3. Comprehensive evaluation: Tests across diverse tasks (math, code, reasoning, multimodal) with multiple benchmarks, including comparisons with other parallel sampling strategies.\n4. Good ablation studies: The authors carefully analyze the verification mechanism, attention mask design, threshold sensitivity, and memory overhead.\n5. Strong results: Consistent improvements in both speed and quality across most benchmarks.\n\nWeaknesses:\n1. The theoretical justification for why verification works (the shadow block design) could be more rigorous. The claim that \"blocking the direct path is sufficient to prevent practical information leakage\" relies on empirical evidence rather than formal analysis.\n2. The paper doesn't deeply analyze failure cases or scenarios where WINO might underperform. For instance, MBPP shows no improvement, and the reasons aren't discussed.\n3. The threshold tuning (τ1 from {0.5, 0.6, 0.7}) requires some hyperparameter selection, though the ablation suggests robustness.\n4. The memory overhead analysis is limited to specific settings; the scaling behavior for very long sequences isn't thoroughly explored.\n5. The comparison with COVER (cited as follow-up work) is only mentioned in related work without experimental comparison, which could be seen as missing a key baseline.\n\nOverall, this is a solid paper with a clear contribution. The method is simple yet effective, well-evaluated, and addresses an important problem in the DLLM space. The results are convincing, and the paper is well-written. I would lean toward acceptance, though with some reservations about the depth of analysis in certain areas.\n\nFor scoring:\n- Originality: High (3) - Novel concept of revocable decoding\n- Quality: Good (3) - Solid experiments but some gaps in analysis\n- Clarity: Good (3) - Well-written but some technical details could be clearer\n- Significance: High (3) - Important contribution to DLLM acceleration\n- Soundness: Good (3) - Technically sound with appropriate experiments\n- Presentation: Good (3) - Clear organization and figures\n- Contribution: Good (3) - Valuable contribution to the field\n- Overall: 7 (Accept) - Technically solid with good impact\n\nConfidence: 4 - I'm fairly confident in my assessment, though I haven't checked every detail of the math.\n\nDecision: Accept\n\nREVIEW JSON:\n```json\n{\n\"Summary\": \"This paper introduces WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that enables revocable decoding to address the quality-speed trade-off inherent in these models. The method employs a parallel draft-and-verify mechanism: a draft module aggressively unmasks multiple tokens based on a lenient threshold (Wide-In), while a verify module uses a specially designed shadow block with position IDs and attention masks to re-evaluate previously generated tokens and re-mask those failing a stricter verification check (Narrow-Out). This breaks the irreversibility of standard DLLM decoding, allowing early errors to be corrected as context becomes richer. The authors evaluate WINO on LLaDA and MMaDA across 8 language benchmarks and 6 multimodal benchmarks, demonstrating consistent improvements in both inference speed (up to 10×) and output quality (up to +22% accuracy) compared to standard decoding and other parallel sampling strategies. The paper includes comprehensive ablation studies on verification mechanism, attention mask design, threshold sensitivity, memory overhead, and stochastic sampling support.\",\n\"Strengths\": [\n\"Novel and well-motivated approach: The concept of revokable decoding directly addresses a fundamental limitation of DLLMs (irreversibility of standard decoding) with a clear theoretical motivation.\",\n\"Training-free and plug-and-play: WINO can be applied to existing open-source models (LLaDA, MMaDA) without any fine-tuning, making it highly practical and widely applicable.\",\n\"Comprehensive evaluation: Experiments cover diverse tasks (math reasoning, code generation, logical reasoning, commonsense reasoning, captioning, chart understanding, multimodal reasoning) with multiple benchmarks, providing strong evidence of generalizability.\",\n\"Good ablation studies: The paper carefully analyzes the necessity of the verification module, the attention mask design (including leakage concerns), threshold sensitivity, and memory overhead, providing deep insights into the method's workings.\",\n\"Strong results: WINO consistently achieves significant speedups (2.5× to 10×) while simultaneously improving or maintaining accuracy across most benchmarks, effectively breaking the quality-speed trade-off.\",\n\"Clear and honest evaluation: The paper compares against advanced dynamic samplers (Fast-dLLM-parallel, EB sampler) and discusses cases where performance gains are modest (e.g., MBPP), showing scientific rigor.\"\n],\n\"Weaknesses\": [\n\"The theoretical justification for the verification mechanism's effectiveness could be more rigorous. The claim that blocking the direct attention path is sufficient to prevent information leakage relies primarily on empirical evidence rather than formal analysis of indirect attention paths.\",\n\"The paper lacks a detailed analysis of failure cases or scenarios where WINO might underperform. For example, MBPP shows no improvement, and the reasons (task-specific characteristics, model confidence patterns) are not thoroughly discussed.\",\n\"The hyperparameter selection (τ1 from {0.5, 0.6, 0.7}) requires some tuning, though the ablation suggests robustness. A more systematic analysis of threshold interaction effects would strengthen the practical guidance.\",\n\"The memory overhead analysis is limited to specific settings (L=256, L=512). The scaling behavior for very long sequences (e.g., L=1024 or beyond) is not explored, which could be relevant for practical deployment.\",\n\"The comparison with COVER (cited as a follow-up work optimizing the revokable decoding framework) is only mentioned in related work without experimental comparison. Including this baseline would strengthen the evaluation.\"\n],\n\"Originality\": 3,\n\"Quality\": 3,\n\"Clarity\": 3,\n\"Significance\": 3,\n\"Questions\": [\n\"Could you provide a more formal analysis of why the shadow block verification works? Specifically, how does blocking the direct attention path prevent information leakage when indirect paths through Ycur exist? What are the theoretical guarantees, if any?\",\n\"For the MBPP benchmark where WINO shows no improvement over the baseline, could you analyze the failure modes? Is this task-specific or related to model confidence patterns? What insights can be drawn for applying WINO to different task types?\",\n\"How does WINO's performance scale with generation length beyond 512? Have you tested longer sequences (e.g., 1024 or 2048 tokens) and observed any degradation in the draft-verify efficiency or memory overhead?\",\n\"The paper mentions that WINO supports stochastic sampling via Gumbel-Max. How does the verification threshold τ2 interact with the sampling temperature? Are there any theoretical or empirical considerations for tuning these jointly?\",\n\"Could you elaborate on the computational overhead of the shadow block in more detail? Specifically, how does the additional forward pass cost compare to the savings from reduced decoding steps in different scenarios (short vs. long generations)?\",\n\"Have you considered applying WINO to other DLLM architectures beyond LLaDA and MMaDA (e.g., MDLM, RADD)? Are there any architectural requirements for WINO to work effectively?\"\n],\n\"Limitations\": [\n\"The acceleration and quality gains are inherently dependent on the base model's capabilities. Models with lower confidence in their predictions may require more refinement steps, reducing the speedup benefits.\",\n\"The verification mechanism adds computational overhead (shadow block computation), which while minimal in the tested settings, could become non-negligible for very long sequences or resource-constrained deployments.\",\n\"The paper focuses on masked diffusion models (absorbing-state diffusion). The applicability of WINO to other types of discrete diffusion formulations (e.g., D3PM with different transition matrices) is not explored.\",\n\"The threshold parameters (τ1, τ2) require tuning for optimal performance, though the ablation suggests robustness across a reasonable range. Automatic adaptation of these thresholds could be a future direction.\",\n\"The paper does not address potential negative societal impacts beyond noting that WINO inherits the biases of the base models. However, as a decoding algorithm that improves efficiency and quality, it could amplify the impact of any biases present in the underlying DLLMs.\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 3,\n\"Contribution\": 3,\n\"Overall\": 7,\n\"Confidence\": 4,\n\"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 20087,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 18295,
+        "completion_tokens": 1944,
+        "reasoning_tokens": 0,
+        "total_tokens": 22031
+      },
+      "attempts": 1,
+      "response_id": "f6563346-bd1a-48ad-bdfe-42444f946dff"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "This paper introduces WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that addresses the quality-speed trade-off in parallel decoding. The key insight is that standard DLLM decoding is irreversible — once tokens are unmasked, they cannot be revised, leading to error accumulation when aggressive parallel decoding is used. WINO employs a parallel draft-and-verify mechanism: it aggressively drafts multiple tokens based on a lenient confidence threshold (Wide-In), while simultaneously using a shadow block with carefully designed attention masks to verify previously drafted tokens and re-mask those with low confidence (Narrow-Out). This makes the decoding process revocable, allowing early errors to be corrected as more context becomes available. The method is training-free, plug-and-play, and demonstrates consistent improvements in both speed (up to 10×) and quality across language benchmarks (GSM8K, MATH-500, HumanEval, etc.) and multimodal benchmarks (Flickr30k, AI2D, MMMU, etc.) using LLaDA and MMaDA models.",
+        "Strengths": [
+          "Novel and well-motivated concept of revocable decoding for DLLMs, which directly addresses a fundamental limitation of the standard decoding process",
+          "Clever design of the shadow block with carefully constructed position IDs and attention masks that enable verification without information leakage",
+          "Comprehensive experimental evaluation covering both language and multimodal domains with multiple benchmarks, showing consistent improvements in both speed and quality",
+          "Training-free and plug-and-play nature makes the method immediately applicable to existing DLLMs",
+          "Good ablation studies demonstrating the necessity of the verification module and the attention mask design",
+          "The method shows adaptive speedup based on task complexity, which is intuitive and well-demonstrated",
+          "Clear presentation with helpful figures and pseudocode for reproducibility"
+        ],
+        "Weaknesses": [
+          "The theoretical justification for why the verification module works is somewhat hand-wavy; the paper could provide more formal analysis or intuition for why the shadow block's predictions are reliable indicators of token quality",
+          "The method introduces two hyperparameters (τ1 and τ2) that need tuning, and while the paper shows robustness to these, the sensitivity analysis could be more thorough",
+          "The comparison with other acceleration methods (Fast-dLLM-parallel, EB sampler) is limited to two benchmarks; a more extensive comparison would strengthen the claims",
+          "The paper doesn't deeply discuss potential failure modes or edge cases where the verification might fail or oscillate",
+          "The memory overhead analysis is brief, and the paper could benefit from more detailed discussion of the computational cost of the shadow block in different settings",
+          "The paper claims the method 'unlocks the latent power of DLLMs' but doesn't explore how the approach might interact with other acceleration techniques (e.g., KV cache methods)"
+        ],
+        "Originality": 4,
+        "Quality": 4,
+        "Clarity": 4,
+        "Significance": 4,
+        "Questions": [
+          "Could you provide a more formal theoretical analysis of why the shadow block's predictions serve as reliable verification signals? For instance, is there a connection to consistency models or self-distillation?",
+          "How does WINO perform when the base model is less capable or when the task is particularly difficult? Is there a risk that the verification module itself introduces noise that degrades performance?",
+          "Have you considered combining WINO with KV cache techniques for further acceleration? The paper mentions this is out of scope, but it seems like a natural next step.",
+          "What happens when there is oscillation between draft and revoke for the same token position? How does the algorithm guarantee convergence?",
+          "The paper uses τ1 from {0.5, 0.6, 0.7} and τ2 = 0.9. How sensitive are the results to these choices across different benchmarks? Could there be a more principled way to set these thresholds?",
+          "In the full diffusion setting (block length = generation length), WINO shows dramatic improvements. Could you elaborate on why the method is particularly effective in this setting compared to semi-autoregressive decoding?"
+        ],
+        "Limitations": [
+          "The acceleration is inherently dependent on the base model's capabilities; more capable models achieve greater speedups, which limits the method's effectiveness for weaker models",
+          "The method adds a shadow block that increases sequence length, leading to additional memory and compute overhead, though the paper shows this is minimal in practice",
+          "The verification mechanism relies on confidence thresholds, which may not always be well-calibrated across different models and tasks",
+          "Potential for the verification to be fooled by adversarial or ambiguous contexts, though this is not explored in the paper",
+          "The paper doesn't address potential ethical concerns specific to the method, but notes that it inherits any biases from the base models"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 4,
+        "Presentation": 4,
+        "Contribution": 4,
+        "Overall": 8,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces WINO, a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that enables revocable decoding via a parallel draft-and-verify mechanism. The key idea is to aggressively draft multiple tokens (Wide-In) while simultaneously verifying previously drafted tokens and re-masking those deemed low-quality (Narrow-Out), breaking the irreversibility of standard decoding.\n\nThe paper is well-motivated, addressing a real problem in DLLMs — the quality-speed trade-off during parallel decoding. The method is novel in its approach of introducing revocability into the decoding process, which is a meaningful contribution to the DLLM acceleration literature. The experimental evaluation is comprehensive, covering both language and multimodal tasks, with impressive results showing simultaneous speedup and quality improvement.\n\nStrengths include: (1) the novel concept of revocable decoding; (2) the clever design of the shadow block with careful attention masking to avoid information leakage; (3) comprehensive experiments across multiple benchmarks and models; (4) training-free and plug-and-play nature; (5) good ablation studies demonstrating the necessity of each component.\n\nWeaknesses include: (1) the theoretical justification for why verification works is somewhat hand-wavy; (2) the paper doesn't deeply explore the computational overhead of the shadow block (though it does address this); (3) the threshold tuning could be seen as adding hyperparameters; (4) the comparison with other acceleration methods could be more thorough; (5) the paper doesn't discuss potential failure modes or limitations of the approach in depth.\n\nOverall, this is a solid paper with a novel contribution. The results are impressive and the method is practical. I would rate it as a strong accept.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper introduces WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that addresses the quality-speed trade-off in parallel decoding. The key insight is that standard DLLM decoding is irreversible — once tokens are unmasked, they cannot be revised, leading to error accumulation when aggressive parallel decoding is used. WINO employs a parallel draft-and-verify mechanism: it aggressively drafts multiple tokens based on a lenient confidence threshold (Wide-In), while simultaneously using a shadow block with carefully designed attention masks to verify previously drafted tokens and re-mask those with low confidence (Narrow-Out). This makes the decoding process revocable, allowing early errors to be corrected as more context becomes available. The method is training-free, plug-and-play, and demonstrates consistent improvements in both speed (up to 10×) and quality across language benchmarks (GSM8K, MATH-500, HumanEval, etc.) and multimodal benchmarks (Flickr30k, AI2D, MMMU, etc.) using LLaDA and MMaDA models.\",\n    \"Strengths\": [\n        \"Novel and well-motivated concept of revocable decoding for DLLMs, which directly addresses a fundamental limitation of the standard decoding process\",\n        \"Clever design of the shadow block with carefully constructed position IDs and attention masks that enable verification without information leakage\",\n        \"Comprehensive experimental evaluation covering both language and multimodal domains with multiple benchmarks, showing consistent improvements in both speed and quality\",\n        \"Training-free and plug-and-play nature makes the method immediately applicable to existing DLLMs\",\n        \"Good ablation studies demonstrating the necessity of the verification module and the attention mask design\",\n        \"The method shows adaptive speedup based on task complexity, which is intuitive and well-demonstrated\",\n        \"Clear presentation with helpful figures and pseudocode for reproducibility\"\n    ],\n    \"Weaknesses\": [\n        \"The theoretical justification for why the verification module works is somewhat hand-wavy; the paper could provide more formal analysis or intuition for why the shadow block's predictions are reliable indicators of token quality\",\n        \"The method introduces two hyperparameters (τ1 and τ2) that need tuning, and while the paper shows robustness to these, the sensitivity analysis could be more thorough\",\n        \"The comparison with other acceleration methods (Fast-dLLM-parallel, EB sampler) is limited to two benchmarks; a more extensive comparison would strengthen the claims\",\n        \"The paper doesn't deeply discuss potential failure modes or edge cases where the verification might fail or oscillate\",\n        \"The memory overhead analysis is brief, and the paper could benefit from more detailed discussion of the computational cost of the shadow block in different settings\",\n        \"The paper claims the method 'unlocks the latent power of DLLMs' but doesn't explore how the approach might interact with other acceleration techniques (e.g., KV cache methods)\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 4,\n    \"Clarity\": 4,\n    \"Significance\": 4,\n    \"Questions\": [\n        \"Could you provide a more formal theoretical analysis of why the shadow block's predictions serve as reliable verification signals? For instance, is there a connection to consistency models or self-distillation?\",\n        \"How does WINO perform when the base model is less capable or when the task is particularly difficult? Is there a risk that the verification module itself introduces noise that degrades performance?\",\n        \"Have you considered combining WINO with KV cache techniques for further acceleration? The paper mentions this is out of scope, but it seems like a natural next step.\",\n        \"What happens when there is oscillation between draft and revoke for the same token position? How does the algorithm guarantee convergence?\",\n        \"The paper uses τ1 from {0.5, 0.6, 0.7} and τ2 = 0.9. How sensitive are the results to these choices across different benchmarks? Could there be a more principled way to set these thresholds?\",\n        \"In the full diffusion setting (block length = generation length), WINO shows dramatic improvements. Could you elaborate on why the method is particularly effective in this setting compared to semi-autoregressive decoding?\"\n    ],\n    \"Limitations\": [\n        \"The acceleration is inherently dependent on the base model's capabilities; more capable models achieve greater speedups, which limits the method's effectiveness for weaker models\",\n        \"The method adds a shadow block that increases sequence length, leading to additional memory and compute overhead, though the paper shows this is minimal in practice\",\n        \"The verification mechanism relies on confidence thresholds, which may not always be well-calibrated across different models and tasks\",\n        \"Potential for the verification to be fooled by adversarial or ambiguous contexts, though this is not explored in the paper\",\n        \"The paper doesn't address potential ethical concerns specific to the method, but notes that it inherits any biases from the base models\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 4,\n    \"Presentation\": 4,\n    \"Contribution\": 4,\n    \"Overall\": 8,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 20087,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 18295,
+        "completion_tokens": 1443,
+        "reasoning_tokens": 0,
+        "total_tokens": 21530
+      },
+      "attempts": 1,
+      "response_id": "b986f9ee-9568-43d9-9928-204b291a8178"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 5,
+      "Reject": 0
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          4,
+          4,
+          4,
+          3,
+          4
+        ],
+        "mean": 3.8,
+        "rounded_mean": 4,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          4,
+          3,
+          3,
+          3,
+          4
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Clarity": {
+        "values": [
+          3,
+          4,
+          4,
+          3,
+          4
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Significance": {
+        "values": [
+          4,
+          4,
+          3,
+          3,
+          4
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Soundness": {
+        "values": [
+          4,
+          3,
+          4,
+          3,
+          4
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Presentation": {
+        "values": [
+          3,
+          4,
+          4,
+          3,
+          4
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Contribution": {
+        "values": [
+          4,
+          4,
+          3,
+          3,
+          4
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Overall": {
+        "values": [
+          8,
+          7,
+          7,
+          7,
+          8
+        ],
+        "mean": 7.4,
+        "rounded_mean": 7,
+        "population_sd": 0.49,
+        "min": 7,
+        "max": 8
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper introduces WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that addresses the quality-speed trade-off inherent in these models. WINO enables 'revokable' decoding through a parallel draft-and-verify mechanism: a draft module aggressively unmasks multiple tokens using a lenient confidence threshold (Wide-In), while a verify module employs a specially designed shadow block with position ID sharing and attention masking to re-evaluate previously decoded tokens and re-mask those failing a stricter verification threshold (Narrow-Out). This breaks the irreversibility of standard DLLM decoding, allowing early errors to be corrected as context becomes richer. The method is evaluated on LLaDA (8 language benchmarks) and MMaDA (6 multimodal benchmarks), demonstrating consistent improvements in both accuracy (e.g., +2.58% on GSM8K) and inference speed (up to 10× step reduction). The paper includes comprehensive ablations on the verification mechanism, attention mask design, threshold sensitivity, memory overhead, and stochastic sampling support.",
+      "Strengths": [
+        "Novel and well-motivated concept of 'revokable decoding' that directly addresses a fundamental limitation of DLLMs (irreversibility of standard decoding).",
+        "Training-free and plug-and-play design, making it immediately applicable to existing open-source DLLMs without additional training costs.",
+        "Comprehensive experimental evaluation across diverse tasks (8 language + 6 multimodal benchmarks) with two different model families (LLaDA and MMaDA), providing strong evidence of generalizability.",
+        "Consistent improvements in both quality and speed (up to 10×), effectively breaking the typical quality-speed trade-off.",
+        "Well-designed and thorough ablation studies that validate the necessity of the verification module, the attention mask design (including leakage analysis), and threshold sensitivity.",
+        "Clear presentation with helpful figures, pseudocode, and honest discussion of limitations; public code release facilitates reproducibility.",
+        "Stochastic sampling support extends the method beyond greedy decoding."
+      ],
+      "Weaknesses": [
+        "Limited theoretical justification for why the verification mechanism works; the paper relies primarily on empirical evidence and intuitive arguments rather than formal analysis of the shadow block's predictions as reliable verification signals.",
+        "Threshold parameters (τ1, τ2) require heuristic tuning, and while robustness is shown, clear guidance for selecting these on new tasks or models is lacking.",
+        "Evaluation is limited to 8B models; scalability to larger models (e.g., 70B+) is not explored, and the paper does not deeply analyze failure cases (e.g., MBPP shows no improvement).",
+        "Comparison with COVER (cited as a follow-up work) is only mentioned, not experimentally compared, which would strengthen the evaluation.",
+        "Memory overhead scaling behavior for very long sequences (beyond 512 tokens) is not explored, and the interaction with KV-cache-based acceleration methods is not addressed."
+      ],
+      "Originality": 4,
+      "Quality": 3,
+      "Clarity": 4,
+      "Significance": 4,
+      "Questions": [
+        "Can you provide a more formal theoretical analysis of why the shadow block's prediction on a [MASK] token, when attending to all context except the corresponding decoded token, serves as a reliable verification signal? Is there a connection to consistency models or self-distillation?",
+        "How sensitive is WINO's performance to the choice of τ1 and τ2 across different tasks and models? Are there general guidelines for setting these based on model confidence distributions rather than per-task tuning?",
+        "Have you tested WINO on larger models (e.g., 30B+)? If not, what challenges might arise in scaling, and how would the speedup/quality gains change?",
+        "The MBPP benchmark shows no accuracy improvement with WINO. Can you analyze why this task behaves differently (e.g., related to code generation vs. reasoning)?",
+        "Regarding indirect attention paths within Ycur that could leak information to Yshad: have you quantified the extent of indirect leakage in practice, beyond the 'Full Leakage' ablation?",
+        "Could the verification mechanism be applied to the drafting tokens themselves in a single forward pass, or does it fundamentally require the two-phase approach?",
+        "Have you considered adaptive thresholds that change over decoding steps (e.g., more aggressive revocation early, more lenient later)?",
+        "How does WINO interact with KV-cache-based acceleration methods (e.g., Block Diffusion, dLLM-cache)? Does the shadow block change attention patterns in a way that complicates caching?",
+        "How does the verification threshold τ2 interact with sampling temperature in stochastic sampling? Does higher temperature require adjusting τ2?"
+      ],
+      "Limitations": [
+        "The degree of acceleration depends on the base model's capability; weaker models may draft lower-quality tokens, requiring more verification steps and reducing speedup.",
+        "The verification mechanism relies on confidence thresholds, which may not always be well-calibrated across different models and tasks; a poorly calibrated model could undermine effectiveness.",
+        "The shadow block increases sequence length and memory usage (up to 8% in full diffusion settings), which could become non-negligible for very long generations or resource-constrained environments.",
+        "The method introduces two hyperparameters (τ1, τ2) that require tuning, which could be a barrier to practical adoption without clearer guidance.",
+        "Potential negative societal impacts are not deeply addressed; improved efficiency could lower barriers for misuse, and the method inherits biases from base models. The paper could more explicitly discuss these implications."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 4,
+      "Presentation": 4,
+      "Contribution": 4,
+      "Overall": 8,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "THOUGHT:\nThe paper introduces WINO, a training-free decoding method for Diffusion LLMs that enables \"revokable\" decoding through a draft-and-verify mechanism. All five reviewers are positive, with overall scores of 8, 7, 7, 7, and 8, and all recommend Accept. The consensus is that the work is novel, well-motivated, technically sound, and thoroughly evaluated. Common weaknesses noted include limited theoretical justification, heuristic threshold tuning, and lack of comparison with COVER or larger models, but none are seen as fatal. The main concern across reviews is the theoretical grounding of the verification mechanism and the practical guidance for hyperparameters. Given the strong agreement among reviewers and the consistent empirical evidence, I will recommend Accept. I will set my overall score to 8 (Strong Accept) to reflect the high quality and significance while acknowledging the theoretical gaps. My confidence is 4.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper introduces WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that addresses the quality-speed trade-off inherent in these models. WINO enables 'revokable' decoding through a parallel draft-and-verify mechanism: a draft module aggressively unmasks multiple tokens using a lenient confidence threshold (Wide-In), while a verify module employs a specially designed shadow block with position ID sharing and attention masking to re-evaluate previously decoded tokens and re-mask those failing a stricter verification threshold (Narrow-Out). This breaks the irreversibility of standard DLLM decoding, allowing early errors to be corrected as context becomes richer. The method is evaluated on LLaDA (8 language benchmarks) and MMaDA (6 multimodal benchmarks), demonstrating consistent improvements in both accuracy (e.g., +2.58% on GSM8K) and inference speed (up to 10× step reduction). The paper includes comprehensive ablations on the verification mechanism, attention mask design, threshold sensitivity, memory overhead, and stochastic sampling support.\",\n  \"Strengths\": [\n    \"Novel and well-motivated concept of 'revokable decoding' that directly addresses a fundamental limitation of DLLMs (irreversibility of standard decoding).\",\n    \"Training-free and plug-and-play design, making it immediately applicable to existing open-source DLLMs without additional training costs.\",\n    \"Comprehensive experimental evaluation across diverse tasks (8 language + 6 multimodal benchmarks) with two different model families (LLaDA and MMaDA), providing strong evidence of generalizability.\",\n    \"Consistent improvements in both quality and speed (up to 10×), effectively breaking the typical quality-speed trade-off.\",\n    \"Well-designed and thorough ablation studies that validate the necessity of the verification module, the attention mask design (including leakage analysis), and threshold sensitivity.\",\n    \"Clear presentation with helpful figures, pseudocode, and honest discussion of limitations; public code release facilitates reproducibility.\",\n    \"Stochastic sampling support extends the method beyond greedy decoding.\"\n  ],\n  \"Weaknesses\": [\n    \"Limited theoretical justification for why the verification mechanism works; the paper relies primarily on empirical evidence and intuitive arguments rather than formal analysis of the shadow block's predictions as reliable verification signals.\",\n    \"Threshold parameters (τ1, τ2) require heuristic tuning, and while robustness is shown, clear guidance for selecting these on new tasks or models is lacking.\",\n    \"Evaluation is limited to 8B models; scalability to larger models (e.g., 70B+) is not explored, and the paper does not deeply analyze failure cases (e.g., MBPP shows no improvement).\",\n    \"Comparison with COVER (cited as a follow-up work) is only mentioned, not experimentally compared, which would strengthen the evaluation.\",\n    \"Memory overhead scaling behavior for very long sequences (beyond 512 tokens) is not explored, and the interaction with KV-cache-based acceleration methods is not addressed.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 4,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"Can you provide a more formal theoretical analysis of why the shadow block's prediction on a [MASK] token, when attending to all context except the corresponding decoded token, serves as a reliable verification signal? Is there a connection to consistency models or self-distillation?\",\n    \"How sensitive is WINO's performance to the choice of τ1 and τ2 across different tasks and models? Are there general guidelines for setting these based on model confidence distributions rather than per-task tuning?\",\n    \"Have you tested WINO on larger models (e.g., 30B+)? If not, what challenges might arise in scaling, and how would the speedup/quality gains change?\",\n    \"The MBPP benchmark shows no accuracy improvement with WINO. Can you analyze why this task behaves differently (e.g., related to code generation vs. reasoning)?\",\n    \"Regarding indirect attention paths within Ycur that could leak information to Yshad: have you quantified the extent of indirect leakage in practice, beyond the 'Full Leakage' ablation?\",\n    \"Could the verification mechanism be applied to the drafting tokens themselves in a single forward pass, or does it fundamentally require the two-phase approach?\",\n    \"Have you considered adaptive thresholds that change over decoding steps (e.g., more aggressive revocation early, more lenient later)?\",\n    \"How does WINO interact with KV-cache-based acceleration methods (e.g., Block Diffusion, dLLM-cache)? Does the shadow block change attention patterns in a way that complicates caching?\",\n    \"How does the verification threshold τ2 interact with sampling temperature in stochastic sampling? Does higher temperature require adjusting τ2?\"\n  ],\n  \"Limitations\": [\n    \"The degree of acceleration depends on the base model's capability; weaker models may draft lower-quality tokens, requiring more verification steps and reducing speedup.\",\n    \"The verification mechanism relies on confidence thresholds, which may not always be well-calibrated across different models and tasks; a poorly calibrated model could undermine effectiveness.\",\n    \"The shadow block increases sequence length and memory usage (up to 8% in full diffusion settings), which could become non-negligible for very long generations or resource-constrained environments.\",\n    \"The method introduces two hyperparameters (τ1, τ2) that require tuning, which could be a barrier to practical adoption without clearer guidance.\",\n    \"Potential negative societal impacts are not deeply addressed; improved efficiency could lower barriers for misuse, and the method inherits biases from base models. The paper could more explicitly discuss these implications.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 4,\n  \"Presentation\": 4,\n  \"Contribution\": 4,\n  \"Overall\": 8,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 7852,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 7852,
+      "completion_tokens": 1424,
+      "reasoning_tokens": 0,
+      "total_tokens": 9276
+    },
+    "attempts": 1,
+    "response_id": "3ac68e69-b7fa-4d55-9b59-bd3dc9514df0"
+  },
+  "final_review": {
+    "Summary": "The paper introduces WINO (Wide-In, Narrow-Out), a training-free decoding algorithm for Diffusion Large Language Models (DLLMs) that addresses the quality-speed trade-off inherent in these models. WINO enables 'revokable' decoding through a parallel draft-and-verify mechanism: a draft module aggressively unmasks multiple tokens using a lenient confidence threshold (Wide-In), while a verify module employs a specially designed shadow block with position ID sharing and attention masking to re-evaluate previously decoded tokens and re-mask those failing a stricter verification threshold (Narrow-Out). This breaks the irreversibility of standard DLLM decoding, allowing early errors to be corrected as context becomes richer. The method is evaluated on LLaDA (8 language benchmarks) and MMaDA (6 multimodal benchmarks), demonstrating consistent improvements in both accuracy (e.g., +2.58% on GSM8K) and inference speed (up to 10× step reduction). The paper includes comprehensive ablations on the verification mechanism, attention mask design, threshold sensitivity, memory overhead, and stochastic sampling support.",
+    "Strengths": [
+      "Novel and well-motivated concept of 'revokable decoding' that directly addresses a fundamental limitation of DLLMs (irreversibility of standard decoding).",
+      "Training-free and plug-and-play design, making it immediately applicable to existing open-source DLLMs without additional training costs.",
+      "Comprehensive experimental evaluation across diverse tasks (8 language + 6 multimodal benchmarks) with two different model families (LLaDA and MMaDA), providing strong evidence of generalizability.",
+      "Consistent improvements in both quality and speed (up to 10×), effectively breaking the typical quality-speed trade-off.",
+      "Well-designed and thorough ablation studies that validate the necessity of the verification module, the attention mask design (including leakage analysis), and threshold sensitivity.",
+      "Clear presentation with helpful figures, pseudocode, and honest discussion of limitations; public code release facilitates reproducibility.",
+      "Stochastic sampling support extends the method beyond greedy decoding."
+    ],
+    "Weaknesses": [
+      "Limited theoretical justification for why the verification mechanism works; the paper relies primarily on empirical evidence and intuitive arguments rather than formal analysis of the shadow block's predictions as reliable verification signals.",
+      "Threshold parameters (τ1, τ2) require heuristic tuning, and while robustness is shown, clear guidance for selecting these on new tasks or models is lacking.",
+      "Evaluation is limited to 8B models; scalability to larger models (e.g., 70B+) is not explored, and the paper does not deeply analyze failure cases (e.g., MBPP shows no improvement).",
+      "Comparison with COVER (cited as a follow-up work) is only mentioned, not experimentally compared, which would strengthen the evaluation.",
+      "Memory overhead scaling behavior for very long sequences (beyond 512 tokens) is not explored, and the interaction with KV-cache-based acceleration methods is not addressed."
+    ],
+    "Originality": 4,
+    "Quality": 3,
+    "Clarity": 4,
+    "Significance": 4,
+    "Questions": [
+      "Can you provide a more formal theoretical analysis of why the shadow block's prediction on a [MASK] token, when attending to all context except the corresponding decoded token, serves as a reliable verification signal? Is there a connection to consistency models or self-distillation?",
+      "How sensitive is WINO's performance to the choice of τ1 and τ2 across different tasks and models? Are there general guidelines for setting these based on model confidence distributions rather than per-task tuning?",
+      "Have you tested WINO on larger models (e.g., 30B+)? If not, what challenges might arise in scaling, and how would the speedup/quality gains change?",
+      "The MBPP benchmark shows no accuracy improvement with WINO. Can you analyze why this task behaves differently (e.g., related to code generation vs. reasoning)?",
+      "Regarding indirect attention paths within Ycur that could leak information to Yshad: have you quantified the extent of indirect leakage in practice, beyond the 'Full Leakage' ablation?",
+      "Could the verification mechanism be applied to the drafting tokens themselves in a single forward pass, or does it fundamentally require the two-phase approach?",
+      "Have you considered adaptive thresholds that change over decoding steps (e.g., more aggressive revocation early, more lenient later)?",
+      "How does WINO interact with KV-cache-based acceleration methods (e.g., Block Diffusion, dLLM-cache)? Does the shadow block change attention patterns in a way that complicates caching?",
+      "How does the verification threshold τ2 interact with sampling temperature in stochastic sampling? Does higher temperature require adjusting τ2?"
+    ],
+    "Limitations": [
+      "The degree of acceleration depends on the base model's capability; weaker models may draft lower-quality tokens, requiring more verification steps and reducing speedup.",
+      "The verification mechanism relies on confidence thresholds, which may not always be well-calibrated across different models and tasks; a poorly calibrated model could undermine effectiveness.",
+      "The shadow block increases sequence length and memory usage (up to 8% in full diffusion settings), which could become non-negligible for very long generations or resource-constrained environments.",
+      "The method introduces two hyperparameters (τ1, τ2) that require tuning, which could be a barrier to practical adoption without clearer guidance.",
+      "Potential negative societal impacts are not deeply addressed; improved efficiency could lower barriers for misuse, and the method inherits biases from base models. The paper could more explicitly discuss these implications."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 4,
+    "Presentation": 4,
+    "Contribution": 4,
+    "Overall": 7,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 108287,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 99327,
+    "completion_tokens": 10267,
+    "reasoning_tokens": 0,
+    "total_tokens": 118554,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.01390578,
+    "output_usd": 0.00287476,
+    "total_usd": 0.01680563
+  },
+  "elapsed_seconds": 32.955,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Accept",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B150",
+    "filename": "B150.txt",
+    "blind_text_sha256": "b109bcc22c50377299e6e31e8830bd35b9563b6a3bc9a74da9476769c4c35068",
+    "characters": 63390,
+    "full_text_saved": false
+  }
+}

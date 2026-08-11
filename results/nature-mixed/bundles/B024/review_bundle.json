@@ -1,0 +1,719 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:42:26.236200+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper proposes SpecExit, a framework that combines speculative decoding with early-exit mechanisms for large reasoning models (LRMs). The key contribution is extending the Multi-Token Prediction (MTP) layer of a draft model to predict three auxiliary reasoning signals (confidence, progress, and remaining reasoning length) alongside token distributions. These signals are used to dynamically terminate chain-of-thought generation when sufficient reasoning has been achieved, without the probing overhead of prior early-exit methods. The approach is trained via multi-task learning and evaluated on multiple benchmarks (GSM8K, MATH500, AIME, HumanEvalPlus, GPQA-D, ARC-Challenge) across two LRMs (Qwen3-4B-Thinking-2507 and DeepSeek-R1-Distill-Llama-8B). Results show up to 66% reduction in generation length and 2.5x end-to-end latency speedup over speculative decoding baselines while maintaining accuracy.",
+        "Strengths": [
+          "The core idea is novel and well-motivated - leveraging hidden states from speculative decoding to predict early-exit signals is a clever integration of two research directions.",
+          "The method demonstrates substantial empirical gains, with significant reductions in both token count and end-to-end latency across multiple benchmarks and models.",
+          "The implementation in both PyTorch and vLLM shows practical applicability and deployment readiness.",
+          "The ablation studies are thorough, examining signal types, smoothing methods, and step-split strategies, providing useful insights into the design choices.",
+          "The paper is well-written and clearly organized, with the method and experimental setup described in sufficient detail for reproduction."
+        ],
+        "Weaknesses": [
+          "The evaluation methodology has potential fairness issues. The comparison against EAGLE3 uses 'same dataset' training, but it's unclear whether the draft model is trained from scratch or fine-tuned, and whether the baselines are given equal training resources.",
+          "The accuracy improvements on some benchmarks (e.g., AIME for Qwen3: 80.0 to 90.0) are surprisingly large and could indicate evaluation issues, overfitting, or benchmark noise. With AIME having only ~30 problems, these differences may not be statistically significant.",
+          "The paper lacks statistical significance testing. No confidence intervals, standard deviations, or significance tests are reported for any of the results.",
+          "The claim of generalizability is weakened by the fact that thresholds appear to be tuned per benchmark (e.g., AIME uses different thresholds than other datasets). The paper should demonstrate robustness to threshold selection.",
+          "The training cost of adding the MTP layer and auxiliary heads is not discussed. This is a significant practical consideration for deployment.",
+          "The comparison with DEER may be somewhat unfair since DEER is designed as a generic early-exit method that can be applied on top of any decoding framework, while SpecExit is tightly integrated with speculative decoding.",
+          "The paper doesn't provide a detailed analysis of when early-exit decisions are correct vs. incorrect, which would help understand the failure modes of the approach."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "Can you provide more details on the training setup for EAGLE3? Is the draft model trained from scratch or fine-tuned from a pretrained checkpoint? How many training steps and what learning rate were used?",
+          "The accuracy improvements on AIME (80.0 to 90.0 for Qwen3) are surprisingly large. Could this be due to small sample size (AIME typically has ~30 problems)? Can you provide confidence intervals or run multiple seeds?",
+          "How sensitive is the method to the threshold parameters? The paper uses different thresholds for different benchmarks (e.g., AIME vs. others). Can you show results with fixed thresholds across all benchmarks?",
+          "What is the additional training cost (time, compute) for adding the MTP layer and auxiliary heads compared to standard speculative decoding training?",
+          "Have you considered evaluating the method's performance under distribution shift, e.g., on out-of-domain problems that are very different from the training data?",
+          "How does the method perform when the draft model's predictions are unreliable? Is there a risk of compounding errors between the speculative decoding and early-exit signals?",
+          "Can you provide more analysis on the failure cases where SpecExit terminates too early or too late? What are the common characteristics of these cases?"
+        ],
+        "Limitations": [
+          "The paper doesn't discuss the potential negative societal impact of the work. While this is primarily an efficiency improvement, reducing reasoning length could potentially lead to incorrect answers in safety-critical applications.",
+          "The method's reliance on paragraph delimiters (\\n\\n) as step-split tokens may not generalize to all reasoning formats or models that use different formatting conventions.",
+          "The evaluation is limited to two open-source models. The method's applicability to proprietary models or larger models (e.g., 70B+ parameters) is unclear.",
+          "The paper doesn't address the carbon footprint or energy consumption implications of the training process for the auxiliary heads and MTP layer.",
+          "The method's performance on tasks requiring multi-step reasoning with multiple valid solution paths is not thoroughly explored."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes SpecExit, a framework that combines speculative decoding with early-exit mechanisms for large reasoning models (LRMs). The key idea is to extend the Multi-Token Prediction (MTP) layer of a draft model to predict not only future tokens but also three reasoning-related signals (confidence, progress, remaining reasoning length) that can be used to dynamically terminate chain-of-thought generation. The approach avoids the probing overhead of prior early-exit methods and achieves significant latency improvements.\n\nThe paper has several notable strengths:\n1. The core idea is novel and well-motivated - using hidden states from speculative decoding to predict early-exit signals is a clever combination of two research directions.\n2. The method shows substantial empirical gains: 66% reduction in generation length and 2.5x speedup over speculative decoding baselines.\n3. The implementation in both PyTorch and vLLM demonstrates practical applicability.\n4. The ablation studies are thorough, examining signal types, smoothing methods, and step-split strategies.\n\nHowever, there are several concerns:\n1. The evaluation methodology has potential issues. The comparison against EAGLE3 uses a \"same dataset\" training condition, but it's unclear if the draft model is trained from scratch or fine-tuned. The baselines need more careful setup.\n2. The accuracy results show mixed performance - on some benchmarks SpecExit actually improves accuracy over baselines (e.g., AIME for Qwen3), which seems suspicious and could indicate overfitting or evaluation issues.\n3. The paper lacks statistical significance testing. With small benchmark sizes (AIME has only 30 problems), the differences could be within noise.\n4. The method's generalizability is questionable - the thresholds (0.8, 0.3, 200) appear to be tuned per benchmark, which limits the claim of \"generalization across diverse problems.\"\n5. The paper doesn't adequately discuss the training cost of adding the MTP layer and auxiliary heads.\n6. The comparison with DEER is somewhat unfair since DEER is a probing-based method that adds overhead, while SpecExit integrates into the speculative decoding framework.\n\nThe paper is generally well-written and clearly organized, though some claims in the abstract (e.g., \"66% reduction\" and \"2.5x speedup\") need more context about which benchmarks they apply to.\n\nOverall, this is a solid paper with a novel contribution, but the evaluation has some weaknesses that need to be addressed. The main concerns are about the fairness of comparisons, statistical significance, and the generalizability of the approach. I would rate this as a borderline accept - the idea is good, but the evidence needs strengthening.\n\nREVIEW JSON:\n```json\n{\n\"Summary\": \"The paper proposes SpecExit, a framework that combines speculative decoding with early-exit mechanisms for large reasoning models (LRMs). The key contribution is extending the Multi-Token Prediction (MTP) layer of a draft model to predict three auxiliary reasoning signals (confidence, progress, and remaining reasoning length) alongside token distributions. These signals are used to dynamically terminate chain-of-thought generation when sufficient reasoning has been achieved, without the probing overhead of prior early-exit methods. The approach is trained via multi-task learning and evaluated on multiple benchmarks (GSM8K, MATH500, AIME, HumanEvalPlus, GPQA-D, ARC-Challenge) across two LRMs (Qwen3-4B-Thinking-2507 and DeepSeek-R1-Distill-Llama-8B). Results show up to 66% reduction in generation length and 2.5x end-to-end latency speedup over speculative decoding baselines while maintaining accuracy.\",\n\"Strengths\": [\n\"The core idea is novel and well-motivated - leveraging hidden states from speculative decoding to predict early-exit signals is a clever integration of two research directions.\",\n\"The method demonstrates substantial empirical gains, with significant reductions in both token count and end-to-end latency across multiple benchmarks and models.\",\n\"The implementation in both PyTorch and vLLM shows practical applicability and deployment readiness.\",\n\"The ablation studies are thorough, examining signal types, smoothing methods, and step-split strategies, providing useful insights into the design choices.\",\n\"The paper is well-written and clearly organized, with the method and experimental setup described in sufficient detail for reproduction.\"\n],\n\"Weaknesses\": [\n\"The evaluation methodology has potential fairness issues. The comparison against EAGLE3 uses 'same dataset' training, but it's unclear whether the draft model is trained from scratch or fine-tuned, and whether the baselines are given equal training resources.\",\n\"The accuracy improvements on some benchmarks (e.g., AIME for Qwen3: 80.0 to 90.0) are surprisingly large and could indicate evaluation issues, overfitting, or benchmark noise. With AIME having only ~30 problems, these differences may not be statistically significant.\",\n\"The paper lacks statistical significance testing. No confidence intervals, standard deviations, or significance tests are reported for any of the results.\",\n\"The claim of generalizability is weakened by the fact that thresholds appear to be tuned per benchmark (e.g., AIME uses different thresholds than other datasets). The paper should demonstrate robustness to threshold selection.\",\n\"The training cost of adding the MTP layer and auxiliary heads is not discussed. This is a significant practical consideration for deployment.\",\n\"The comparison with DEER may be somewhat unfair since DEER is designed as a generic early-exit method that can be applied on top of any decoding framework, while SpecExit is tightly integrated with speculative decoding.\",\n\"The paper doesn't provide a detailed analysis of when early-exit decisions are correct vs. incorrect, which would help understand the failure modes of the approach.\"\n],\n\"Originality\": 4,\n\"Quality\": 3,\n\"Clarity\": 3,\n\"Significance\": 3,\n\"Questions\": [\n\"Can you provide more details on the training setup for EAGLE3? Is the draft model trained from scratch or fine-tuned from a pretrained checkpoint? How many training steps and what learning rate were used?\",\n\"The accuracy improvements on AIME (80.0 to 90.0 for Qwen3) are surprisingly large. Could this be due to small sample size (AIME typically has ~30 problems)? Can you provide confidence intervals or run multiple seeds?\",\n\"How sensitive is the method to the threshold parameters? The paper uses different thresholds for different benchmarks (e.g., AIME vs. others). Can you show results with fixed thresholds across all benchmarks?\",\n\"What is the additional training cost (time, compute) for adding the MTP layer and auxiliary heads compared to standard speculative decoding training?\",\n\"Have you considered evaluating the method's performance under distribution shift, e.g., on out-of-domain problems that are very different from the training data?\",\n\"How does the method perform when the draft model's predictions are unreliable? Is there a risk of compounding errors between the speculative decoding and early-exit signals?\",\n\"Can you provide more analysis on the failure cases where SpecExit terminates too early or too late? What are the common characteristics of these cases?\"\n],\n\"Limitations\": [\n\"The paper doesn't discuss the potential negative societal impact of the work. While this is primarily an efficiency improvement, reducing reasoning length could potentially lead to incorrect answers in safety-critical applications.\",\n\"The method's reliance on paragraph delimiters (\\\\n\\\\n) as step-split tokens may not generalize to all reasoning formats or models that use different formatting conventions.\",\n\"The evaluation is limited to two open-source models. The method's applicability to proprietary models or larger models (e.g., 70B+ parameters) is unclear.\",\n\"The paper doesn't address the carbon footprint or energy consumption implications of the training process for the auxiliary heads and MTP layer.\",\n\"The method's performance on tasks requiring multi-step reasoning with multiple valid solution paths is not thoroughly explored.\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 3,\n\"Contribution\": 3,\n\"Overall\": 6,\n\"Confidence\": 4,\n\"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 14900,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 13108,
+        "completion_tokens": 1654,
+        "reasoning_tokens": 0,
+        "total_tokens": 16554
+      },
+      "attempts": 1,
+      "response_id": "b147945f-80e4-4d2b-9b48-0f3513a063d0"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "This paper introduces SpecExit, a framework that combines speculative decoding with early-exit mechanisms for large reasoning models (LRMs). The key innovation is extending the draft model's MTP (Multi-Token Prediction) layer with auxiliary heads that predict early-exit signals (confidence, reasoning progress, and remaining reasoning length) alongside token predictions. This allows the system to dynamically terminate chain-of-thought generation when sufficient reasoning has been achieved, without the probing overhead of prior early-exit methods. The authors evaluate SpecExit on Qwen3-4B-Thinking-2507 and DeepSeek-R1-Distill-Llama-8B across mathematical, coding, scientific, and logical benchmarks, reporting up to 66% reduction in generation length and 2.5x end-to-end latency improvement compared to speculative decoding baselines, with maintained accuracy. The framework is implemented in both PyTorch and vLLM for practical deployment.",
+        "Strengths": [
+          "Novel combination of speculative decoding with early-exit signals, addressing a real practical problem of LRM overthinking",
+          "Clear motivation supported by preliminary experiments showing hidden states encode reasoning progress information",
+          "Comprehensive evaluation across multiple benchmarks (GSM8K, MATH500, AIME, HumanEvalPlus, GPQA-D, ARC-Challenge) and two different reasoning models",
+          "Implementation in both PyTorch and vLLM demonstrates practical deployability",
+          "Ablation studies on signal types, smoothing methods, and step split tokens provide useful insights into the design choices",
+          "The approach requires no modifications to the target model, preserving its output distribution"
+        ],
+        "Weaknesses": [
+          "Accuracy results are inconsistent across benchmarks - e.g., AIME accuracy for Qwen3-4B jumps from 80% (EAGLE3) to 90% (SpecExit) while GSM8K drops from 94.8% to 93.8%, raising questions about variance and statistical significance",
+          "The comparison with DEER appears potentially unfair - DEER's latency numbers seem disproportionately high, possibly due to poor implementation or suboptimal configuration",
+          "The paper lacks statistical significance testing or multiple-run variance reporting to confirm the robustness of results",
+          "Threshold settings for early exit appear arbitrary and dataset-specific, which may undermine the claimed generalizability",
+          "No comparison with recent training-based approaches (e.g., CoT-Valve, L1) or other modern early-exit methods",
+          "The claim of 'no probing overhead' is slightly overstated since the auxiliary heads still require additional computation, though minimal",
+          "The AIME results for DeepSeek-R1-Distill-Llama-8B show very low accuracy (30-40%) across all methods, suggesting the model may not be suitable for this benchmark, which weakens conclusions drawn from this setting",
+          "The paper doesn't clearly explain the computational overhead of the signal extraction and smoothing process in the end-to-end latency measurements"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "Could you provide statistical significance testing (e.g., multiple runs with confidence intervals) for the main results, particularly for the AIME accuracy improvements that seem unusually large?",
+          "How were the DEER baseline latency numbers obtained? The latency seems disproportionately high compared to the vanilla baseline, which suggests possible implementation issues. Could you detail the configuration used?",
+          "The threshold values for early exit appear to be tuned per benchmark. How sensitive are the results to these thresholds, and how would you set them in a deployment scenario without knowing the benchmark in advance?",
+          "What is the additional computational overhead of the signal extraction and EWMA smoothing in the inference pipeline? How is this accounted for in the reported latency numbers?",
+          "How was the 'minimal reasoning segment' determined during data construction? Could this process introduce bias by favoring shorter reasoning paths that may not generalize to unseen problems?",
+          "Have you considered comparing against more recent methods like CoT-Valve or L1-controlled reasoning, which also address overthinking without probing overhead?",
+          "Could you provide more details on the training data used for the auxiliary heads - how many samples, what is the diversity across domains, and does the training data distribution affect the early-exit performance across benchmarks?"
+        ],
+        "Limitations": [
+          "The approach requires training auxiliary heads on the draft model, which may not be feasible for all deployment scenarios where only the target model is available",
+          "The early-exit decisions are based on thresholds that may need task-specific tuning, potentially limiting the claimed generality",
+          "The paper doesn't address potential negative societal impacts, such as the risk of accuracy degradation in high-stakes applications where overthinking may be beneficial (e.g., medical or legal reasoning)",
+          "The evaluation is limited to open-source models; the applicability to closed-source LRMs (e.g., OpenAI-o1) is unclear",
+          "The paper doesn't discuss the memory overhead of storing the auxiliary heads or the impact on batch inference throughput in real serving scenarios"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 4,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes SpecExit, a framework that combines speculative decoding with early-exit mechanisms for large reasoning models (LRMs). The key idea is to use hidden states from a draft model to predict both future tokens (as in speculative decoding) and early-exit signals (confidence, progress, remaining reasoning length) without additional probing overhead. The authors claim significant reductions in generation length (66%) and end-to-end latency (2.5x speedup) compared to speculative decoding baselines.\n\nThe paper has several strengths:\n1. The motivation is clear and well-supported - probing-based early-exit methods indeed introduce overhead that limits latency gains.\n2. The integration of early-exit signals with speculative decoding is a novel combination that addresses a real practical problem.\n3. The experimental evaluation is fairly comprehensive across multiple benchmarks (math, coding, science, logic) and two different reasoning models.\n4. The implementation in both PyTorch and vLLM suggests practical deployability.\n5. The paper includes useful ablations on signal types, smoothing methods, and step split tokens.\n\nHowever, there are several weaknesses:\n1. The accuracy results are somewhat inconsistent. For example, on AIME with Qwen3-4B, SpecExit achieves 90.0% accuracy vs. EAGLE3's 80.0% and Think's 86.7% - this seems suspiciously high and may indicate variance issues or evaluation problems. Conversely, on GSM8K with Qwen3-4B, accuracy drops from 94.8% (EAGLE3) to 93.8% (SpecExit).\n2. The comparison with DEER appears problematic. DEER's latency numbers seem very high (e.g., 230.3ms on GSM8K vs. Think's 155.6ms), which may indicate an unfair or poorly optimized implementation.\n3. The paper doesn't clearly explain how the early-exit signals are trained - specifically, how the \"minimal reasoning segment\" is determined and whether this process introduces any bias.\n4. The threshold settings for early exit seem arbitrary and task-specific, which may limit the claimed \"generalizability.\"\n5. The paper lacks statistical significance testing or multiple runs to confirm the robustness of results.\n6. Some claims about \"no probing overhead\" are slightly misleading since the auxiliary heads still require additional computation (though minimal).\n7. The paper doesn't compare against other recent early-exit methods or training-based approaches like CoT-Valve or L1-controlled reasoning.\n8. The AIME results for DeepSeek-R1-Distill-Llama-8B show very low accuracy (30-40%) across all methods, suggesting the model may not be well-suited for this benchmark, which weakens the conclusions drawn from this setting.\n\nThe presentation is generally clear, though there are some typos and formatting issues (e.g., missing citations, truncated URLs). The figures are helpful but some are not referenced properly in the text.\n\nOverall, this is a solid paper with a practical contribution, but the evaluation has some concerns that need to be addressed. The accuracy inconsistencies and potential evaluation issues prevent me from giving it a strong accept. I would rate it as a borderline accept, leaning toward accept given the practical significance and novelty of combining speculative decoding with early-exit signals.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper introduces SpecExit, a framework that combines speculative decoding with early-exit mechanisms for large reasoning models (LRMs). The key innovation is extending the draft model's MTP (Multi-Token Prediction) layer with auxiliary heads that predict early-exit signals (confidence, reasoning progress, and remaining reasoning length) alongside token predictions. This allows the system to dynamically terminate chain-of-thought generation when sufficient reasoning has been achieved, without the probing overhead of prior early-exit methods. The authors evaluate SpecExit on Qwen3-4B-Thinking-2507 and DeepSeek-R1-Distill-Llama-8B across mathematical, coding, scientific, and logical benchmarks, reporting up to 66% reduction in generation length and 2.5x end-to-end latency improvement compared to speculative decoding baselines, with maintained accuracy. The framework is implemented in both PyTorch and vLLM for practical deployment.\",\n    \"Strengths\": [\n        \"Novel combination of speculative decoding with early-exit signals, addressing a real practical problem of LRM overthinking\",\n        \"Clear motivation supported by preliminary experiments showing hidden states encode reasoning progress information\",\n        \"Comprehensive evaluation across multiple benchmarks (GSM8K, MATH500, AIME, HumanEvalPlus, GPQA-D, ARC-Challenge) and two different reasoning models\",\n        \"Implementation in both PyTorch and vLLM demonstrates practical deployability\",\n        \"Ablation studies on signal types, smoothing methods, and step split tokens provide useful insights into the design choices\",\n        \"The approach requires no modifications to the target model, preserving its output distribution\"\n    ],\n    \"Weaknesses\": [\n        \"Accuracy results are inconsistent across benchmarks - e.g., AIME accuracy for Qwen3-4B jumps from 80% (EAGLE3) to 90% (SpecExit) while GSM8K drops from 94.8% to 93.8%, raising questions about variance and statistical significance\",\n        \"The comparison with DEER appears potentially unfair - DEER's latency numbers seem disproportionately high, possibly due to poor implementation or suboptimal configuration\",\n        \"The paper lacks statistical significance testing or multiple-run variance reporting to confirm the robustness of results\",\n        \"Threshold settings for early exit appear arbitrary and dataset-specific, which may undermine the claimed generalizability\",\n        \"No comparison with recent training-based approaches (e.g., CoT-Valve, L1) or other modern early-exit methods\",\n        \"The claim of 'no probing overhead' is slightly overstated since the auxiliary heads still require additional computation, though minimal\",\n        \"The AIME results for DeepSeek-R1-Distill-Llama-8B show very low accuracy (30-40%) across all methods, suggesting the model may not be suitable for this benchmark, which weakens conclusions drawn from this setting\",\n        \"The paper doesn't clearly explain the computational overhead of the signal extraction and smoothing process in the end-to-end latency measurements\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 4,\n    \"Questions\": [\n        \"Could you provide statistical significance testing (e.g., multiple runs with confidence intervals) for the main results, particularly for the AIME accuracy improvements that seem unusually large?\",\n        \"How were the DEER baseline latency numbers obtained? The latency seems disproportionately high compared to the vanilla baseline, which suggests possible implementation issues. Could you detail the configuration used?\",\n        \"The threshold values for early exit appear to be tuned per benchmark. How sensitive are the results to these thresholds, and how would you set them in a deployment scenario without knowing the benchmark in advance?\",\n        \"What is the additional computational overhead of the signal extraction and EWMA smoothing in the inference pipeline? How is this accounted for in the reported latency numbers?\",\n        \"How was the 'minimal reasoning segment' determined during data construction? Could this process introduce bias by favoring shorter reasoning paths that may not generalize to unseen problems?\",\n        \"Have you considered comparing against more recent methods like CoT-Valve or L1-controlled reasoning, which also address overthinking without probing overhead?\",\n        \"Could you provide more details on the training data used for the auxiliary heads - how many samples, what is the diversity across domains, and does the training data distribution affect the early-exit performance across benchmarks?\"\n    ],\n    \"Limitations\": [\n        \"The approach requires training auxiliary heads on the draft model, which may not be feasible for all deployment scenarios where only the target model is available\",\n        \"The early-exit decisions are based on thresholds that may need task-specific tuning, potentially limiting the claimed generality\",\n        \"The paper doesn't address potential negative societal impacts, such as the risk of accuracy degradation in high-stakes applications where overthinking may be beneficial (e.g., medical or legal reasoning)\",\n        \"The evaluation is limited to open-source models; the applicability to closed-source LRMs (e.g., OpenAI-o1) is unclear\",\n        \"The paper doesn't discuss the memory overhead of storing the auxiliary heads or the impact on batch inference throughput in real serving scenarios\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 4,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 14900,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 13108,
+        "completion_tokens": 1814,
+        "reasoning_tokens": 0,
+        "total_tokens": 16714
+      },
+      "attempts": 1,
+      "response_id": "b68a6a95-324d-4a57-8de0-cc77ad2366b2"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper proposes SpecExit, a framework that combines speculative decoding with early-exit mechanisms for large reasoning models (LRMs). The key innovation is extending the Multi-Token Prediction (MTP) layer of a draft model with auxiliary prediction heads that simultaneously predict future tokens and three reasoning-related signals: confidence, reasoning progress, and remaining reasoning length. These signals are used to dynamically terminate chain-of-thought generation when sufficient reasoning has been achieved, without modifying the target model. The method is evaluated on multiple benchmarks (GSM8K, MATH500, AIME, HumanEvalPlus, GPQA-D, ARC-Challenge) across two LRMs (Qwen3-4B-Thinking-2507 and DeepSeek-R1-Distill-Llama-8B), achieving up to 66% reduction in generation length and 2.5x speedup in end-to-end latency compared to speculative decoding baselines, while maintaining comparable accuracy. The framework is implemented in both PyTorch and vLLM, and code is open-sourced.",
+        "Strengths": [
+          "Novel approach that elegantly combines speculative decoding with early-exit mechanisms by leveraging hidden states, avoiding the probing overhead of previous early-exit methods",
+          "Comprehensive experimental evaluation across diverse benchmarks (math, coding, science, logic) and two different reasoning models",
+          "Significant practical improvements: up to 66% token reduction and 2.5x end-to-end latency speedup compared to speculative decoding baseline",
+          "Good ablation studies on signal types, smoothing methods, and step split tokens that provide useful insights",
+          "Implementation in both PyTorch and vLLM with open-sourced code, demonstrating practical deployability",
+          "Clear motivation backed by empirical evidence showing the limitations of probing-based early-exit methods"
+        ],
+        "Weaknesses": [
+          "Accuracy drops are not negligible on several benchmarks (e.g., GSM8K drops from 94.8% to 93.8% for Qwen3-4B, and from 79.3% to 75.3% for DeepSeek-R1-Distill-Llama-8B), but the paper characterizes these as 'marginal' without statistical significance testing",
+          "The training data construction process for identifying 'minimal reasoning segments' lacks detail - the verification procedure for determining whether the answer remains correct after inserting </think> is not fully specified",
+          "Threshold settings for early-exit appear to be manually tuned per dataset, raising questions about generalization to new tasks without re-tuning",
+          "The paper doesn't adequately discuss the computational overhead of the auxiliary prediction heads during inference, particularly how they affect the speculative decoding acceptance rate",
+          "Comparison with EAGLE3 may be unfair if EAGLE3 was not given the same training data or early-exit capability - the paper should clarify whether EAGLE3 was also trained on the minimal reasoning segments",
+          "Missing comparison with more recent early-exit methods and training-based approaches that don't sacrifice accuracy",
+          "The paper doesn't analyze failure cases where early exit leads to incorrect answers, which is critical for practical deployment"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How exactly is the 'minimal reasoning segment' determined during data construction? Please provide more details on the verification process for whether the answer remains correct after inserting </think> at each paragraph boundary.",
+          "What is the computational overhead of the auxiliary prediction heads during inference? Does this overhead affect the speculative decoding acceptance rate or add latency to each forward pass?",
+          "How were the early-exit thresholds (confidence > 0.8, progress > 0.3, remaining length < 200) chosen? Were they tuned on a held-out validation set, and how sensitive are the results to these threshold values?",
+          "The accuracy drops on some benchmarks (particularly GSM8K for DeepSeek-R1-Distill-Llama-8B, from 79.3% to 75.3%) seem non-trivial. Could you provide statistical significance tests or confidence intervals for these accuracy differences?",
+          "How does SpecExit perform compared to training-based approaches like CoT-Valve or reinforcement learning methods that also aim to reduce reasoning length without sacrificing accuracy?",
+          "Does SpecExit's early-exit mechanism work correctly when the draft model and target model disagree on tokens? How does the early-exit signal from the draft model's hidden states correlate with the target model's reasoning state?",
+          "The paper mentions discourse markers as an alternative to paragraph delimiters. Could you provide more details on how these markers were collected and why paragraph delimiters are preferred?"
+        ],
+        "Limitations": [
+          "The accuracy degradation on some benchmarks (up to 4% on GSM8K for DeepSeek-R1-Distill-Llama-8B) is not fully addressed - the paper should discuss whether this trade-off is acceptable for practical applications",
+          "The early-exit thresholds are manually tuned and may not generalize across different tasks, domains, or model architectures",
+          "The method relies on the draft model's hidden states encoding reliable reasoning signals, which may not hold for all model architectures or training regimes",
+          "The paper doesn't discuss potential negative societal impacts, such as how early-exit mechanisms might introduce biases or errors in high-stakes applications where reasoning quality is critical",
+          "The evaluation focuses on benchmarks where the answer is verifiable - the method's effectiveness on open-ended reasoning tasks where there's no clear 'correct answer' is not addressed",
+          "The comparison with EAGLE3 may not be entirely fair if EAGLE3 was not given the same training data on minimal reasoning segments"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes SpecExit, a framework that combines speculative decoding with early-exit mechanisms for large reasoning models. The key idea is to extend the MTP (Multi-Token Prediction) layer of a draft model to simultaneously predict future tokens and three auxiliary signals (confidence, reasoning progress, and remaining reasoning length), which are then used to decide when to terminate chain-of-thought generation early.\n\nThe paper has several strengths:\n1. The motivation is clear and well-supported - probing-based methods like DEER have overhead that limits latency gains, and the authors demonstrate this with Figure 1(a)\n2. The method is technically sound - extending the MTP layer with auxiliary heads is a natural and elegant solution that requires no modification to the target model\n3. The experimental evaluation is comprehensive across multiple benchmarks (math, coding, science, logic) and two models\n4. The results show significant improvements - up to 66% reduction in generation length and 2.5x speedup\n5. The authors provide good ablation studies on signal types, smoothing methods, and step split tokens\n\nHowever, there are several weaknesses:\n1. The paper lacks sufficient details about the training data construction and the \"minimal reasoning segment\" identification process. How exactly is the \"earliest valid insertion point\" determined? What constitutes \"correct answer\" verification?\n2. The comparison with EAGLE3 seems unfair in some respects - EAGLE3 is trained on the same dataset, but the paper doesn't clarify whether the token/latency numbers for SpecExit include the overhead of the auxiliary heads\n3. The accuracy numbers show some concerning drops (e.g., GSM8K accuracy drops from 94.8% to 93.8% for Qwen3-4B, and from 79.3% to 75.3% for DeepSeek-R1-Distill-Llama-8B). The paper claims \"marginal accuracy differences\" but a 4% drop is not marginal\n4. The paper doesn't discuss the computational overhead of the signal prediction heads during inference in detail\n5. The threshold settings appear to be manually tuned and may not generalize well\n6. The paper doesn't compare against more recent early-exit methods or training-based approaches\n\nThe paper is reasonably well-written but has some organizational issues. The figures are not properly referenced in the text (e.g., Figure 2 is referenced as \"x3.png\"), and some equations have formatting issues.\n\nOverall, this is a solid contribution with clear practical value, but the evaluation and analysis could be more rigorous. The accuracy drops on some benchmarks are concerning, and the manual threshold tuning raises questions about practical deployment.\n\nI would rate this as a borderline accept - the core idea is novel and practical, the results are promising, but there are some weaknesses in the evaluation and analysis that need to be addressed.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper proposes SpecExit, a framework that combines speculative decoding with early-exit mechanisms for large reasoning models (LRMs). The key innovation is extending the Multi-Token Prediction (MTP) layer of a draft model with auxiliary prediction heads that simultaneously predict future tokens and three reasoning-related signals: confidence, reasoning progress, and remaining reasoning length. These signals are used to dynamically terminate chain-of-thought generation when sufficient reasoning has been achieved, without modifying the target model. The method is evaluated on multiple benchmarks (GSM8K, MATH500, AIME, HumanEvalPlus, GPQA-D, ARC-Challenge) across two LRMs (Qwen3-4B-Thinking-2507 and DeepSeek-R1-Distill-Llama-8B), achieving up to 66% reduction in generation length and 2.5x speedup in end-to-end latency compared to speculative decoding baselines, while maintaining comparable accuracy. The framework is implemented in both PyTorch and vLLM, and code is open-sourced.\",\n    \"Strengths\": [\n        \"Novel approach that elegantly combines speculative decoding with early-exit mechanisms by leveraging hidden states, avoiding the probing overhead of previous early-exit methods\",\n        \"Comprehensive experimental evaluation across diverse benchmarks (math, coding, science, logic) and two different reasoning models\",\n        \"Significant practical improvements: up to 66% token reduction and 2.5x end-to-end latency speedup compared to speculative decoding baseline\",\n        \"Good ablation studies on signal types, smoothing methods, and step split tokens that provide useful insights\",\n        \"Implementation in both PyTorch and vLLM with open-sourced code, demonstrating practical deployability\",\n        \"Clear motivation backed by empirical evidence showing the limitations of probing-based early-exit methods\"\n    ],\n    \"Weaknesses\": [\n        \"Accuracy drops are not negligible on several benchmarks (e.g., GSM8K drops from 94.8% to 93.8% for Qwen3-4B, and from 79.3% to 75.3% for DeepSeek-R1-Distill-Llama-8B), but the paper characterizes these as 'marginal' without statistical significance testing\",\n        \"The training data construction process for identifying 'minimal reasoning segments' lacks detail - the verification procedure for determining whether the answer remains correct after inserting </think> is not fully specified\",\n        \"Threshold settings for early-exit appear to be manually tuned per dataset, raising questions about generalization to new tasks without re-tuning\",\n        \"The paper doesn't adequately discuss the computational overhead of the auxiliary prediction heads during inference, particularly how they affect the speculative decoding acceptance rate\",\n        \"Comparison with EAGLE3 may be unfair if EAGLE3 was not given the same training data or early-exit capability - the paper should clarify whether EAGLE3 was also trained on the minimal reasoning segments\",\n        \"Missing comparison with more recent early-exit methods and training-based approaches that don't sacrifice accuracy\",\n        \"The paper doesn't analyze failure cases where early exit leads to incorrect answers, which is critical for practical deployment\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"How exactly is the 'minimal reasoning segment' determined during data construction? Please provide more details on the verification process for whether the answer remains correct after inserting </think> at each paragraph boundary.\",\n        \"What is the computational overhead of the auxiliary prediction heads during inference? Does this overhead affect the speculative decoding acceptance rate or add latency to each forward pass?\",\n        \"How were the early-exit thresholds (confidence > 0.8, progress > 0.3, remaining length < 200) chosen? Were they tuned on a held-out validation set, and how sensitive are the results to these threshold values?\",\n        \"The accuracy drops on some benchmarks (particularly GSM8K for DeepSeek-R1-Distill-Llama-8B, from 79.3% to 75.3%) seem non-trivial. Could you provide statistical significance tests or confidence intervals for these accuracy differences?\",\n        \"How does SpecExit perform compared to training-based approaches like CoT-Valve or reinforcement learning methods that also aim to reduce reasoning length without sacrificing accuracy?\",\n        \"Does SpecExit's early-exit mechanism work correctly when the draft model and target model disagree on tokens? How does the early-exit signal from the draft model's hidden states correlate with the target model's reasoning state?\",\n        \"The paper mentions discourse markers as an alternative to paragraph delimiters. Could you provide more details on how these markers were collected and why paragraph delimiters are preferred?\"\n    ],\n    \"Limitations\": [\n        \"The accuracy degradation on some benchmarks (up to 4% on GSM8K for DeepSeek-R1-Distill-Llama-8B) is not fully addressed - the paper should discuss whether this trade-off is acceptable for practical applications\",\n        \"The early-exit thresholds are manually tuned and may not generalize across different tasks, domains, or model architectures\",\n        \"The method relies on the draft model's hidden states encoding reliable reasoning signals, which may not hold for all model architectures or training regimes\",\n        \"The paper doesn't discuss potential negative societal impacts, such as how early-exit mechanisms might introduce biases or errors in high-stakes applications where reasoning quality is critical\",\n        \"The evaluation focuses on benchmarks where the answer is verifiable - the method's effectiveness on open-ended reasoning tasks where there's no clear 'correct answer' is not addressed\",\n        \"The comparison with EAGLE3 may not be entirely fair if EAGLE3 was not given the same training data on minimal reasoning segments\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 14900,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 13108,
+        "completion_tokens": 1867,
+        "reasoning_tokens": 0,
+        "total_tokens": 16767
+      },
+      "attempts": 1,
+      "response_id": "3d6ef33f-5be7-4530-ae38-2e9fa2e0a226"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper introduces SpecExit, a framework that integrates early-exit mechanisms with speculative decoding for large reasoning models (LRMs). The key contribution is augmenting the draft model's Multi-Token Prediction (MTP) layer with auxiliary prediction heads that simultaneously output token distributions and three reasoning signals (confidence, progress, remaining reasoning length) in a single forward pass. These signals are used to dynamically terminate chain-of-thought generation at natural boundaries (paragraph delimiters or discourse markers) when the reasoning is deemed sufficient. The method is trained via multi-task learning with dynamic gradient-based weighting and uses EWMA smoothing for signal stability. Experiments on Qwen3-4B-Thinking-2507 and DeepSeek-R1-Distill-Llama-8B across mathematical, coding, scientific, and logical benchmarks show 66% average length reduction and up to 2.5x end-to-end latency speedup compared to speculative decoding baselines, with minimal accuracy impact.",
+        "Strengths": [
+          "Addresses a practically important problem of overthinking in reasoning models, which is highly relevant for real-world deployment",
+          "Novel integration of hidden state signals into speculative decoding framework, eliminating probing overhead of previous early-exit methods",
+          "Comprehensive evaluation across multiple benchmarks and two different reasoning models",
+          "Detailed ablation studies on signal types, smoothing methods, and step split strategies provide useful insights",
+          "Implementation in both PyTorch and vLLM demonstrates practical deployability",
+          "Clear motivation backed by preliminary experiments showing hidden states encode reasoning progress information"
+        ],
+        "Weaknesses": [
+          "Lack of theoretical analysis or formal guarantees for the early-exit criteria - the method relies entirely on empirical threshold selection",
+          "Threshold values appear to be dataset-specific and manually tuned (e.g., confidence > 0.9 for single signals vs. > 0.8 for combined), raising concerns about generalizability to new tasks without re-tuning",
+          "Accuracy trade-offs are inconsistent across benchmarks - significant drops on AIME (86.7 to 90.0 for Qwen3 but 36.7 to 30.0 for DeepSeek) suggest the method may not be universally safe",
+          "Comparison with DEER is potentially unfair since SpecExit is trained on the target data while DEER is a training-free method",
+          "Training cost of the augmented MTP layer and data construction process is not discussed, which is important for practical adoption",
+          "No statistical significance testing or variance reporting across multiple runs",
+          "The paper claims 'without compromising accuracy' but several benchmarks show non-trivial accuracy degradation (e.g., DeepSeek on GSM8K: 79.3 to 75.3)",
+          "Limited analysis of failure cases where early exit produces wrong answers"
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How were the stopping thresholds selected for each signal configuration? Was there a validation set used, and if so, how was it split from the training data?",
+          "What is the training cost (GPU hours, data size) for the augmented MTP layer, and how does this compare to the inference savings?",
+          "The paper reports accuracy drops on several benchmarks (e.g., DeepSeek on GSM8K from 79.3 to 75.3). Could you provide a more detailed analysis of the error patterns in these cases? Are there specific problem types where early exit consistently fails?",
+          "How sensitive is the method to the EWMA smoothing factor (α=0.1)? Have you explored different values, and what is the impact on the accuracy-efficiency trade-off?",
+          "The paragraph delimiter strategy is claimed to be more general. However, different models may have different paragraph formatting conventions. How does this strategy perform when the model does not produce clear paragraph breaks?",
+          "Can you provide more details on the dynamic weighting mechanism? Specifically, what are the typical values of λ_c, λ_p, λ_r during training, and how stable are they?",
+          "The paper mentions the method is implemented in vLLM. What modifications were required to the vLLM inference engine, and what is the additional memory overhead of the auxiliary heads?"
+        ],
+        "Limitations": [
+          "The method requires training on target model outputs, which may not always be available or could be expensive to obtain for new models",
+          "Threshold tuning appears necessary for each new dataset or domain, potentially limiting out-of-the-box applicability",
+          "The paper does not address potential negative societal impacts of deploying faster reasoning models, such as increased automation of tasks that require human oversight",
+          "The evaluation is limited to two model families (Qwen and DeepSeek), and results may not generalize to larger or differently trained reasoning models",
+          "No discussion of the environmental cost of training the additional heads versus the inference savings"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 5,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes SpecExit, a framework that combines speculative decoding with early-exit mechanisms for large reasoning models. The key idea is to augment the draft model's MTP layer with auxiliary prediction heads that output confidence, reasoning progress, and remaining reasoning length signals alongside token predictions, enabling dynamic early termination of chain-of-thought generation without additional probing overhead.\n\nThe paper has several strengths: it addresses a practically important problem (overthinking in reasoning models), proposes a novel integration of hidden state signals into speculative decoding, demonstrates substantial latency improvements (up to 2.5x) and token reductions (up to 66%) across multiple benchmarks, and includes comprehensive ablations on signal types, smoothing methods, and step split strategies.\n\nHowever, there are notable weaknesses. The paper lacks theoretical analysis or formal guarantees for the early-exit criteria. The threshold selection appears ad-hoc and dataset-specific (as seen in the appendix), raising questions about generalizability. The accuracy trade-offs are not consistently maintained across all benchmarks - some show significant drops (e.g., AIME for Qwen3). The comparison with DEER seems somewhat unfair given that SpecExit is trained on the target data while DEER is not. The paper also doesn't discuss the training cost of the augmented MTP layer or the data construction overhead. The experimental setup lacks statistical significance testing, and the hardware setup (8xH20) is not typical for deployment scenarios.\n\nThe clarity is generally good but could be improved with more details on the training procedure, hyperparameters, and the exact inference algorithm. The related work section is adequate but could better position this against recent early-exit and speculative decoding methods.\n\nOverall, the paper presents a solid empirical contribution with practical significance, but the lack of theoretical grounding, potential overfitting to specific datasets through threshold tuning, and incomplete evaluation of training costs limit its impact. I would rate this as a borderline accept, leaning towards reject due to the evaluation methodology concerns.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper introduces SpecExit, a framework that integrates early-exit mechanisms with speculative decoding for large reasoning models (LRMs). The key contribution is augmenting the draft model's Multi-Token Prediction (MTP) layer with auxiliary prediction heads that simultaneously output token distributions and three reasoning signals (confidence, progress, remaining reasoning length) in a single forward pass. These signals are used to dynamically terminate chain-of-thought generation at natural boundaries (paragraph delimiters or discourse markers) when the reasoning is deemed sufficient. The method is trained via multi-task learning with dynamic gradient-based weighting and uses EWMA smoothing for signal stability. Experiments on Qwen3-4B-Thinking-2507 and DeepSeek-R1-Distill-Llama-8B across mathematical, coding, scientific, and logical benchmarks show 66% average length reduction and up to 2.5x end-to-end latency speedup compared to speculative decoding baselines, with minimal accuracy impact.\",\n  \"Strengths\": [\n    \"Addresses a practically important problem of overthinking in reasoning models, which is highly relevant for real-world deployment\",\n    \"Novel integration of hidden state signals into speculative decoding framework, eliminating probing overhead of previous early-exit methods\",\n    \"Comprehensive evaluation across multiple benchmarks and two different reasoning models\",\n    \"Detailed ablation studies on signal types, smoothing methods, and step split strategies provide useful insights\",\n    \"Implementation in both PyTorch and vLLM demonstrates practical deployability\",\n    \"Clear motivation backed by preliminary experiments showing hidden states encode reasoning progress information\"\n  ],\n  \"Weaknesses\": [\n    \"Lack of theoretical analysis or formal guarantees for the early-exit criteria - the method relies entirely on empirical threshold selection\",\n    \"Threshold values appear to be dataset-specific and manually tuned (e.g., confidence > 0.9 for single signals vs. > 0.8 for combined), raising concerns about generalizability to new tasks without re-tuning\",\n    \"Accuracy trade-offs are inconsistent across benchmarks - significant drops on AIME (86.7 to 90.0 for Qwen3 but 36.7 to 30.0 for DeepSeek) suggest the method may not be universally safe\",\n    \"Comparison with DEER is potentially unfair since SpecExit is trained on the target data while DEER is a training-free method\",\n    \"Training cost of the augmented MTP layer and data construction process is not discussed, which is important for practical adoption\",\n    \"No statistical significance testing or variance reporting across multiple runs\",\n    \"The paper claims 'without compromising accuracy' but several benchmarks show non-trivial accuracy degradation (e.g., DeepSeek on GSM8K: 79.3 to 75.3)\",\n    \"Limited analysis of failure cases where early exit produces wrong answers\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How were the stopping thresholds selected for each signal configuration? Was there a validation set used, and if so, how was it split from the training data?\",\n    \"What is the training cost (GPU hours, data size) for the augmented MTP layer, and how does this compare to the inference savings?\",\n    \"The paper reports accuracy drops on several benchmarks (e.g., DeepSeek on GSM8K from 79.3 to 75.3). Could you provide a more detailed analysis of the error patterns in these cases? Are there specific problem types where early exit consistently fails?\",\n    \"How sensitive is the method to the EWMA smoothing factor (α=0.1)? Have you explored different values, and what is the impact on the accuracy-efficiency trade-off?\",\n    \"The paragraph delimiter strategy is claimed to be more general. However, different models may have different paragraph formatting conventions. How does this strategy perform when the model does not produce clear paragraph breaks?\",\n    \"Can you provide more details on the dynamic weighting mechanism? Specifically, what are the typical values of λ_c, λ_p, λ_r during training, and how stable are they?\",\n    \"The paper mentions the method is implemented in vLLM. What modifications were required to the vLLM inference engine, and what is the additional memory overhead of the auxiliary heads?\"\n  ],\n  \"Limitations\": [\n    \"The method requires training on target model outputs, which may not always be available or could be expensive to obtain for new models\",\n    \"Threshold tuning appears necessary for each new dataset or domain, potentially limiting out-of-the-box applicability\",\n    \"The paper does not address potential negative societal impacts of deploying faster reasoning models, such as increased automation of tasks that require human oversight\",\n    \"The evaluation is limited to two model families (Qwen and DeepSeek), and results may not generalize to larger or differently trained reasoning models\",\n    \"No discussion of the environmental cost of training the additional heads versus the inference savings\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 5,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 14900,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 13108,
+        "completion_tokens": 1491,
+        "reasoning_tokens": 0,
+        "total_tokens": 16391
+      },
+      "attempts": 1,
+      "response_id": "c6c0b9a9-4ccc-4721-ba06-42fbb5520e7b"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "This paper proposes SpecExit, a framework that integrates early-exit mechanisms into speculative decoding for large reasoning models (LRMs). The key innovation is extending the Multi-Token Prediction (MTP) layer of a lightweight draft model to simultaneously predict token distributions and three auxiliary signals: confidence, reasoning progress, and remaining reasoning length. These signals are used to dynamically terminate chain-of-thought generation at natural boundaries (paragraph delimiters or discourse markers) when sufficient reasoning has been achieved. The method avoids the probing overhead of previous early-exit approaches by leveraging hidden states directly. Experiments on Qwen3-4B-Thinking-2507 and DeepSeek-R1-Distill-Llama-8B across mathematical, coding, scientific, and logical benchmarks show token reductions up to 66% and latency improvements up to 2.5x compared to speculative decoding baselines, with minimal accuracy degradation. The framework is implemented in both PyTorch and vLLM, suggesting practical deployability.",
+        "Strengths": [
+          "Clear motivation addressing a real limitation of existing early-exit methods (probing overhead)",
+          "Novel combination of speculative decoding with early-exit signals from hidden states",
+          "Practical implementation in both PyTorch and vLLM frameworks",
+          "Comprehensive evaluation across diverse benchmarks (math, coding, science, logic)",
+          "Substantial efficiency gains: up to 66% token reduction and 2.5x latency improvement",
+          "Ablation studies on signal types, smoothing methods, and step-split strategies provide useful insights",
+          "Code is made available for reproducibility"
+        ],
+        "Weaknesses": [
+          "Accuracy trade-offs are inconsistent: some benchmarks show accuracy improvements while others show degradation (e.g., GSM8K drops from 95.3 to 93.8 for Qwen3-4B)",
+          "Only two models are evaluated, limiting generalizability claims",
+          "The training data construction method (iteratively inserting closing markers) is not rigorously validated - the assumption that unchanged answers imply redundant reasoning may be flawed",
+          "Limited comparison with recent early-exit methods beyond DEER",
+          "The 66% reduction claim in the abstract appears to be the maximum rather than average across benchmarks",
+          "Signal prediction heads are trained on the draft model but applied to the target model, potentially creating a distribution mismatch that is not addressed",
+          "Lack of statistical significance testing or variance reporting across multiple runs"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "1. How do you handle the distribution mismatch between the draft model (where signals are trained) and the target model (where they are applied)? Have you validated that the signals remain accurate when computed on the target model's hidden states?",
+          "2. What is the sensitivity of the results to the threshold values? Are there guidelines for selecting these thresholds for new tasks or models?",
+          "3. How does the performance vary across different problem difficulties? Does the early-exit mechanism work equally well for easy and hard problems, or does it show bias?",
+          "4. Could you provide more details on the training data construction? Specifically, how do you ensure that the minimal reasoning segment identified by iterative insertion actually preserves the reasoning quality rather than just the final answer?",
+          "5. The accuracy on GSM8K drops for Qwen3-4B (95.3 to 93.8). Is this statistically significant? Have you run multiple seeds?",
+          "6. How does SpecExit compare to methods that combine early-exit with training-based approaches (e.g., reinforcement learning with length rewards)?",
+          "7. What is the computational overhead of computing the three auxiliary signals during inference? Is it truly negligible as claimed?"
+        ],
+        "Limitations": [
+          "The paper does not thoroughly address the potential negative societal impact, though this is a general efficiency technique with limited direct societal concerns.",
+          "The approach assumes that reasoning can be safely truncated without harming output quality, which may not hold for all task types (e.g., tasks requiring multi-step verification).",
+          "The evaluation is limited to two models from similar families (Qwen and DeepSeek variants), and generalization to other LRM architectures is not demonstrated.",
+          "The threshold-based stopping mechanism requires manual tuning, which may limit practical adoption without further automation.",
+          "Potential failure modes of the early-exit mechanism (e.g., premature exits on complex problems) are acknowledged but not systematically analyzed."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces SpecExit, a framework that combines speculative decoding with early-exit mechanisms for large reasoning models. The key idea is to extend the MTP (Multi-Token Prediction) layer of a draft model to also predict three auxiliary signals: confidence, reasoning progress, and remaining reasoning length. These signals are then used to decide when to terminate the chain-of-thought reasoning early, without the probing overhead of previous early-exit methods.\n\nThe paper has several strengths:\n1. The motivation is clear and well-articulated - probing overhead is a real problem in early-exit methods\n2. The method is practical and builds on existing speculative decoding frameworks\n3. The experimental results show substantial improvements in token reduction and latency\n4. The implementation in both PyTorch and vLLM suggests real-world applicability\n\nHowever, there are several concerns:\n1. The accuracy results are somewhat inconsistent - on some benchmarks accuracy improves while on others it degrades (e.g., GSM8K drops from 95.3 to 93.8 for Qwen3-4B)\n2. The training data construction method (iteratively inserting closing markers to find minimal reasoning) seems potentially flawed - it assumes that if the answer remains the same, the reasoning is redundant, which may not always hold\n3. The paper lacks detailed comparison with other recent early-exit methods beyond DEER\n4. The \"66% reduction\" claim in the abstract seems to be the maximum rather than average across all benchmarks\n5. The signal prediction heads are trained on the draft model, but the stopping is applied to the target model's output - there might be a distribution mismatch\n\nThe paper is generally well-written but has some clarity issues in the experimental section, particularly with the table formatting and the explanation of the stopping conditions. The ablation studies are helpful but could be more comprehensive.\n\nOverall, this is a solid paper with a practical contribution, but the accuracy trade-offs and the somewhat limited evaluation (only 2 models) are concerns. I would lean toward acceptance given the practical significance and the clear improvements in efficiency, but with reservations about the robustness of the approach.\n\nREVIEW JSON:\n```json\n{\n\"Summary\": \"This paper proposes SpecExit, a framework that integrates early-exit mechanisms into speculative decoding for large reasoning models (LRMs). The key innovation is extending the Multi-Token Prediction (MTP) layer of a lightweight draft model to simultaneously predict token distributions and three auxiliary signals: confidence, reasoning progress, and remaining reasoning length. These signals are used to dynamically terminate chain-of-thought generation at natural boundaries (paragraph delimiters or discourse markers) when sufficient reasoning has been achieved. The method avoids the probing overhead of previous early-exit approaches by leveraging hidden states directly. Experiments on Qwen3-4B-Thinking-2507 and DeepSeek-R1-Distill-Llama-8B across mathematical, coding, scientific, and logical benchmarks show token reductions up to 66% and latency improvements up to 2.5x compared to speculative decoding baselines, with minimal accuracy degradation. The framework is implemented in both PyTorch and vLLM, suggesting practical deployability.\",\n\"Strengths\": [\n\"Clear motivation addressing a real limitation of existing early-exit methods (probing overhead)\",\n\"Novel combination of speculative decoding with early-exit signals from hidden states\",\n\"Practical implementation in both PyTorch and vLLM frameworks\",\n\"Comprehensive evaluation across diverse benchmarks (math, coding, science, logic)\",\n\"Substantial efficiency gains: up to 66% token reduction and 2.5x latency improvement\",\n\"Ablation studies on signal types, smoothing methods, and step-split strategies provide useful insights\",\n\"Code is made available for reproducibility\"\n],\n\"Weaknesses\": [\n\"Accuracy trade-offs are inconsistent: some benchmarks show accuracy improvements while others show degradation (e.g., GSM8K drops from 95.3 to 93.8 for Qwen3-4B)\",\n\"Only two models are evaluated, limiting generalizability claims\",\n\"The training data construction method (iteratively inserting closing markers) is not rigorously validated - the assumption that unchanged answers imply redundant reasoning may be flawed\",\n\"Limited comparison with recent early-exit methods beyond DEER\",\n\"The 66% reduction claim in the abstract appears to be the maximum rather than average across benchmarks\",\n\"Signal prediction heads are trained on the draft model but applied to the target model, potentially creating a distribution mismatch that is not addressed\",\n\"Lack of statistical significance testing or variance reporting across multiple runs\"\n],\n\"Originality\": 3,\n\"Quality\": 3,\n\"Clarity\": 3,\n\"Significance\": 3,\n\"Questions\": [\n\"1. How do you handle the distribution mismatch between the draft model (where signals are trained) and the target model (where they are applied)? Have you validated that the signals remain accurate when computed on the target model's hidden states?\",\n\"2. What is the sensitivity of the results to the threshold values? Are there guidelines for selecting these thresholds for new tasks or models?\",\n\"3. How does the performance vary across different problem difficulties? Does the early-exit mechanism work equally well for easy and hard problems, or does it show bias?\",\n\"4. Could you provide more details on the training data construction? Specifically, how do you ensure that the minimal reasoning segment identified by iterative insertion actually preserves the reasoning quality rather than just the final answer?\",\n\"5. The accuracy on GSM8K drops for Qwen3-4B (95.3 to 93.8). Is this statistically significant? Have you run multiple seeds?\",\n\"6. How does SpecExit compare to methods that combine early-exit with training-based approaches (e.g., reinforcement learning with length rewards)?\",\n\"7. What is the computational overhead of computing the three auxiliary signals during inference? Is it truly negligible as claimed?\"\n],\n\"Limitations\": [\n\"The paper does not thoroughly address the potential negative societal impact, though this is a general efficiency technique with limited direct societal concerns.\",\n\"The approach assumes that reasoning can be safely truncated without harming output quality, which may not hold for all task types (e.g., tasks requiring multi-step verification).\",\n\"The evaluation is limited to two models from similar families (Qwen and DeepSeek variants), and generalization to other LRM architectures is not demonstrated.\",\n\"The threshold-based stopping mechanism requires manual tuning, which may limit practical adoption without further automation.\",\n\"Potential failure modes of the early-exit mechanism (e.g., premature exits on complex problems) are acknowledged but not systematically analyzed.\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 3,\n\"Contribution\": 3,\n\"Overall\": 6,\n\"Confidence\": 4,\n\"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 14900,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 13108,
+        "completion_tokens": 1401,
+        "reasoning_tokens": 0,
+        "total_tokens": 16301
+      },
+      "attempts": 1,
+      "response_id": "a114b88f-68c7-4405-9733-4784bbbe46d7"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 4,
+      "Reject": 1
+    },
+    "unanimous_decision": false,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          4,
+          4,
+          3,
+          3,
+          3
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          3,
+          2,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          3,
+          4,
+          3,
+          3,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          3,
+          2,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          3,
+          4,
+          3,
+          3,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Overall": {
+        "values": [
+          6,
+          6,
+          6,
+          5,
+          6
+        ],
+        "mean": 5.8,
+        "rounded_mean": 6,
+        "population_sd": 0.4,
+        "min": 5,
+        "max": 6
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper proposes SpecExit, a framework that integrates early-exit mechanisms into speculative decoding for large reasoning models (LRMs). The key contribution is extending the Multi-Token Prediction (MTP) layer of a draft model to simultaneously predict token distributions and three auxiliary reasoning signals: confidence, reasoning progress, and remaining reasoning length. These signals are used to dynamically terminate chain-of-thought generation at natural boundaries (paragraph delimiters or discourse markers) when sufficient reasoning has been achieved, without modifying the target model. The method is trained via multi-task learning with dynamic gradient-based weighting and uses EWMA smoothing for signal stability. Experiments on Qwen3-4B-Thinking-2507 and DeepSeek-R1-Distill-Llama-8B across mathematical, coding, scientific, and logical benchmarks show up to 66% token reduction and 2.5x end-to-end latency speedup compared to speculative decoding baselines, with reported minimal accuracy impact. The framework is implemented in both PyTorch and vLLM, and code is open-sourced.",
+      "Strengths": [
+        "Novel and well-motivated integration of speculative decoding with early-exit signals from hidden states, addressing the practical problem of overthinking in reasoning models without the probing overhead of prior early-exit methods.",
+        "Substantial empirical gains: up to 66% token reduction and 2.5x end-to-end latency improvement across multiple benchmarks and two different reasoning models.",
+        "Comprehensive evaluation across diverse benchmarks (GSM8K, MATH500, AIME, HumanEvalPlus, GPQA-D, ARC-Challenge) with practical deployment demonstrated via both PyTorch and vLLM implementations.",
+        "Detailed ablation studies on signal types, smoothing methods, and step-split strategies provide useful insights into design choices.",
+        "Clear motivation backed by preliminary experiments showing hidden states encode reasoning progress information.",
+        "Code open-sourced, supporting reproducibility."
+      ],
+      "Weaknesses": [
+        "Lack of statistical significance testing: no confidence intervals, standard deviations, or significance tests are reported for any results, which is particularly concerning given surprisingly large accuracy jumps on AIME (e.g., 80.0 to 90.0 for Qwen3) that may be due to small sample sizes (~30 problems).",
+        "Early-exit thresholds appear to be manually tuned per dataset/benchmark (e.g., AIME uses different thresholds than others), raising concerns about generalizability and practical deployment without re-tuning.",
+        "Fairness of baseline comparisons is questionable: the paper does not clarify whether EAGLE3 was given equal training resources or the same training data on minimal reasoning segments, and DEER's latency numbers seem disproportionately high, suggesting possible implementation or configuration issues.",
+        "Accuracy trade-offs are inconsistent across benchmarks: some show improvements (AIME for Qwen3) while others show non-trivial degradation (e.g., DeepSeek on GSM8K drops from 79.3% to 75.3%), yet these are characterized as 'marginal' without statistical support.",
+        "Training cost of the augmented MTP layer and auxiliary heads, as well as the data construction process for 'minimal reasoning segments,' is not discussed in sufficient detail.",
+        "Limited analysis of failure cases where early exit leads to incorrect answers, and no systematic evaluation of how the method performs on easy vs. hard problems.",
+        "The paper does not compare against more recent training-based early-exit methods (e.g., CoT-Valve, L1-controlled reasoning) that also aim to reduce reasoning length without sacrificing accuracy.",
+        "The computational overhead of signal extraction and EWMA smoothing in the inference pipeline is not clearly accounted for in the reported latency numbers."
+      ],
+      "Originality": 4,
+      "Quality": 3,
+      "Clarity": 3,
+      "Significance": 3,
+      "Questions": [
+        "Can you provide statistical significance testing (e.g., multiple runs with confidence intervals) for the main results, particularly for the AIME accuracy improvements that seem unusually large?",
+        "How were the early-exit thresholds (e.g., confidence > 0.8, progress > 0.3, remaining length < 200) selected? Were they tuned on a held-out validation set, and how sensitive are the results to these threshold values? Can you show results with fixed thresholds across all benchmarks?",
+        "How were the DEER baseline latency numbers obtained? The latency seems disproportionately high compared to the vanilla baseline, which suggests possible implementation issues. Please detail the configuration used.",
+        "What is the additional training cost (GPU hours, compute, data size) for adding the MTP layer and auxiliary heads compared to standard speculative decoding training?",
+        "How exactly is the 'minimal reasoning segment' determined during data construction? Please provide more details on the verification process for whether the answer remains correct after inserting </think> at each paragraph boundary.",
+        "How do you handle the potential distribution mismatch between the draft model (where signals are trained) and the target model (where they are applied)? Have you validated that the signals remain accurate when computed on the target model's hidden states?",
+        "What is the computational overhead of computing the three auxiliary signals during inference? Is it truly negligible as claimed, and how is it accounted for in the reported latency numbers?",
+        "How does SpecExit compare to training-based approaches like CoT-Valve or reinforcement learning methods that also aim to reduce reasoning length without sacrificing accuracy?",
+        "Can you provide more analysis on failure cases where SpecExit terminates too early or too late? What are the common characteristics of these cases, and how does the method perform on easy vs. hard problems?"
+      ],
+      "Limitations": [
+        "The method requires training on target model outputs, which may not always be available or could be expensive to obtain for new models, limiting out-of-the-box applicability.",
+        "The early-exit thresholds appear to require task-specific tuning, potentially limiting the claimed generality across different tasks, domains, or model architectures.",
+        "The evaluation is limited to two open-source model families (Qwen and DeepSeek); applicability to larger models (e.g., 70B+ parameters) or closed-source LRMs (e.g., OpenAI-o1) is unclear.",
+        "The paper does not address potential negative societal impacts, such as the risk of accuracy degradation in high-stakes applications (e.g., medical or legal reasoning) where overthinking may be beneficial or where reducing reasoning length could introduce biases or errors.",
+        "The approach assumes that reasoning can be safely truncated without harming output quality, which may not hold for all task types (e.g., tasks requiring multi-step verification or open-ended reasoning without a clear 'correct answer').",
+        "The training cost and environmental impact of training the additional heads versus the inference savings are not discussed.",
+        "The memory overhead of storing the auxiliary heads and the impact on batch inference throughput in real serving scenarios are not addressed.",
+        "The reliance on paragraph delimiters (\\n\\n) as step-split tokens may not generalize to all reasoning formats or models that use different formatting conventions."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 3,
+      "Contribution": 3,
+      "Overall": 6,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "THOUGHT:\nThe paper proposes SpecExit, combining speculative decoding with early-exit for large reasoning models. All five reviewers recognize the novelty and practical value of the approach, and four out of five recommend \"Accept\" (with overall scores of 6, 6, 6, and 6), while one reviewer recommends \"Reject\" (overall score 5). The consensus is that the paper is technically solid with a novel contribution and good experimental evaluation, but there are consistent concerns across reviews:\n\n1. **Statistical significance**: Multiple reviewers note the lack of confidence intervals, variance reporting, or significance testing. The AIME accuracy jumps (e.g., 80→90 for Qwen3) are suspicious given small sample sizes.\n\n2. **Threshold tuning**: The early-exit thresholds appear dataset-specific and manually tuned, raising generalizability concerns.\n\n3. **Fairness of baselines**: Comparisons with DEER and EAGLE3 may be unfair due to training advantages or implementation issues.\n\n4. **Accuracy trade-offs**: Several benchmarks show non-trivial accuracy degradation that is characterized as \"marginal\" without proper statistical support.\n\n5. **Training cost**: The cost of training the auxiliary heads and MTP layer is not discussed.\n\n6. **Failure analysis**: Limited analysis of when early-exit decisions are correct vs. incorrect.\n\nThe reviewers are generally positive about originality (3-4), soundness (2-3), and contribution (3-4). The main disagreement is whether the evaluation methodology issues are severe enough to warrant rejection or just require more careful analysis.\n\nGiven that four reviewers lean toward acceptance and the core idea is genuinely novel and practically valuable, but the evaluation has notable methodological weaknesses, I need to make a balanced decision. The paper addresses a real problem (overthinking in reasoning models) with an elegant solution that shows significant practical gains. The concerns are mostly about rigor rather than fundamental flaws in the approach.\n\nHowever, the consistent absence of statistical testing, the suspicious AIME results, and the fairness questions about baselines are serious enough that I cannot strongly endorse acceptance. The paper is technically solid but the evaluation needs more work to fully support the claims. \n\nI'll go with \"Accept\" as the decision, but with a lower overall score to reflect the methodological concerns. The paper's contribution is significant and the approach is novel, but the evaluation needs strengthening. The reviewers' consensus (4 out of 5 accept) supports this direction.\n\nFor the meta-review, I'll:\n- Highlight the consensus on the paper's novelty and practical value\n- Emphasize the shared concerns about statistical rigor and baseline fairness\n- Note the specific issues raised by the dissenting reviewer\n- Make a decision that respects the majority view while acknowledging the weaknesses\n\nDecision: Accept (with caveats noted for the authors to address in revision).\n\nRatings: I'll aggregate the reviewers' ratings:\n- Originality: 3-4, consensus ~4\n- Quality: 2-3, consensus ~3\n- Clarity: 3, consensus ~3\n- Significance: 3-4, consensus ~3\n- Soundness: 2-3, consensus ~3\n- Presentation: 3, consensus ~3\n- Contribution: 3-4, consensus ~3\n- Overall: 5-6, consensus ~6\n\nI'll go with a borderline accept, overall 6, decision Accept.\n\nConfidence: 4 (I'm confident in this assessment based on the detailed reviews).REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper proposes SpecExit, a framework that integrates early-exit mechanisms into speculative decoding for large reasoning models (LRMs). The key contribution is extending the Multi-Token Prediction (MTP) layer of a draft model to simultaneously predict token distributions and three auxiliary reasoning signals: confidence, reasoning progress, and remaining reasoning length. These signals are used to dynamically terminate chain-of-thought generation at natural boundaries (paragraph delimiters or discourse markers) when sufficient reasoning has been achieved, without modifying the target model. The method is trained via multi-task learning with dynamic gradient-based weighting and uses EWMA smoothing for signal stability. Experiments on Qwen3-4B-Thinking-2507 and DeepSeek-R1-Distill-Llama-8B across mathematical, coding, scientific, and logical benchmarks show up to 66% token reduction and 2.5x end-to-end latency speedup compared to speculative decoding baselines, with reported minimal accuracy impact. The framework is implemented in both PyTorch and vLLM, and code is open-sourced.\",\n  \"Strengths\": [\n    \"Novel and well-motivated integration of speculative decoding with early-exit signals from hidden states, addressing the practical problem of overthinking in reasoning models without the probing overhead of prior early-exit methods.\",\n    \"Substantial empirical gains: up to 66% token reduction and 2.5x end-to-end latency improvement across multiple benchmarks and two different reasoning models.\",\n    \"Comprehensive evaluation across diverse benchmarks (GSM8K, MATH500, AIME, HumanEvalPlus, GPQA-D, ARC-Challenge) with practical deployment demonstrated via both PyTorch and vLLM implementations.\",\n    \"Detailed ablation studies on signal types, smoothing methods, and step-split strategies provide useful insights into design choices.\",\n    \"Clear motivation backed by preliminary experiments showing hidden states encode reasoning progress information.\",\n    \"Code open-sourced, supporting reproducibility.\"\n  ],\n  \"Weaknesses\": [\n    \"Lack of statistical significance testing: no confidence intervals, standard deviations, or significance tests are reported for any results, which is particularly concerning given surprisingly large accuracy jumps on AIME (e.g., 80.0 to 90.0 for Qwen3) that may be due to small sample sizes (~30 problems).\",\n    \"Early-exit thresholds appear to be manually tuned per dataset/benchmark (e.g., AIME uses different thresholds than others), raising concerns about generalizability and practical deployment without re-tuning.\",\n    \"Fairness of baseline comparisons is questionable: the paper does not clarify whether EAGLE3 was given equal training resources or the same training data on minimal reasoning segments, and DEER's latency numbers seem disproportionately high, suggesting possible implementation or configuration issues.\",\n    \"Accuracy trade-offs are inconsistent across benchmarks: some show improvements (AIME for Qwen3) while others show non-trivial degradation (e.g., DeepSeek on GSM8K drops from 79.3% to 75.3%), yet these are characterized as 'marginal' without statistical support.\",\n    \"Training cost of the augmented MTP layer and auxiliary heads, as well as the data construction process for 'minimal reasoning segments,' is not discussed in sufficient detail.\",\n    \"Limited analysis of failure cases where early exit leads to incorrect answers, and no systematic evaluation of how the method performs on easy vs. hard problems.\",\n    \"The paper does not compare against more recent training-based early-exit methods (e.g., CoT-Valve, L1-controlled reasoning) that also aim to reduce reasoning length without sacrificing accuracy.\",\n    \"The computational overhead of signal extraction and EWMA smoothing in the inference pipeline is not clearly accounted for in the reported latency numbers.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"Can you provide statistical significance testing (e.g., multiple runs with confidence intervals) for the main results, particularly for the AIME accuracy improvements that seem unusually large?\",\n    \"How were the early-exit thresholds (e.g., confidence > 0.8, progress > 0.3, remaining length < 200) selected? Were they tuned on a held-out validation set, and how sensitive are the results to these threshold values? Can you show results with fixed thresholds across all benchmarks?\",\n    \"How were the DEER baseline latency numbers obtained? The latency seems disproportionately high compared to the vanilla baseline, which suggests possible implementation issues. Please detail the configuration used.\",\n    \"What is the additional training cost (GPU hours, compute, data size) for adding the MTP layer and auxiliary heads compared to standard speculative decoding training?\",\n    \"How exactly is the 'minimal reasoning segment' determined during data construction? Please provide more details on the verification process for whether the answer remains correct after inserting </think> at each paragraph boundary.\",\n    \"How do you handle the potential distribution mismatch between the draft model (where signals are trained) and the target model (where they are applied)? Have you validated that the signals remain accurate when computed on the target model's hidden states?\",\n    \"What is the computational overhead of computing the three auxiliary signals during inference? Is it truly negligible as claimed, and how is it accounted for in the reported latency numbers?\",\n    \"How does SpecExit compare to training-based approaches like CoT-Valve or reinforcement learning methods that also aim to reduce reasoning length without sacrificing accuracy?\",\n    \"Can you provide more analysis on failure cases where SpecExit terminates too early or too late? What are the common characteristics of these cases, and how does the method perform on easy vs. hard problems?\"\n  ],\n  \"Limitations\": [\n    \"The method requires training on target model outputs, which may not always be available or could be expensive to obtain for new models, limiting out-of-the-box applicability.\",\n    \"The early-exit thresholds appear to require task-specific tuning, potentially limiting the claimed generality across different tasks, domains, or model architectures.\",\n    \"The evaluation is limited to two open-source model families (Qwen and DeepSeek); applicability to larger models (e.g., 70B+ parameters) or closed-source LRMs (e.g., OpenAI-o1) is unclear.\",\n    \"The paper does not address potential negative societal impacts, such as the risk of accuracy degradation in high-stakes applications (e.g., medical or legal reasoning) where overthinking may be beneficial or where reducing reasoning length could introduce biases or errors.\",\n    \"The approach assumes that reasoning can be safely truncated without harming output quality, which may not hold for all task types (e.g., tasks requiring multi-step verification or open-ended reasoning without a clear 'correct answer').\",\n    \"The training cost and environmental impact of training the additional heads versus the inference savings are not discussed.\",\n    \"The memory overhead of storing the auxiliary heads and the impact on batch inference throughput in real serving scenarios are not addressed.\",\n    \"The reliance on paragraph delimiters (\\\\n\\\\n) as step-split tokens may not generalize to all reasoning formats or models that use different formatting conventions.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 7333,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 7333,
+      "completion_tokens": 2260,
+      "reasoning_tokens": 0,
+      "total_tokens": 9593
+    },
+    "attempts": 1,
+    "response_id": "6ef26dcf-b8c5-4b2d-84a3-bcdc1fd062d6"
+  },
+  "final_review": {
+    "Summary": "The paper proposes SpecExit, a framework that integrates early-exit mechanisms into speculative decoding for large reasoning models (LRMs). The key contribution is extending the Multi-Token Prediction (MTP) layer of a draft model to simultaneously predict token distributions and three auxiliary reasoning signals: confidence, reasoning progress, and remaining reasoning length. These signals are used to dynamically terminate chain-of-thought generation at natural boundaries (paragraph delimiters or discourse markers) when sufficient reasoning has been achieved, without modifying the target model. The method is trained via multi-task learning with dynamic gradient-based weighting and uses EWMA smoothing for signal stability. Experiments on Qwen3-4B-Thinking-2507 and DeepSeek-R1-Distill-Llama-8B across mathematical, coding, scientific, and logical benchmarks show up to 66% token reduction and 2.5x end-to-end latency speedup compared to speculative decoding baselines, with reported minimal accuracy impact. The framework is implemented in both PyTorch and vLLM, and code is open-sourced.",
+    "Strengths": [
+      "Novel and well-motivated integration of speculative decoding with early-exit signals from hidden states, addressing the practical problem of overthinking in reasoning models without the probing overhead of prior early-exit methods.",
+      "Substantial empirical gains: up to 66% token reduction and 2.5x end-to-end latency improvement across multiple benchmarks and two different reasoning models.",
+      "Comprehensive evaluation across diverse benchmarks (GSM8K, MATH500, AIME, HumanEvalPlus, GPQA-D, ARC-Challenge) with practical deployment demonstrated via both PyTorch and vLLM implementations.",
+      "Detailed ablation studies on signal types, smoothing methods, and step-split strategies provide useful insights into design choices.",
+      "Clear motivation backed by preliminary experiments showing hidden states encode reasoning progress information.",
+      "Code open-sourced, supporting reproducibility."
+    ],
+    "Weaknesses": [
+      "Lack of statistical significance testing: no confidence intervals, standard deviations, or significance tests are reported for any results, which is particularly concerning given surprisingly large accuracy jumps on AIME (e.g., 80.0 to 90.0 for Qwen3) that may be due to small sample sizes (~30 problems).",
+      "Early-exit thresholds appear to be manually tuned per dataset/benchmark (e.g., AIME uses different thresholds than others), raising concerns about generalizability and practical deployment without re-tuning.",
+      "Fairness of baseline comparisons is questionable: the paper does not clarify whether EAGLE3 was given equal training resources or the same training data on minimal reasoning segments, and DEER's latency numbers seem disproportionately high, suggesting possible implementation or configuration issues.",
+      "Accuracy trade-offs are inconsistent across benchmarks: some show improvements (AIME for Qwen3) while others show non-trivial degradation (e.g., DeepSeek on GSM8K drops from 79.3% to 75.3%), yet these are characterized as 'marginal' without statistical support.",
+      "Training cost of the augmented MTP layer and auxiliary heads, as well as the data construction process for 'minimal reasoning segments,' is not discussed in sufficient detail.",
+      "Limited analysis of failure cases where early exit leads to incorrect answers, and no systematic evaluation of how the method performs on easy vs. hard problems.",
+      "The paper does not compare against more recent training-based early-exit methods (e.g., CoT-Valve, L1-controlled reasoning) that also aim to reduce reasoning length without sacrificing accuracy.",
+      "The computational overhead of signal extraction and EWMA smoothing in the inference pipeline is not clearly accounted for in the reported latency numbers."
+    ],
+    "Originality": 3,
+    "Quality": 3,
+    "Clarity": 3,
+    "Significance": 3,
+    "Questions": [
+      "Can you provide statistical significance testing (e.g., multiple runs with confidence intervals) for the main results, particularly for the AIME accuracy improvements that seem unusually large?",
+      "How were the early-exit thresholds (e.g., confidence > 0.8, progress > 0.3, remaining length < 200) selected? Were they tuned on a held-out validation set, and how sensitive are the results to these threshold values? Can you show results with fixed thresholds across all benchmarks?",
+      "How were the DEER baseline latency numbers obtained? The latency seems disproportionately high compared to the vanilla baseline, which suggests possible implementation issues. Please detail the configuration used.",
+      "What is the additional training cost (GPU hours, compute, data size) for adding the MTP layer and auxiliary heads compared to standard speculative decoding training?",
+      "How exactly is the 'minimal reasoning segment' determined during data construction? Please provide more details on the verification process for whether the answer remains correct after inserting </think> at each paragraph boundary.",
+      "How do you handle the potential distribution mismatch between the draft model (where signals are trained) and the target model (where they are applied)? Have you validated that the signals remain accurate when computed on the target model's hidden states?",
+      "What is the computational overhead of computing the three auxiliary signals during inference? Is it truly negligible as claimed, and how is it accounted for in the reported latency numbers?",
+      "How does SpecExit compare to training-based approaches like CoT-Valve or reinforcement learning methods that also aim to reduce reasoning length without sacrificing accuracy?",
+      "Can you provide more analysis on failure cases where SpecExit terminates too early or too late? What are the common characteristics of these cases, and how does the method perform on easy vs. hard problems?"
+    ],
+    "Limitations": [
+      "The method requires training on target model outputs, which may not always be available or could be expensive to obtain for new models, limiting out-of-the-box applicability.",
+      "The early-exit thresholds appear to require task-specific tuning, potentially limiting the claimed generality across different tasks, domains, or model architectures.",
+      "The evaluation is limited to two open-source model families (Qwen and DeepSeek); applicability to larger models (e.g., 70B+ parameters) or closed-source LRMs (e.g., OpenAI-o1) is unclear.",
+      "The paper does not address potential negative societal impacts, such as the risk of accuracy degradation in high-stakes applications (e.g., medical or legal reasoning) where overthinking may be beneficial or where reducing reasoning length could introduce biases or errors.",
+      "The approach assumes that reasoning can be safely truncated without harming output quality, which may not hold for all task types (e.g., tasks requiring multi-step verification or open-ended reasoning without a clear 'correct answer').",
+      "The training cost and environmental impact of training the additional heads versus the inference savings are not discussed.",
+      "The memory overhead of storing the auxiliary heads and the impact on batch inference throughput in real serving scenarios are not addressed.",
+      "The reliance on paragraph delimiters (\\n\\n) as step-split tokens may not generalize to all reasoning formats or models that use different formatting conventions."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 3,
+    "Contribution": 3,
+    "Overall": 6,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 81833,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 72873,
+    "completion_tokens": 10487,
+    "reasoning_tokens": 0,
+    "total_tokens": 92320,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.01020222,
+    "output_usd": 0.00293636,
+    "total_usd": 0.01316367
+  },
+  "elapsed_seconds": 34.577,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Accept",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B024",
+    "filename": "B024.txt",
+    "blind_text_sha256": "21807dac0653d05a77f7babe0b717c339d6a7af10cdac747859f706f744434e2",
+    "characters": 50337,
+    "full_text_saved": false
+  }
+}

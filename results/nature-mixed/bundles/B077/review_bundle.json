@@ -1,0 +1,716 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:45:19.926735+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "This paper proposes SISL (Self-Improving Skill Learning), a framework for robust skill-based meta-reinforcement learning that addresses the challenge of noisy offline demonstrations in long-horizon tasks. The key contributions are: (1) a decoupled skill self-improvement mechanism with an improvement policy that perturbs trajectories near the offline data distribution to discover higher-quality behaviors, and (2) a skill prioritization approach via maximum return relabeling that assigns hypothetical returns to offline trajectories and reweights samples to focus on task-relevant data. SISL dynamically balances offline and online data contributions through a mixing coefficient, progressively denoising the skill library. The paper evaluates SISL on four long-horizon multi-task environments (Kitchen, Office, Maze2D, AntMaze) with varying noise levels, demonstrating consistent improvements over baselines including SPiRL, SiMPL, PEARL, and SAC variants. The authors also provide extensive ablation studies and analysis of the skill refinement process.",
+        "Strengths": [
+          "Addresses an important and under-explored problem: robustness of skill-based meta-RL to noisy offline demonstrations",
+          "Well-motivated framework with clear problem analysis and intuitive figures illustrating the failure mode",
+          "Comprehensive experimental evaluation across four environments with multiple noise levels, including two newly introduced environments (Office, AntMaze)",
+          "Thorough ablation studies examining each component's contribution and key hyperparameters",
+          "Good analysis of the skill refinement process, including visualization of skill evolution and task representations",
+          "Honest discussion of limitations, including computational overhead and meta-test fine-tuning requirements",
+          "Code is provided for reproducibility"
+        ],
+        "Weaknesses": [
+          "Incremental novelty: combines existing techniques (SPiRL, SiMPL, RND, relabeling) in a new way, but individual components are well-known; the contribution is primarily in the specific combination for the noisy demonstration setting",
+          "The improvement policy design is similar to existing exploration techniques (e.g., RND-based), and its novelty over simply using RND in the skill-based setting is not fully clarified",
+          "The maximum return relabeling mechanism is a straightforward application of reward-model-based relabeling, and its interaction with the skill learning objective could be better analyzed theoretically",
+          "Some design choices (e.g., reinitializing the high-level policy every Kiter iterations) seem ad hoc and could use more principled justification",
+          "The paper does not provide theoretical analysis of why the proposed method should be robust to noise, relying solely on empirical evidence",
+          "The comparison with SiMPL baseline may not be fully fair given that SISL has access to additional components (improvement policy, reward model) that SiMPL lacks"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "The paper reinitializes the high-level policy πh every Kiter iterations. Could you provide more intuition for why this is necessary? Does the skill refinement cause a distribution shift that makes the old πh obsolete? Have you considered more smooth ways to handle this, such as KL regularization during re-training?",
+          "The reward model is trained only on online trajectories (from Bimp and Bon). How sensitive is the maximum return relabeling to reward model errors, especially in early training when online data is limited? Could noisy offline trajectories be incorrectly labeled as high-return if the reward model is not yet accurate?",
+          "The mixing coefficient β is computed based on average returns of offline and online buffers. In environments with very different return scales across tasks (e.g., Kitchen vs. Maze2D), how does this affect the balance? Have you considered per-task normalization?",
+          "The paper claims a 16% computational overhead. Could you break down this overhead more precisely (e.g., what fraction is from the improvement policy training, skill refinement, and reward model training)?",
+          "How does SISL perform when the noise is not Gaussian but more structured (e.g., systematic bias in actions)? The paper only considers Gaussian noise and random injection.",
+          "The paper mentions that SISL was compared with baselines using the same total number of samples by splitting tasks between πh and πimp. Could you clarify how this splitting works exactly and whether it affects the high-level policy's training data diversity?",
+          "In the ablation study, removing Bon (online buffer) causes significant degradation. Is this because the online buffer provides the only source of task-relevant high-return data, or could this also indicate overfitting to the offline data distribution?"
+        ],
+        "Limitations": [
+          "The paper acknowledges computational overhead (~16%) and the need for meta-test fine-tuning, which are reasonable limitations.",
+          "The approach assumes that noisy demonstrations are the primary source of data corruption; it may not handle other types of data quality issues (e.g., missing transitions, misaligned observations) as effectively.",
+          "The method requires training an additional improvement policy and reward model, which adds complexity to the overall framework.",
+          "The paper does not analyze potential negative societal impacts beyond a brief statement. While the work is foundational, it could be used in applications where robustness to noisy data might have unintended consequences (e.g., in safety-critical systems).",
+          "The experimental evaluation is limited to simulated environments; real-world validation with physical robots would strengthen the claims."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes SISL, a framework for skill-based meta-RL that is robust to noisy offline demonstrations. The key contributions are: (1) decoupled skill self-improvement using an improvement policy that perturbs trajectories near the offline data distribution, and (2) skill prioritization via maximum return relabeling to focus on task-relevant trajectories. The paper addresses a real and important problem—skill-based meta-RL methods are indeed sensitive to noisy demonstrations, and this work is the first to explicitly address this in the skill-based meta-RL setting.\n\nThe paper is technically sound in its approach. The decoupled policy design (high-level policy for exploitation, improvement policy for exploration near the data manifold) is well-motivated. The maximum return relabeling mechanism with softmax prioritization is a reasonable way to handle noisy offline data. The experimental evaluation is thorough, covering four environments (Kitchen, Office, Maze2D, AntMaze) with multiple noise levels, and includes comparisons against relevant baselines (SAC, PEARL, SPiRL, SiMPL, and their RND variants). The ablation studies are comprehensive, examining each component's contribution.\n\nHowever, there are some weaknesses. The paper's novelty is somewhat incremental—it combines existing techniques (SPiRL for skill learning, SiMPL for meta-RL, RND for exploration, and relabeling/prioritization ideas from other RL settings) in a new way, but the individual components are well-known. The improvement policy's design is similar to existing exploration techniques, and the maximum return relabeling is a straightforward application of reward model-based relabeling. The paper could have better positioned its contributions relative to existing robust RL and offline-to-online RL literature.\n\nThe clarity is generally good, with clear motivation, methodology, and experimental sections. The figures and tables are helpful. However, some parts of the methodology are dense and could benefit from more intuitive explanations. The paper is honest about limitations, including computational overhead and the need for fine-tuning during meta-test.\n\nThe significance is moderate. The problem of noisy demonstrations in skill-based meta-RL is important and relevant, and the paper demonstrates clear improvements over baselines. However, the improvements are mostly incremental and the approach is not fundamentally novel. The paper would be of interest to researchers working on skill-based RL and meta-RL, but it's unlikely to be highly impactful beyond this specific niche.\n\nOverall, this is a solid paper with good experimental evaluation and a well-motivated approach. The main concerns are the incremental novelty and some unclear design choices. I would rate it as a borderline accept—the work is technically sound and addresses an important problem, but the novelty is limited and there are some questions about the generalizability of the approach.\n\nFor the numerical ratings:\n- Originality: 3 (medium-high, combines existing ideas in a new way for a new problem setting)\n- Quality: 3 (good, thorough experiments, but some design choices need more justification)\n- Clarity: 3 (good, but some dense methodology sections)\n- Significance: 3 (moderate, important problem but incremental contribution)\n- Soundness: 3 (good, experiments support claims)\n- Presentation: 3 (good)\n- Contribution: 3 (good)\n- Overall: 6 (weak accept)\n- Confidence: 4 (confident in assessment)\n\nI have some questions about the design choices, particularly the reinitialization of the high-level policy and the stability of the reward model training. I also note some ethical considerations are minimal, and the paper adequately addresses limitations.\n\nLet me formalize this into the review JSON.REVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper proposes SISL (Self-Improving Skill Learning), a framework for robust skill-based meta-reinforcement learning that addresses the challenge of noisy offline demonstrations in long-horizon tasks. The key contributions are: (1) a decoupled skill self-improvement mechanism with an improvement policy that perturbs trajectories near the offline data distribution to discover higher-quality behaviors, and (2) a skill prioritization approach via maximum return relabeling that assigns hypothetical returns to offline trajectories and reweights samples to focus on task-relevant data. SISL dynamically balances offline and online data contributions through a mixing coefficient, progressively denoising the skill library. The paper evaluates SISL on four long-horizon multi-task environments (Kitchen, Office, Maze2D, AntMaze) with varying noise levels, demonstrating consistent improvements over baselines including SPiRL, SiMPL, PEARL, and SAC variants. The authors also provide extensive ablation studies and analysis of the skill refinement process.\",\n    \"Strengths\": [\n        \"Addresses an important and under-explored problem: robustness of skill-based meta-RL to noisy offline demonstrations\",\n        \"Well-motivated framework with clear problem analysis and intuitive figures illustrating the failure mode\",\n        \"Comprehensive experimental evaluation across four environments with multiple noise levels, including two newly introduced environments (Office, AntMaze)\",\n        \"Thorough ablation studies examining each component's contribution and key hyperparameters\",\n        \"Good analysis of the skill refinement process, including visualization of skill evolution and task representations\",\n        \"Honest discussion of limitations, including computational overhead and meta-test fine-tuning requirements\",\n        \"Code is provided for reproducibility\"\n    ],\n    \"Weaknesses\": [\n        \"Incremental novelty: combines existing techniques (SPiRL, SiMPL, RND, relabeling) in a new way, but individual components are well-known; the contribution is primarily in the specific combination for the noisy demonstration setting\",\n        \"The improvement policy design is similar to existing exploration techniques (e.g., RND-based), and its novelty over simply using RND in the skill-based setting is not fully clarified\",\n        \"The maximum return relabeling mechanism is a straightforward application of reward-model-based relabeling, and its interaction with the skill learning objective could be better analyzed theoretically\",\n        \"Some design choices (e.g., reinitializing the high-level policy every Kiter iterations) seem ad hoc and could use more principled justification\",\n        \"The paper does not provide theoretical analysis of why the proposed method should be robust to noise, relying solely on empirical evidence\",\n        \"The comparison with SiMPL baseline may not be fully fair given that SISL has access to additional components (improvement policy, reward model) that SiMPL lacks\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"The paper reinitializes the high-level policy πh every Kiter iterations. Could you provide more intuition for why this is necessary? Does the skill refinement cause a distribution shift that makes the old πh obsolete? Have you considered more smooth ways to handle this, such as KL regularization during re-training?\",\n        \"The reward model is trained only on online trajectories (from Bimp and Bon). How sensitive is the maximum return relabeling to reward model errors, especially in early training when online data is limited? Could noisy offline trajectories be incorrectly labeled as high-return if the reward model is not yet accurate?\",\n        \"The mixing coefficient β is computed based on average returns of offline and online buffers. In environments with very different return scales across tasks (e.g., Kitchen vs. Maze2D), how does this affect the balance? Have you considered per-task normalization?\",\n        \"The paper claims a 16% computational overhead. Could you break down this overhead more precisely (e.g., what fraction is from the improvement policy training, skill refinement, and reward model training)?\",\n        \"How does SISL perform when the noise is not Gaussian but more structured (e.g., systematic bias in actions)? The paper only considers Gaussian noise and random injection.\",\n        \"The paper mentions that SISL was compared with baselines using the same total number of samples by splitting tasks between πh and πimp. Could you clarify how this splitting works exactly and whether it affects the high-level policy's training data diversity?\",\n        \"In the ablation study, removing Bon (online buffer) causes significant degradation. Is this because the online buffer provides the only source of task-relevant high-return data, or could this also indicate overfitting to the offline data distribution?\"\n    ],\n    \"Limitations\": [\n        \"The paper acknowledges computational overhead (~16%) and the need for meta-test fine-tuning, which are reasonable limitations.\",\n        \"The approach assumes that noisy demonstrations are the primary source of data corruption; it may not handle other types of data quality issues (e.g., missing transitions, misaligned observations) as effectively.\",\n        \"The method requires training an additional improvement policy and reward model, which adds complexity to the overall framework.\",\n        \"The paper does not analyze potential negative societal impacts beyond a brief statement. While the work is foundational, it could be used in applications where robustness to noisy data might have unintended consequences (e.g., in safety-critical systems).\",\n        \"The experimental evaluation is limited to simulated environments; real-world validation with physical robots would strengthen the claims.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 35667,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 33875,
+        "completion_tokens": 1951,
+        "reasoning_tokens": 0,
+        "total_tokens": 37618
+      },
+      "attempts": 1,
+      "response_id": "ac405e14-a419-4eb0-8cfb-c8265d96da6e"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "This paper proposes SISL (Self-Improving Skill Learning), a robust skill-based meta-reinforcement learning framework designed to handle noisy offline demonstrations in long-horizon environments. The method introduces two key components: (1) decoupled skill self-improvement, which uses a separate improvement policy to explore near the offline data distribution and discover higher-quality trajectories, and (2) skill prioritization via maximum return relabeling, which assigns hypothetical returns to offline trajectories using a learned reward model and reweights samples through softmax prioritization. The framework progressively denoises the skill library during meta-training, leading to more stable and effective adaptation. The paper evaluates SISL across four long-horizon environments (Kitchen, Office, Maze2D, AntMaze) with varying noise levels, demonstrating consistent improvements over existing skill-based meta-RL baselines (SiMPL, SPiRL) and non-skill methods (PEARL, SAC). Extensive ablations and additional experiments in the appendix validate the contribution of each component and robustness to various data corruption scenarios.",
+        "Strengths": [
+          "Addresses an important and under-explored problem: robustness to noisy demonstrations in skill-based meta-RL",
+          "Clear motivation with empirical evidence showing performance degradation with noisy skills",
+          "Novel framework combining self-improving skill refinement with maximum return relabeling for prioritization",
+          "Comprehensive experimental evaluation across 4 diverse environments and multiple noise levels",
+          "Consistent performance improvements over baselines, especially under high noise conditions",
+          "Thorough ablation studies isolating the contribution of each component",
+          "Additional robustness experiments (limited data, random noise injection, diverse sub-optimal datasets) strengthen claims",
+          "Good reproducibility: code provided, detailed hyperparameters, and clear algorithmic descriptions"
+        ],
+        "Weaknesses": [
+          "The improvement policy relies on standard RND-based exploration; the novelty is more in the overall framework integration than in individual components",
+          "Performance gains over SiMPL are modest in low-noise regimes for some environments",
+          "The computational overhead (16%) is acknowledged but not deeply analyzed in terms of scalability to larger problems",
+          "Several hyperparameters (T, λkld_imp, Kiter) require tuning, and optimal values vary across environments and noise levels",
+          "The maximum return relabeling uses max over tasks, which could introduce bias if reward scales differ significantly across tasks (though this is discussed)",
+          "No real-world validation; evaluation is limited to simulated environments"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "How does the method perform when the number of training tasks is small (e.g., 5-10)? The current experiments use 20-25 training tasks.",
+          "Could the improvement policy πimp discover behaviors that are not realizable by the low-level skill policy, and if so, how does the framework handle this mismatch?",
+          "Is there a risk of catastrophic forgetting of useful offline skills when β becomes very high (close to 1)? How is this mitigated?",
+          "The reward model is trained only on online trajectories - how does this affect relabeling of offline trajectories that may be far from the online data distribution?",
+          "What happens if the noise in offline demonstrations affects not just actions but also state observations? The current experiments only consider action noise.",
+          "How sensitive is the method to the choice of Kiter in Maze2D and AntMaze? The ablation is only shown for Kitchen."
+        ],
+        "Limitations": [
+          "The paper honestly acknowledges the 16% computational overhead during meta-training",
+          "Requires fine-tuning during meta-test, which adds computational cost; zero-shot adaptation would be more practical",
+          "Hyperparameter sensitivity requires careful tuning, which may limit applicability in new domains",
+          "Evaluation is limited to simulated environments; real-world validation with actual robot noise patterns is missing",
+          "The potential negative societal impact is minimal but the discussion is brief; the authors could elaborate on dual-use concerns for autonomous systems"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes SISL, a skill-based meta-RL framework that is robust to noisy offline demonstrations. The key contributions are: (1) decoupled skill self-improvement using an improvement policy that explores near the offline data distribution, and (2) skill prioritization via maximum return relabeling. The paper addresses an important and practical problem - skill-based meta-RL methods are typically sensitive to noisy demonstrations, and this is the first work to explicitly address this issue.\n\nStrengths:\n- The problem is well-motivated with clear evidence (Fig. 2 shows performance degradation with noisy skills)\n- The proposed method is technically sound with clear algorithmic details\n- Comprehensive experimental evaluation across 4 environments and multiple noise levels\n- Good ablation studies that isolate the contribution of each component\n- The method consistently outperforms baselines, especially under high noise conditions\n- Additional experiments in appendix (limited data, random noise injection, diverse sub-optimal datasets) strengthen the robustness claims\n\nWeaknesses:\n- The improvement policy πimp uses RND-based intrinsic motivation, which is a somewhat standard exploration technique; the novelty lies more in the overall framework integration\n- The maximum return relabeling mechanism has some potential issues: the reward model is trained on online trajectories, and the max over tasks could bias towards tasks with higher reward scales, though the authors discuss this\n- The performance improvements over SiMPL in low-noise regimes (e.g., Expert, σ=0.1) are relatively modest in some environments\n- The computational overhead of 16% is acknowledged but not deeply analyzed\n- Some hyperparameter sensitivity (e.g., T, λkld_imp) requires tuning, though the paper provides guidance\n\nQuestions:\n1. How sensitive is the method to the choice of Kiter (skill refinement interval)? The ablation shows Kiter=100 performs poorly, but what about intermediate values between 500 and 2000?\n2. The reward model is trained on online data only - could there be issues with distribution shift when relabeling offline trajectories that are far from the online distribution?\n3. How does the method perform when the number of training tasks is small (e.g., 5-10 tasks)?\n4. The paper mentions that β increases over training - is there a risk of forgetting useful offline skills if β becomes too high?\n5. Could the improvement policy πimp potentially discover behaviors that are not realizable by the low-level skill policy?\n\nLimitations:\n- The paper acknowledges the 16% computational overhead and the need for fine-tuning during meta-test\n- The approach requires careful tuning of several hyperparameters (T, λkld_imp, Kiter)\n- The method is evaluated only in simulated environments; real-world validation is missing\n- Potential negative societal impact is minimal, but the paper's discussion is brief\n\nEthical concerns: None identified. The paper is foundational research with no apparent misuse potential.\n\nOverall assessment: This is a solid paper that addresses an important problem in skill-based meta-RL. The method is well-motivated, technically sound, and thoroughly evaluated. The improvements over baselines are consistent and sometimes substantial, especially under high noise conditions. The paper is well-written and provides good reproducibility details. While there are some limitations (hyperparameter sensitivity, computational overhead), these are honestly acknowledged. The contribution is significant for the meta-RL community. I would lean towards acceptance.\n\nRatings:\n- Originality: 3 (good) - The framework is novel, though components are built on existing techniques\n- Quality: 3 (good) - Technically sound with thorough evaluation\n- Clarity: 4 (excellent) - Well-organized and clearly written\n- Significance: 3 (good) - Addresses an important problem with practical implications\n- Soundness: 3 (good)\n- Presentation: 4 (excellent)\n- Contribution: 3 (good)\n- Overall: 7 (Accept)\n- Confidence: 4 (confident)\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper proposes SISL (Self-Improving Skill Learning), a robust skill-based meta-reinforcement learning framework designed to handle noisy offline demonstrations in long-horizon environments. The method introduces two key components: (1) decoupled skill self-improvement, which uses a separate improvement policy to explore near the offline data distribution and discover higher-quality trajectories, and (2) skill prioritization via maximum return relabeling, which assigns hypothetical returns to offline trajectories using a learned reward model and reweights samples through softmax prioritization. The framework progressively denoises the skill library during meta-training, leading to more stable and effective adaptation. The paper evaluates SISL across four long-horizon environments (Kitchen, Office, Maze2D, AntMaze) with varying noise levels, demonstrating consistent improvements over existing skill-based meta-RL baselines (SiMPL, SPiRL) and non-skill methods (PEARL, SAC). Extensive ablations and additional experiments in the appendix validate the contribution of each component and robustness to various data corruption scenarios.\",\n    \"Strengths\": [\n        \"Addresses an important and under-explored problem: robustness to noisy demonstrations in skill-based meta-RL\",\n        \"Clear motivation with empirical evidence showing performance degradation with noisy skills\",\n        \"Novel framework combining self-improving skill refinement with maximum return relabeling for prioritization\",\n        \"Comprehensive experimental evaluation across 4 diverse environments and multiple noise levels\",\n        \"Consistent performance improvements over baselines, especially under high noise conditions\",\n        \"Thorough ablation studies isolating the contribution of each component\",\n        \"Additional robustness experiments (limited data, random noise injection, diverse sub-optimal datasets) strengthen claims\",\n        \"Good reproducibility: code provided, detailed hyperparameters, and clear algorithmic descriptions\"\n    ],\n    \"Weaknesses\": [\n        \"The improvement policy relies on standard RND-based exploration; the novelty is more in the overall framework integration than in individual components\",\n        \"Performance gains over SiMPL are modest in low-noise regimes for some environments\",\n        \"The computational overhead (16%) is acknowledged but not deeply analyzed in terms of scalability to larger problems\",\n        \"Several hyperparameters (T, λkld_imp, Kiter) require tuning, and optimal values vary across environments and noise levels\",\n        \"The maximum return relabeling uses max over tasks, which could introduce bias if reward scales differ significantly across tasks (though this is discussed)\",\n        \"No real-world validation; evaluation is limited to simulated environments\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 3,\n    \"Clarity\": 4,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"How does the method perform when the number of training tasks is small (e.g., 5-10)? The current experiments use 20-25 training tasks.\",\n        \"Could the improvement policy πimp discover behaviors that are not realizable by the low-level skill policy, and if so, how does the framework handle this mismatch?\",\n        \"Is there a risk of catastrophic forgetting of useful offline skills when β becomes very high (close to 1)? How is this mitigated?\",\n        \"The reward model is trained only on online trajectories - how does this affect relabeling of offline trajectories that may be far from the online data distribution?\",\n        \"What happens if the noise in offline demonstrations affects not just actions but also state observations? The current experiments only consider action noise.\",\n        \"How sensitive is the method to the choice of Kiter in Maze2D and AntMaze? The ablation is only shown for Kitchen.\"\n    ],\n    \"Limitations\": [\n        \"The paper honestly acknowledges the 16% computational overhead during meta-training\",\n        \"Requires fine-tuning during meta-test, which adds computational cost; zero-shot adaptation would be more practical\",\n        \"Hyperparameter sensitivity requires careful tuning, which may limit applicability in new domains\",\n        \"Evaluation is limited to simulated environments; real-world validation with actual robot noise patterns is missing\",\n        \"The potential negative societal impact is minimal but the discussion is brief; the authors could elaborate on dual-use concerns for autonomous systems\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 4,\n    \"Contribution\": 3,\n    \"Overall\": 7,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 35667,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 33875,
+        "completion_tokens": 1737,
+        "reasoning_tokens": 0,
+        "total_tokens": 37404
+      },
+      "attempts": 1,
+      "response_id": "bbd38c0f-d8ed-4195-9a70-6508bf1589b1"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "This paper proposes SISL (Self-Improving Skill Learning), a robust skill-based meta-RL framework designed to handle noisy offline demonstrations in long-horizon environments. The key contributions are: (1) a decoupled skill-improvement policy that explores near the offline data distribution to discover higher-quality trajectories, progressively refining the skill library, and (2) a maximum return relabeling mechanism that assigns hypothetical returns to offline trajectories via a learned reward model and reweights them through softmax prioritization, suppressing noisy samples. The framework dynamically balances offline and online data contributions via a mixing coefficient β. Experiments across four long-horizon environments (Kitchen, Office, Maze2D, AntMaze) with varying noise levels demonstrate consistent improvements over baselines including SPiRL, SiMPL, PEARL, and SAC variants. The paper includes comprehensive ablations, robustness tests (limited data, random noise, sub-optimal datasets), computational complexity analysis, and visualizations of skill refinement.",
+        "Strengths": [
+          "Addresses an important and practical problem: noisy demonstrations in skill-based meta-RL, which has been largely overlooked",
+          "Novel combination of decoupled policy learning, self-guided skill refinement, and maximum return relabeling",
+          "Comprehensive experimental evaluation across four diverse long-horizon environments with multiple noise levels",
+          "Thorough ablation studies validating each component's contribution",
+          "Additional robustness experiments (limited data, random noise injection, diverse sub-optimal datasets) strengthen the claims",
+          "Computational overhead analysis showing only ~16% increase over baseline",
+          "Good visualization of skill refinement process and task representation improvements",
+          "Clear writing with well-organized structure and helpful figures"
+        ],
+        "Weaknesses": [
+          "Several hyperparameters (temperature T, KLD coefficient λimp, refinement interval Kiter) require tuning, and sensitivity analysis shows performance can vary significantly with these choices",
+          "The improvement policy relies on RND for exploration, which is a standard technique; the novelty lies in the combination rather than individual components",
+          "The claim of being 'first to address suboptimal demonstrations in skill-based meta-RL' may need more careful positioning relative to related work on robust skill learning",
+          "SISL outperforms SiMPL even with expert demonstrations, raising questions about whether improvements are due to noise robustness or general skill improvement",
+          "The 'maximum return relabeling' terminology could be clarified since the reward model is trained online, not truly relabeling offline data",
+          "No real-world robot experiments; all evaluations are in simulation"
+        ],
+        "Originality": 3,
+        "Quality": 4,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "How does SISL perform when the offline dataset contains a mix of clean and noisy demonstrations rather than uniformly noisy ones?",
+          "The reward model is trained only on online data—how would performance change if offline data were also used for reward model training with some noise filtering?",
+          "Could you elaborate on why SISL outperforms SiMPL even with expert demonstrations? Is this primarily due to skill refinement or the prioritization mechanism?",
+          "How sensitive is performance to the choice of Kiter across different environments? The ablation only shows Kitchen—are there similar trends in other environments?",
+          "What happens when the offline dataset contains trajectories from tasks that are not in the training task distribution? How does the maximum return relabeling handle such out-of-distribution data?"
+        ],
+        "Limitations": [
+          "The paper acknowledges computational overhead (~16%) and the need for fine-tuning during meta-test, which limits zero-shot applicability",
+          "Hyperparameter sensitivity, particularly temperature T, requires environment-specific tuning with guidance provided only as heuristics",
+          "The improvement policy relies on RND, which may not scale well to very high-dimensional or image-based state spaces",
+          "Evaluation is limited to simulation environments; real-world validation would strengthen claims of practical applicability",
+          "The approach assumes the offline data is reward-free, which is a specific setting that may not apply to all real-world scenarios"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 4,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes SISL, a skill-based meta-RL framework designed to be robust to noisy offline demonstrations. The key contributions are: (1) a decoupled skill-improvement policy that explores near the offline data distribution to discover better trajectories, and (2) a maximum return relabeling mechanism that prioritizes task-relevant trajectories for skill learning. The paper addresses a real and important problem—noisy demonstrations in skill-based meta-RL—and provides a comprehensive experimental evaluation across four environments with multiple noise levels.\n\nStrengths of the paper include:\n- Clear problem identification with motivating examples (Fig. 2 showing failure of existing methods under noise)\n- Novel combination of techniques: decoupled policy learning, self-improvement via online buffers, and maximum return relabeling\n- Thorough experimental evaluation across multiple environments and noise levels\n- Good ablation studies showing the contribution of each component\n- Additional robustness experiments (limited data, random noise, sub-optimal datasets)\n- Computational complexity analysis showing modest overhead\n- Good visualization of skill refinement and task representation improvements\n\nWeaknesses/concerns:\n- The method introduces several hyperparameters (temperature T, KLD coefficient, refinement interval) that require tuning; the paper provides some guidance but the sensitivity analysis shows performance can vary significantly\n- The improvement policy πimp uses RND for exploration, which is a standard technique; the novelty lies in the combination rather than individual components\n- The claim of being \"first to address suboptimal demonstrations in skill-based meta-RL\" should be verified more carefully; while the specific combination may be novel, related work on robust skill learning exists\n- The experimental comparison with SiMPL shows SISL with expert data also performs better, which is interesting but raises questions about whether the improvements are solely due to noise robustness or also general skill improvement\n- The paper mentions \"maximum return relabeling\" but the reward model is trained online, which means it's not truly relabeling in the traditional sense; this terminology could be clarified\n- The meta-test phase requires fine-tuning, which is acknowledged as a limitation but could be explored more\n\nThe paper is technically sound with comprehensive experiments. The writing is clear and well-organized. The contribution is significant for the skill-based meta-RL community, addressing a practical concern (noisy data) that has been overlooked.\n\nI would rate this paper as a solid accept. The technical approach is sound, the experiments are thorough, and the problem addressed is important. The main concerns are about hyperparameter sensitivity and the incremental nature of the technical contributions, but these are adequately addressed through ablations and the overall framework demonstrates clear improvements.\n\nFor the ratings:\n- Originality: 3 (high) - novel combination of existing techniques with clear problem identification\n- Quality: 4 (very high) - thorough experiments, good ablations, careful analysis\n- Clarity: 4 (very high) - well-written, well-organized, good use of figures\n- Significance: 3 (high) - addresses important problem in skill-based meta-RL, likely to be built upon\n- Soundness: 4 (excellent) - technically sound methodology\n- Presentation: 4 (excellent) - clear writing and organization\n- Contribution: 3 (good) - valuable contribution to the field\n\nOverall score: 7 (Accept) - technically solid paper with high impact on the sub-area of skill-based meta-RL\n\nConfidence: 4 - I'm confident in my assessment but not absolutely certain about all details of the related work landscape.\n\nDecision: Accept\n\nQuestions for authors:\n1. How does SISL perform when the offline dataset contains a mix of clean and noisy demonstrations rather than uniformly noisy ones?\n2. The reward model is trained only on online data—how would performance change if offline data were also used for reward model training with some noise filtering?\n3. Could you elaborate on why SISL outperforms SiMPL even with expert demonstrations? Is this primarily due to skill refinement or the prioritization mechanism?\n4. How sensitive is the performance to the choice of Kiter across different environments? The ablation only shows Kitchen—are there similar trends in other environments?\n\nLimitations:\n- The paper acknowledges computational overhead (16%) and need for fine-tuning during meta-test\n- Hyperparameter sensitivity, particularly temperature T, requires careful tuning per environment\n- The improvement policy relies on RND, which may not scale well to very high-dimensional state spaces\n- No real-world robot experiments, only simulation\n\nEthical concerns: No significant ethical concerns identified. The work is foundational in nature with no obvious malicious applications.\n\nI'll provide the review with a decision of Accept.REVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper proposes SISL (Self-Improving Skill Learning), a robust skill-based meta-RL framework designed to handle noisy offline demonstrations in long-horizon environments. The key contributions are: (1) a decoupled skill-improvement policy that explores near the offline data distribution to discover higher-quality trajectories, progressively refining the skill library, and (2) a maximum return relabeling mechanism that assigns hypothetical returns to offline trajectories via a learned reward model and reweights them through softmax prioritization, suppressing noisy samples. The framework dynamically balances offline and online data contributions via a mixing coefficient β. Experiments across four long-horizon environments (Kitchen, Office, Maze2D, AntMaze) with varying noise levels demonstrate consistent improvements over baselines including SPiRL, SiMPL, PEARL, and SAC variants. The paper includes comprehensive ablations, robustness tests (limited data, random noise, sub-optimal datasets), computational complexity analysis, and visualizations of skill refinement.\",\n  \"Strengths\": [\n    \"Addresses an important and practical problem: noisy demonstrations in skill-based meta-RL, which has been largely overlooked\",\n    \"Novel combination of decoupled policy learning, self-guided skill refinement, and maximum return relabeling\",\n    \"Comprehensive experimental evaluation across four diverse long-horizon environments with multiple noise levels\",\n    \"Thorough ablation studies validating each component's contribution\",\n    \"Additional robustness experiments (limited data, random noise injection, diverse sub-optimal datasets) strengthen the claims\",\n    \"Computational overhead analysis showing only ~16% increase over baseline\",\n    \"Good visualization of skill refinement process and task representation improvements\",\n    \"Clear writing with well-organized structure and helpful figures\"\n  ],\n  \"Weaknesses\": [\n    \"Several hyperparameters (temperature T, KLD coefficient λimp, refinement interval Kiter) require tuning, and sensitivity analysis shows performance can vary significantly with these choices\",\n    \"The improvement policy relies on RND for exploration, which is a standard technique; the novelty lies in the combination rather than individual components\",\n    \"The claim of being 'first to address suboptimal demonstrations in skill-based meta-RL' may need more careful positioning relative to related work on robust skill learning\",\n    \"SISL outperforms SiMPL even with expert demonstrations, raising questions about whether improvements are due to noise robustness or general skill improvement\",\n    \"The 'maximum return relabeling' terminology could be clarified since the reward model is trained online, not truly relabeling offline data\",\n    \"No real-world robot experiments; all evaluations are in simulation\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 4,\n  \"Clarity\": 4,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does SISL perform when the offline dataset contains a mix of clean and noisy demonstrations rather than uniformly noisy ones?\",\n    \"The reward model is trained only on online data—how would performance change if offline data were also used for reward model training with some noise filtering?\",\n    \"Could you elaborate on why SISL outperforms SiMPL even with expert demonstrations? Is this primarily due to skill refinement or the prioritization mechanism?\",\n    \"How sensitive is performance to the choice of Kiter across different environments? The ablation only shows Kitchen—are there similar trends in other environments?\",\n    \"What happens when the offline dataset contains trajectories from tasks that are not in the training task distribution? How does the maximum return relabeling handle such out-of-distribution data?\"\n  ],\n  \"Limitations\": [\n    \"The paper acknowledges computational overhead (~16%) and the need for fine-tuning during meta-test, which limits zero-shot applicability\",\n    \"Hyperparameter sensitivity, particularly temperature T, requires environment-specific tuning with guidance provided only as heuristics\",\n    \"The improvement policy relies on RND, which may not scale well to very high-dimensional or image-based state spaces\",\n    \"Evaluation is limited to simulation environments; real-world validation would strengthen claims of practical applicability\",\n    \"The approach assumes the offline data is reward-free, which is a specific setting that may not apply to all real-world scenarios\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 4,\n  \"Presentation\": 4,\n  \"Contribution\": 3,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 35667,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 33875,
+        "completion_tokens": 1883,
+        "reasoning_tokens": 0,
+        "total_tokens": 37550
+      },
+      "attempts": 1,
+      "response_id": "07124022-a91d-4c73-8d32-6a6d6ad32bb8"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "This paper proposes Self-Improving Skill Learning (SISL), a robust skill-based meta-reinforcement learning framework designed to handle noisy offline demonstrations in long-horizon tasks. SISL introduces two key contributions: (1) a decoupled skill-improvement policy that explores near the offline data distribution to discover higher-quality trajectories and progressively refine the skill library, and (2) a maximum return relabeling mechanism that prioritizes task-relevant offline trajectories for skill learning using a learned reward model. The method is evaluated across four long-horizon environments (Kitchen, Office, Maze2D, AntMaze) with varying levels of Gaussian noise in the offline demonstrations, consistently outperforming existing skill-based meta-RL baselines (SiMPL, SPiRL) and other baselines (PEARL, SAC) across all settings. The paper includes extensive ablations validating each component of the proposed framework.",
+        "Strengths": [
+          "The paper addresses a meaningful and under-explored problem: robustness to noisy offline demonstrations in skill-based meta-RL, which is a practical concern for real-world applications",
+          "The proposed SISL framework is novel, combining self-guided skill improvement via a decoupled exploration policy with maximum return relabeling for skill prioritization",
+          "Comprehensive experimental evaluation across four diverse long-horizon environments with multiple noise levels, consistently showing superior performance over strong baselines",
+          "Thorough ablation studies and analysis of each component, including hyperparameter sensitivity, providing good insight into why the method works",
+          "Clear motivation with a concrete demonstration of the failure mode of existing methods under noisy data",
+          "Good discussion of limitations and computational overhead, showing honesty about the method's costs",
+          "Well-written and organized, with detailed appendices providing implementation details for reproducibility"
+        ],
+        "Weaknesses": [
+          "The claim of being 'the first framework to explicitly address suboptimal demonstrations in skill-based meta-RL' is somewhat strong; related work on robust offline RL and handling noisy demonstrations could be discussed more thoroughly to contextualize the novelty",
+          "Hyperparameter sensitivity appears significant, particularly for λkld_imp which varies across noise levels in Kitchen, potentially limiting practical applicability without careful tuning",
+          "The periodic reinitialization of the high-level policy is somewhat ad-hoc and could be seen as a hack rather than a principled design choice, though ablations do justify it",
+          "The computational overhead of 16% is acknowledged but not deeply analyzed; scalability to more complex environments could be a concern",
+          "The 'self-improving' terminology might be slightly overstated—the method uses guided exploration and prioritization rather than true autonomous self-improvement",
+          "The improvement policy πimp seems to add significant complexity; it's not entirely clear if simpler exploration strategies near the offline data manifold could achieve similar results"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "How does SISL compare to methods that use offline RL techniques (e.g., conservative Q-learning) to handle noisy demonstrations, rather than the proposed exploration-based approach?",
+          "The KLD coefficient λkld_imp is tuned differently for different noise levels in Kitchen (0.005 for Expert/σ=0.1, 0.002 for σ=0.2, 0.001 for σ=0.3). How sensitive is the method to this parameter in practice, and is there a principled way to set it without extensive tuning?",
+          "Why is the improvement policy πimp needed instead of simply using the high-level policy with additional exploration noise? The paper mentions decoupling enables 'simultaneous exploitation and targeted skill improvement,' but could you elaborate on why decoupling is beneficial?",
+          "The reinitialization of πh every Kiter iterations seems disruptive. Could you discuss when this reinitialization is most beneficial and whether there are scenarios where it might hurt performance?",
+          "How does the method scale to environments with more complex reward structures than the simple sparse rewards used in the experiments? The paper mentions per-task reward standardization as a potential solution but doesn't explore this.",
+          "What is the impact of the offline dataset size on the performance of the reward model and the maximum return relabeling? Does the method degrade gracefully with very limited offline data?"
+        ],
+        "Limitations": [
+          "The method introduces a 16% computational overhead during meta-training, which could be significant for large-scale applications",
+          "The meta-test phase still requires fine-tuning, which limits zero-shot adaptation capabilities",
+          "The method requires careful hyperparameter tuning, particularly for the KLD coefficient λkld_imp and prioritization temperature T, which may limit practical adoption",
+          "The evaluation is limited to simulated environments; real-world noisy demonstrations may present additional challenges not captured by Gaussian noise injections",
+          "Potential negative societal impact is minimal, but the paper could discuss more about the implications of deploying such methods in safety-critical applications where noisy data might arise from system failures"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes SISL, a skill-based meta-RL framework designed to be robust to noisy offline demonstrations. The key contributions are: (1) a decoupled skill-improvement policy that explores near the offline data distribution to discover better trajectories, and (2) a maximum return relabeling mechanism that prioritizes task-relevant trajectories for skill learning. The paper is well-written and addresses a meaningful gap in the literature—most prior skill-based meta-RL methods assume clean expert demonstrations. The experimental evaluation is quite thorough, covering four environments (Kitchen, Office, Maze2D, AntMaze) with multiple noise levels, and includes extensive ablations and analysis in the appendix.\n\nStrengths:\n- The problem is well-motivated with a clear demonstration of the failure mode (Fig. 2)\n- The proposed method is novel in combining self-improvement with skill prioritization for skill-based meta-RL\n- Comprehensive experimental evaluation across multiple environments and noise levels\n- Detailed ablations and analysis of each component\n- The method consistently outperforms baselines, showing robustness even at high noise levels\n- Good discussion of limitations and computational overhead\n\nWeaknesses:\n- The paper claims to be \"the first framework to explicitly address suboptimal demonstrations in skill-based meta-RL\" but doesn't thoroughly discuss related work on robust offline RL or noisy demonstration handling that could be adapted\n- The improvement policy πimp seems to require careful hyperparameter tuning (e.g., λkld_imp varies significantly across noise levels in Kitchen)\n- The periodic reinitialization of the high-level policy seems like a somewhat ad-hoc design choice, though it's justified with ablations\n- The computational overhead (16%) is acknowledged but could be a concern for scalability\n- Some claims about \"self-improvement\" might be overstated—the method essentially uses online exploration and prioritization to refine skills, which is more of a guided refinement than true self-improvement\n\nOverall, I think this is a solid paper with good experimental validation. The method is novel and addresses an important practical concern. The main questions are about generalizability and whether the hyperparameter sensitivity limits practical applicability. I would lean toward acceptance given the thorough evaluation and clear contribution.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper proposes Self-Improving Skill Learning (SISL), a robust skill-based meta-reinforcement learning framework designed to handle noisy offline demonstrations in long-horizon tasks. SISL introduces two key contributions: (1) a decoupled skill-improvement policy that explores near the offline data distribution to discover higher-quality trajectories and progressively refine the skill library, and (2) a maximum return relabeling mechanism that prioritizes task-relevant offline trajectories for skill learning using a learned reward model. The method is evaluated across four long-horizon environments (Kitchen, Office, Maze2D, AntMaze) with varying levels of Gaussian noise in the offline demonstrations, consistently outperforming existing skill-based meta-RL baselines (SiMPL, SPiRL) and other baselines (PEARL, SAC) across all settings. The paper includes extensive ablations validating each component of the proposed framework.\",\n    \"Strengths\": [\n        \"The paper addresses a meaningful and under-explored problem: robustness to noisy offline demonstrations in skill-based meta-RL, which is a practical concern for real-world applications\",\n        \"The proposed SISL framework is novel, combining self-guided skill improvement via a decoupled exploration policy with maximum return relabeling for skill prioritization\",\n        \"Comprehensive experimental evaluation across four diverse long-horizon environments with multiple noise levels, consistently showing superior performance over strong baselines\",\n        \"Thorough ablation studies and analysis of each component, including hyperparameter sensitivity, providing good insight into why the method works\",\n        \"Clear motivation with a concrete demonstration of the failure mode of existing methods under noisy data\",\n        \"Good discussion of limitations and computational overhead, showing honesty about the method's costs\",\n        \"Well-written and organized, with detailed appendices providing implementation details for reproducibility\"\n    ],\n    \"Weaknesses\": [\n        \"The claim of being 'the first framework to explicitly address suboptimal demonstrations in skill-based meta-RL' is somewhat strong; related work on robust offline RL and handling noisy demonstrations could be discussed more thoroughly to contextualize the novelty\",\n        \"Hyperparameter sensitivity appears significant, particularly for λkld_imp which varies across noise levels in Kitchen, potentially limiting practical applicability without careful tuning\",\n        \"The periodic reinitialization of the high-level policy is somewhat ad-hoc and could be seen as a hack rather than a principled design choice, though ablations do justify it\",\n        \"The computational overhead of 16% is acknowledged but not deeply analyzed; scalability to more complex environments could be a concern\",\n        \"The 'self-improving' terminology might be slightly overstated—the method uses guided exploration and prioritization rather than true autonomous self-improvement\",\n        \"The improvement policy πimp seems to add significant complexity; it's not entirely clear if simpler exploration strategies near the offline data manifold could achieve similar results\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 4,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"How does SISL compare to methods that use offline RL techniques (e.g., conservative Q-learning) to handle noisy demonstrations, rather than the proposed exploration-based approach?\",\n        \"The KLD coefficient λkld_imp is tuned differently for different noise levels in Kitchen (0.005 for Expert/σ=0.1, 0.002 for σ=0.2, 0.001 for σ=0.3). How sensitive is the method to this parameter in practice, and is there a principled way to set it without extensive tuning?\",\n        \"Why is the improvement policy πimp needed instead of simply using the high-level policy with additional exploration noise? The paper mentions decoupling enables 'simultaneous exploitation and targeted skill improvement,' but could you elaborate on why decoupling is beneficial?\",\n        \"The reinitialization of πh every Kiter iterations seems disruptive. Could you discuss when this reinitialization is most beneficial and whether there are scenarios where it might hurt performance?\",\n        \"How does the method scale to environments with more complex reward structures than the simple sparse rewards used in the experiments? The paper mentions per-task reward standardization as a potential solution but doesn't explore this.\",\n        \"What is the impact of the offline dataset size on the performance of the reward model and the maximum return relabeling? Does the method degrade gracefully with very limited offline data?\"\n    ],\n    \"Limitations\": [\n        \"The method introduces a 16% computational overhead during meta-training, which could be significant for large-scale applications\",\n        \"The meta-test phase still requires fine-tuning, which limits zero-shot adaptation capabilities\",\n        \"The method requires careful hyperparameter tuning, particularly for the KLD coefficient λkld_imp and prioritization temperature T, which may limit practical adoption\",\n        \"The evaluation is limited to simulated environments; real-world noisy demonstrations may present additional challenges not captured by Gaussian noise injections\",\n        \"Potential negative societal impact is minimal, but the paper could discuss more about the implications of deploying such methods in safety-critical applications where noisy data might arise from system failures\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 4,\n    \"Contribution\": 3,\n    \"Overall\": 7,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 35667,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 33875,
+        "completion_tokens": 1573,
+        "reasoning_tokens": 0,
+        "total_tokens": 37240
+      },
+      "attempts": 1,
+      "response_id": "e46ff178-c503-41d7-9664-f347e5153d9f"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "This paper proposes SISL (Self-Improving Skill Learning), a framework for robust skill-based meta-reinforcement learning that addresses the challenge of noisy offline demonstrations. The key contributions are: (1) a decoupled skill self-improvement mechanism using an improvement policy that explores near the offline data distribution and a prioritized online buffer to progressively refine skills, and (2) skill prioritization via maximum return relabeling, where a learned reward model assigns hypothetical returns to offline trajectories and softmax-based reweighting suppresses noisy samples. The method is evaluated on four long-horizon environments (Kitchen, Office, Maze2D, AntMaze) with varying noise levels, showing consistent improvements over baselines including SPiRL and SiMPL. The paper includes comprehensive ablation studies, analysis of the refinement process, and computational complexity comparisons.",
+        "Strengths": [
+          "Clear problem identification: The paper identifies a real and important gap in skill-based meta-RL literature regarding noisy demonstrations, which is well-motivated by the motivating experiments in Fig. 2.",
+          "Novel methodological contributions: The decoupled policy design (high-level vs. improvement policy) and maximum return relabeling with softmax prioritization are novel combinations that address the identified problem.",
+          "Comprehensive experimental evaluation: Four environments (two newly introduced), multiple noise levels, thorough ablation studies, and additional robustness experiments (limited data, random noise, suboptimal datasets).",
+          "Good analytical insights: The paper provides visualizations and analyses of β dynamics, skill evolution, task representation improvements, and trajectory comparisons that help understand why the method works.",
+          "Reproducibility: Code is provided, hyperparameters are detailed in tables, and implementation specifics are given in the appendix.",
+          "Honest evaluation: The paper acknowledges computational overhead and limitations, and provides fair comparisons with baselines."
+        ],
+        "Weaknesses": [
+          "Limited comparison with recent methods: The paper only compares with SiMPL as a skill-based meta-RL baseline; more recent methods in this space could strengthen the evaluation.",
+          "Hyperparameter complexity: The method introduces several new hyperparameters (T, λ_kld_imp, K_iter, β dynamics) that may require significant tuning for new environments, though the paper provides some guidance.",
+          "Modest improvements at low noise levels: Performance gains over baselines are sometimes small when the offline data is already high-quality (e.g., Expert, σ=0.1), though consistent.",
+          "Computational overhead: The 16% increase in training time is acknowledged but could be analyzed more deeply, especially the trade-off between overhead and performance gains.",
+          "Limited discussion of related robust skill learning approaches: The paper could better position itself relative to other works on robust skill discovery or noisy demonstration handling."
+        ],
+        "Originality": 4,
+        "Quality": 4,
+        "Clarity": 4,
+        "Significance": 4,
+        "Questions": [
+          "How does SISL handle environments with more complex reward structures (e.g., shaped rewards with different scales across subtasks)? The paper mentions per-task reward standardization as a possibility but doesn't provide experiments.",
+          "The paper mentions that 'minor noise occasionally boosts performance' - could the authors elaborate on the conditions under which this occurs and provide more quantitative analysis?",
+          "What is the sensitivity of the method to the initial β value and the choice of the temperature parameter T more generally? The paper provides some guidance but a more systematic analysis would be helpful.",
+          "How does the method's performance compare with approaches that use offline reward labeling or reward learning from demonstrations (e.g., inverse RL) instead of the proposed maximum return relabeling?",
+          "Could the authors provide more details on the failure modes of SISL, particularly in AntMaze at high noise levels where performance drops significantly?"
+        ],
+        "Limitations": [
+          "Computational overhead: SISL requires ~16% more training time than SiMPL due to skill refinement and reward model training, which could be a concern for large-scale applications.",
+          "Meta-test fine-tuning: The method requires fine-tuning during meta-test, which adds computational cost and may not be suitable for zero-shot adaptation scenarios.",
+          "Hyperparameter sensitivity: The performance depends on careful tuning of temperature T and KLD coefficient, though the paper provides reasonable guidelines.",
+          "Potential negative societal impact: While primarily foundational, the method could be applied to autonomous systems where robustness to noisy data is critical, and the authors should consider potential misuse in safety-critical applications.",
+          "The method assumes the noise is primarily in actions (Gaussian or random injection); other types of noise (e.g., in states or rewards) are not extensively explored."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 4,
+        "Presentation": 4,
+        "Contribution": 4,
+        "Overall": 8,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes SISL, a skill-based meta-RL framework designed to handle noisy offline demonstrations. The key contributions are: (1) decoupled skill self-improvement using an improvement policy that explores near the offline data distribution and a prioritized online buffer, and (2) skill prioritization via maximum return relabeling where a learned reward model assigns hypothetical returns to offline trajectories and softmax-based reweighting suppresses noisy samples.\n\nThe paper is technically sound overall. The motivation is clear (Fig. 2 shows the problem), the method is well-articulated with formal equations, and the experiments are comprehensive across four environments with multiple noise levels. The ablation studies are thorough, covering component importance, hyperparameter sensitivity, and additional analyses in the appendix.\n\nStrengths:\n- Clear problem identification: The paper identifies a real gap in skill-based meta-RL literature regarding noisy demonstrations.\n- Novel contribution: SISL is claimed to be the first framework explicitly addressing suboptimal demonstrations in skill-based meta-RL. The decoupled policy design and maximum return relabeling are novel combinations.\n- Comprehensive experiments: Four environments (two existing, two newly introduced), multiple noise levels, and thorough ablation studies.\n- Good analysis: The paper provides insights into why the method works (β dynamics, skill evolution visualizations, task representation improvements).\n- Reproducibility: Code is provided, hyperparameters are detailed, and implementation specifics are given.\n\nWeaknesses:\n- The paper claims to be \"first\" to address noisy demonstrations in skill-based meta-RL but doesn't deeply discuss related work on robust RL/IL with noisy data in the context of skill learning (e.g., works on robust skill discovery).\n- The 16% computational overhead is acknowledged but could be more thoroughly analyzed. The ablation shows some variants have similar overhead but lower performance.\n- The method introduces several hyperparameters (T, λ_kld_imp, K_iter, β dynamics) that require tuning; the paper provides some guidance but it may still be complex for practitioners.\n- The performance gains at lower noise levels (e.g., Expert, σ=0.1) are sometimes modest, though still positive.\n- The experimental comparison with more recent skill-based meta-RL methods (beyond SiMPL) is limited; the paper could benefit from comparing with more recent approaches.\n\nKey questions:\n1. How does SISL handle environments where the reward structure is more complex (e.g., shaped rewards with different scales across tasks)? The paper mentions this in passing but doesn't deeply address it.\n2. The paper mentions that \"minor noise occasionally boosts performance\" - could the authors elaborate on when and why this happens?\n3. What is the sensitivity to the choice of β initialization and the temperature parameter in more detail?\n\nLimitations:\n- The paper acknowledges computational overhead and need for meta-test fine-tuning.\n- Potential negative societal impact is minimal (foundational research), but the authors could discuss potential misuse in autonomous systems.\n\nOverall assessment: This is a solid paper with clear contributions. The method is well-motivated, technically sound, and thoroughly evaluated. The writing is clear and the experiments are comprehensive. The main limitations are the additional computational cost and hyperparameter complexity, but these are honestly acknowledged. I would rate this as a strong accept, given its novelty and thorough evaluation.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper proposes SISL (Self-Improving Skill Learning), a framework for robust skill-based meta-reinforcement learning that addresses the challenge of noisy offline demonstrations. The key contributions are: (1) a decoupled skill self-improvement mechanism using an improvement policy that explores near the offline data distribution and a prioritized online buffer to progressively refine skills, and (2) skill prioritization via maximum return relabeling, where a learned reward model assigns hypothetical returns to offline trajectories and softmax-based reweighting suppresses noisy samples. The method is evaluated on four long-horizon environments (Kitchen, Office, Maze2D, AntMaze) with varying noise levels, showing consistent improvements over baselines including SPiRL and SiMPL. The paper includes comprehensive ablation studies, analysis of the refinement process, and computational complexity comparisons.\",\n    \"Strengths\": [\n        \"Clear problem identification: The paper identifies a real and important gap in skill-based meta-RL literature regarding noisy demonstrations, which is well-motivated by the motivating experiments in Fig. 2.\",\n        \"Novel methodological contributions: The decoupled policy design (high-level vs. improvement policy) and maximum return relabeling with softmax prioritization are novel combinations that address the identified problem.\",\n        \"Comprehensive experimental evaluation: Four environments (two newly introduced), multiple noise levels, thorough ablation studies, and additional robustness experiments (limited data, random noise, suboptimal datasets).\",\n        \"Good analytical insights: The paper provides visualizations and analyses of β dynamics, skill evolution, task representation improvements, and trajectory comparisons that help understand why the method works.\",\n        \"Reproducibility: Code is provided, hyperparameters are detailed in tables, and implementation specifics are given in the appendix.\",\n        \"Honest evaluation: The paper acknowledges computational overhead and limitations, and provides fair comparisons with baselines.\"\n    ],\n    \"Weaknesses\": [\n        \"Limited comparison with recent methods: The paper only compares with SiMPL as a skill-based meta-RL baseline; more recent methods in this space could strengthen the evaluation.\",\n        \"Hyperparameter complexity: The method introduces several new hyperparameters (T, λ_kld_imp, K_iter, β dynamics) that may require significant tuning for new environments, though the paper provides some guidance.\",\n        \"Modest improvements at low noise levels: Performance gains over baselines are sometimes small when the offline data is already high-quality (e.g., Expert, σ=0.1), though consistent.\",\n        \"Computational overhead: The 16% increase in training time is acknowledged but could be analyzed more deeply, especially the trade-off between overhead and performance gains.\",\n        \"Limited discussion of related robust skill learning approaches: The paper could better position itself relative to other works on robust skill discovery or noisy demonstration handling.\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 4,\n    \"Clarity\": 4,\n    \"Significance\": 4,\n    \"Questions\": [\n        \"How does SISL handle environments with more complex reward structures (e.g., shaped rewards with different scales across subtasks)? The paper mentions per-task reward standardization as a possibility but doesn't provide experiments.\",\n        \"The paper mentions that 'minor noise occasionally boosts performance' - could the authors elaborate on the conditions under which this occurs and provide more quantitative analysis?\",\n        \"What is the sensitivity of the method to the initial β value and the choice of the temperature parameter T more generally? The paper provides some guidance but a more systematic analysis would be helpful.\",\n        \"How does the method's performance compare with approaches that use offline reward labeling or reward learning from demonstrations (e.g., inverse RL) instead of the proposed maximum return relabeling?\",\n        \"Could the authors provide more details on the failure modes of SISL, particularly in AntMaze at high noise levels where performance drops significantly?\"\n    ],\n    \"Limitations\": [\n        \"Computational overhead: SISL requires ~16% more training time than SiMPL due to skill refinement and reward model training, which could be a concern for large-scale applications.\",\n        \"Meta-test fine-tuning: The method requires fine-tuning during meta-test, which adds computational cost and may not be suitable for zero-shot adaptation scenarios.\",\n        \"Hyperparameter sensitivity: The performance depends on careful tuning of temperature T and KLD coefficient, though the paper provides reasonable guidelines.\",\n        \"Potential negative societal impact: While primarily foundational, the method could be applied to autonomous systems where robustness to noisy data is critical, and the authors should consider potential misuse in safety-critical applications.\",\n        \"The method assumes the noise is primarily in actions (Gaussian or random injection); other types of noise (e.g., in states or rewards) are not extensively explored.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 4,\n    \"Presentation\": 4,\n    \"Contribution\": 4,\n    \"Overall\": 8,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 35667,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 33875,
+        "completion_tokens": 1720,
+        "reasoning_tokens": 0,
+        "total_tokens": 37387
+      },
+      "attempts": 1,
+      "response_id": "0cfe61f2-7a15-4e31-9ff1-358ed03c5908"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 5,
+      "Reject": 0
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          3,
+          3,
+          3,
+          4,
+          4
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          4,
+          3,
+          4
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Clarity": {
+        "values": [
+          3,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 3.8,
+        "rounded_mean": 4,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Significance": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          4
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          4,
+          3,
+          4
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Presentation": {
+        "values": [
+          3,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 3.8,
+        "rounded_mean": 4,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Contribution": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          4
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Overall": {
+        "values": [
+          6,
+          7,
+          7,
+          7,
+          8
+        ],
+        "mean": 7,
+        "rounded_mean": 7,
+        "population_sd": 0.632,
+        "min": 6,
+        "max": 8
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "This paper proposes SISL (Self-Improving Skill Learning), a framework for robust skill-based meta-reinforcement learning that addresses the challenge of noisy offline demonstrations in long-horizon tasks. The key contributions are: (1) a decoupled skill self-improvement mechanism with an improvement policy that perturbs trajectories near the offline data distribution to discover higher-quality behaviors, and (2) a skill prioritization approach via maximum return relabeling that assigns hypothetical returns to offline trajectories and reweights samples to focus on task-relevant data. SISL dynamically balances offline and online data contributions through a mixing coefficient, progressively denoising the skill library. The paper evaluates SISL on four long-horizon multi-task environments (Kitchen, Office, Maze2D, AntMaze) with varying noise levels, demonstrating consistent improvements over baselines including SPiRL, SiMPL, PEARL, and SAC variants. The authors also provide extensive ablation studies and analysis of the skill refinement process.",
+      "Strengths": [
+        "Addresses an important and under-explored problem: robustness of skill-based meta-RL to noisy offline demonstrations",
+        "Well-motivated framework with clear problem analysis and intuitive figures illustrating the failure mode",
+        "Comprehensive experimental evaluation across four environments with multiple noise levels, including two newly introduced environments (Office, AntMaze)",
+        "Thorough ablation studies examining each component's contribution and key hyperparameters",
+        "Good analysis of the skill refinement process, including visualization of skill evolution and task representations",
+        "Honest discussion of limitations, including computational overhead and meta-test fine-tuning requirements",
+        "Code is provided for reproducibility",
+        "Additional robustness experiments (limited data, random noise injection, diverse sub-optimal datasets) strengthen the claims"
+      ],
+      "Weaknesses": [
+        "Incremental novelty: combines existing techniques (SPiRL, SiMPL, RND, relabeling) in a new way, but individual components are well-known; the contribution is primarily in the specific combination for the noisy demonstration setting",
+        "The improvement policy design is similar to existing exploration techniques (e.g., RND-based), and its novelty over simply using RND in the skill-based setting is not fully clarified",
+        "The maximum return relabeling mechanism is a straightforward application of reward-model-based relabeling, and its interaction with the skill learning objective could be better analyzed theoretically",
+        "Some design choices (e.g., reinitializing the high-level policy every Kiter iterations) seem ad hoc and could use more principled justification",
+        "The paper does not provide theoretical analysis of why the proposed method should be robust to noise, relying solely on empirical evidence",
+        "The comparison with SiMPL baseline may not be fully fair given that SISL has access to additional components (improvement policy, reward model) that SiMPL lacks",
+        "Hyperparameter sensitivity, particularly temperature T and KLD coefficient, requires careful tuning that may limit practical applicability",
+        "Performance gains over baselines are modest in low-noise regimes for some environments",
+        "The method assumes noise primarily affects actions; other types of data corruption (state noise, missing transitions) are not extensively explored"
+      ],
+      "Originality": 3,
+      "Quality": 3,
+      "Clarity": 4,
+      "Significance": 3,
+      "Questions": [
+        "How does the method perform when the number of training tasks is small (e.g., 5-10)? The current experiments use 20-25 training tasks.",
+        "Could the improvement policy πimp discover behaviors that are not realizable by the low-level skill policy, and if so, how does the framework handle this mismatch?",
+        "Is there a risk of catastrophic forgetting of useful offline skills when β becomes very high (close to 1)? How is this mitigated?",
+        "The reward model is trained only on online trajectories - how does this affect relabeling of offline trajectories that may be far from the online data distribution?",
+        "The paper reinitializes the high-level policy πh every Kiter iterations. Could you provide more intuition for why this is necessary? Have you considered more smooth ways to handle this, such as KL regularization during re-training?",
+        "How sensitive is the maximum return relabeling to reward model errors, especially in early training when online data is limited? Could noisy offline trajectories be incorrectly labeled as high-return if the reward model is not yet accurate?",
+        "The mixing coefficient β is computed based on average returns of offline and online buffers. In environments with very different return scales across tasks, how does this affect the balance? Have you considered per-task normalization?",
+        "How does SISL compare to methods that use offline RL techniques (e.g., conservative Q-learning) to handle noisy demonstrations, rather than the proposed exploration-based approach?",
+        "How does the method scale to environments with more complex reward structures than the simple sparse rewards used in the experiments?",
+        "What happens if the noise in offline demonstrations affects not just actions but also state observations?"
+      ],
+      "Limitations": [
+        "The paper acknowledges computational overhead (~16%) and the need for meta-test fine-tuning, which are reasonable limitations.",
+        "The approach assumes that noisy demonstrations are the primary source of data corruption; it may not handle other types of data quality issues (e.g., missing transitions, misaligned observations) as effectively.",
+        "The method requires training an additional improvement policy and reward model, which adds complexity to the overall framework.",
+        "The paper does not analyze potential negative societal impacts beyond a brief statement. While the work is foundational, it could be used in applications where robustness to noisy data might have unintended consequences (e.g., in safety-critical systems).",
+        "The experimental evaluation is limited to simulated environments; real-world validation with physical robots would strengthen the claims.",
+        "Hyperparameter sensitivity requires careful tuning, which may limit applicability in new domains.",
+        "The method requires fine-tuning during meta-test, which adds computational cost; zero-shot adaptation would be more practical."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 4,
+      "Contribution": 3,
+      "Overall": 7,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "THOUGHT:\nThe paper addresses an important and under-explored problem in skill-based meta-RL: robustness to noisy offline demonstrations. The proposed SISL framework combines a decoupled improvement policy with maximum return relabeling to progressively refine the skill library. All five reviewers are positive, with overall scores of 6, 7, 7, 7, and 8, and all recommend Accept. The consensus is that the paper is technically solid, well-motivated, with comprehensive experiments and honest discussion of limitations.\n\nKey strengths across reviews: clear problem identification, novel framework combination, comprehensive evaluation across four environments with multiple noise levels, thorough ablations, and good reproducibility. Weaknesses noted: incremental novelty (combining known components like RND and relabeling), hyperparameter sensitivity, modest gains at low noise levels, lack of theoretical analysis, and limited comparison with recent methods.\n\nThe main concerns raised by reviewers are:\n1. The novelty is primarily in the integration rather than individual components\n2. Hyperparameter tuning requirements (T, λ_kld_imp, K_iter)\n3. The reinitialization of the high-level policy seems somewhat ad-hoc\n4. The reward model trained only on online data could be problematic early in training\n5. No real-world validation\n\nGiven the strong consensus for acceptance (all 5 reviewers recommend Accept), the overall scores ranging from 6-8, and the paper's clear contribution to an important problem, I will recommend Accept. The weaknesses are not fatal - they are typical for empirical RL papers, and the authors are transparent about limitations. The paper advances the state of the art in skill-based meta-RL under noisy data conditions.\n\nFor the meta-review, I should aggregate the strengths and weaknesses, note the consensus, and provide a balanced assessment. The overall score should be around 7-8, reflecting the strong positive reviews. I'll go with 7 (Accept) as the most appropriate score, given the minor concerns about novelty and hyperparameter sensitivity.\n\nI need to ensure the JSON format is precise and includes all required fields.REVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper proposes SISL (Self-Improving Skill Learning), a framework for robust skill-based meta-reinforcement learning that addresses the challenge of noisy offline demonstrations in long-horizon tasks. The key contributions are: (1) a decoupled skill self-improvement mechanism with an improvement policy that perturbs trajectories near the offline data distribution to discover higher-quality behaviors, and (2) a skill prioritization approach via maximum return relabeling that assigns hypothetical returns to offline trajectories and reweights samples to focus on task-relevant data. SISL dynamically balances offline and online data contributions through a mixing coefficient, progressively denoising the skill library. The paper evaluates SISL on four long-horizon multi-task environments (Kitchen, Office, Maze2D, AntMaze) with varying noise levels, demonstrating consistent improvements over baselines including SPiRL, SiMPL, PEARL, and SAC variants. The authors also provide extensive ablation studies and analysis of the skill refinement process.\",\n  \"Strengths\": [\n    \"Addresses an important and under-explored problem: robustness of skill-based meta-RL to noisy offline demonstrations\",\n    \"Well-motivated framework with clear problem analysis and intuitive figures illustrating the failure mode\",\n    \"Comprehensive experimental evaluation across four environments with multiple noise levels, including two newly introduced environments (Office, AntMaze)\",\n    \"Thorough ablation studies examining each component's contribution and key hyperparameters\",\n    \"Good analysis of the skill refinement process, including visualization of skill evolution and task representations\",\n    \"Honest discussion of limitations, including computational overhead and meta-test fine-tuning requirements\",\n    \"Code is provided for reproducibility\",\n    \"Additional robustness experiments (limited data, random noise injection, diverse sub-optimal datasets) strengthen the claims\"\n  ],\n  \"Weaknesses\": [\n    \"Incremental novelty: combines existing techniques (SPiRL, SiMPL, RND, relabeling) in a new way, but individual components are well-known; the contribution is primarily in the specific combination for the noisy demonstration setting\",\n    \"The improvement policy design is similar to existing exploration techniques (e.g., RND-based), and its novelty over simply using RND in the skill-based setting is not fully clarified\",\n    \"The maximum return relabeling mechanism is a straightforward application of reward-model-based relabeling, and its interaction with the skill learning objective could be better analyzed theoretically\",\n    \"Some design choices (e.g., reinitializing the high-level policy every Kiter iterations) seem ad hoc and could use more principled justification\",\n    \"The paper does not provide theoretical analysis of why the proposed method should be robust to noise, relying solely on empirical evidence\",\n    \"The comparison with SiMPL baseline may not be fully fair given that SISL has access to additional components (improvement policy, reward model) that SiMPL lacks\",\n    \"Hyperparameter sensitivity, particularly temperature T and KLD coefficient, requires careful tuning that may limit practical applicability\",\n    \"Performance gains over baselines are modest in low-noise regimes for some environments\",\n    \"The method assumes noise primarily affects actions; other types of data corruption (state noise, missing transitions) are not extensively explored\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 4,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does the method perform when the number of training tasks is small (e.g., 5-10)? The current experiments use 20-25 training tasks.\",\n    \"Could the improvement policy πimp discover behaviors that are not realizable by the low-level skill policy, and if so, how does the framework handle this mismatch?\",\n    \"Is there a risk of catastrophic forgetting of useful offline skills when β becomes very high (close to 1)? How is this mitigated?\",\n    \"The reward model is trained only on online trajectories - how does this affect relabeling of offline trajectories that may be far from the online data distribution?\",\n    \"The paper reinitializes the high-level policy πh every Kiter iterations. Could you provide more intuition for why this is necessary? Have you considered more smooth ways to handle this, such as KL regularization during re-training?\",\n    \"How sensitive is the maximum return relabeling to reward model errors, especially in early training when online data is limited? Could noisy offline trajectories be incorrectly labeled as high-return if the reward model is not yet accurate?\",\n    \"The mixing coefficient β is computed based on average returns of offline and online buffers. In environments with very different return scales across tasks, how does this affect the balance? Have you considered per-task normalization?\",\n    \"How does SISL compare to methods that use offline RL techniques (e.g., conservative Q-learning) to handle noisy demonstrations, rather than the proposed exploration-based approach?\",\n    \"How does the method scale to environments with more complex reward structures than the simple sparse rewards used in the experiments?\",\n    \"What happens if the noise in offline demonstrations affects not just actions but also state observations?\"\n  ],\n  \"Limitations\": [\n    \"The paper acknowledges computational overhead (~16%) and the need for meta-test fine-tuning, which are reasonable limitations.\",\n    \"The approach assumes that noisy demonstrations are the primary source of data corruption; it may not handle other types of data quality issues (e.g., missing transitions, misaligned observations) as effectively.\",\n    \"The method requires training an additional improvement policy and reward model, which adds complexity to the overall framework.\",\n    \"The paper does not analyze potential negative societal impacts beyond a brief statement. While the work is foundational, it could be used in applications where robustness to noisy data might have unintended consequences (e.g., in safety-critical systems).\",\n    \"The experimental evaluation is limited to simulated environments; real-world validation with physical robots would strengthen the claims.\",\n    \"Hyperparameter sensitivity requires careful tuning, which may limit applicability in new domains.\",\n    \"The method requires fine-tuning during meta-test, which adds computational cost; zero-shot adaptation would be more practical.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 4,\n  \"Contribution\": 3,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 6867,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 6867,
+      "completion_tokens": 1747,
+      "reasoning_tokens": 0,
+      "total_tokens": 8614
+    },
+    "attempts": 1,
+    "response_id": "68fdaa29-027e-4c21-9920-e2e218c9e506"
+  },
+  "final_review": {
+    "Summary": "This paper proposes SISL (Self-Improving Skill Learning), a framework for robust skill-based meta-reinforcement learning that addresses the challenge of noisy offline demonstrations in long-horizon tasks. The key contributions are: (1) a decoupled skill self-improvement mechanism with an improvement policy that perturbs trajectories near the offline data distribution to discover higher-quality behaviors, and (2) a skill prioritization approach via maximum return relabeling that assigns hypothetical returns to offline trajectories and reweights samples to focus on task-relevant data. SISL dynamically balances offline and online data contributions through a mixing coefficient, progressively denoising the skill library. The paper evaluates SISL on four long-horizon multi-task environments (Kitchen, Office, Maze2D, AntMaze) with varying noise levels, demonstrating consistent improvements over baselines including SPiRL, SiMPL, PEARL, and SAC variants. The authors also provide extensive ablation studies and analysis of the skill refinement process.",
+    "Strengths": [
+      "Addresses an important and under-explored problem: robustness of skill-based meta-RL to noisy offline demonstrations",
+      "Well-motivated framework with clear problem analysis and intuitive figures illustrating the failure mode",
+      "Comprehensive experimental evaluation across four environments with multiple noise levels, including two newly introduced environments (Office, AntMaze)",
+      "Thorough ablation studies examining each component's contribution and key hyperparameters",
+      "Good analysis of the skill refinement process, including visualization of skill evolution and task representations",
+      "Honest discussion of limitations, including computational overhead and meta-test fine-tuning requirements",
+      "Code is provided for reproducibility",
+      "Additional robustness experiments (limited data, random noise injection, diverse sub-optimal datasets) strengthen the claims"
+    ],
+    "Weaknesses": [
+      "Incremental novelty: combines existing techniques (SPiRL, SiMPL, RND, relabeling) in a new way, but individual components are well-known; the contribution is primarily in the specific combination for the noisy demonstration setting",
+      "The improvement policy design is similar to existing exploration techniques (e.g., RND-based), and its novelty over simply using RND in the skill-based setting is not fully clarified",
+      "The maximum return relabeling mechanism is a straightforward application of reward-model-based relabeling, and its interaction with the skill learning objective could be better analyzed theoretically",
+      "Some design choices (e.g., reinitializing the high-level policy every Kiter iterations) seem ad hoc and could use more principled justification",
+      "The paper does not provide theoretical analysis of why the proposed method should be robust to noise, relying solely on empirical evidence",
+      "The comparison with SiMPL baseline may not be fully fair given that SISL has access to additional components (improvement policy, reward model) that SiMPL lacks",
+      "Hyperparameter sensitivity, particularly temperature T and KLD coefficient, requires careful tuning that may limit practical applicability",
+      "Performance gains over baselines are modest in low-noise regimes for some environments",
+      "The method assumes noise primarily affects actions; other types of data corruption (state noise, missing transitions) are not extensively explored"
+    ],
+    "Originality": 3,
+    "Quality": 3,
+    "Clarity": 4,
+    "Significance": 3,
+    "Questions": [
+      "How does the method perform when the number of training tasks is small (e.g., 5-10)? The current experiments use 20-25 training tasks.",
+      "Could the improvement policy πimp discover behaviors that are not realizable by the low-level skill policy, and if so, how does the framework handle this mismatch?",
+      "Is there a risk of catastrophic forgetting of useful offline skills when β becomes very high (close to 1)? How is this mitigated?",
+      "The reward model is trained only on online trajectories - how does this affect relabeling of offline trajectories that may be far from the online data distribution?",
+      "The paper reinitializes the high-level policy πh every Kiter iterations. Could you provide more intuition for why this is necessary? Have you considered more smooth ways to handle this, such as KL regularization during re-training?",
+      "How sensitive is the maximum return relabeling to reward model errors, especially in early training when online data is limited? Could noisy offline trajectories be incorrectly labeled as high-return if the reward model is not yet accurate?",
+      "The mixing coefficient β is computed based on average returns of offline and online buffers. In environments with very different return scales across tasks, how does this affect the balance? Have you considered per-task normalization?",
+      "How does SISL compare to methods that use offline RL techniques (e.g., conservative Q-learning) to handle noisy demonstrations, rather than the proposed exploration-based approach?",
+      "How does the method scale to environments with more complex reward structures than the simple sparse rewards used in the experiments?",
+      "What happens if the noise in offline demonstrations affects not just actions but also state observations?"
+    ],
+    "Limitations": [
+      "The paper acknowledges computational overhead (~16%) and the need for meta-test fine-tuning, which are reasonable limitations.",
+      "The approach assumes that noisy demonstrations are the primary source of data corruption; it may not handle other types of data quality issues (e.g., missing transitions, misaligned observations) as effectively.",
+      "The method requires training an additional improvement policy and reward model, which adds complexity to the overall framework.",
+      "The paper does not analyze potential negative societal impacts beyond a brief statement. While the work is foundational, it could be used in applications where robustness to noisy data might have unintended consequences (e.g., in safety-critical systems).",
+      "The experimental evaluation is limited to simulated environments; real-world validation with physical robots would strengthen the claims.",
+      "Hyperparameter sensitivity requires careful tuning, which may limit applicability in new domains.",
+      "The method requires fine-tuning during meta-test, which adds computational cost; zero-shot adaptation would be more practical."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 4,
+    "Contribution": 3,
+    "Overall": 7,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 185202,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 176242,
+    "completion_tokens": 10611,
+    "reasoning_tokens": 0,
+    "total_tokens": 195813,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.02467388,
+    "output_usd": 0.00297108,
+    "total_usd": 0.02767005
+  },
+  "elapsed_seconds": 34.045,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Accept",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B077",
+    "filename": "B077.txt",
+    "blind_text_sha256": "618eecac12bec049f3666a5f724993ee1ba4419f2094ac005720c53468e40c69",
+    "characters": 121263,
+    "full_text_saved": false
+  }
+}

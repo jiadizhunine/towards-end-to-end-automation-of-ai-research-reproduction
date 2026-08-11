@@ -1,0 +1,593 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-10T22:25:46.428945+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "max",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "meta",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper introduces LAMIR, an algorithm that learns an abstracted model of two-player zero-sum imperfect information games without chance directly from game trajectories, and uses it at test time for depth-limited look-ahead reasoning via continual resolving with CFR+ and a learned value function. The learned abstraction clusters information sets into a limited number of abstract states per public state, enabling tractable reasoning even when public states are enormous. Empirical results show that in small games the proposed method can achieve lower exploitability than RNaD when enough abstraction capacity is provided, and in larger Goofspiel variants it outperforms RNaD in head-to-head matches, achieving up to 80% win rate.",
+        "Strengths": [
+          "The paper presents a novel combination of learned models, learned abstractions, and depth-limited solving for imperfect information games, extending the MuZero-style model-learning paradigm to settings without explicit game rules.",
+          "The idea of learning a domain-independent abstraction by clustering information sets into a limited number of abstract states is interesting and has the potential to scale look-ahead reasoning to large public states.",
+          "The authors provide empirical evidence in small games that with sufficient capacity the learned model can approximate the true game dynamics, and in large games LAMIR outperforms a strong model-free baseline RNaD by a substantial margin.",
+          "The paper transparently discusses several limitations such as the absence of chance nodes, the lack of action abstraction, potential imperfect recall issues, and computational complexity, which helps frame the scope of the contribution."
+        ],
+        "Weaknesses": [
+          "Technical clarity is insufficient: key components such as the abstraction training, the dynamics network targets, and the transformation/value function mechanism are not fully specified, and the loss notation contains inconsistencies, making it difficult for an expert to reproduce the method from the paper alone.",
+          "The empirical evaluation lacks comparisons with model-based search methods that use explicit game rules (e.g., depth-limited solving with a hand-crafted abstraction or SePoT). Without such baselines, it is unclear whether the learned model and abstraction provide benefits over known game structures, or whether the observed gains are primarily due to test-time search on top of the RNaD policy.",
+          "RNaD, the main baseline, is also a component of LAMIR (used to train the strategy and transformations). Therefore, the head-to-head results may largely reflect the addition of search rather than the quality of the learned abstraction; a more informative baseline would be RNaD combined with an explicit-rule solver using the same multi-valued state value function.",
+          "The method relies on a structural assumption detailed in Appendix A.4—that the next public state depends only on the previous public state and joint action—but this is not stated as a limitation in the main text, and it limits generality to a class of games that is not clearly delineated.",
+          "The theoretical grounding is weak: the learned abstraction introduces imperfect recall, and while the paper notes that CFR convergence is not generally guaranteed, it provides no theoretical analysis or bounds for LAMIR, and the empirical evaluation is limited to A-loss recall games or small instances.",
+          "The reported exploitability experiments use a depth limit of 1 and are presented only qualitatively in figures; quantitative values are missing, and some configurations (e.g., using RNaD strategy alone as kappa) perform worse than RNaD itself, which is not thoroughly analyzed."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 2,
+        "Questions": [
+          "In Equation (1), the dynamics loss uses Lambda^I_theta(s_i^{t+k}) as the target for the predicted latent state. Since Lambda^I_theta outputs a probability distribution over the L abstract info sets (Section 4), how is this squared-error target defined in the abstract model, and are gradients from the dynamics loss blocked from Lambda^I_theta as stated?",
+          "What would be the win rate of RNaD combined with an explicit-rule continual-resolving solver (e.g., SePoT or a depth-limited CFR+ using the true game tree and the same multi-valued value function) against RNaD in II Goofspiel 10/13/15? This would isolate the benefit of the learned model and abstraction.",
+          "The appendix introduces the assumption that next public states depend only on the previous public state and joint action (A.4). Which of the evaluated games satisfy this condition, and does the method remain applicable to games such as Dark Chess or Stratego where public transitions may depend on private information?",
+          "How was the off-policy sampling probability epsilon=0.5 chosen, and what is its effect on the learned model quality and final exploitability? Was this hyperparameter tuned?",
+          "When using action history as kappa and L equal to the maximum public state size, the model is claimed to learn the exact game. In that setting, what is the remaining source of exploitability beyond reward prediction errors, and do errors in the dynamics network accumulate over longer unrolls?"
+        ],
+        "Limitations": [
+          "The method is restricted to two-player zero-sum games without chance events; this is disclosed, but extending to chance is a nontrivial direction and many important IIGs (e.g., Poker) include chance.",
+          "The learned abstraction induces imperfect recall, and CFR+ convergence is not guaranteed in general; the paper does not provide empirical analysis on games outside the A-loss recall class.",
+          "The abstraction quality depends on a hand-crafted clustering property kappa; the used choices (legal actions, RNaD strategy, action history) are heuristics and may not capture crucial strategic nuances in more complex games.",
+          "The method assumes a specific structural property of public state transitions (Appendix A.4), which is not listed among the main limitations in Section 7 and may not hold in many imperfect information games.",
+          "The computational complexity of look-ahead reasoning remains high, scaling as O(L^2 |A|^{2D} T^2) in the worst case, which limits the abstraction size L and action space size; no actual runtime numbers are provided.",
+          "The empirical evaluation is limited mostly to Goofspiel variants; the small-game experiments use depth limit 1 and no direct comparison to explicit-rule search baselines, making it difficult to assess the value of the learned abstraction in practice.",
+          "No discussion of potential negative societal impacts is included, though the technology could be misused in online gaming or deceptive settings."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper introduces LAMIR, an algorithm that learns an abstracted model of two-player zero-sum imperfect information games without chance directly from game trajectories, and uses it at test time for depth-limited look-ahead reasoning via continual resolving with CFR+ and a learned value function. The learned abstraction clusters information sets into a limited number of abstract states per public state, enabling tractable reasoning even when public states are enormous. Empirical results show that in small games the proposed method can achieve lower exploitability than RNaD when enough abstraction capacity is provided, and in larger Goofspiel variants it outperforms RNaD in head-to-head matches, achieving up to 80% win rate.\",\n  \"Strengths\": [\n    \"The paper presents a novel combination of learned models, learned abstractions, and depth-limited solving for imperfect information games, extending the MuZero-style model-learning paradigm to settings without explicit game rules.\",\n    \"The idea of learning a domain-independent abstraction by clustering information sets into a limited number of abstract states is interesting and has the potential to scale look-ahead reasoning to large public states.\",\n    \"The authors provide empirical evidence in small games that with sufficient capacity the learned model can approximate the true game dynamics, and in large games LAMIR outperforms a strong model-free baseline RNaD by a substantial margin.\",\n    \"The paper transparently discusses several limitations such as the absence of chance nodes, the lack of action abstraction, potential imperfect recall issues, and computational complexity, which helps frame the scope of the contribution.\"\n  ],\n  \"Weaknesses\": [\n    \"Technical clarity is insufficient: key components such as the abstraction training, the dynamics network targets, and the transformation/value function mechanism are not fully specified, and the loss notation contains inconsistencies, making it difficult for an expert to reproduce the method from the paper alone.\",\n    \"The empirical evaluation lacks comparisons with model-based search methods that use explicit game rules (e.g., depth-limited solving with a hand-crafted abstraction or SePoT). Without such baselines, it is unclear whether the learned model and abstraction provide benefits over known game structures, or whether the observed gains are primarily due to test-time search on top of the RNaD policy.\",\n    \"RNaD, the main baseline, is also a component of LAMIR (used to train the strategy and transformations). Therefore, the head-to-head results may largely reflect the addition of search rather than the quality of the learned abstraction; a more informative baseline would be RNaD combined with an explicit-rule solver using the same multi-valued state value function.\",\n    \"The method relies on a structural assumption detailed in Appendix A.4—that the next public state depends only on the previous public state and joint action—but this is not stated as a limitation in the main text, and it limits generality to a class of games that is not clearly delineated.\",\n    \"The theoretical grounding is weak: the learned abstraction introduces imperfect recall, and while the paper notes that CFR convergence is not generally guaranteed, it provides no theoretical analysis or bounds for LAMIR, and the empirical evaluation is limited to A-loss recall games or small instances.\",\n    \"The reported exploitability experiments use a depth limit of 1 and are presented only qualitatively in figures; quantitative values are missing, and some configurations (e.g., using RNaD strategy alone as kappa) perform worse than RNaD itself, which is not thoroughly analyzed.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"In Equation (1), the dynamics loss uses Lambda^I_theta(s_i^{t+k}) as the target for the predicted latent state. Since Lambda^I_theta outputs a probability distribution over the L abstract info sets (Section 4), how is this squared-error target defined in the abstract model, and are gradients from the dynamics loss blocked from Lambda^I_theta as stated?\",\n    \"What would be the win rate of RNaD combined with an explicit-rule continual-resolving solver (e.g., SePoT or a depth-limited CFR+ using the true game tree and the same multi-valued value function) against RNaD in II Goofspiel 10/13/15? This would isolate the benefit of the learned model and abstraction.\",\n    \"The appendix introduces the assumption that next public states depend only on the previous public state and joint action (A.4). Which of the evaluated games satisfy this condition, and does the method remain applicable to games such as Dark Chess or Stratego where public transitions may depend on private information?\",\n    \"How was the off-policy sampling probability epsilon=0.5 chosen, and what is its effect on the learned model quality and final exploitability? Was this hyperparameter tuned?\",\n    \"When using action history as kappa and L equal to the maximum public state size, the model is claimed to learn the exact game. In that setting, what is the remaining source of exploitability beyond reward prediction errors, and do errors in the dynamics network accumulate over longer unrolls?\"\n  ],\n  \"Limitations\": [\n    \"The method is restricted to two-player zero-sum games without chance events; this is disclosed, but extending to chance is a nontrivial direction and many important IIGs (e.g., Poker) include chance.\",\n    \"The learned abstraction induces imperfect recall, and CFR+ convergence is not guaranteed in general; the paper does not provide empirical analysis on games outside the A-loss recall class.\",\n    \"The abstraction quality depends on a hand-crafted clustering property kappa; the used choices (legal actions, RNaD strategy, action history) are heuristics and may not capture crucial strategic nuances in more complex games.\",\n    \"The method assumes a specific structural property of public state transitions (Appendix A.4), which is not listed among the main limitations in Section 7 and may not hold in many imperfect information games.\",\n    \"The computational complexity of look-ahead reasoning remains high, scaling as O(L^2 |A|^{2D} T^2) in the worst case, which limits the abstraction size L and action space size; no actual runtime numbers are provided.\",\n    \"The empirical evaluation is limited mostly to Goofspiel variants; the small-game experiments use depth limit 1 and no direct comparison to explicit-rule search baselines, making it difficult to assess the value of the learned abstraction in practice.\",\n    \"No discussion of potential negative societal impacts is included, though the technology could be misused in online gaming or deceptive settings.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 19849,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 19081,
+        "completion_tokens": 6019,
+        "reasoning_tokens": 4599,
+        "total_tokens": 25868
+      },
+      "attempts": 1,
+      "response_id": "022d1bc2-c487-41ae-aa19-43ffba403aa4"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper introduces LAMIR, an algorithm that learns an abstracted model of two-player zero-sum imperfect-information games without chance events directly from agent-environment interaction, removing the need for explicit game rules. The model comprises learned representation, dynamics, and legal-action functions, and an abstraction mechanism that clusters information sets into a bounded number per public state. At test time, LAMIR performs continual resolving using CFR+ on the abstract game with a learned value function based on strategy transformations. Experiments show that LAMIR achieves lower exploitability than Regularized Nash Dynamics (RNaD) in small games and improves head-to-head win rates up to 80% in large Goofspiel variants.",
+        "Strengths": [
+          "Novel combination of learned world models and abstraction for imperfect-information games, enabling look-ahead reasoning without explicit rules.",
+          "Clear articulation of why sound reasoning must operate over public states, and a principled adaptation of MuZero-style components to the imperfect-information setting.",
+          "The abstraction mechanism is domain-independent and automatically learned, making it applicable to games where traditional abstraction would require expert knowledge or intractable enumeration.",
+          "Empirical evaluation is thorough in terms of both exploitability in small games and head-to-head performance in large games, with results showing consistent improvements over RNaD.",
+          "Detailed appendices provide hyperparameters, computational costs, ablation studies, and experimental settings, aiding reproducibility."
+        ],
+        "Weaknesses": [
+          "The comparison is limited to RNaD; no direct baselines with access to true rules or other search-based methods (e.g., ReBeL, SePoT) are run, making it hard to isolate the benefit of the learned model/abstraction.",
+          "The method is explicitly limited to games without chance, and the Leduc Hold'em experiment requires domain-specific workarounds to unroll chance nodes, undermining the generality claim.",
+          "Theoretical convergence guarantees for CFR are only provided under A-loss recall abstractions, which do not hold for many games (e.g., Battleship, Dark Chess, Stratego), so the soundness of LAMIR in general settings is not established.",
+          "The abstraction quality relies on hand-crafted clustering property functions (κ) and several engineering tricks (noise, repulsion, hard/soft switching), suggesting sensitivity to hyperparameters and lack of a fully principled clustering objective.",
+          "The learned model's accuracy is not directly evaluated; only end-game performance is reported, making it unclear whether errors stem from the abstraction, dynamics, or value function.",
+          "Scalability is still limited by the size of the abstract subgame; depth limit is only 1 in experiments, and action spaces are not abstracted, so applicability to very large action spaces (e.g., poker bet sizing) remains questionable."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How does LAMIR compare against a variant that uses the true game rules during test-time solving (with the same abstraction and value function) to quantify the modeling error?",
+          "What is the isolated contribution of each loss component (dynamics, abstraction, value function, transformations)? Are there ablation studies that remove each part?",
+          "How sensitive is performance to the abstraction size L in large games? Is L=20 uniformly sufficient, or do some public states require larger L?",
+          "Does the abstraction mapping generalize to information sets not seen during training, and how does this affect robustness?",
+          "What is the impact of the off-policy bias in the value function when transformations target diverse strategies, given that importance sampling was not used in the final method?",
+          "Can the method be extended to games with larger branching factors or continuous action spaces, given the complexity formula for subgame solving?",
+          "What concrete failure modes arise when κ is poorly chosen (e.g., legal actions alone fail in some games)?"
+        ],
+        "Limitations": [
+          "The approach is designed for games without chance events; chance nodes are not modeled, which limits applicability to many real-world imperfect-information games.",
+          "Imperfect recall abstraction means CFR convergence to Nash equilibrium is not guaranteed for arbitrary games; theoretical guarantees only exist for A-loss recall games.",
+          "The clustering property function κ is hand-selected (legal actions, RNaD strategy, or action history) and may not capture all strategic nuances, especially with limited L.",
+          "Computational complexity of the look-ahead reasoning is linear in the size of the abstracted subgame, which still grows with L and depth; action abstraction is not addressed, leaving a bottleneck for large or continuous action spaces.",
+          "The empirical evaluation is limited to two no-chance games (Goofspiel and Oshi-Zumo) and one chance game with ad-hoc workarounds, which may not reflect broader applicability.",
+          "The learned value function is trained on abstract states with potentially biased reach probabilities; while importance sampling was considered, it was not used, so the effect of this bias is not fully characterized."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper introduces LAMIR, an algorithm that learns an abstracted model of two-player zero-sum imperfect-information games without chance events directly from agent-environment interaction, removing the need for explicit game rules. The model comprises learned representation, dynamics, and legal-action functions, and an abstraction mechanism that clusters information sets into a bounded number per public state. At test time, LAMIR performs continual resolving using CFR+ on the abstract game with a learned value function based on strategy transformations. Experiments show that LAMIR achieves lower exploitability than Regularized Nash Dynamics (RNaD) in small games and improves head-to-head win rates up to 80% in large Goofspiel variants.\",\n  \"Strengths\": [\n    \"Novel combination of learned world models and abstraction for imperfect-information games, enabling look-ahead reasoning without explicit rules.\",\n    \"Clear articulation of why sound reasoning must operate over public states, and a principled adaptation of MuZero-style components to the imperfect-information setting.\",\n    \"The abstraction mechanism is domain-independent and automatically learned, making it applicable to games where traditional abstraction would require expert knowledge or intractable enumeration.\",\n    \"Empirical evaluation is thorough in terms of both exploitability in small games and head-to-head performance in large games, with results showing consistent improvements over RNaD.\",\n    \"Detailed appendices provide hyperparameters, computational costs, ablation studies, and experimental settings, aiding reproducibility.\"\n  ],\n  \"Weaknesses\": [\n    \"The comparison is limited to RNaD; no direct baselines with access to true rules or other search-based methods (e.g., ReBeL, SePoT) are run, making it hard to isolate the benefit of the learned model/abstraction.\",\n    \"The method is explicitly limited to games without chance, and the Leduc Hold'em experiment requires domain-specific workarounds to unroll chance nodes, undermining the generality claim.\",\n    \"Theoretical convergence guarantees for CFR are only provided under A-loss recall abstractions, which do not hold for many games (e.g., Battleship, Dark Chess, Stratego), so the soundness of LAMIR in general settings is not established.\",\n    \"The abstraction quality relies on hand-crafted clustering property functions (κ) and several engineering tricks (noise, repulsion, hard/soft switching), suggesting sensitivity to hyperparameters and lack of a fully principled clustering objective.\",\n    \"The learned model's accuracy is not directly evaluated; only end-game performance is reported, making it unclear whether errors stem from the abstraction, dynamics, or value function.\",\n    \"Scalability is still limited by the size of the abstract subgame; depth limit is only 1 in experiments, and action spaces are not abstracted, so applicability to very large action spaces (e.g., poker bet sizing) remains questionable.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does LAMIR compare against a variant that uses the true game rules during test-time solving (with the same abstraction and value function) to quantify the modeling error?\",\n    \"What is the isolated contribution of each loss component (dynamics, abstraction, value function, transformations)? Are there ablation studies that remove each part?\",\n    \"How sensitive is performance to the abstraction size L in large games? Is L=20 uniformly sufficient, or do some public states require larger L?\",\n    \"Does the abstraction mapping generalize to information sets not seen during training, and how does this affect robustness?\",\n    \"What is the impact of the off-policy bias in the value function when transformations target diverse strategies, given that importance sampling was not used in the final method?\",\n    \"Can the method be extended to games with larger branching factors or continuous action spaces, given the complexity formula for subgame solving?\",\n    \"What concrete failure modes arise when κ is poorly chosen (e.g., legal actions alone fail in some games)?\"\n  ],\n  \"Limitations\": [\n    \"The approach is designed for games without chance events; chance nodes are not modeled, which limits applicability to many real-world imperfect-information games.\",\n    \"Imperfect recall abstraction means CFR convergence to Nash equilibrium is not guaranteed for arbitrary games; theoretical guarantees only exist for A-loss recall games.\",\n    \"The clustering property function κ is hand-selected (legal actions, RNaD strategy, or action history) and may not capture all strategic nuances, especially with limited L.\",\n    \"Computational complexity of the look-ahead reasoning is linear in the size of the abstracted subgame, which still grows with L and depth; action abstraction is not addressed, leaving a bottleneck for large or continuous action spaces.\",\n    \"The empirical evaluation is limited to two no-chance games (Goofspiel and Oshi-Zumo) and one chance game with ad-hoc workarounds, which may not reflect broader applicability.\",\n    \"The learned value function is trained on abstract states with potentially biased reach probabilities; while importance sampling was considered, it was not used, so the effect of this bias is not fully characterized.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 19849,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 19081,
+        "completion_tokens": 3188,
+        "reasoning_tokens": 2066,
+        "total_tokens": 23037
+      },
+      "attempts": 1,
+      "response_id": "7663c02e-fc7e-41ce-a106-553ca937775b"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper introduces LAMIR, an algorithm that learns an abstracted model of two-player zero-sum imperfect information games (without chance) directly from agent-environment interaction, and uses this learned model to perform test-time look-ahead reasoning. The model comprises learned representation, dynamics, legal-action, and abstraction functions. LAMIR clusters information sets into a limited number of abstract information sets per public state, making depth-limited solving with continual resolving and CFR+ tractable. The paper evaluates LAMIR on small games via exploitability and on large Imperfect Information Goofspiel variants via head-to-head play, reporting improvements over a Regularized Nash Dynamics (RNaD) baseline.",
+        "Strengths": [
+          "The paper tackles an important and relatively unexplored problem: extending MuZero-style learned planning models to imperfect information games, removing the need for explicit game rules and enabling search in intractably large public states.",
+          "The proposed method integrates several key components—learned dynamics, legal action prediction, automatic information-set abstraction, depth-limited solving, and continual resolving—into a coherent pipeline, which is a novel combination.",
+          "Empirical results are promising: in small games LAMIR can achieve lower exploitability than RNaD, and in large Goofspiel games it substantially outperforms RNaD in head-to-head play, achieving up to 80% win rate.",
+          "The authors provide useful ablations in the appendix, separately evaluating the abstraction quality, the learned dynamics, and the full LAMIR, which helps decompose the contributions.",
+          "The writing is generally clear and the related work is adequately covered, accurately situating the contribution relative to direct policy optimization, look-ahead reasoning, and model learning."
+        ],
+        "Weaknesses": [
+          "There are no formal guarantees or theoretical bounds on the quality of the learned abstraction, and CFR convergence in imperfect-recall games is only assured for A-loss recall abstractions; many games (e.g., Battleship, Dark Chess, Stratego) do not satisfy this condition, so LAMIR's effectiveness is not theoretically justified in general.",
+          "The abstraction quality depends critically on a handcrafted clustering property κ (legal actions, RNaD strategy, action history); the paper does not learn κ, and the experiments only test these simple proxies, leaving open whether the approach generalizes to games where these proxies are insufficient.",
+          "The empirical comparison is narrow: LAMIR is only compared to RNaD (and one indirect comparison to SePoT from prior work). No direct comparison to other model-based search methods or state-of-the-art look-ahead algorithms is provided, and exact exploitability is only computed for small games.",
+          "The method does not model chance nodes, and the Leduc Hold'em experiment required domain-specific workarounds to unroll chance events, limiting the claimed generality to chance-free games only.",
+          "The value function is trained on aggregated abstract information sets, and the paper acknowledges an importance-sampling bias but dismisses it without thorough analysis; this could be a source of significant error when reach probabilities differ substantially.",
+          "The paper lacks sensitivity analysis for key hyperparameters such as abstraction size L, depth limit, CFR+ iterations, number of transformations T, and clustering temperature γ, which makes it hard to assess robustness."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How does LAMIR compare against strong model-based search baselines (e.g., ReBeL, Student of Games, or SePoT) in the same games when explicit rules are available?",
+          "Can the clustering property κ be learned end-to-end, and would that improve abstraction quality in games where current handcrafted proxies fail?",
+          "What is the sensitivity of LAMIR to the number of abstract information sets L, depth limit D, CFR+ iterations, and number of transformations T?",
+          "How does LAMIR perform in games that do not satisfy the A-loss recall condition after abstraction, and does the CFR-based solving degrade gracefully or fail catastrophically?",
+          "If chance events are handled by unrolling them (as in the Leduc experiment), how does the method scale to games with many chance outcomes, and does the abstraction still remain tractable?"
+        ],
+        "Limitations": [
+          "No theoretical convergence or approximation guarantees for the learned abstraction except in restrictive A-loss recall settings.",
+          "The method is limited to two-player zero-sum games without chance events; many real-world imperfect information games include chance.",
+          "Action spaces are not abstracted, so games with very large or continuous action sets remain a bottleneck.",
+          "The learned abstraction is only as good as the handcrafted κ function, and no method for learning κ is proposed.",
+          "The computational complexity of look-ahead reasoning still grows with L and depth, limiting the feasible abstraction size and horizon.",
+          "Evaluation is confined to Goofspiel, Oshi-Zumo, and Leduc; no results on more complex games like Stratego or Dark Chess, where the approach could be more impactful.",
+          "Potential negative societal impacts include the possibility of using such AI in gambling-related games or cheating in online games, although the paper is purely game-focused and no direct harmful use is described."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 5,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper introduces LAMIR, an algorithm that learns an abstracted model of two-player zero-sum imperfect information games (without chance) directly from agent-environment interaction, and uses this learned model to perform test-time look-ahead reasoning. The model comprises learned representation, dynamics, legal-action, and abstraction functions. LAMIR clusters information sets into a limited number of abstract information sets per public state, making depth-limited solving with continual resolving and CFR+ tractable. The paper evaluates LAMIR on small games via exploitability and on large Imperfect Information Goofspiel variants via head-to-head play, reporting improvements over a Regularized Nash Dynamics (RNaD) baseline.\",\n  \"Strengths\": [\n    \"The paper tackles an important and relatively unexplored problem: extending MuZero-style learned planning models to imperfect information games, removing the need for explicit game rules and enabling search in intractably large public states.\",\n    \"The proposed method integrates several key components—learned dynamics, legal action prediction, automatic information-set abstraction, depth-limited solving, and continual resolving—into a coherent pipeline, which is a novel combination.\",\n    \"Empirical results are promising: in small games LAMIR can achieve lower exploitability than RNaD, and in large Goofspiel games it substantially outperforms RNaD in head-to-head play, achieving up to 80% win rate.\",\n    \"The authors provide useful ablations in the appendix, separately evaluating the abstraction quality, the learned dynamics, and the full LAMIR, which helps decompose the contributions.\",\n    \"The writing is generally clear and the related work is adequately covered, accurately situating the contribution relative to direct policy optimization, look-ahead reasoning, and model learning.\"\n  ],\n  \"Weaknesses\": [\n    \"There are no formal guarantees or theoretical bounds on the quality of the learned abstraction, and CFR convergence in imperfect-recall games is only assured for A-loss recall abstractions; many games (e.g., Battleship, Dark Chess, Stratego) do not satisfy this condition, so LAMIR's effectiveness is not theoretically justified in general.\",\n    \"The abstraction quality depends critically on a handcrafted clustering property κ (legal actions, RNaD strategy, action history); the paper does not learn κ, and the experiments only test these simple proxies, leaving open whether the approach generalizes to games where these proxies are insufficient.\",\n    \"The empirical comparison is narrow: LAMIR is only compared to RNaD (and one indirect comparison to SePoT from prior work). No direct comparison to other model-based search methods or state-of-the-art look-ahead algorithms is provided, and exact exploitability is only computed for small games.\",\n    \"The method does not model chance nodes, and the Leduc Hold'em experiment required domain-specific workarounds to unroll chance events, limiting the claimed generality to chance-free games only.\",\n    \"The value function is trained on aggregated abstract information sets, and the paper acknowledges an importance-sampling bias but dismisses it without thorough analysis; this could be a source of significant error when reach probabilities differ substantially.\",\n    \"The paper lacks sensitivity analysis for key hyperparameters such as abstraction size L, depth limit, CFR+ iterations, number of transformations T, and clustering temperature γ, which makes it hard to assess robustness.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does LAMIR compare against strong model-based search baselines (e.g., ReBeL, Student of Games, or SePoT) in the same games when explicit rules are available?\",\n    \"Can the clustering property κ be learned end-to-end, and would that improve abstraction quality in games where current handcrafted proxies fail?\",\n    \"What is the sensitivity of LAMIR to the number of abstract information sets L, depth limit D, CFR+ iterations, and number of transformations T?\",\n    \"How does LAMIR perform in games that do not satisfy the A-loss recall condition after abstraction, and does the CFR-based solving degrade gracefully or fail catastrophically?\",\n    \"If chance events are handled by unrolling them (as in the Leduc experiment), how does the method scale to games with many chance outcomes, and does the abstraction still remain tractable?\"\n  ],\n  \"Limitations\": [\n    \"No theoretical convergence or approximation guarantees for the learned abstraction except in restrictive A-loss recall settings.\",\n    \"The method is limited to two-player zero-sum games without chance events; many real-world imperfect information games include chance.\",\n    \"Action spaces are not abstracted, so games with very large or continuous action sets remain a bottleneck.\",\n    \"The learned abstraction is only as good as the handcrafted κ function, and no method for learning κ is proposed.\",\n    \"The computational complexity of look-ahead reasoning still grows with L and depth, limiting the feasible abstraction size and horizon.\",\n    \"Evaluation is confined to Goofspiel, Oshi-Zumo, and Leduc; no results on more complex games like Stratego or Dark Chess, where the approach could be more impactful.\",\n    \"Potential negative societal impacts include the possibility of using such AI in gambling-related games or cheating in online games, although the paper is purely game-focused and no direct harmful use is described.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 5,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 19849,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 19081,
+        "completion_tokens": 3423,
+        "reasoning_tokens": 2254,
+        "total_tokens": 23272
+      },
+      "attempts": 1,
+      "response_id": "8bb3d611-842e-4195-9da5-c6cb15c83e8e"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper introduces LAMIR, an algorithm for test-time look-ahead reasoning in two-player zero-sum imperfect-information games without chance events. LAMIR learns an abstracted model of the game directly from agent-environment interaction, using a MuZero-style representation/dynamics function, a learned information-set abstraction that limits each public state to at most L abstract information sets, and a multi-valued-state value function to enable depth-limited continual resolving with CFR+. Experiments in small games show lower exploitability than concurrently trained RNaD when abstraction capacity is sufficient, and in larger II Goofspiel games LAMIR achieves up to 80% win rate against RNaD while requiring no explicit game rules or domain-specific abstraction.",
+        "Strengths": [
+          "Novel and meaningful combination of learned models and learned abstractions for imperfect-information games, removing the need for explicit game rules and enabling scalable depth-limited reasoning.",
+          "Clear identification of the need to reason over public-state-wide distributions and a practical mechanism to cap subgame size via learned clustering.",
+          "Empirical results demonstrate significant improvements over RNaD in II Goofspiel at scales where exact search is intractable, including win rates up to 80%.",
+          "The paper includes useful ablations and additional experiments (Oshi-Zumo, Leduc Hold'em, tabular clustering) that explore the effect of abstraction capacity and cluster properties.",
+          "Honest discussion of key limitations, including chance events, imperfect recall, and the absence of action abstraction."
+        ],
+        "Weaknesses": [
+          "Large-game evaluation is restricted to a single game family (II Goofspiel) and only against RNaD; no comparison to other search-based methods (e.g., ReBeL, Student of Games, SePoT) or domain-specific abstraction baselines, so the practical significance is not fully established.",
+          "No formal guarantees for the learned abstraction's performance; CFR convergence requires perfect recall or A-loss recall, which is not guaranteed in general and is only discussed but not verified for the specific learned abstractions.",
+          "The value function is trained on abstract information sets with an acknowledged off-policy importance-sampling bias; the paper claims it did not affect results but provides no quantitative ablation or evidence.",
+          "Several implementation details are underspecified (exact inputs to the cluster property function, hard/soft clustering thresholds, public-state decoder, dynamics factorization), making reproduction difficult without code.",
+          "The clustering property κ is hand-crafted rather than learned, and performance varies noticeably with the chosen κ, weakening the claim of a fully domain-independent method."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 3,
+        "Questions": [
+          "Could LAMIR be compared against ReBeL/Student of Games/SePoT in II Goofspiel 13–15, or against hand-crafted abstraction baselines, to isolate the benefit of the learned abstraction?",
+          "What quantitative evidence supports the claim that ignoring importance sampling when training the abstract-state value function does not affect performance?",
+          "How exactly is κ(real information set) computed for the 'legal actions' and 'RNaD strategy' variants, and is κ available at test time in a domain-independent way?",
+          "Does the learned abstraction in II Goofspiel satisfy the A-loss recall condition, and what is the measured regret/exploitability of the final LAMIR strategy in small games under each κ?",
+          "What is the wall-clock time and memory overhead of LAMIR's test-time reasoning in the large games, and how does it compare to directly playing the RNaD policy?"
+        ],
+        "Limitations": [
+          "LAMIR does not model chance events; stochastic games require ad hoc workarounds and are explicitly out of scope.",
+          "The computational cost of CFR+ over abstract subgames grows quickly with L, action count, and depth, and no action abstraction is integrated.",
+          "Learned abstractions may violate perfect recall, so CFR convergence guarantees are generally unavailable outside A-loss recall games.",
+          "Large-scale evaluation only covers II Goofspiel; generalization to other large imperfect-information games (e.g., Stratego, Dark Chess, Battleship) is untested.",
+          "The choice of κ is a hand-designed proxy; there is no learned method for κ, so abstraction quality depends on an external design decision.",
+          "Test-time reasoning cost is not reported, making it difficult to assess practical deployability."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 3,
+        "Overall": 4,
+        "Confidence": 3,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper introduces LAMIR, an algorithm for test-time look-ahead reasoning in two-player zero-sum imperfect-information games without chance events. LAMIR learns an abstracted model of the game directly from agent-environment interaction, using a MuZero-style representation/dynamics function, a learned information-set abstraction that limits each public state to at most L abstract information sets, and a multi-valued-state value function to enable depth-limited continual resolving with CFR+. Experiments in small games show lower exploitability than concurrently trained RNaD when abstraction capacity is sufficient, and in larger II Goofspiel games LAMIR achieves up to 80% win rate against RNaD while requiring no explicit game rules or domain-specific abstraction.\",\n  \"Strengths\": [\n    \"Novel and meaningful combination of learned models and learned abstractions for imperfect-information games, removing the need for explicit game rules and enabling scalable depth-limited reasoning.\",\n    \"Clear identification of the need to reason over public-state-wide distributions and a practical mechanism to cap subgame size via learned clustering.\",\n    \"Empirical results demonstrate significant improvements over RNaD in II Goofspiel at scales where exact search is intractable, including win rates up to 80%.\",\n    \"The paper includes useful ablations and additional experiments (Oshi-Zumo, Leduc Hold'em, tabular clustering) that explore the effect of abstraction capacity and cluster properties.\",\n    \"Honest discussion of key limitations, including chance events, imperfect recall, and the absence of action abstraction.\"\n  ],\n  \"Weaknesses\": [\n    \"Large-game evaluation is restricted to a single game family (II Goofspiel) and only against RNaD; no comparison to other search-based methods (e.g., ReBeL, Student of Games, SePoT) or domain-specific abstraction baselines, so the practical significance is not fully established.\",\n    \"No formal guarantees for the learned abstraction's performance; CFR convergence requires perfect recall or A-loss recall, which is not guaranteed in general and is only discussed but not verified for the specific learned abstractions.\",\n    \"The value function is trained on abstract information sets with an acknowledged off-policy importance-sampling bias; the paper claims it did not affect results but provides no quantitative ablation or evidence.\",\n    \"Several implementation details are underspecified (exact inputs to the cluster property function, hard/soft clustering thresholds, public-state decoder, dynamics factorization), making reproduction difficult without code.\",\n    \"The clustering property κ is hand-crafted rather than learned, and performance varies noticeably with the chosen κ, weakening the claim of a fully domain-independent method.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"Could LAMIR be compared against ReBeL/Student of Games/SePoT in II Goofspiel 13–15, or against hand-crafted abstraction baselines, to isolate the benefit of the learned abstraction?\",\n    \"What quantitative evidence supports the claim that ignoring importance sampling when training the abstract-state value function does not affect performance?\",\n    \"How exactly is κ(real information set) computed for the 'legal actions' and 'RNaD strategy' variants, and is κ available at test time in a domain-independent way?\",\n    \"Does the learned abstraction in II Goofspiel satisfy the A-loss recall condition, and what is the measured regret/exploitability of the final LAMIR strategy in small games under each κ?\",\n    \"What is the wall-clock time and memory overhead of LAMIR's test-time reasoning in the large games, and how does it compare to directly playing the RNaD policy?\"\n  ],\n  \"Limitations\": [\n    \"LAMIR does not model chance events; stochastic games require ad hoc workarounds and are explicitly out of scope.\",\n    \"The computational cost of CFR+ over abstract subgames grows quickly with L, action count, and depth, and no action abstraction is integrated.\",\n    \"Learned abstractions may violate perfect recall, so CFR convergence guarantees are generally unavailable outside A-loss recall games.\",\n    \"Large-scale evaluation only covers II Goofspiel; generalization to other large imperfect-information games (e.g., Stratego, Dark Chess, Battleship) is untested.\",\n    \"The choice of κ is a hand-designed proxy; there is no learned method for κ, so abstraction quality depends on an external design decision.\",\n    \"Test-time reasoning cost is not reported, making it difficult to assess practical deployability.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 3,\n  \"Overall\": 4,\n  \"Confidence\": 3,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 19849,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 19081,
+        "completion_tokens": 4285,
+        "reasoning_tokens": 3276,
+        "total_tokens": 24134
+      },
+      "attempts": 1,
+      "response_id": "57852fd3-c4a7-4a14-83a4-27ca00359d05"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper introduces LAMIR, an algorithm that learns an abstracted model of two-player zero-sum imperfect-information games without chance events directly from agent-environment interaction. LAMIR consists of representation, dynamics, legal action, value, and transformation functions. During training, it clusters information sets in each public state into L abstract information sets using a soft clustering objective. At test time, it performs depth-limited CFR+ search in the learned abstract game with a value function over transformed strategies, enabling continual resolving. Experiments show that LAMIR achieves lower exploitability than RNaD in small games and significantly higher win rates in large games like Imperfect Information Goofspiel.",
+        "Strengths": [
+          "Novel combination of learned model-based planning (MuZero-style) and depth-limited solving for imperfect-information games, which does not require explicit game rules.",
+          "Learns a domain-independent abstraction by clustering information sets, making look-ahead reasoning tractable in games with intractably large public states.",
+          "Empirical results show LAMIR outperforms RNaD, a strong model-free baseline, in both small games (lower exploitability) and large games (up to 80% win rate).",
+          "The paper identifies the key components of a learned model for imperfect-information games and provides a training procedure.",
+          "Detailed appendix includes hyperparameters, ablations, and computational resource usage, aiding reproducibility."
+        ],
+        "Weaknesses": [
+          "Evaluation is limited to II Goofspiel, Oshi-Zumo, and Leduc (with a domain-specific workaround). No comparison against state-of-the-art search-based methods like ReBeL, Student of Games, or SePoT in large games.",
+          "The method assumes games without chance events, which restricts its applicability; no extension to chance events is proposed.",
+          "The clustering property κ is hand-crafted (legal actions, RNaD strategy, action history) rather than learned, potentially limiting generality and optimality.",
+          "The technical description of the dynamics network in the appendix uses a non-differentiable argmax selection for the next abstract information set, and it is unclear how gradients propagate to the predicted distribution; without an additional mechanism like straight-through estimation, the dynamics may not learn properly.",
+          "The value function trained on abstract states may be biased due to many-to-one mapping; the paper mentions this but provides no rigorous analysis or correction.",
+          "Win-rate comparisons against RNaD in large games do not report exploitability or distance to equilibrium, and error bars appear to be over matches rather than random seeds.",
+          "The paper does not compare against a model that uses explicit rules with the same abstraction, so it is unclear how much of the improvement comes from the learned model versus the abstraction."
+        ],
+        "Originality": 4,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How are gradients propagated through the argmax selection in the modified dynamics network? Is a straight-through estimator used, or is there an additional loss on the distribution over abstract states?",
+          "What exactly is the target for the latent state prediction L_D when the unroll reaches a terminal state? Does the trajectory include terminal information sets for both players?",
+          "In Eq (3), what are the exact inputs to the cross-entropy loss? The notation is ambiguous; please clarify dimensions and targets.",
+          "How is the strategy function π_θ initialized and trained? Is it the same network as the RNaD baseline, or a separate one? In head-to-head experiments, when κ=RNaD strategy, is the comparison RNaD the same or different from the one used to compute κ?",
+          "At test time, how does LAMIR handle the opponent's information set in the search tree? Specifically, how is the opponent's abstract information set chosen when the dynamics function requires both players' latent states?",
+          "Why is the depth limit set to 1 in all experiments? Does LAMIR's performance improve with larger depth limits, and how does the computational cost scale?",
+          "The paper claims 'with sufficient capacity, LAMIR learns the exact underlying game structure.' What is the quantitative exploitability achieved with the largest L? Is it close to zero, and what is the remaining error attributed to?"
+        ],
+        "Limitations": [
+          "Only applicable to two-player zero-sum games without chance events.",
+          "Relies on hand-crafted clustering property κ; not fully learned.",
+          "Abstract model may violate perfect recall, and CFR convergence is not guaranteed for all games (only for A-loss recall subclasses).",
+          "No action space abstraction; large or continuous action spaces remain a bottleneck.",
+          "Computational cost of CFR in the abstract subgame is still exponential in depth and linear in L, limiting scalability.",
+          "The value function trained on abstract states is a heuristic approximation and may be biased.",
+          "No negative societal impacts identified."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper introduces LAMIR, an algorithm that learns an abstracted model of two-player zero-sum imperfect-information games without chance events directly from agent-environment interaction. LAMIR consists of representation, dynamics, legal action, value, and transformation functions. During training, it clusters information sets in each public state into L abstract information sets using a soft clustering objective. At test time, it performs depth-limited CFR+ search in the learned abstract game with a value function over transformed strategies, enabling continual resolving. Experiments show that LAMIR achieves lower exploitability than RNaD in small games and significantly higher win rates in large games like Imperfect Information Goofspiel.\",\n  \"Strengths\": [\n    \"Novel combination of learned model-based planning (MuZero-style) and depth-limited solving for imperfect-information games, which does not require explicit game rules.\",\n    \"Learns a domain-independent abstraction by clustering information sets, making look-ahead reasoning tractable in games with intractably large public states.\",\n    \"Empirical results show LAMIR outperforms RNaD, a strong model-free baseline, in both small games (lower exploitability) and large games (up to 80% win rate).\",\n    \"The paper identifies the key components of a learned model for imperfect-information games and provides a training procedure.\",\n    \"Detailed appendix includes hyperparameters, ablations, and computational resource usage, aiding reproducibility.\"\n  ],\n  \"Weaknesses\": [\n    \"Evaluation is limited to II Goofspiel, Oshi-Zumo, and Leduc (with a domain-specific workaround). No comparison against state-of-the-art search-based methods like ReBeL, Student of Games, or SePoT in large games.\",\n    \"The method assumes games without chance events, which restricts its applicability; no extension to chance events is proposed.\",\n    \"The clustering property κ is hand-crafted (legal actions, RNaD strategy, action history) rather than learned, potentially limiting generality and optimality.\",\n    \"The technical description of the dynamics network in the appendix uses a non-differentiable argmax selection for the next abstract information set, and it is unclear how gradients propagate to the predicted distribution; without an additional mechanism like straight-through estimation, the dynamics may not learn properly.\",\n    \"The value function trained on abstract states may be biased due to many-to-one mapping; the paper mentions this but provides no rigorous analysis or correction.\",\n    \"Win-rate comparisons against RNaD in large games do not report exploitability or distance to equilibrium, and error bars appear to be over matches rather than random seeds.\",\n    \"The paper does not compare against a model that uses explicit rules with the same abstraction, so it is unclear how much of the improvement comes from the learned model versus the abstraction.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How are gradients propagated through the argmax selection in the modified dynamics network? Is a straight-through estimator used, or is there an additional loss on the distribution over abstract states?\",\n    \"What exactly is the target for the latent state prediction L_D when the unroll reaches a terminal state? Does the trajectory include terminal information sets for both players?\",\n    \"In Eq (3), what are the exact inputs to the cross-entropy loss? The notation is ambiguous; please clarify dimensions and targets.\",\n    \"How is the strategy function π_θ initialized and trained? Is it the same network as the RNaD baseline, or a separate one? In head-to-head experiments, when κ=RNaD strategy, is the comparison RNaD the same or different from the one used to compute κ?\",\n    \"At test time, how does LAMIR handle the opponent's information set in the search tree? Specifically, how is the opponent's abstract information set chosen when the dynamics function requires both players' latent states?\",\n    \"Why is the depth limit set to 1 in all experiments? Does LAMIR's performance improve with larger depth limits, and how does the computational cost scale?\",\n    \"The paper claims 'with sufficient capacity, LAMIR learns the exact underlying game structure.' What is the quantitative exploitability achieved with the largest L? Is it close to zero, and what is the remaining error attributed to?\"\n  ],\n  \"Limitations\": [\n    \"Only applicable to two-player zero-sum games without chance events.\",\n    \"Relies on hand-crafted clustering property κ; not fully learned.\",\n    \"Abstract model may violate perfect recall, and CFR convergence is not guaranteed for all games (only for A-loss recall subclasses).\",\n    \"No action space abstraction; large or continuous action spaces remain a bottleneck.\",\n    \"Computational cost of CFR in the abstract subgame is still exponential in depth and linear in L, limiting scalability.\",\n    \"The value function trained on abstract states is a heuristic approximation and may be biased.\",\n    \"No negative societal impacts identified.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 19849,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 19081,
+        "completion_tokens": 8955,
+        "reasoning_tokens": 7859,
+        "total_tokens": 28804
+      },
+      "attempts": 1,
+      "response_id": "f7f07857-3954-4dfd-9ec9-c81bea14322e"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 3,
+      "Reject": 2
+    },
+    "unanimous_decision": false,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          3,
+          4,
+          3,
+          3,
+          4
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          2,
+          3,
+          2,
+          2,
+          2
+        ],
+        "mean": 2.2,
+        "rounded_mean": 2,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          2,
+          3,
+          3,
+          2,
+          3
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          2,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Soundness": {
+        "values": [
+          2,
+          3,
+          2,
+          2,
+          2
+        ],
+        "mean": 2.2,
+        "rounded_mean": 2,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          2,
+          3,
+          3,
+          2,
+          3
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          2,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          4,
+          6,
+          5,
+          4,
+          6
+        ],
+        "mean": 5,
+        "rounded_mean": 5,
+        "population_sd": 0.894,
+        "min": 4,
+        "max": 6
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          3,
+          4
+        ],
+        "mean": 3.8,
+        "rounded_mean": 4,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper introduces LAMIR, a method for learning an abstracted model of two-player zero-sum imperfect-information games without chance events directly from agent-environment interaction. It uses a MuZero-style representation/dynamics network, learns to cluster information sets into a bounded number of abstract information sets per public state, and performs depth-limited continual resolving with CFR+ at test time using a learned value function. Experiments show improved exploitability in small games and higher win rates against RNaD in large Goofspiel variants.",
+      "Strengths": [
+        "Novel combination of learned world models and learned abstraction for imperfect-information games, removing the need for explicit game rules and enabling search in large public-state spaces.",
+        "Proposes a domain-independent abstraction method that clusters information sets, making depth-limited solving tractable without expert-designed abstractions.",
+        "Empirical results demonstrate that LAMIR outperforms a strong model-free baseline (RNaD) in both small and large games, with up to 80% win rate in head-to-head matches.",
+        "The paper clearly identifies the challenge of reasoning over public-state-wide distributions and presents a coherent training and test-time pipeline.",
+        "Detailed appendices include ablations and hyperparameters to aid reproducibility."
+      ],
+      "Weaknesses": [
+        "Empirical evaluation is narrow: only comparisons to RNaD, with no strong model-based search baselines (e.g., ReBeL, SePoT, or explicit-rule solvers using the same abstraction), making it unclear whether gains are from the learned model/abstraction or from search.",
+        "The method lacks theoretical guarantees; CFR convergence is only ensured under A-loss recall abstractions, which are not guaranteed for the learned abstractions in general, and no analysis is provided for the evaluated games.",
+        "The clustering property κ is hand-crafted (legal actions, RNaD strategy, action history) rather than learned, and performance varies significantly with the choice of κ, weakening the claim of a fully domain-independent method.",
+        "Several technical details are underspecified, including the gradient propagation through the argmax in the dynamics network, exact loss formulations, and the public-state decoder, making reproduction difficult without code.",
+        "The method does not model chance events, and the Leduc Hold'em experiment requires ad-hoc workarounds, limiting applicability to a restricted class of games.",
+        "No sensitivity analysis is provided for key hyperparameters (abstraction size L, depth limit, CFR+ iterations, number of transformations), and the depth limit is only 1 in experiments."
+      ],
+      "Originality": 3,
+      "Quality": 2,
+      "Clarity": 2,
+      "Significance": 3,
+      "Questions": [
+        "How does LAMIR compare against a variant that uses explicit game rules during test-time solving with the same abstraction and value function, to isolate the benefit of the learned model and abstraction?",
+        "What is the quantitative sensitivity to the abstraction size L, depth limit, CFR+ iterations, and clustering hyperparameters? Are there any systematic ablation studies?",
+        "How are gradients propagated through the non-differentiable selection of the next abstract information set in the dynamics network? Is a straight-through estimator used?",
+        "Does the learned abstraction in the evaluated games satisfy the A-loss recall condition, and what is the measured regret/exploitability for different κ choices?",
+        "Can the method be extended to games with chance events more naturally, and how does it scale to larger action spaces or continuous actions?",
+        "What is the wall-clock time and memory overhead of LAMIR's test-time reasoning in large games compared to simply using the RNaD policy?"
+      ],
+      "Limitations": [
+        "The method is restricted to two-player zero-sum games without chance events; stochastic games require domain-specific workarounds.",
+        "Learned abstractions can violate perfect recall, and no convergence guarantees are provided outside the A-loss recall class.",
+        "The abstraction quality depends on a hand-crafted clustering property κ, which is not learned and may miss strategic nuances in complex games.",
+        "The computational complexity of look-ahead reasoning still grows with L and depth, and action abstraction is not handled, limiting scalability to large or continuous action spaces.",
+        "The value function is trained on abstracted information sets with a potentially biased off-policy distribution; the paper dismisses the bias without rigorous analysis.",
+        "Large-scale evaluation is limited to Imperfect Information Goofspiel; no results on other large games like Dark Chess or Stratego.",
+        "The paper does not discuss potential negative societal impacts of using such AI in deceptive or gambling applications, though none are immediate."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 2,
+      "Presentation": 2,
+      "Contribution": 3,
+      "Overall": 4,
+      "Confidence": 4,
+      "Decision": "Reject"
+    },
+    "raw_response": "{\n  \"Summary\": \"The paper introduces LAMIR, a method for learning an abstracted model of two-player zero-sum imperfect-information games without chance events directly from agent-environment interaction. It uses a MuZero-style representation/dynamics network, learns to cluster information sets into a bounded number of abstract information sets per public state, and performs depth-limited continual resolving with CFR+ at test time using a learned value function. Experiments show improved exploitability in small games and higher win rates against RNaD in large Goofspiel variants.\",\n  \"Strengths\": [\n    \"Novel combination of learned world models and learned abstraction for imperfect-information games, removing the need for explicit game rules and enabling search in large public-state spaces.\",\n    \"Proposes a domain-independent abstraction method that clusters information sets, making depth-limited solving tractable without expert-designed abstractions.\",\n    \"Empirical results demonstrate that LAMIR outperforms a strong model-free baseline (RNaD) in both small and large games, with up to 80% win rate in head-to-head matches.\",\n    \"The paper clearly identifies the challenge of reasoning over public-state-wide distributions and presents a coherent training and test-time pipeline.\",\n    \"Detailed appendices include ablations and hyperparameters to aid reproducibility.\"\n  ],\n  \"Weaknesses\": [\n    \"Empirical evaluation is narrow: only comparisons to RNaD, with no strong model-based search baselines (e.g., ReBeL, SePoT, or explicit-rule solvers using the same abstraction), making it unclear whether gains are from the learned model/abstraction or from search.\",\n    \"The method lacks theoretical guarantees; CFR convergence is only ensured under A-loss recall abstractions, which are not guaranteed for the learned abstractions in general, and no analysis is provided for the evaluated games.\",\n    \"The clustering property κ is hand-crafted (legal actions, RNaD strategy, action history) rather than learned, and performance varies significantly with the choice of κ, weakening the claim of a fully domain-independent method.\",\n    \"Several technical details are underspecified, including the gradient propagation through the argmax in the dynamics network, exact loss formulations, and the public-state decoder, making reproduction difficult without code.\",\n    \"The method does not model chance events, and the Leduc Hold'em experiment requires ad-hoc workarounds, limiting applicability to a restricted class of games.\",\n    \"No sensitivity analysis is provided for key hyperparameters (abstraction size L, depth limit, CFR+ iterations, number of transformations), and the depth limit is only 1 in experiments.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does LAMIR compare against a variant that uses explicit game rules during test-time solving with the same abstraction and value function, to isolate the benefit of the learned model and abstraction?\",\n    \"What is the quantitative sensitivity to the abstraction size L, depth limit, CFR+ iterations, and clustering hyperparameters? Are there any systematic ablation studies?\",\n    \"How are gradients propagated through the non-differentiable selection of the next abstract information set in the dynamics network? Is a straight-through estimator used?\",\n    \"Does the learned abstraction in the evaluated games satisfy the A-loss recall condition, and what is the measured regret/exploitability for different κ choices?\",\n    \"Can the method be extended to games with chance events more naturally, and how does it scale to larger action spaces or continuous actions?\",\n    \"What is the wall-clock time and memory overhead of LAMIR's test-time reasoning in large games compared to simply using the RNaD policy?\"\n  ],\n  \"Limitations\": [\n    \"The method is restricted to two-player zero-sum games without chance events; stochastic games require domain-specific workarounds.\",\n    \"Learned abstractions can violate perfect recall, and no convergence guarantees are provided outside the A-loss recall class.\",\n    \"The abstraction quality depends on a hand-crafted clustering property κ, which is not learned and may miss strategic nuances in complex games.\",\n    \"The computational complexity of look-ahead reasoning still grows with L and depth, and action abstraction is not handled, limiting scalability to large or continuous action spaces.\",\n    \"The value function is trained on abstracted information sets with a potentially biased off-policy distribution; the paper dismisses the bias without rigorous analysis.\",\n    \"Large-scale evaluation is limited to Imperfect Information Goofspiel; no results on other large games like Dark Chess or Stratego.\",\n    \"The paper does not discuss potential negative societal impacts of using such AI in deceptive or gambling applications, though none are immediate.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 3,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+    "usage": {
+      "prompt_tokens": 6631,
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 6375,
+      "completion_tokens": 3162,
+      "reasoning_tokens": 2132,
+      "total_tokens": 9793
+    },
+    "attempts": 1,
+    "response_id": "7ed3d0de-8ac4-4558-a5cf-39da33e2fefe"
+  },
+  "final_review": {
+    "Summary": "The paper introduces LAMIR, a method for learning an abstracted model of two-player zero-sum imperfect-information games without chance events directly from agent-environment interaction. It uses a MuZero-style representation/dynamics network, learns to cluster information sets into a bounded number of abstract information sets per public state, and performs depth-limited continual resolving with CFR+ at test time using a learned value function. Experiments show improved exploitability in small games and higher win rates against RNaD in large Goofspiel variants.",
+    "Strengths": [
+      "Novel combination of learned world models and learned abstraction for imperfect-information games, removing the need for explicit game rules and enabling search in large public-state spaces.",
+      "Proposes a domain-independent abstraction method that clusters information sets, making depth-limited solving tractable without expert-designed abstractions.",
+      "Empirical results demonstrate that LAMIR outperforms a strong model-free baseline (RNaD) in both small and large games, with up to 80% win rate in head-to-head matches.",
+      "The paper clearly identifies the challenge of reasoning over public-state-wide distributions and presents a coherent training and test-time pipeline.",
+      "Detailed appendices include ablations and hyperparameters to aid reproducibility."
+    ],
+    "Weaknesses": [
+      "Empirical evaluation is narrow: only comparisons to RNaD, with no strong model-based search baselines (e.g., ReBeL, SePoT, or explicit-rule solvers using the same abstraction), making it unclear whether gains are from the learned model/abstraction or from search.",
+      "The method lacks theoretical guarantees; CFR convergence is only ensured under A-loss recall abstractions, which are not guaranteed for the learned abstractions in general, and no analysis is provided for the evaluated games.",
+      "The clustering property κ is hand-crafted (legal actions, RNaD strategy, action history) rather than learned, and performance varies significantly with the choice of κ, weakening the claim of a fully domain-independent method.",
+      "Several technical details are underspecified, including the gradient propagation through the argmax in the dynamics network, exact loss formulations, and the public-state decoder, making reproduction difficult without code.",
+      "The method does not model chance events, and the Leduc Hold'em experiment requires ad-hoc workarounds, limiting applicability to a restricted class of games.",
+      "No sensitivity analysis is provided for key hyperparameters (abstraction size L, depth limit, CFR+ iterations, number of transformations), and the depth limit is only 1 in experiments."
+    ],
+    "Originality": 3,
+    "Quality": 2,
+    "Clarity": 2,
+    "Significance": 3,
+    "Questions": [
+      "How does LAMIR compare against a variant that uses explicit game rules during test-time solving with the same abstraction and value function, to isolate the benefit of the learned model and abstraction?",
+      "What is the quantitative sensitivity to the abstraction size L, depth limit, CFR+ iterations, and clustering hyperparameters? Are there any systematic ablation studies?",
+      "How are gradients propagated through the non-differentiable selection of the next abstract information set in the dynamics network? Is a straight-through estimator used?",
+      "Does the learned abstraction in the evaluated games satisfy the A-loss recall condition, and what is the measured regret/exploitability for different κ choices?",
+      "Can the method be extended to games with chance events more naturally, and how does it scale to larger action spaces or continuous actions?",
+      "What is the wall-clock time and memory overhead of LAMIR's test-time reasoning in large games compared to simply using the RNaD policy?"
+    ],
+    "Limitations": [
+      "The method is restricted to two-player zero-sum games without chance events; stochastic games require domain-specific workarounds.",
+      "Learned abstractions can violate perfect recall, and no convergence guarantees are provided outside the A-loss recall class.",
+      "The abstraction quality depends on a hand-crafted clustering property κ, which is not learned and may miss strategic nuances in complex games.",
+      "The computational complexity of look-ahead reasoning still grows with L and depth, and action abstraction is not handled, limiting scalability to large or continuous action spaces.",
+      "The value function is trained on abstracted information sets with a potentially biased off-policy distribution; the paper dismisses the bias without rigorous analysis.",
+      "Large-scale evaluation is limited to Imperfect Information Goofspiel; no results on other large games like Dark Chess or Stratego.",
+      "The paper does not discuss potential negative societal impacts of using such AI in deceptive or gambling applications, though none are immediate."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 2,
+    "Presentation": 2,
+    "Contribution": 3,
+    "Overall": 4,
+    "Confidence": 4,
+    "Decision": "Reject"
+  },
+  "final_review_source": "Area Chair model output",
+  "usage": {
+    "prompt_tokens": 105876,
+    "prompt_cache_hit_tokens": 4096,
+    "prompt_cache_miss_tokens": 101780,
+    "completion_tokens": 29032,
+    "reasoning_tokens": 22186,
+    "total_tokens": 134908,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 1.147e-05,
+    "cache_miss_input_usd": 0.0142492,
+    "output_usd": 0.00812896,
+    "total_usd": 0.02238963
+  },
+  "elapsed_seconds": 117.173,
+  "input": {
+    "blind_id": "B005",
+    "filename": "B005.txt",
+    "blind_text_sha256": "fb82dba8ba8f2bbe66690c2fe48cd6163069399b0ee4068cce1d4b79ae2dbb40",
+    "characters": 78011,
+    "full_text_saved": false
+  }
+}

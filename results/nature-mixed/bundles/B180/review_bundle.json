@@ -1,0 +1,700 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:51:20.055414+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper introduces MATT (Model-Aware Tokenizer Transfer), a method for adapting LLMs to new tokenizers by leveraging model internals rather than relying solely on embedding-level heuristics. The core contribution is the Attention Influence Modeling (AIM) objective, which distills inter-token communication patterns (weighted value states) from the original model into the transferred model by aligning segment-level attention representations. MATT operates as an efficient warm-up stage (a few GPU hours) before standard language modeling, freezing all parameters except new embeddings. Experiments on Gemma 3 (4B/12B) and Qwen 3 (0.6B) across six languages show MATT substantially outperforms heuristic baselines (WECHSEL, FOCUS, Transtokenizers, TokAlign), recovering a large fraction of original performance, especially on generative tasks (e.g., 60-70% BLEU recovery on Long FLORES where baselines achieve near-zero). The paper includes ablations on layer depth, initialization methods, loss functions, and convergence speed.",
+        "Strengths": [
+          "Novel and well-motivated approach: AIM objective is a creative departure from embedding-only methods, using attention dynamics to guide tokenizer transfer.",
+          "Strong experimental results: MATT consistently outperforms heuristic baselines across diverse languages and models, with particularly dramatic gains on generative tasks (translation).",
+          "Computational efficiency: Only a few GPU hours are needed (3-5 hours), making it practical for real-world use compared to LM-based objectives.",
+          "Comprehensive evaluation: Tests across multiple languages (Ukrainian, Arabic, German, English, Japanese, Swahili), model families (Gemma 3, Qwen 3), scales (0.6B-12B), and tasks (Belebele, MMLU, FLORES).",
+          "Good ablation studies: Appendix includes analysis of layer depth, initialization methods, loss functions, and convergence speed, providing useful insights.",
+          "Clear writing and helpful figures: The method is explained well, with illustrative diagrams and pseudocode for the segmentation algorithm."
+        ],
+        "Weaknesses": [
+          "Missing comparison to language-modeling-based fine-tuning: The paper claims efficiency over LM objectives but doesn't directly compare MATT to standard LM fine-tuning with frozen layers, which is the most natural alternative baseline.",
+          "Lack of continual pretraining evaluation: The paper only evaluates the initialized model, but real tokenizer transfer pipelines include continual pretraining. It's unclear if MATT's advantage persists after further training, and the baselines are designed for this scenario.",
+          "Tied embeddings limitation: MATT's effectiveness is strongly dependent on tied input-output embeddings, which limits applicability to many modern models (e.g., Llama, Qwen use untied embeddings). The appendix discusses this but doesn't provide a satisfactory solution.",
+          "No statistical significance testing: Results are reported as single point estimates without variance or significance tests across multiple runs.",
+          "Limited task diversity: Evaluation is restricted to three benchmarks (Belebele, MMLU variants, FLORES); no other tasks like question answering or code generation are tested.",
+          "Hyperparameter sensitivity unclear: The paper admits minimal hyperparameter tuning; robustness to different settings is not established."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "1. How does MATT compare to standard language modeling fine-tuning with frozen non-embedding parameters (e.g., training embeddings with LM loss for the same number of steps)? This comparison is crucial to validate the efficiency claim over LM objectives.",
+          "2. What happens when MATT-initialized embeddings are followed by continual pretraining? Does the advantage over heuristic baselines persist, narrow, or widen?",
+          "3. For models with untied embeddings, what is the actual performance gap? The appendix mentions preliminary experiments but doesn't report numbers. Could you provide quantitative results for untied settings?",
+          "4. What is the variance across random seeds? Are the reported results statistically significant?",
+          "5. How sensitive is MATT to hyperparameters (learning rate, batch size, number of layers)? The paper mentions no extensive tuning - could different settings change the conclusions?",
+          "6. How does the choice of segmentation function (word-based vs. offset-based) affect results? Is the offset-based method always preferable?",
+          "7. Does MATT work for encoder-only models as the limitation section suggests? Any preliminary evidence?",
+          "8. The paper uses 50M tokens per language for MATT but 500M for FOCUS. Is this comparison fair? Could FOCUS benefit from more data, or does the comparison control for training data?"
+        ],
+        "Limitations": [
+          "The paper honestly acknowledges several limitations: reliance on tied embeddings, no continual pretraining evaluation, and no tests on encoder-only architectures. However, additional limitations not fully addressed include: (1) the lack of comparison to LM-based fine-tuning, which is the most relevant alternative; (2) the absence of statistical significance testing; (3) limited task diversity in evaluation; (4) potential sensitivity to hyperparameters; and (5) the fact that training data amounts differ between MATT and baselines (50M vs 500M tokens), which could be seen as an unfair comparison favoring MATT."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 4,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces MATT (Model-Aware Tokenizer Transfer), a method for adapting LLMs to new tokenizers by using an Attention Influence Modeling (AIM) objective that aligns attention patterns between the original and transferred models. The key contribution is moving beyond embedding-only heuristics to leverage model internals, specifically attention dynamics, for better tokenizer transfer.\n\nStrengths:\n1. Novel approach: The AIM objective is a creative and well-motivated idea that addresses a real limitation of existing heuristic-based methods (which ignore higher-layer dynamics).\n2. Strong experimental results: MATT significantly outperforms heuristic baselines (WECHSEL, FOCUS, Transtokenizers, TokAlign) on both discriminative and generative tasks, particularly on translation (Long FLORES) where baselines achieve near-zero BLEU but MATT recovers 60-70% of original performance.\n3. Computational efficiency: MATT requires only a few GPU hours (3-5 hours) compared to language modeling objectives, making it practical.\n4. Comprehensive evaluation: Tests across multiple languages (Ukrainian, Arabic, German, English, Japanese, Swahili), model families (Gemma 3 4B/12B, Qwen 3 0.6B), and tasks (Belebele, MMLU variants, FLORES).\n5. Good ablations: The appendix includes convergence speed analysis and ablation studies on layer depth, initialization methods, and loss functions.\n6. Clear writing: The method is well-explained with helpful figures.\n\nWeaknesses:\n1. Limited comparison to language modeling-based approaches: The paper doesn't directly compare MATT to standard LM fine-tuning with frozen layers (which would be the most natural baseline). The claim of efficiency over LM objectives is supported only by argument, not experiment.\n2. Lack of continual pretraining evaluation: The paper admits it doesn't perform continual pretraining, but this is a critical step in real tokenizer transfer pipelines. The baselines are designed for this, and it's unclear if MATT's advantage persists after further training.\n3. Tied embeddings limitation: MATT's effectiveness relies heavily on tied input-output embeddings, which limits its applicability to many modern models (e.g., Llama, Qwen use untied embeddings).\n4. No statistical significance testing: Results are reported as point estimates without variance or significance tests across multiple runs.\n5. Evaluation gaps: The paper doesn't test on encoder-only models (admitted limitation) or on tasks beyond the three benchmarks used.\n6. Hyperparameter sensitivity: The paper admits minimal hyperparameter tuning; it's unclear how robust MATT is to different settings.\n\nOriginality: High - AIM is a novel distillation objective, and the segment-level attention alignment is creative.\n\nQuality: Good - The method is technically sound, experiments are reasonable, and limitations are honestly acknowledged. However, the lack of comparison to LM-based fine-tuning and continual pretraining evaluation weakens the claims.\n\nClarity: Good - The paper is well-organized and the method is explained clearly with helpful figures and pseudocode.\n\nSignificance: High - Tokenizer transfer is an important practical problem for multilingual LLMs, and MATT offers a significant improvement over existing heuristics at low computational cost.\n\nOverall assessment: This is a solid paper with a novel and effective method. The main concerns are the missing comparison to LM-based approaches and the lack of continual pretraining evaluation. However, the strong experimental results and practical efficiency make this a valuable contribution. I lean toward acceptance.\n\nScore: 7 (Accept) with confidence 4.REVIEW JSON:\n```json\n{\n\"Summary\": \"The paper introduces MATT (Model-Aware Tokenizer Transfer), a method for adapting LLMs to new tokenizers by leveraging model internals rather than relying solely on embedding-level heuristics. The core contribution is the Attention Influence Modeling (AIM) objective, which distills inter-token communication patterns (weighted value states) from the original model into the transferred model by aligning segment-level attention representations. MATT operates as an efficient warm-up stage (a few GPU hours) before standard language modeling, freezing all parameters except new embeddings. Experiments on Gemma 3 (4B/12B) and Qwen 3 (0.6B) across six languages show MATT substantially outperforms heuristic baselines (WECHSEL, FOCUS, Transtokenizers, TokAlign), recovering a large fraction of original performance, especially on generative tasks (e.g., 60-70% BLEU recovery on Long FLORES where baselines achieve near-zero). The paper includes ablations on layer depth, initialization methods, loss functions, and convergence speed.\",\n\"Strengths\": [\n\"Novel and well-motivated approach: AIM objective is a creative departure from embedding-only methods, using attention dynamics to guide tokenizer transfer.\",\n\"Strong experimental results: MATT consistently outperforms heuristic baselines across diverse languages and models, with particularly dramatic gains on generative tasks (translation).\",\n\"Computational efficiency: Only a few GPU hours are needed (3-5 hours), making it practical for real-world use compared to LM-based objectives.\",\n\"Comprehensive evaluation: Tests across multiple languages (Ukrainian, Arabic, German, English, Japanese, Swahili), model families (Gemma 3, Qwen 3), scales (0.6B-12B), and tasks (Belebele, MMLU, FLORES).\",\n\"Good ablation studies: Appendix includes analysis of layer depth, initialization methods, loss functions, and convergence speed, providing useful insights.\",\n\"Clear writing and helpful figures: The method is explained well, with illustrative diagrams and pseudocode for the segmentation algorithm.\"\n],\n\"Weaknesses\": [\n\"Missing comparison to language-modeling-based fine-tuning: The paper claims efficiency over LM objectives but doesn't directly compare MATT to standard LM fine-tuning with frozen layers, which is the most natural alternative baseline.\",\n\"Lack of continual pretraining evaluation: The paper only evaluates the initialized model, but real tokenizer transfer pipelines include continual pretraining. It's unclear if MATT's advantage persists after further training, and the baselines are designed for this scenario.\",\n\"Tied embeddings limitation: MATT's effectiveness is strongly dependent on tied input-output embeddings, which limits applicability to many modern models (e.g., Llama, Qwen use untied embeddings). The appendix discusses this but doesn't provide a satisfactory solution.\",\n\"No statistical significance testing: Results are reported as single point estimates without variance or significance tests across multiple runs.\",\n\"Limited task diversity: Evaluation is restricted to three benchmarks (Belebele, MMLU variants, FLORES); no other tasks like question answering or code generation are tested.\",\n\"Hyperparameter sensitivity unclear: The paper admits minimal hyperparameter tuning; robustness to different settings is not established.\"\n],\n\"Originality\": 4,\n\"Quality\": 3,\n\"Clarity\": 3,\n\"Significance\": 4,\n\"Questions\": [\n\"1. How does MATT compare to standard language modeling fine-tuning with frozen non-embedding parameters (e.g., training embeddings with LM loss for the same number of steps)? This comparison is crucial to validate the efficiency claim over LM objectives.\",\n\"2. What happens when MATT-initialized embeddings are followed by continual pretraining? Does the advantage over heuristic baselines persist, narrow, or widen?\",\n\"3. For models with untied embeddings, what is the actual performance gap? The appendix mentions preliminary experiments but doesn't report numbers. Could you provide quantitative results for untied settings?\",\n\"4. What is the variance across random seeds? Are the reported results statistically significant?\",\n\"5. How sensitive is MATT to hyperparameters (learning rate, batch size, number of layers)? The paper mentions no extensive tuning - could different settings change the conclusions?\",\n\"6. How does the choice of segmentation function (word-based vs. offset-based) affect results? Is the offset-based method always preferable?\",\n\"7. Does MATT work for encoder-only models as the limitation section suggests? Any preliminary evidence?\",\n\"8. The paper uses 50M tokens per language for MATT but 500M for FOCUS. Is this comparison fair? Could FOCUS benefit from more data, or does the comparison control for training data?\"\n],\n\"Limitations\": [\n\"The paper honestly acknowledges several limitations: reliance on tied embeddings, no continual pretraining evaluation, and no tests on encoder-only architectures. However, additional limitations not fully addressed include: (1) the lack of comparison to LM-based fine-tuning, which is the most relevant alternative; (2) the absence of statistical significance testing; (3) limited task diversity in evaluation; (4) potential sensitivity to hyperparameters; and (5) the fact that training data amounts differ between MATT and baselines (50M vs 500M tokens), which could be seen as an unfair comparison favoring MATT.\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 3,\n\"Contribution\": 4,\n\"Overall\": 7,\n\"Confidence\": 4,\n\"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 19937,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 18145,
+        "completion_tokens": 1884,
+        "reasoning_tokens": 0,
+        "total_tokens": 21821
+      },
+      "attempts": 1,
+      "response_id": "0476f25f-52c5-464a-b2d0-74d89443ee6a"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper introduces Model-Aware Tokenizer Transfer (MATT), a method for adapting LLMs to new tokenizers by leveraging attention dynamics rather than relying solely on embedding heuristics. MATT uses an Attention Influence Modeling (AIM) objective that distills segment-level inter-token communication patterns from the source model into the target model, providing an efficient warm-up before standard language modeling. The method trains only new input embeddings while freezing all other parameters, using FOCUS for initialization. Experiments on Gemma 3 (12B, 4B) and Qwen 3 (0.6B) across multiple languages (Ukrainian, Arabic, German, English, Japanese, Swahili) show that MATT recovers a large fraction of original performance within a few GPU hours, significantly outperforming heuristic baselines like WECHSEL, Transtokenizers, TokAlign, and FOCUS. The paper also includes ablations on objective variants, layer depth, and initialization methods, as well as convergence speed analysis.",
+        "Strengths": [
+          "Novel and well-motivated approach: using attention dynamics (AIM) for tokenizer transfer is a fresh idea that goes beyond embedding-only methods and is clearly explained with intuition and formalization.",
+          "Strong empirical results: MATT consistently outperforms heuristic baselines, with particularly impressive gains on generative tasks (e.g., Long FLORES BLEU of 8.70 vs. 1.01 for FOCUS on Gemma 3 12B Ukrainian).",
+          "Computational efficiency: MATT requires only a few GPU hours and moderate VRAM (e.g., 16.6 GiB for Gemma 3 4B), making it practical for real-world use.",
+          "Comprehensive evaluation: tests across multiple models (Gemma 3 12B/4B, Qwen 3 0.6B), languages (6 languages), and benchmarks (Belebele, MMMLU, Global MMLU, Long FLORES), with ablations on loss functions, layer depth, and initialization methods.",
+          "Good clarity: the method is well-illustrated with figures (e.g., attention alignment matrix) and pseudocode for the segmentation algorithm, and related work is thoroughly cited.",
+          "Honest limitations: authors acknowledge the tied-embedding requirement and lack of continual pretraining, and provide a thoughtful appendix on future directions for untied embeddings."
+        ],
+        "Weaknesses": [
+          "Missing comparison to Zero-Shot Tokenizer Transfer (Minixhofer et al., 2024), a key model-aware baseline that also uses the full model. This weakens the claim of 'state-of-the-art' performance and leaves a gap in understanding relative advantages.",
+          "Evaluation only on initialized embeddings, not after continual pretraining. While the authors justify this, it limits the practical impact assessment, as tokenizer transfer is typically followed by further training.",
+          "Tied embedding requirement: MATT's effectiveness depends on tied input-output embeddings, which limits applicability to models with untied embeddings (e.g., some recent LLMs). The proposed workarounds are preliminary and not fully validated.",
+          "Theoretical justification is thin: while the intuition is plausible, there is no rigorous analysis of why matching segment-level attention patterns should lead to good downstream performance.",
+          "The segmentation algorithm's edge cases (e.g., very long tokens, ambiguous boundaries, languages with complex morphology) are not deeply analyzed; the worst-case scenario of a single segment spanning the entire input would make the objective degenerate.",
+          "Clarity of Section 3.3 could be improved: the notation is dense, and the transition from token-level to segment-level query states is not immediately intuitive without careful reading."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "How does MATT compare to Zero-Shot Tokenizer Transfer (Minixhofer et al., 2024) in terms of performance and computational cost? The paper motivates the need for model-aware methods but does not include this key baseline.",
+          "What happens if the segmentation function produces a single segment for the entire input (e.g., for very long tokens or unusual tokenization)? Does the AIM objective become degenerate, and how does the method handle such cases?",
+          "Have you considered evaluating MATT after a short continual pretraining phase? This would provide a more complete picture of whether the initialized embeddings serve as a strong starting point for further adaptation.",
+          "For models with untied embeddings, could you train the output embeddings with a complementary objective (e.g., aligning LM head logits) rather than just mapping input embeddings?",
+          "How sensitive is MATT to the choice of segmentation granularity (e.g., word-level vs. subword-level)? The ablation on layer depth is helpful, but a similar analysis for segmentation would strengthen the paper.",
+          "Is the AIM objective robust to differences in attention head behavior across layers? Do certain heads or layers contribute more to the transfer success, and could this inform selective layer choice?"
+        ],
+        "Limitations": [
+          "The method requires tied input-output embeddings for full effectiveness; models with untied embeddings (common in newer architectures) may not benefit as much, and the proposed workarounds are not fully validated.",
+          "The paper evaluates only the initialized model, not after continual pretraining, which is the typical use case for tokenizer transfer. This limits the assessment of long-term utility.",
+          "The segmentation algorithm's behavior in edge cases (e.g., very long tokens, languages with complex morphology) is not thoroughly analyzed, and the worst-case scenario of a single segment could make the objective ineffective.",
+          "No theoretical analysis of why matching segment-level attention patterns should transfer well; the argument is intuitive but lacks formal grounding.",
+          "The method has not been tested on encoder-only architectures or non-decoder transformers, limiting its generalizability.",
+          "Potential negative societal impact: extending tokenizers to lower-resource languages could lead to over-reliance on such adaptations without addressing underlying data scarcity issues, potentially perpetuating biases. This is not discussed in the paper."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 4,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThe paper introduces MATT, a tokenizer transfer method that uses attention distillation to align segment-level representations between original and new tokenizers. The core idea is novel—moving beyond embedding-only heuristics to leverage attention dynamics. The method is efficient, requiring only a few GPU hours, and shows strong empirical results, particularly for Ukrainian with Gemma 3 12B.\n\nStrengths:\n- Novel AIM objective that is well-motivated and technically sound\n- Strong empirical results, especially for the generative task (Long FLORES)\n- Comprehensive evaluation across multiple languages, models, and ablations\n- Practical efficiency (few GPU hours, moderate VRAM)\n- Clear writing and good contextualization of prior work\n\nWeaknesses:\n- Limited evaluation on continual pretraining; only evaluates the initialized model, not after further training\n- Tied embedding requirement limits general applicability (acknowledged but not fully solved)\n- Comparison to Zero-Shot Tokenizer Transfer (Minixhofer et al.) is missing—this is a key baseline that also uses model-level signals\n- The segmentation algorithm's behavior in edge cases (e.g., very long tokens, ambiguous boundaries) is not deeply analyzed\n- No theoretical analysis of why matching attention patterns at segment level should transfer well\n- The claim \"state-of-the-art\" may be overstated given the missing comparison to hypernetwork approaches\n\nOriginality: High—the idea of using attention dynamics for tokenizer transfer is novel and clearly differentiated from embedding-only methods.\n\nQuality: Good—experiments are thorough, but some claims (e.g., superiority over model-aware baselines) are not fully supported due to missing comparisons.\n\nClarity: Good—the method is well-explained with helpful figures and pseudocode, but the notation in Section 3.3 is dense and could be simplified.\n\nSignificance: High—tokenizer transfer is an important practical problem for multilingual LLMs, and this method offers a practical, efficient solution.\n\nDecision: Accept. The paper presents a solid, novel contribution with strong empirical support. The missing comparison to Zero-Shot Tokenizer Transfer is a concern, but the method's efficiency and results are compelling enough to warrant acceptance. The limitations are acknowledged, and the work opens up a promising direction for future research.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper introduces Model-Aware Tokenizer Transfer (MATT), a method for adapting LLMs to new tokenizers by leveraging attention dynamics rather than relying solely on embedding heuristics. MATT uses an Attention Influence Modeling (AIM) objective that distills segment-level inter-token communication patterns from the source model into the target model, providing an efficient warm-up before standard language modeling. The method trains only new input embeddings while freezing all other parameters, using FOCUS for initialization. Experiments on Gemma 3 (12B, 4B) and Qwen 3 (0.6B) across multiple languages (Ukrainian, Arabic, German, English, Japanese, Swahili) show that MATT recovers a large fraction of original performance within a few GPU hours, significantly outperforming heuristic baselines like WECHSEL, Transtokenizers, TokAlign, and FOCUS. The paper also includes ablations on objective variants, layer depth, and initialization methods, as well as convergence speed analysis.\",\n  \"Strengths\": [\n    \"Novel and well-motivated approach: using attention dynamics (AIM) for tokenizer transfer is a fresh idea that goes beyond embedding-only methods and is clearly explained with intuition and formalization.\",\n    \"Strong empirical results: MATT consistently outperforms heuristic baselines, with particularly impressive gains on generative tasks (e.g., Long FLORES BLEU of 8.70 vs. 1.01 for FOCUS on Gemma 3 12B Ukrainian).\",\n    \"Computational efficiency: MATT requires only a few GPU hours and moderate VRAM (e.g., 16.6 GiB for Gemma 3 4B), making it practical for real-world use.\",\n    \"Comprehensive evaluation: tests across multiple models (Gemma 3 12B/4B, Qwen 3 0.6B), languages (6 languages), and benchmarks (Belebele, MMMLU, Global MMLU, Long FLORES), with ablations on loss functions, layer depth, and initialization methods.\",\n    \"Good clarity: the method is well-illustrated with figures (e.g., attention alignment matrix) and pseudocode for the segmentation algorithm, and related work is thoroughly cited.\",\n    \"Honest limitations: authors acknowledge the tied-embedding requirement and lack of continual pretraining, and provide a thoughtful appendix on future directions for untied embeddings.\"\n  ],\n  \"Weaknesses\": [\n    \"Missing comparison to Zero-Shot Tokenizer Transfer (Minixhofer et al., 2024), a key model-aware baseline that also uses the full model. This weakens the claim of 'state-of-the-art' performance and leaves a gap in understanding relative advantages.\",\n    \"Evaluation only on initialized embeddings, not after continual pretraining. While the authors justify this, it limits the practical impact assessment, as tokenizer transfer is typically followed by further training.\",\n    \"Tied embedding requirement: MATT's effectiveness depends on tied input-output embeddings, which limits applicability to models with untied embeddings (e.g., some recent LLMs). The proposed workarounds are preliminary and not fully validated.\",\n    \"Theoretical justification is thin: while the intuition is plausible, there is no rigorous analysis of why matching segment-level attention patterns should lead to good downstream performance.\",\n    \"The segmentation algorithm's edge cases (e.g., very long tokens, ambiguous boundaries, languages with complex morphology) are not deeply analyzed; the worst-case scenario of a single segment spanning the entire input would make the objective degenerate.\",\n    \"Clarity of Section 3.3 could be improved: the notation is dense, and the transition from token-level to segment-level query states is not immediately intuitive without careful reading.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"How does MATT compare to Zero-Shot Tokenizer Transfer (Minixhofer et al., 2024) in terms of performance and computational cost? The paper motivates the need for model-aware methods but does not include this key baseline.\",\n    \"What happens if the segmentation function produces a single segment for the entire input (e.g., for very long tokens or unusual tokenization)? Does the AIM objective become degenerate, and how does the method handle such cases?\",\n    \"Have you considered evaluating MATT after a short continual pretraining phase? This would provide a more complete picture of whether the initialized embeddings serve as a strong starting point for further adaptation.\",\n    \"For models with untied embeddings, could you train the output embeddings with a complementary objective (e.g., aligning LM head logits) rather than just mapping input embeddings?\",\n    \"How sensitive is MATT to the choice of segmentation granularity (e.g., word-level vs. subword-level)? The ablation on layer depth is helpful, but a similar analysis for segmentation would strengthen the paper.\",\n    \"Is the AIM objective robust to differences in attention head behavior across layers? Do certain heads or layers contribute more to the transfer success, and could this inform selective layer choice?\"\n  ],\n  \"Limitations\": [\n    \"The method requires tied input-output embeddings for full effectiveness; models with untied embeddings (common in newer architectures) may not benefit as much, and the proposed workarounds are not fully validated.\",\n    \"The paper evaluates only the initialized model, not after continual pretraining, which is the typical use case for tokenizer transfer. This limits the assessment of long-term utility.\",\n    \"The segmentation algorithm's behavior in edge cases (e.g., very long tokens, languages with complex morphology) is not thoroughly analyzed, and the worst-case scenario of a single segment could make the objective ineffective.\",\n    \"No theoretical analysis of why matching segment-level attention patterns should transfer well; the argument is intuitive but lacks formal grounding.\",\n    \"The method has not been tested on encoder-only architectures or non-decoder transformers, limiting its generalizability.\",\n    \"Potential negative societal impact: extending tokenizers to lower-resource languages could lead to over-reliance on such adaptations without addressing underlying data scarcity issues, potentially perpetuating biases. This is not discussed in the paper.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 4,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 19937,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 18145,
+        "completion_tokens": 1808,
+        "reasoning_tokens": 0,
+        "total_tokens": 21745
+      },
+      "attempts": 1,
+      "response_id": "e3ca95d5-a40b-4078-8676-459721ade555"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "This paper introduces Model-Aware Tokenizer Transfer (MATT), a method for adapting pretrained LLMs to new tokenizers by leveraging model internals rather than relying solely on embedding similarity heuristics. The core contribution is the Attention Influence Modeling (AIM) objective, which distills inter-token attention patterns from the original model (teacher) into the target model with a new tokenizer (student). AIM aligns segment-level weighted value states between teacher and student, providing a richer training signal for initializing new embeddings. The method is evaluated on Gemma 3 (4B and 12B) and Qwen 3 (0.6B) across multiple languages (Ukrainian, Arabic, German, English, Japanese, Swahili), showing that MATT recovers a substantial portion of original model performance within a few GPU hours, significantly outperforming heuristic baselines like WECHSEL, FOCUS, Transtokenizers, and TokAlign, particularly on generative tasks.",
+        "Strengths": [
+          "Novel and well-motivated approach: The AIM objective is a creative departure from purely embedding-based heuristics, leveraging attention dynamics to guide tokenizer transfer.",
+          "Strong empirical results: MATT dramatically outperforms heuristic baselines, especially on generative tasks (e.g., Long FLORES BLEU scores improve from ~1.0 to 8.7 for Gemma 3 12B Ukrainian), while maintaining competitive discriminative performance.",
+          "Computational efficiency: MATT requires only a few GPU hours (3-5 hours on a single H100), making it practical for real-world use, and offers a tunable trade-off between depth and cost.",
+          "Comprehensive evaluation: Experiments span multiple models (Gemma 3 4B/12B, Qwen 3 0.6B), languages (Ukrainian, Arabic, German, English, Japanese, Swahili), and benchmarks (Belebele, MMLU variants, FLORES), providing a broad view of effectiveness.",
+          "Good ablations: The paper examines layer depth, initialization methods, loss functions (MSE vs. cosine), and AIM vs. AIM* variants, offering useful insights into configuration choices.",
+          "Orthogonality to existing methods: MATT can be combined with heuristic initialization (e.g., FOCUS), making it a flexible add-on rather than a replacement."
+        ],
+        "Weaknesses": [
+          "Lack of comparison to language modeling (LM) objectives: The most natural baseline—training embeddings directly with a language modeling loss (with frozen layers)—is not experimentally compared. The paper argues LM is computationally costly, but this claim is not substantiated with a direct comparison, and the efficiency advantage of AIM over LM is a central claim.",
+          "No continual pretraining evaluation: Tokenizer transfer methods are typically used as a starting point for further adaptation. The paper only evaluates the initialized model directly, which may not reflect real-world performance after continual pretraining. This limits the practical significance of the results.",
+          "Tied embeddings requirement: MATT's effectiveness relies on tied input-output embeddings, which excludes many popular models (e.g., Llama, Mistral) that use untied embeddings. The paper discusses this as a limitation but does not provide a fully working solution.",
+          "Modest gains on discriminative tasks in multilingual setting: While MATT outperforms FOCUS, the absolute gains on some languages (e.g., English) are small, and the paper does not analyze why certain languages benefit more than others.",
+          "Missing comparison to Zero-Shot Tokenizer Transfer (Minixhofer et al., 2024): This is the most closely related work that also leverages full model dynamics. The paper dismisses it due to computational cost but does not provide any experimental comparison, weakening the claim of superiority.",
+          "Limited analysis of AIM's failure modes: The paper does not explore cases where AIM might underperform (e.g., very different tokenizers, extremely low-resource languages, or models with unusual attention patterns)."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "1. How does MATT compare to training embeddings directly with a language modeling objective (with all non-embedding layers frozen) in terms of performance and computational cost? The paper argues LM is more expensive, but no experimental comparison is provided.",
+          "2. What happens if continual pretraining is performed after MATT initialization? Does MATT provide a better starting point than FOCUS or other heuristics after further training?",
+          "3. For models with untied embeddings, what is the expected performance gap? The paper mentions preliminary experiments but does not report quantitative results. Could you provide more details?",
+          "4. Why does the AIM objective work better for generative tasks (e.g., FLORES) than for discriminative tasks (e.g., MMLU)? Is there a theoretical or empirical explanation?",
+          "5. How sensitive is MATT to the choice of segmentation function? The paper uses offset-based segmentation, but have you tested word-level or other alternatives?",
+          "6. The paper reports that AIM on the last layer outperforms all layers. Why is this the case? Does this suggest that earlier layers' attention patterns are less informative for tokenizer transfer?",
+          "7. How does the performance of MATT vary with the size of the training corpus? The convergence study suggests 50M tokens may be sufficient, but what is the minimum data requirement?",
+          "8. Have you tested MATT on encoder-only models (e.g., BERT-style) as mentioned in the limitations? The causal constraint removal should be straightforward—have you any preliminary results?"
+        ],
+        "Limitations": [
+          "The paper relies on tied input-output embeddings, which limits applicability to models with untied embeddings (e.g., Llama, Mistral). The proposed future directions are preliminary and not fully validated.",
+          "The evaluation does not include continual pretraining, which is the typical downstream use case for tokenizer transfer. Results on the initialized model alone may not reflect final performance after further adaptation.",
+          "The comparison to language modeling objectives is missing, making it difficult to assess the claimed computational advantage of AIM over alternative training-based approaches.",
+          "The method is only tested on decoder-only models; encoder-only architectures are not evaluated, though the paper notes this is possible.",
+          "Potential negative societal impact: Improving tokenizer transfer for low-resource languages could contribute to better LLM support for these languages, but it could also enable more efficient deployment of models with biases or harmful content in these languages. The paper does not discuss this."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces MATT, a method for tokenizer transfer in LLMs that uses attention-based distillation rather than just embedding initialization heuristics. The core idea is to align segment-level attention outputs between the original model (with old tokenizer) and the target model (with new tokenizer), providing a richer training signal for new embeddings.\n\nStrengths:\n1. Novel approach: The AIM objective is a creative way to leverage model internals for tokenizer transfer, moving beyond purely semantic heuristics.\n2. Strong empirical results: MATT significantly outperforms heuristic baselines, especially on generative tasks (Long FLORES BLEU scores are dramatically better).\n3. Computational efficiency: Only a few GPU hours needed, with the option to trade off depth vs. performance.\n4. Comprehensive evaluation: Multiple languages (Ukrainian, Arabic, German, English, Japanese, Swahili), multiple models (Gemma 3 4B/12B, Qwen 3 0.6B), and multiple benchmarks (Belebele, MMLU variants, FLORES).\n5. Good ablations: Layer depth, initialization method, loss functions, and AIM vs. AIM* are all examined.\n\nWeaknesses:\n1. Limited comparison to language modeling-based approaches: The paper compares mainly to heuristic methods but not to direct language modeling with frozen layers (which is the natural baseline for \"training embeddings\"). The related work mentions this but no experimental comparison.\n2. No continual pretraining evaluation: The paper acknowledges this limitation but it's significant—the real test of tokenizer transfer is whether it provides a good starting point for further training. The paper only evaluates the initialized model directly.\n3. Tied embeddings requirement: MATT works well only with tied embeddings, which limits applicability to many modern models (e.g., Llama, Mistral).\n4. The improvement over FOCUS on discriminative tasks is modest in the multilingual setting (e.g., Gemma 3 4B: 51.10 vs 39.94 average, but the gap narrows on some languages like English).\n5. The paper does not compare against Zero-Shot Tokenizer Transfer (Minixhofer et al., 2024), which is the most related work. The argument is computational cost, but no direct comparison is made.\n\nOriginality: High. The idea of using attention patterns for tokenizer transfer is novel and well-motivated.\n\nQuality: Good. The experiments are thorough, but the lack of comparison to language modeling objectives and continual pretraining evaluation weakens the claims.\n\nClarity: Good. The paper is well-written and the method is clearly explained. The figures help illustrate the approach.\n\nSignificance: High. Tokenizer transfer is a practical problem, and this method offers a computationally efficient solution that outperforms existing heuristics.\n\nOverall assessment: This is a solid paper with a novel idea and promising results. The main concerns are the lack of comparison to language modeling baselines and the tied embedding limitation. I would lean toward acceptance but with reservations about the evaluation completeness.\n\nScore: 6 (Weak Accept) - The paper is technically sound with good results, but the evaluation has gaps (no LM baseline, no continual pretraining) that prevent a stronger recommendation.\n\nConfidence: 4 - I am fairly confident in my assessment, though I am not deeply familiar with all recent tokenizer transfer literature.REVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper introduces Model-Aware Tokenizer Transfer (MATT), a method for adapting pretrained LLMs to new tokenizers by leveraging model internals rather than relying solely on embedding similarity heuristics. The core contribution is the Attention Influence Modeling (AIM) objective, which distills inter-token attention patterns from the original model (teacher) into the target model with a new tokenizer (student). AIM aligns segment-level weighted value states between teacher and student, providing a richer training signal for initializing new embeddings. The method is evaluated on Gemma 3 (4B and 12B) and Qwen 3 (0.6B) across multiple languages (Ukrainian, Arabic, German, English, Japanese, Swahili), showing that MATT recovers a substantial portion of original model performance within a few GPU hours, significantly outperforming heuristic baselines like WECHSEL, FOCUS, Transtokenizers, and TokAlign, particularly on generative tasks.\",\n  \"Strengths\": [\n    \"Novel and well-motivated approach: The AIM objective is a creative departure from purely embedding-based heuristics, leveraging attention dynamics to guide tokenizer transfer.\",\n    \"Strong empirical results: MATT dramatically outperforms heuristic baselines, especially on generative tasks (e.g., Long FLORES BLEU scores improve from ~1.0 to 8.7 for Gemma 3 12B Ukrainian), while maintaining competitive discriminative performance.\",\n    \"Computational efficiency: MATT requires only a few GPU hours (3-5 hours on a single H100), making it practical for real-world use, and offers a tunable trade-off between depth and cost.\",\n    \"Comprehensive evaluation: Experiments span multiple models (Gemma 3 4B/12B, Qwen 3 0.6B), languages (Ukrainian, Arabic, German, English, Japanese, Swahili), and benchmarks (Belebele, MMLU variants, FLORES), providing a broad view of effectiveness.\",\n    \"Good ablations: The paper examines layer depth, initialization methods, loss functions (MSE vs. cosine), and AIM vs. AIM* variants, offering useful insights into configuration choices.\",\n    \"Orthogonality to existing methods: MATT can be combined with heuristic initialization (e.g., FOCUS), making it a flexible add-on rather than a replacement.\"\n  ],\n  \"Weaknesses\": [\n    \"Lack of comparison to language modeling (LM) objectives: The most natural baseline—training embeddings directly with a language modeling loss (with frozen layers)—is not experimentally compared. The paper argues LM is computationally costly, but this claim is not substantiated with a direct comparison, and the efficiency advantage of AIM over LM is a central claim.\",\n    \"No continual pretraining evaluation: Tokenizer transfer methods are typically used as a starting point for further adaptation. The paper only evaluates the initialized model directly, which may not reflect real-world performance after continual pretraining. This limits the practical significance of the results.\",\n    \"Tied embeddings requirement: MATT's effectiveness relies on tied input-output embeddings, which excludes many popular models (e.g., Llama, Mistral) that use untied embeddings. The paper discusses this as a limitation but does not provide a fully working solution.\",\n    \"Modest gains on discriminative tasks in multilingual setting: While MATT outperforms FOCUS, the absolute gains on some languages (e.g., English) are small, and the paper does not analyze why certain languages benefit more than others.\",\n    \"Missing comparison to Zero-Shot Tokenizer Transfer (Minixhofer et al., 2024): This is the most closely related work that also leverages full model dynamics. The paper dismisses it due to computational cost but does not provide any experimental comparison, weakening the claim of superiority.\",\n    \"Limited analysis of AIM's failure modes: The paper does not explore cases where AIM might underperform (e.g., very different tokenizers, extremely low-resource languages, or models with unusual attention patterns).\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"1. How does MATT compare to training embeddings directly with a language modeling objective (with all non-embedding layers frozen) in terms of performance and computational cost? The paper argues LM is more expensive, but no experimental comparison is provided.\",\n    \"2. What happens if continual pretraining is performed after MATT initialization? Does MATT provide a better starting point than FOCUS or other heuristics after further training?\",\n    \"3. For models with untied embeddings, what is the expected performance gap? The paper mentions preliminary experiments but does not report quantitative results. Could you provide more details?\",\n    \"4. Why does the AIM objective work better for generative tasks (e.g., FLORES) than for discriminative tasks (e.g., MMLU)? Is there a theoretical or empirical explanation?\",\n    \"5. How sensitive is MATT to the choice of segmentation function? The paper uses offset-based segmentation, but have you tested word-level or other alternatives?\",\n    \"6. The paper reports that AIM on the last layer outperforms all layers. Why is this the case? Does this suggest that earlier layers' attention patterns are less informative for tokenizer transfer?\",\n    \"7. How does the performance of MATT vary with the size of the training corpus? The convergence study suggests 50M tokens may be sufficient, but what is the minimum data requirement?\",\n    \"8. Have you tested MATT on encoder-only models (e.g., BERT-style) as mentioned in the limitations? The causal constraint removal should be straightforward—have you any preliminary results?\"\n  ],\n  \"Limitations\": [\n    \"The paper relies on tied input-output embeddings, which limits applicability to models with untied embeddings (e.g., Llama, Mistral). The proposed future directions are preliminary and not fully validated.\",\n    \"The evaluation does not include continual pretraining, which is the typical downstream use case for tokenizer transfer. Results on the initialized model alone may not reflect final performance after further adaptation.\",\n    \"The comparison to language modeling objectives is missing, making it difficult to assess the claimed computational advantage of AIM over alternative training-based approaches.\",\n    \"The method is only tested on decoder-only models; encoder-only architectures are not evaluated, though the paper notes this is possible.\",\n    \"Potential negative societal impact: Improving tokenizer transfer for low-resource languages could contribute to better LLM support for these languages, but it could also enable more efficient deployment of models with biases or harmful content in these languages. The paper does not discuss this.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 19937,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 18145,
+        "completion_tokens": 2147,
+        "reasoning_tokens": 0,
+        "total_tokens": 22084
+      },
+      "attempts": 1,
+      "response_id": "31717d1c-ba30-465d-a98f-c1e2027e6d0b"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "This paper introduces MATT (Model-Aware Tokenizer Transfer), a method for adapting large language models to new tokenizers by leveraging model internals rather than relying solely on embedding-layer heuristics. The core contribution is the Attention Influence Modeling (AIM) objective, which distills inter-token communication patterns from the source model into the target model by aligning segment-level attention outputs. The method freezes all model parameters except new token embeddings, and uses FOCUS embeddings for initialization. Experiments on Gemma 3 (4B and 12B) and Qwen 3 0.6B across multiple languages (Ukrainian, Arabic, German, English, Japanese, Swahili) show that MATT substantially outperforms heuristic baselines (WECHSEL, FOCUS, Transtokenizers, TokAlign) while requiring only a few GPU hours. The method recovers a large fraction of original model performance, particularly on generative tasks where heuristics perform poorly. The paper includes ablation studies on layer depth, initialization methods, and loss functions.",
+        "Strengths": [
+          "Novel approach that goes beyond embedding-only heuristics by leveraging attention dynamics, providing a richer training signal",
+          "Strong experimental results across diverse languages and model scales, showing substantial improvements over existing methods",
+          "Computationally efficient, requiring only a few GPU hours compared to full language modeling objectives",
+          "Comprehensive evaluation including multiple benchmarks (Belebele, MMLU variants, FLORES) and both discriminative and generative tasks",
+          "Good ablation studies analyzing layer depth, initialization methods, and loss functions",
+          "Honest discussion of limitations including tied-embedding requirements and lack of continual pretraining evaluation"
+        ],
+        "Weaknesses": [
+          "Missing comparison with the most relevant recent work: Zero-Shot Tokenizer Transfer (Minixhofer et al., 2024), which also uses model-level signals but with a hypernetwork approach",
+          "Evaluation is limited to initialization quality without continual pretraining, which is the ultimate practical use case for tokenizer transfer",
+          "No theoretical analysis or intuition for why attention alignment should be more effective than embedding-only alignment",
+          "Results on the smaller model (Qwen 0.6B) show more modest improvements, suggesting potential scalability concerns",
+          "The segmentation algorithm's behavior on edge cases (e.g., very long documents, languages without clear word boundaries) is not thoroughly analyzed"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "Why was Zero-Shot Tokenizer Transfer (Minixhofer et al., 2024) not included as a baseline? It is the most directly comparable method that also uses model-level signals, and its absence weakens the claim of state-of-the-art performance.",
+          "How does MATT perform after continual pretraining? The paper evaluates only the initialized model, but the ultimate goal is to provide a strong starting point for further adaptation. Have you tested whether MATT-initialized models converge faster or achieve better final performance after continued pretraining?",
+          "The ablation study shows that using only the last layer for AIM outperforms using all layers. Could you explain this counterintuitive result? Is there a risk that aligning deeper layers introduces conflicting gradients?",
+          "For the segmentation algorithm, how does performance vary with segment granularity? The paper mentions minimal-length segments, but what happens with word-level or sentence-level segmentation?",
+          "How sensitive is MATT to the choice of training data? The paper uses 50-240M tokens per language. Would smaller amounts (e.g., 10M tokens) still be sufficient given the convergence speed results in Appendix B?"
+        ],
+        "Limitations": [
+          "The method relies on tied input-output embeddings to fully realize its advantages, limiting applicability to models with untied embeddings",
+          "Evaluation does not include continual pretraining, which is the practical end-use case for tokenizer transfer",
+          "The method has not been tested on encoder-only architectures",
+          "No analysis of potential negative societal impacts, though the method itself is benign (improving multilingual model efficiency)",
+          "The paper does not discuss potential failure modes when the source and target tokenizers have very different segmentation behaviors"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces MATT (Model-Aware Tokenizer Transfer), a method for adapting LLMs to new tokenizers by distilling attention patterns from the original model. The core contribution is the Attention Influence Modeling (AIM) objective, which aligns segment-level attention outputs between the source and target models. The method is evaluated on Gemma 3 and Qwen 3 models across multiple languages, showing significant improvements over heuristic baselines.\n\nThe paper is well-written and addresses a practical problem in multilingual LLM adaptation. The key strengths are:\n1. Novel approach that goes beyond embedding-only heuristics by leveraging model internals\n2. Strong experimental results showing substantial gains over baselines\n3. Computational efficiency (only a few GPU hours)\n4. Good ablation studies and analysis of design choices\n\nKey weaknesses:\n1. The evaluation is limited to initialization quality without continual pretraining, which is the ultimate use case\n2. The comparison with Zero-Shot Tokenizer Transfer (Minixhofer et al., 2024) is missing from experiments, despite being the most relevant recent work\n3. The paper doesn't provide theoretical analysis of why attention alignment should work better than embedding-only methods\n4. The segmentation algorithm's complexity and edge cases are not fully explored\n5. Results on smaller models (Qwen 0.6B) show more modest improvements, suggesting scalability concerns\n\nThe methodology is sound overall. The AIM objective is well-defined and the technical details are clear. The experiments cover diverse languages and model scales. However, the lack of comparison with the most relevant baseline (Zero-Shot Tokenizer Transfer) is a significant omission.\n\nThe paper is clearly written with good organization. The appendices provide useful supplementary material including convergence analysis and ablations. The limitations section is honest about the tied-embedding requirement and lack of continual pretraining evaluation.\n\nOverall, this is a solid contribution to the tokenizer transfer literature. The method is novel and shows clear improvements over heuristics. However, the missing comparison with the hypernetwork-based approach and the limited evaluation without continual pretraining prevent me from giving a higher score. I would rate this as a borderline accept - the technical contribution is sound but the evaluation has notable gaps.\n\nThe ethical concerns are minimal - this is a technical method for model adaptation with no direct societal impact. The paper doesn't discuss potential negative impacts, but given the nature of the work (improving multilingual model efficiency), this is acceptable.\n\nMy ratings:\n- Originality: 4 (very high) - novel objective that incorporates model dynamics\n- Quality: 3 (high) - solid experiments but missing key baseline comparison\n- Clarity: 3 (high) - well-written but some technical details are dense\n- Significance: 3 (high) - useful for multilingual model adaptation\n- Soundness: 3 (good) - technically sound with appropriate methods\n- Presentation: 3 (good) - clear organization with useful appendices\n- Contribution: 3 (good) - valuable addition to tokenizer transfer methods\n- Overall: 6 (weak accept) - solid work with some evaluation gaps\n- Confidence: 4 (confident) - familiar with related work in this area\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper introduces MATT (Model-Aware Tokenizer Transfer), a method for adapting large language models to new tokenizers by leveraging model internals rather than relying solely on embedding-layer heuristics. The core contribution is the Attention Influence Modeling (AIM) objective, which distills inter-token communication patterns from the source model into the target model by aligning segment-level attention outputs. The method freezes all model parameters except new token embeddings, and uses FOCUS embeddings for initialization. Experiments on Gemma 3 (4B and 12B) and Qwen 3 0.6B across multiple languages (Ukrainian, Arabic, German, English, Japanese, Swahili) show that MATT substantially outperforms heuristic baselines (WECHSEL, FOCUS, Transtokenizers, TokAlign) while requiring only a few GPU hours. The method recovers a large fraction of original model performance, particularly on generative tasks where heuristics perform poorly. The paper includes ablation studies on layer depth, initialization methods, and loss functions.\",\n  \"Strengths\": [\n    \"Novel approach that goes beyond embedding-only heuristics by leveraging attention dynamics, providing a richer training signal\",\n    \"Strong experimental results across diverse languages and model scales, showing substantial improvements over existing methods\",\n    \"Computationally efficient, requiring only a few GPU hours compared to full language modeling objectives\",\n    \"Comprehensive evaluation including multiple benchmarks (Belebele, MMLU variants, FLORES) and both discriminative and generative tasks\",\n    \"Good ablation studies analyzing layer depth, initialization methods, and loss functions\",\n    \"Honest discussion of limitations including tied-embedding requirements and lack of continual pretraining evaluation\"\n  ],\n  \"Weaknesses\": [\n    \"Missing comparison with the most relevant recent work: Zero-Shot Tokenizer Transfer (Minixhofer et al., 2024), which also uses model-level signals but with a hypernetwork approach\",\n    \"Evaluation is limited to initialization quality without continual pretraining, which is the ultimate practical use case for tokenizer transfer\",\n    \"No theoretical analysis or intuition for why attention alignment should be more effective than embedding-only alignment\",\n    \"Results on the smaller model (Qwen 0.6B) show more modest improvements, suggesting potential scalability concerns\",\n    \"The segmentation algorithm's behavior on edge cases (e.g., very long documents, languages without clear word boundaries) is not thoroughly analyzed\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"Why was Zero-Shot Tokenizer Transfer (Minixhofer et al., 2024) not included as a baseline? It is the most directly comparable method that also uses model-level signals, and its absence weakens the claim of state-of-the-art performance.\",\n    \"How does MATT perform after continual pretraining? The paper evaluates only the initialized model, but the ultimate goal is to provide a strong starting point for further adaptation. Have you tested whether MATT-initialized models converge faster or achieve better final performance after continued pretraining?\",\n    \"The ablation study shows that using only the last layer for AIM outperforms using all layers. Could you explain this counterintuitive result? Is there a risk that aligning deeper layers introduces conflicting gradients?\",\n    \"For the segmentation algorithm, how does performance vary with segment granularity? The paper mentions minimal-length segments, but what happens with word-level or sentence-level segmentation?\",\n    \"How sensitive is MATT to the choice of training data? The paper uses 50-240M tokens per language. Would smaller amounts (e.g., 10M tokens) still be sufficient given the convergence speed results in Appendix B?\"\n  ],\n  \"Limitations\": [\n    \"The method relies on tied input-output embeddings to fully realize its advantages, limiting applicability to models with untied embeddings\",\n    \"Evaluation does not include continual pretraining, which is the practical end-use case for tokenizer transfer\",\n    \"The method has not been tested on encoder-only architectures\",\n    \"No analysis of potential negative societal impacts, though the method itself is benign (improving multilingual model efficiency)\",\n    \"The paper does not discuss potential failure modes when the source and target tokenizers have very different segmentation behaviors\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 19937,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 18145,
+        "completion_tokens": 1613,
+        "reasoning_tokens": 0,
+        "total_tokens": 21550
+      },
+      "attempts": 1,
+      "response_id": "b0fde0f7-1c1e-472b-84dc-867a9e5775b8"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "This paper introduces Model-Aware Tokenizer Transfer (MATT), a method for adapting LLMs to new tokenizers by leveraging model internals rather than relying solely on semantic embedding heuristics. The core contribution is the Attention Influence Modeling (AIM) objective, which distills inter-token communication patterns from the source model into the target model by aligning segment-level weighted value states across attention layers. The method trains only the new token embeddings while freezing all other parameters, using a segmentation function to align tokens across different tokenizers. The authors evaluate MATT on Gemma 3 (4B and 12B) and Qwen 3 (0.6B) models across multiple languages (Ukrainian, Arabic, German, Japanese, Swahili, English), demonstrating that MATT recovers a substantial portion of original model performance within a few GPU hours, significantly outperforming heuristic baselines like WECHSEL, FOCUS, Transtokenizers, and TokAlign.",
+        "Strengths": [
+          "Novel approach: The AIM objective is a creative and technically sound method that goes beyond embedding-level heuristics by leveraging attention dynamics, which is a meaningful departure from prior work",
+          "Strong empirical results: MATT consistently outperforms all heuristic baselines across multiple languages, models, and scales, with particularly dramatic improvements on generative tasks (translations)",
+          "Computational efficiency: The method requires only a few GPU hours (3-5 hours on H100), making it practical for real-world use",
+          "Comprehensive evaluation: Experiments cover multiple model families (Gemma, Qwen), scales (0.6B to 12B), and typologically diverse languages",
+          "Good ablations: The appendix provides useful ablation studies on layer depth, initialization methods, and loss functions",
+          "Clear writing: The method is well-explained with helpful figures and a detailed algorithm for segmentation"
+        ],
+        "Weaknesses": [
+          "Missing comparison with language modeling baseline: The paper does not compare MATT against the straightforward approach of fine-tuning new embeddings with a language modeling objective (with frozen other parameters), which is the most direct alternative and would strengthen the claim of AIM being superior",
+          "No comparison with Zero-Shot Tokenizer Transfer (Minixhofer et al., 2024): Though mentioned in related work, no experimental comparison is provided despite this being the most relevant recent method",
+          "Limited task diversity: Evaluation is restricted to discriminative (Belebele, MMLU) and one generative (translation) task; no evaluation on true downstream tasks like NER, QA, or sentiment analysis",
+          "Tied embedding requirement: The method's effectiveness depends on tied input-output embeddings, which limits applicability to many modern models (e.g., Llama, Mistral use untied embeddings)",
+          "Lack of continual pretraining evaluation: The paper evaluates only the initialized model without subsequent fine-tuning, which is the typical use case for tokenizer transfer; this limits the assessment of MATT's value as a warm-up stage",
+          "The AIM* simplified objective shows comparable performance to full AIM in some settings, raising questions about the necessity of the more complex objective"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "How does MATT compare to simply fine-tuning the new embeddings with a language modeling objective (all other parameters frozen) for the same amount of compute? This seems like the most natural baseline and would help isolate the benefit of the AIM objective.",
+          "Why was Zero-Shot Tokenizer Transfer (Minixhofer et al., 2024) not included as a baseline? Given that it is the most closely related work, an experimental comparison would strengthen the claims of superiority.",
+          "The paper mentions that MATT is a warm-up before continual pretraining. Did you evaluate the performance after a subsequent continual pretraining phase? If not, how do you expect the gains from MATT to interact with further training?",
+          "For the untied embedding case, you mention preliminary experiments with mapping techniques. Could you provide more details on these experiments and the specific performance numbers?",
+          "How sensitive is MATT to the choice of segmentation function? The offset-based approach seems reasonable, but have you tested alternatives like word-level segmentation when possible?",
+          "The ablation shows that using only the last layer works best. Why do you think this is the case? Does this suggest that the AIM objective on lower layers might be harmful rather than just redundant?"
+        ],
+        "Limitations": [
+          "The method relies on tied input-output embeddings, which is not the case for many modern LLMs; the paper acknowledges this but provides limited solutions",
+          "The evaluation does not include a continual pretraining phase, which is the primary intended use case for tokenizer transfer methods",
+          "The paper does not test on encoder-only architectures, though the authors note this could be addressed by removing the causal constraint",
+          "Potential negative societal impact: Improving tokenizer transfer could make it easier to adapt LLMs to low-resource languages, which is generally positive, but could also facilitate the deployment of models with hidden biases or errors in these languages without adequate evaluation"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces MATT (Model-Aware Tokenizer Transfer), a method for adapting LLMs to new tokenizers by distilling attention patterns from the original model. The core contribution is the AIM (Attention Influence Modeling) objective, which aligns segment-level weighted value states between the teacher (original tokenizer) and student (new tokenizer) models. The method trains only the new embeddings while freezing all other parameters.\n\nThe paper is well-structured and addresses a practical problem in multilingual LLM adaptation. The key strengths are:\n1. Novel approach that goes beyond embedding-level heuristics by using model internals\n2. Strong experimental results showing significant improvements over baselines\n3. Computational efficiency (few GPU hours) compared to language modeling approaches\n4. Comprehensive evaluation across multiple languages, models, and scales\n\nThe main weaknesses I see:\n1. Limited comparison with the most relevant recent work (Zero-Shot Tokenizer Transfer by Minixhofer et al. 2024) - they mention it but don't compare experimentally\n2. The paper lacks a comparison with simple language modeling fine-tuning on the new embeddings (which would be the most direct baseline)\n3. The evaluation is limited to a single task type (generative and discriminative benchmarks) without testing on true downstream tasks like NER or QA\n4. The ablation on layer depth is only in the appendix and not thoroughly analyzed\n5. The method requires tied embeddings, which limits applicability to many modern models\n\nThe technical soundness appears good - the math is well-defined and the segmentation algorithm is clearly described. The results are consistent across settings and show clear improvements over heuristic baselines.\n\nOriginality: The AIM objective is novel and the idea of using attention patterns for tokenizer transfer is original. Rating: 4\nQuality: The paper is technically sound with good experimental design, though some comparisons are missing. Rating: 3\nClarity: Well-written and organized, with clear explanations of the method. Rating: 4\nSignificance: The problem is important and the method shows promise, but the limited comparison with strongest baselines reduces impact. Rating: 3\n\nOverall, this is a solid paper with a novel contribution. The main concerns are the missing comparison with language modeling baselines and the limited scope of evaluation. I would lean towards acceptance given the clear improvements and practical efficiency, but the paper could be strengthened with additional experiments.\n\nI'll rate this as an Accept with overall score 6 (Weak Accept), as the technical contribution is sound but the evaluation could be more comprehensive.REVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper introduces Model-Aware Tokenizer Transfer (MATT), a method for adapting LLMs to new tokenizers by leveraging model internals rather than relying solely on semantic embedding heuristics. The core contribution is the Attention Influence Modeling (AIM) objective, which distills inter-token communication patterns from the source model into the target model by aligning segment-level weighted value states across attention layers. The method trains only the new token embeddings while freezing all other parameters, using a segmentation function to align tokens across different tokenizers. The authors evaluate MATT on Gemma 3 (4B and 12B) and Qwen 3 (0.6B) models across multiple languages (Ukrainian, Arabic, German, Japanese, Swahili, English), demonstrating that MATT recovers a substantial portion of original model performance within a few GPU hours, significantly outperforming heuristic baselines like WECHSEL, FOCUS, Transtokenizers, and TokAlign.\",\n    \"Strengths\": [\n        \"Novel approach: The AIM objective is a creative and technically sound method that goes beyond embedding-level heuristics by leveraging attention dynamics, which is a meaningful departure from prior work\",\n        \"Strong empirical results: MATT consistently outperforms all heuristic baselines across multiple languages, models, and scales, with particularly dramatic improvements on generative tasks (translations)\",\n        \"Computational efficiency: The method requires only a few GPU hours (3-5 hours on H100), making it practical for real-world use\",\n        \"Comprehensive evaluation: Experiments cover multiple model families (Gemma, Qwen), scales (0.6B to 12B), and typologically diverse languages\",\n        \"Good ablations: The appendix provides useful ablation studies on layer depth, initialization methods, and loss functions\",\n        \"Clear writing: The method is well-explained with helpful figures and a detailed algorithm for segmentation\"\n    ],\n    \"Weaknesses\": [\n        \"Missing comparison with language modeling baseline: The paper does not compare MATT against the straightforward approach of fine-tuning new embeddings with a language modeling objective (with frozen other parameters), which is the most direct alternative and would strengthen the claim of AIM being superior\",\n        \"No comparison with Zero-Shot Tokenizer Transfer (Minixhofer et al., 2024): Though mentioned in related work, no experimental comparison is provided despite this being the most relevant recent method\",\n        \"Limited task diversity: Evaluation is restricted to discriminative (Belebele, MMLU) and one generative (translation) task; no evaluation on true downstream tasks like NER, QA, or sentiment analysis\",\n        \"Tied embedding requirement: The method's effectiveness depends on tied input-output embeddings, which limits applicability to many modern models (e.g., Llama, Mistral use untied embeddings)\",\n        \"Lack of continual pretraining evaluation: The paper evaluates only the initialized model without subsequent fine-tuning, which is the typical use case for tokenizer transfer; this limits the assessment of MATT's value as a warm-up stage\",\n        \"The AIM* simplified objective shows comparable performance to full AIM in some settings, raising questions about the necessity of the more complex objective\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 4,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"How does MATT compare to simply fine-tuning the new embeddings with a language modeling objective (all other parameters frozen) for the same amount of compute? This seems like the most natural baseline and would help isolate the benefit of the AIM objective.\",\n        \"Why was Zero-Shot Tokenizer Transfer (Minixhofer et al., 2024) not included as a baseline? Given that it is the most closely related work, an experimental comparison would strengthen the claims of superiority.\",\n        \"The paper mentions that MATT is a warm-up before continual pretraining. Did you evaluate the performance after a subsequent continual pretraining phase? If not, how do you expect the gains from MATT to interact with further training?\",\n        \"For the untied embedding case, you mention preliminary experiments with mapping techniques. Could you provide more details on these experiments and the specific performance numbers?\",\n        \"How sensitive is MATT to the choice of segmentation function? The offset-based approach seems reasonable, but have you tested alternatives like word-level segmentation when possible?\",\n        \"The ablation shows that using only the last layer works best. Why do you think this is the case? Does this suggest that the AIM objective on lower layers might be harmful rather than just redundant?\"\n    ],\n    \"Limitations\": [\n        \"The method relies on tied input-output embeddings, which is not the case for many modern LLMs; the paper acknowledges this but provides limited solutions\",\n        \"The evaluation does not include a continual pretraining phase, which is the primary intended use case for tokenizer transfer methods\",\n        \"The paper does not test on encoder-only architectures, though the authors note this could be addressed by removing the causal constraint\",\n        \"Potential negative societal impact: Improving tokenizer transfer could make it easier to adapt LLMs to low-resource languages, which is generally positive, but could also facilitate the deployment of models with hidden biases or errors in these languages without adequate evaluation\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 4,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 19937,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 18145,
+        "completion_tokens": 1670,
+        "reasoning_tokens": 0,
+        "total_tokens": 21607
+      },
+      "attempts": 1,
+      "response_id": "c08f06f4-8947-44f4-b0e1-0aae3853cca6"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 5,
+      "Reject": 0
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          4
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Significance": {
+        "values": [
+          4,
+          4,
+          4,
+          3,
+          3
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          4
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Contribution": {
+        "values": [
+          4,
+          4,
+          3,
+          3,
+          3
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Overall": {
+        "values": [
+          7,
+          7,
+          6,
+          6,
+          6
+        ],
+        "mean": 6.4,
+        "rounded_mean": 6,
+        "population_sd": 0.49,
+        "min": 6,
+        "max": 7
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper introduces MATT (Model-Aware Tokenizer Transfer), a method for adapting LLMs to new tokenizers by leveraging model internals rather than relying solely on embedding-level heuristics. The core contribution is the Attention Influence Modeling (AIM) objective, which distills inter-token communication patterns (weighted value states) from the original model into the transferred model by aligning segment-level attention representations. MATT operates as an efficient warm-up stage (a few GPU hours) before standard language modeling, freezing all parameters except new embeddings. Experiments on Gemma 3 (4B/12B) and Qwen 3 (0.6B) across six languages show MATT substantially outperforms heuristic baselines (WECHSEL, FOCUS, Transtokenizers, TokAlign), recovering a large fraction of original performance, especially on generative tasks (e.g., 60-70% BLEU recovery on Long FLORES where baselines achieve near-zero). The paper includes ablations on layer depth, initialization methods, loss functions, and convergence speed.",
+      "Strengths": [
+        "Novel and well-motivated approach: AIM objective is a creative departure from embedding-only methods, using attention dynamics to guide tokenizer transfer.",
+        "Strong empirical results: MATT consistently outperforms heuristic baselines across diverse languages and models, with particularly dramatic gains on generative tasks (translation).",
+        "Computational efficiency: Only a few GPU hours are needed (3-5 hours), making it practical for real-world use compared to LM-based objectives.",
+        "Comprehensive evaluation: Tests across multiple languages (Ukrainian, Arabic, German, English, Japanese, Swahili), model families (Gemma 3, Qwen 3), scales (0.6B-12B), and tasks (Belebele, MMLU, FLORES).",
+        "Good ablation studies: Appendix includes analysis of layer depth, initialization methods, loss functions, and convergence speed, providing useful insights.",
+        "Clear writing and helpful figures: The method is explained well, with illustrative diagrams and pseudocode for the segmentation algorithm."
+      ],
+      "Weaknesses": [
+        "Missing comparison to language-modeling-based fine-tuning: The paper claims efficiency over LM objectives but doesn't directly compare MATT to standard LM fine-tuning with frozen layers, which is the most natural alternative baseline.",
+        "Missing comparison to Zero-Shot Tokenizer Transfer (Minixhofer et al., 2024), a key model-aware baseline that also uses the full model. This weakens the claim of 'state-of-the-art' performance.",
+        "Lack of continual pretraining evaluation: The paper only evaluates the initialized model, but real tokenizer transfer pipelines include continual pretraining. It's unclear if MATT's advantage persists after further training.",
+        "Tied embeddings limitation: MATT's effectiveness is strongly dependent on tied input-output embeddings, which limits applicability to many modern models (e.g., Llama, Qwen use untied embeddings). The appendix discusses this but doesn't provide a satisfactory solution.",
+        "No statistical significance testing: Results are reported as single point estimates without variance or significance tests across multiple runs.",
+        "Limited task diversity: Evaluation is restricted to three benchmarks (Belebele, MMLU variants, FLORES); no other tasks like question answering or code generation are tested.",
+        "Theoretical justification is thin: while the intuition is plausible, there is no rigorous analysis of why matching segment-level attention patterns should lead to good downstream performance."
+      ],
+      "Originality": 4,
+      "Quality": 3,
+      "Clarity": 3,
+      "Significance": 4,
+      "Questions": [
+        "1. How does MATT compare to standard language modeling fine-tuning with frozen non-embedding parameters (e.g., training embeddings with LM loss for the same number of steps)? This comparison is crucial to validate the efficiency claim over LM objectives.",
+        "2. Why was Zero-Shot Tokenizer Transfer (Minixhofer et al., 2024) not included as a baseline? Given that it is the most closely related work, an experimental comparison would strengthen the claims of superiority.",
+        "3. What happens when MATT-initialized embeddings are followed by continual pretraining? Does the advantage over heuristic baselines persist, narrow, or widen?",
+        "4. For models with untied embeddings, what is the actual performance gap? The appendix mentions preliminary experiments but doesn't report numbers. Could you provide quantitative results for untied settings?",
+        "5. What is the variance across random seeds? Are the reported results statistically significant?",
+        "6. How sensitive is MATT to the choice of segmentation function (e.g., word-based vs. offset-based)? The ablation on layer depth is helpful, but a similar analysis for segmentation would strengthen the paper.",
+        "7. Does MATT work for encoder-only models as the limitation section suggests? Any preliminary evidence?",
+        "8. The paper uses 50M tokens per language for MATT but 500M for FOCUS. Is this comparison fair? Could FOCUS benefit from more data, or does the comparison control for training data?",
+        "9. Why does the AIM objective work better for generative tasks (e.g., FLORES) than for discriminative tasks (e.g., MMLU)? Is there a theoretical or empirical explanation?",
+        "10. The ablation shows that using only the last layer works best. Why do you think this is the case? Does this suggest that the AIM objective on lower layers might be harmful rather than just redundant?"
+      ],
+      "Limitations": [
+        "The method requires tied input-output embeddings for full effectiveness; models with untied embeddings (common in newer architectures) may not benefit as much, and the proposed workarounds are not fully validated.",
+        "The paper evaluates only the initialized model, not after continual pretraining, which is the typical use case for tokenizer transfer. This limits the assessment of long-term utility.",
+        "The segmentation algorithm's behavior in edge cases (e.g., very long tokens, languages with complex morphology) is not thoroughly analyzed, and the worst-case scenario of a single segment could make the objective ineffective.",
+        "No theoretical analysis of why matching segment-level attention patterns should transfer well; the argument is intuitive but lacks formal grounding.",
+        "The method has not been tested on encoder-only architectures or non-decoder transformers, limiting its generalizability.",
+        "Potential negative societal impact: Improving tokenizer transfer could make it easier to adapt LLMs to low-resource languages, which is generally positive, but could also facilitate the deployment of models with hidden biases or errors in these languages without adequate evaluation. This is not discussed in the paper."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 3,
+      "Contribution": 4,
+      "Overall": 7,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "THOUGHT:\nThe paper presents a novel method (MATT) for tokenizer transfer that goes beyond embedding heuristics by using attention dynamics. All five reviewers acknowledge the novelty, strong empirical results, and computational efficiency. However, there are consistent concerns across reviews:\n\n1. **Missing key baselines**: All reviewers note the absence of (a) language modeling fine-tuning with frozen layers as a direct comparison, and (b) Zero-Shot Tokenizer Transfer (Minixhofer et al., 2024), the most closely related model-aware method. These omissions weaken claims of superiority and efficiency.\n\n2. **Lack of continual pretraining evaluation**: Tokenizer transfer is typically a warm-up for further training. The paper only evaluates the initialized model, limiting practical significance.\n\n3. **Tied embeddings limitation**: The method relies on tied input-output embeddings, excluding many modern models (Llama, Mistral). The proposed workarounds are preliminary.\n\n4. **No statistical significance testing**: Results are single point estimates without variance across runs.\n\n5. **Limited task diversity**: Only Belebele, MMLU variants, and FLORES are tested; no QA, NER, or code tasks.\n\nReviewer scores: 7, 7, 6, 6, 6. All recommend \"Accept\" (though some at borderline level). The consensus is that the paper is technically solid with novel contributions but has notable gaps in evaluation. The missing baselines are the most critical issue—particularly the LM fine-tuning comparison, which directly challenges the paper's central efficiency claim.\n\nGiven the strengths (novelty, strong results on generative tasks, practical efficiency) and the fact that all reviewers lean toward acceptance, I will recommend Accept. However, I will emphasize the need for the authors to address the missing baselines and continual pretraining evaluation in the final version or rebuttal. The paper makes a meaningful contribution to the tokenizer transfer problem and is likely to be useful to the community. The weaknesses are addressable and do not fundamentally undermine the contribution.\n\nDecision: Accept. Overall score: 7 (solid paper with high impact, but with evaluation gaps that need addressing). Soundness: 3 (good), Presentation: 3 (good), Contribution: 4 (high). Originality: 4 (very high), Quality: 3 (good), Clarity: 3 (good), Significance: 4 (high).\n\nI will craft the meta-review to consolidate the reviewers' feedback, highlight the consensus, and set expectations for the revision.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper introduces MATT (Model-Aware Tokenizer Transfer), a method for adapting LLMs to new tokenizers by leveraging model internals rather than relying solely on embedding-level heuristics. The core contribution is the Attention Influence Modeling (AIM) objective, which distills inter-token communication patterns (weighted value states) from the original model into the transferred model by aligning segment-level attention representations. MATT operates as an efficient warm-up stage (a few GPU hours) before standard language modeling, freezing all parameters except new embeddings. Experiments on Gemma 3 (4B/12B) and Qwen 3 (0.6B) across six languages show MATT substantially outperforms heuristic baselines (WECHSEL, FOCUS, Transtokenizers, TokAlign), recovering a large fraction of original performance, especially on generative tasks (e.g., 60-70% BLEU recovery on Long FLORES where baselines achieve near-zero). The paper includes ablations on layer depth, initialization methods, loss functions, and convergence speed.\",\n  \"Strengths\": [\n    \"Novel and well-motivated approach: AIM objective is a creative departure from embedding-only methods, using attention dynamics to guide tokenizer transfer.\",\n    \"Strong empirical results: MATT consistently outperforms heuristic baselines across diverse languages and models, with particularly dramatic gains on generative tasks (translation).\",\n    \"Computational efficiency: Only a few GPU hours are needed (3-5 hours), making it practical for real-world use compared to LM-based objectives.\",\n    \"Comprehensive evaluation: Tests across multiple languages (Ukrainian, Arabic, German, English, Japanese, Swahili), model families (Gemma 3, Qwen 3), scales (0.6B-12B), and tasks (Belebele, MMLU, FLORES).\",\n    \"Good ablation studies: Appendix includes analysis of layer depth, initialization methods, loss functions, and convergence speed, providing useful insights.\",\n    \"Clear writing and helpful figures: The method is explained well, with illustrative diagrams and pseudocode for the segmentation algorithm.\"\n  ],\n  \"Weaknesses\": [\n    \"Missing comparison to language-modeling-based fine-tuning: The paper claims efficiency over LM objectives but doesn't directly compare MATT to standard LM fine-tuning with frozen layers, which is the most natural alternative baseline.\",\n    \"Missing comparison to Zero-Shot Tokenizer Transfer (Minixhofer et al., 2024), a key model-aware baseline that also uses the full model. This weakens the claim of 'state-of-the-art' performance.\",\n    \"Lack of continual pretraining evaluation: The paper only evaluates the initialized model, but real tokenizer transfer pipelines include continual pretraining. It's unclear if MATT's advantage persists after further training.\",\n    \"Tied embeddings limitation: MATT's effectiveness is strongly dependent on tied input-output embeddings, which limits applicability to many modern models (e.g., Llama, Qwen use untied embeddings). The appendix discusses this but doesn't provide a satisfactory solution.\",\n    \"No statistical significance testing: Results are reported as single point estimates without variance or significance tests across multiple runs.\",\n    \"Limited task diversity: Evaluation is restricted to three benchmarks (Belebele, MMLU variants, FLORES); no other tasks like question answering or code generation are tested.\",\n    \"Theoretical justification is thin: while the intuition is plausible, there is no rigorous analysis of why matching segment-level attention patterns should lead to good downstream performance.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"1. How does MATT compare to standard language modeling fine-tuning with frozen non-embedding parameters (e.g., training embeddings with LM loss for the same number of steps)? This comparison is crucial to validate the efficiency claim over LM objectives.\",\n    \"2. Why was Zero-Shot Tokenizer Transfer (Minixhofer et al., 2024) not included as a baseline? Given that it is the most closely related work, an experimental comparison would strengthen the claims of superiority.\",\n    \"3. What happens when MATT-initialized embeddings are followed by continual pretraining? Does the advantage over heuristic baselines persist, narrow, or widen?\",\n    \"4. For models with untied embeddings, what is the actual performance gap? The appendix mentions preliminary experiments but doesn't report numbers. Could you provide quantitative results for untied settings?\",\n    \"5. What is the variance across random seeds? Are the reported results statistically significant?\",\n    \"6. How sensitive is MATT to the choice of segmentation function (e.g., word-based vs. offset-based)? The ablation on layer depth is helpful, but a similar analysis for segmentation would strengthen the paper.\",\n    \"7. Does MATT work for encoder-only models as the limitation section suggests? Any preliminary evidence?\",\n    \"8. The paper uses 50M tokens per language for MATT but 500M for FOCUS. Is this comparison fair? Could FOCUS benefit from more data, or does the comparison control for training data?\",\n    \"9. Why does the AIM objective work better for generative tasks (e.g., FLORES) than for discriminative tasks (e.g., MMLU)? Is there a theoretical or empirical explanation?\",\n    \"10. The ablation shows that using only the last layer works best. Why do you think this is the case? Does this suggest that the AIM objective on lower layers might be harmful rather than just redundant?\"\n  ],\n  \"Limitations\": [\n    \"The method requires tied input-output embeddings for full effectiveness; models with untied embeddings (common in newer architectures) may not benefit as much, and the proposed workarounds are not fully validated.\",\n    \"The paper evaluates only the initialized model, not after continual pretraining, which is the typical use case for tokenizer transfer. This limits the assessment of long-term utility.\",\n    \"The segmentation algorithm's behavior in edge cases (e.g., very long tokens, languages with complex morphology) is not thoroughly analyzed, and the worst-case scenario of a single segment could make the objective ineffective.\",\n    \"No theoretical analysis of why matching segment-level attention patterns should transfer well; the argument is intuitive but lacks formal grounding.\",\n    \"The method has not been tested on encoder-only architectures or non-decoder transformers, limiting its generalizability.\",\n    \"Potential negative societal impact: Improving tokenizer transfer could make it easier to adapt LLMs to low-resource languages, which is generally positive, but could also facilitate the deployment of models with hidden biases or errors in these languages without adequate evaluation. This is not discussed in the paper.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 4,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 7770,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 7770,
+      "completion_tokens": 1977,
+      "reasoning_tokens": 0,
+      "total_tokens": 9747
+    },
+    "attempts": 1,
+    "response_id": "46bcd01a-7a1c-4b6d-92c4-cdece55ac954"
+  },
+  "final_review": {
+    "Summary": "The paper introduces MATT (Model-Aware Tokenizer Transfer), a method for adapting LLMs to new tokenizers by leveraging model internals rather than relying solely on embedding-level heuristics. The core contribution is the Attention Influence Modeling (AIM) objective, which distills inter-token communication patterns (weighted value states) from the original model into the transferred model by aligning segment-level attention representations. MATT operates as an efficient warm-up stage (a few GPU hours) before standard language modeling, freezing all parameters except new embeddings. Experiments on Gemma 3 (4B/12B) and Qwen 3 (0.6B) across six languages show MATT substantially outperforms heuristic baselines (WECHSEL, FOCUS, Transtokenizers, TokAlign), recovering a large fraction of original performance, especially on generative tasks (e.g., 60-70% BLEU recovery on Long FLORES where baselines achieve near-zero). The paper includes ablations on layer depth, initialization methods, loss functions, and convergence speed.",
+    "Strengths": [
+      "Novel and well-motivated approach: AIM objective is a creative departure from embedding-only methods, using attention dynamics to guide tokenizer transfer.",
+      "Strong empirical results: MATT consistently outperforms heuristic baselines across diverse languages and models, with particularly dramatic gains on generative tasks (translation).",
+      "Computational efficiency: Only a few GPU hours are needed (3-5 hours), making it practical for real-world use compared to LM-based objectives.",
+      "Comprehensive evaluation: Tests across multiple languages (Ukrainian, Arabic, German, English, Japanese, Swahili), model families (Gemma 3, Qwen 3), scales (0.6B-12B), and tasks (Belebele, MMLU, FLORES).",
+      "Good ablation studies: Appendix includes analysis of layer depth, initialization methods, loss functions, and convergence speed, providing useful insights.",
+      "Clear writing and helpful figures: The method is explained well, with illustrative diagrams and pseudocode for the segmentation algorithm."
+    ],
+    "Weaknesses": [
+      "Missing comparison to language-modeling-based fine-tuning: The paper claims efficiency over LM objectives but doesn't directly compare MATT to standard LM fine-tuning with frozen layers, which is the most natural alternative baseline.",
+      "Missing comparison to Zero-Shot Tokenizer Transfer (Minixhofer et al., 2024), a key model-aware baseline that also uses the full model. This weakens the claim of 'state-of-the-art' performance.",
+      "Lack of continual pretraining evaluation: The paper only evaluates the initialized model, but real tokenizer transfer pipelines include continual pretraining. It's unclear if MATT's advantage persists after further training.",
+      "Tied embeddings limitation: MATT's effectiveness is strongly dependent on tied input-output embeddings, which limits applicability to many modern models (e.g., Llama, Qwen use untied embeddings). The appendix discusses this but doesn't provide a satisfactory solution.",
+      "No statistical significance testing: Results are reported as single point estimates without variance or significance tests across multiple runs.",
+      "Limited task diversity: Evaluation is restricted to three benchmarks (Belebele, MMLU variants, FLORES); no other tasks like question answering or code generation are tested.",
+      "Theoretical justification is thin: while the intuition is plausible, there is no rigorous analysis of why matching segment-level attention patterns should lead to good downstream performance."
+    ],
+    "Originality": 4,
+    "Quality": 3,
+    "Clarity": 3,
+    "Significance": 4,
+    "Questions": [
+      "1. How does MATT compare to standard language modeling fine-tuning with frozen non-embedding parameters (e.g., training embeddings with LM loss for the same number of steps)? This comparison is crucial to validate the efficiency claim over LM objectives.",
+      "2. Why was Zero-Shot Tokenizer Transfer (Minixhofer et al., 2024) not included as a baseline? Given that it is the most closely related work, an experimental comparison would strengthen the claims of superiority.",
+      "3. What happens when MATT-initialized embeddings are followed by continual pretraining? Does the advantage over heuristic baselines persist, narrow, or widen?",
+      "4. For models with untied embeddings, what is the actual performance gap? The appendix mentions preliminary experiments but doesn't report numbers. Could you provide quantitative results for untied settings?",
+      "5. What is the variance across random seeds? Are the reported results statistically significant?",
+      "6. How sensitive is MATT to the choice of segmentation function (e.g., word-based vs. offset-based)? The ablation on layer depth is helpful, but a similar analysis for segmentation would strengthen the paper.",
+      "7. Does MATT work for encoder-only models as the limitation section suggests? Any preliminary evidence?",
+      "8. The paper uses 50M tokens per language for MATT but 500M for FOCUS. Is this comparison fair? Could FOCUS benefit from more data, or does the comparison control for training data?",
+      "9. Why does the AIM objective work better for generative tasks (e.g., FLORES) than for discriminative tasks (e.g., MMLU)? Is there a theoretical or empirical explanation?",
+      "10. The ablation shows that using only the last layer works best. Why do you think this is the case? Does this suggest that the AIM objective on lower layers might be harmful rather than just redundant?"
+    ],
+    "Limitations": [
+      "The method requires tied input-output embeddings for full effectiveness; models with untied embeddings (common in newer architectures) may not benefit as much, and the proposed workarounds are not fully validated.",
+      "The paper evaluates only the initialized model, not after continual pretraining, which is the typical use case for tokenizer transfer. This limits the assessment of long-term utility.",
+      "The segmentation algorithm's behavior in edge cases (e.g., very long tokens, languages with complex morphology) is not thoroughly analyzed, and the worst-case scenario of a single segment could make the objective ineffective.",
+      "No theoretical analysis of why matching segment-level attention patterns should transfer well; the argument is intuitive but lacks formal grounding.",
+      "The method has not been tested on encoder-only architectures or non-decoder transformers, limiting its generalizability.",
+      "Potential negative societal impact: Improving tokenizer transfer could make it easier to adapt LLMs to low-resource languages, which is generally positive, but could also facilitate the deployment of models with hidden biases or errors in these languages without adequate evaluation. This is not discussed in the paper."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 3,
+    "Contribution": 3,
+    "Overall": 6,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 107455,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 98495,
+    "completion_tokens": 11099,
+    "reasoning_tokens": 0,
+    "total_tokens": 118554,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.0137893,
+    "output_usd": 0.00310772,
+    "total_usd": 0.01692211
+  },
+  "elapsed_seconds": 34.973,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Accept",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B180",
+    "filename": "B180.txt",
+    "blind_text_sha256": "c6f612df416c1650e91004b1cf2e103ddd60ad5436f251d55aafcf9766a168ca",
+    "characters": 64368,
+    "full_text_saved": false
+  }
+}

@@ -1,0 +1,720 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:49:02.455414+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "This paper proposes RoCA, a Gaussian Process (GP)-based framework for robust cross-domain end-to-end autonomous driving. RoCA learns a codebook of basis tokens representing diverse driving scenarios, then uses a GP to probabilistically infer ego and agent trajectories based on kernel similarity between current scene tokens and basis tokens. The approach provides uncertainty estimates used for variance-weighted training losses and active learning. The framework is evaluated on nuScenes across cross-city transfers, image degradations, and active learning settings, showing improvements over base models (VAD-T, SparseDrive-S) in zero-shot generalization and domain adaptation.",
+        "Strengths": [
+          "Novel application of Gaussian Processes to end-to-end autonomous driving, providing principled uncertainty estimation",
+          "Comprehensive experimental evaluation across multiple cross-domain scenarios including cross-city transfer, image degradation, and active learning",
+          "Model-agnostic design that can work with different base E2E models",
+          "Multiple useful operating modes: source-domain regularization, direct GP-based prediction, supervised/unsupervised adaptation, and active learning",
+          "Good ablation study demonstrating contribution of each loss component",
+          "Practical considerations addressed including online adaptation and uncertainty-guided data selection"
+        ],
+        "Weaknesses": [
+          "The GP formulation is somewhat ad-hoc: basis tokens are learned via reconstruction rather than standard GP hyperparameter optimization, and the theoretical justification is thin",
+          "GP-based trajectory prediction is essentially a weighted average of basis trajectories, which may limit expressiveness for complex maneuvers",
+          "Computational scalability of GP inference (matrix inversion) is not thoroughly analyzed, and codebook size scaling is not discussed",
+          "In same-domain evaluation, the improvement from training regularization alone is modest; larger gains require additional inference cost from GP prediction",
+          "Comparison with VLP in Appendix D uses different evaluation protocols, making direct comparison unreliable",
+          "Hyperparameter choices (number of groups, group size, kernel parameters) lack sensitivity analysis",
+          "Limited analysis of failure modes or conditions where the GP approach might underperform"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "1. How does the GP formulation differ from a standard nearest-neighbor regression with learned embeddings? What specific advantages does the GP framework provide over a simpler attention-based lookup mechanism?",
+          "2. The kernel matrix inversion in Eq. (2) and (4) requires inverting C×C matrices (C=64). What is the computational cost at inference time, and how does this scale with larger codebooks?",
+          "3. How were the number of basis groups (N_ego=48, N_agent=64) and group size (C=64) determined? Is there a sensitivity analysis?",
+          "4. In the unsupervised adaptation setting, what prevents the model from drifting or collapsing to trivial solutions given that only L_gp is used?",
+          "5. The comparison with VLP in Appendix D uses different evaluation protocols. Can you provide a fair comparison using the standardized protocol?",
+          "6. How does RoCA handle scenarios where the current scene token is far from all basis tokens (high uncertainty)? Is there a fallback mechanism?",
+          "7. What is the additional memory cost of storing the codebook and kernel matrices during training?"
+        ],
+        "Limitations": [
+          "The paper does not address the potential negative societal impact of autonomous driving systems, including safety risks in deployment",
+          "Evaluation is limited to nuScenes; experiments on other datasets (e.g., CARLA, Waymo) would strengthen generalizability claims",
+          "The approach requires pre-training a base E2E model first, which may limit applicability when such models are not available",
+          "Computational overhead of GP inference may limit real-time deployment on embedded systems",
+          "Active learning results are only shown for one base model (SparseDrive-S); generalization to other architectures is unclear"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes RoCA, a Gaussian Process-based framework for robust cross-domain end-to-end autonomous driving. The key idea is to learn a codebook of basis tokens that span diverse driving scenarios, then use a GP to probabilistically infer trajectories based on similarity between current scene tokens and basis tokens. The approach provides uncertainty estimates that are used for variance-weighted losses and active learning.\n\nStrengths:\n1. Novel combination of GP with E2E driving - GPs are well-suited for uncertainty modeling and this is a fresh application area\n2. Comprehensive experimental evaluation across multiple cross-domain scenarios (cross-city, image degradation, active learning)\n3. The framework is model-agnostic and can work with different base E2E models (VAD, SparseDrive)\n4. Multiple operating modes (training regularization, direct GP prediction, adaptation)\n5. Good ablation study showing contribution of each loss component\n6. Addresses practical deployment concerns (active learning, unsupervised adaptation)\n\nWeaknesses:\n1. The GP formulation seems somewhat ad-hoc - it's not a standard GP regression where we learn hyperparameters from data; instead basis tokens are learned via reconstruction. The theoretical justification is thin.\n2. The trajectory prediction via GP is essentially a weighted average of basis trajectories, which may limit expressiveness compared to learned residual prediction\n3. Computational cost of GP inference (matrix inversion) at scale is not well discussed; the codebook size (112 groups × 64 tokens) may not scale well\n4. The improvement from \"RoCA training regularization\" over baseline is modest in same-domain evaluation (Table 1), and the larger gains come from \"RoCA trajectory prediction\" which adds inference cost\n5. The comparison with VLP in Appendix D uses different evaluation protocols, making direct comparison difficult\n6. Some hyperparameter choices (e.g., number of basis groups) seem arbitrary without sensitivity analysis\n7. The paper doesn't deeply analyze failure modes of the GP approach or when it might underperform\n\nThe paper is technically sound overall with thorough experiments, but the theoretical novelty of the GP formulation is somewhat limited - it's essentially a learned nearest-neighbor lookup with uncertainty weighting. The practical benefits are demonstrated, though the gains in some settings are modest.\n\nI would rate this as a borderline accept - the work is solid but has some theoretical and practical concerns that prevent it from being a strong accept.\n\nREVIEW JSON:\n```json\n{\n\"Summary\": \"This paper proposes RoCA, a Gaussian Process (GP)-based framework for robust cross-domain end-to-end autonomous driving. RoCA learns a codebook of basis tokens representing diverse driving scenarios, then uses a GP to probabilistically infer ego and agent trajectories based on kernel similarity between current scene tokens and basis tokens. The approach provides uncertainty estimates used for variance-weighted training losses and active learning. The framework is evaluated on nuScenes across cross-city transfers, image degradations, and active learning settings, showing improvements over base models (VAD-T, SparseDrive-S) in zero-shot generalization and domain adaptation.\",\n\"Strengths\": [\n\"Novel application of Gaussian Processes to end-to-end autonomous driving, providing principled uncertainty estimation\",\n\"Comprehensive experimental evaluation across multiple cross-domain scenarios including cross-city transfer, image degradation, and active learning\",\n\"Model-agnostic design that can work with different base E2E models\",\n\"Multiple useful operating modes: source-domain regularization, direct GP-based prediction, supervised/unsupervised adaptation, and active learning\",\n\"Good ablation study demonstrating contribution of each loss component\",\n\"Practical considerations addressed including online adaptation and uncertainty-guided data selection\"\n],\n\"Weaknesses\": [\n\"The GP formulation is somewhat ad-hoc: basis tokens are learned via reconstruction rather than standard GP hyperparameter optimization, and the theoretical justification is thin\",\n\"GP-based trajectory prediction is essentially a weighted average of basis trajectories, which may limit expressiveness for complex maneuvers\",\n\"Computational scalability of GP inference (matrix inversion) is not thoroughly analyzed, and codebook size scaling is not discussed\",\n\"In same-domain evaluation, the improvement from training regularization alone is modest; larger gains require additional inference cost from GP prediction\",\n\"Comparison with VLP in Appendix D uses different evaluation protocols, making direct comparison unreliable\",\n\"Hyperparameter choices (number of groups, group size, kernel parameters) lack sensitivity analysis\",\n\"Limited analysis of failure modes or conditions where the GP approach might underperform\"\n],\n\"Originality\": 3,\n\"Quality\": 3,\n\"Clarity\": 3,\n\"Significance\": 3,\n\"Questions\": [\n\"1. How does the GP formulation differ from a standard nearest-neighbor regression with learned embeddings? What specific advantages does the GP framework provide over a simpler attention-based lookup mechanism?\",\n\"2. The kernel matrix inversion in Eq. (2) and (4) requires inverting C×C matrices (C=64). What is the computational cost at inference time, and how does this scale with larger codebooks?\",\n\"3. How were the number of basis groups (N_ego=48, N_agent=64) and group size (C=64) determined? Is there a sensitivity analysis?\",\n\"4. In the unsupervised adaptation setting, what prevents the model from drifting or collapsing to trivial solutions given that only L_gp is used?\",\n\"5. The comparison with VLP in Appendix D uses different evaluation protocols. Can you provide a fair comparison using the standardized protocol?\",\n\"6. How does RoCA handle scenarios where the current scene token is far from all basis tokens (high uncertainty)? Is there a fallback mechanism?\",\n\"7. What is the additional memory cost of storing the codebook and kernel matrices during training?\"\n],\n\"Limitations\": [\n\"The paper does not address the potential negative societal impact of autonomous driving systems, including safety risks in deployment\",\n\"Evaluation is limited to nuScenes; experiments on other datasets (e.g., CARLA, Waymo) would strengthen generalizability claims\",\n\"The approach requires pre-training a base E2E model first, which may limit applicability when such models are not available\",\n\"Computational overhead of GP inference may limit real-time deployment on embedded systems\",\n\"Active learning results are only shown for one base model (SparseDrive-S); generalization to other architectures is unclear\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 3,\n\"Contribution\": 3,\n\"Overall\": 6,\n\"Confidence\": 4,\n\"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 18364,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 16572,
+        "completion_tokens": 1331,
+        "reasoning_tokens": 0,
+        "total_tokens": 19695
+      },
+      "attempts": 1,
+      "response_id": "53a0d4a0-fd96-43fd-9b0f-72114b70b1f8"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper proposes RoCA, a Gaussian process (GP)-based framework for robust cross-domain end-to-end autonomous driving. RoCA learns a codebook of basis tokens with associated trajectories that span diverse driving scenarios. Given a new driving scene, the GP probabilistically infers future trajectories by computing correlations between the current scene tokens and the learned basis tokens. The framework provides uncertainty estimates that are used for variance-weighted loss during training, regularization of the base E2E model, and uncertainty-guided active learning during domain adaptation. The method is evaluated on nuScenes across cross-city transfers, image degradations, and long-tail scenarios, showing improvements over baselines in both zero-shot generalization and adaptation settings.",
+        "Strengths": [
+          "Novel application of Gaussian processes to the cross-domain E2E driving problem, providing principled uncertainty estimation",
+          "Comprehensive experimental evaluation covering cross-city transfer, image degradations, active learning, and long-tail scenarios",
+          "The uncertainty-based active learning selection is a practical and useful contribution for efficient domain adaptation",
+          "Model-agnostic design that can be applied to any tokenized E2E planner (demonstrated with VAD and SparseDrive)",
+          "Consistent improvements over baselines in most settings, with particularly strong results in adaptation scenarios",
+          "The GP-based regularization improves the base model without incurring extra inference computation",
+          "Clear qualitative results demonstrating improved trajectory quality in challenging scenarios"
+        ],
+        "Weaknesses": [
+          "The GP formulation with basis tokens is essentially a sparse GP regression model with learned inducing points, which is well-established in ML literature; the novelty lies mainly in the application to E2E driving rather than the technical approach",
+          "Applying GP kernels to high-dimensional learned token embeddings may not satisfy the smoothness assumptions of GP models, and the paper does not discuss the theoretical validity of this approach",
+          "The claim that RoCA works 'without requiring extra inference computation' only holds for the training regularization mode; the GP trajectory prediction mode does add latency (75.7ms vs 59.5ms for VAD)",
+          "Cross-domain evaluation is limited to two cities within nuScenes (Boston and Singapore); more diverse domains (different weather, sensors, countries) would strengthen the claims",
+          "No direct comparison with recent LLM-based driving models, despite discussing them in the introduction; the comparison to VLP is in the appendix and uses a different evaluation protocol",
+          "The ablation study is limited to source-domain training; no ablation on the adaptation components (e.g., effect of uncertainty weighting during adaptation)",
+          "The paper does not discuss potential failure modes of the GP approach, such as when the codebook fails to capture target domain characteristics"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How is the RBF kernel computed on the high-dimensional token embeddings? What is the dimensionality of the tokens, and does the kernel computation scale reasonably with the codebook size?",
+          "The paper mentions that RoCA supports online adaptation, but no online adaptation experiments are presented. Could you provide results or discussion on this claimed capability?",
+          "In the unsupervised adaptation setting, what prevents the model from drifting or collapsing without ground-truth supervision? Is there any regularization to prevent this?",
+          "How sensitive is the performance to the choice of hyperparameters such as the number of basis groups (N_code) and group size (C)? Were any sensitivity analyses performed?",
+          "The GP trajectory prediction mode shows the best performance but adds inference cost. In practice, how would a user decide between using the training regularization mode versus the GP prediction mode?",
+          "For the active learning experiments, how does the uncertainty-based selection compare to other criteria such as diversity-based sampling or margin-based sampling?",
+          "Could you provide more details on the classification of tokens into basis groups? Is the classification learned jointly with the basis tokens, and how is the MLP structured?"
+        ],
+        "Limitations": [
+          "The evaluation is limited to nuScenes with only two cities; broader validation across more diverse domains (e.g., different countries, sensor configurations, weather conditions beyond synthetic corruptions) is needed",
+          "The GP-based approach adds a training pipeline with three stages (base training, GP training, finetuning), which may be complex for practical deployment",
+          "The paper does not address potential negative societal impacts of autonomous driving systems, such as safety concerns during deployment or potential job displacement",
+          "The method assumes tokenized representations are available from the base E2E model; this may not be the case for all E2E architectures, limiting general applicability",
+          "The uncertainty estimates from the GP may not be well-calibrated, and the paper does not evaluate calibration quality"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThe paper proposes RoCA, a Gaussian process-based framework for robust cross-domain end-to-end autonomous driving. The key idea is to learn a codebook of basis tokens with associated trajectories, then use a GP to probabilistically infer trajectories for new scenes based on similarity to these basis tokens. The framework provides uncertainty estimates that are used for loss weighting, regularization during source training, and active learning during adaptation.\n\nStrengths:\n1. Novel application of Gaussian processes to E2E driving for cross-domain robustness\n2. Comprehensive experimental evaluation across multiple scenarios (cross-city, image degradation, active learning, long-tail)\n3. The uncertainty-based active learning is a practical contribution\n4. The framework is model-agnostic and can be applied to any tokenized E2E planner\n5. Clear improvements over baselines in most settings\n\nWeaknesses:\n1. Limited novelty - the GP formulation with basis tokens is essentially a sparse GP regression model with learned inducing points, which is well-established in the ML literature. The main contribution is the application to E2E driving.\n2. The GP formulation seems to treat tokens as if they were raw inputs, but the kernel is applied on learned token embeddings which may not satisfy GP assumptions well\n3. The paper claims \"without requiring extra inference computation\" for the training regularization mode, but the GP trajectory prediction mode does require extra computation\n4. The adaptation experiments are somewhat limited - only two cities from nuScenes are used, and the degradation experiments use synthetic corruptions\n5. The comparison to LLM-based methods is superficial - no direct comparison with recent LLM-based driving models\n6. Some technical details are unclear, such as how the kernel is computed on high-dimensional token embeddings and the scalability of the GP approach\n\nOriginality: Medium - The GP-based approach to cross-domain E2E driving is novel, but the underlying techniques (sparse GP, codebook learning) are well-known\n\nQuality: Good - The experiments are thorough and the results are convincing, but there are some methodological concerns\n\nClarity: Good - The paper is well-written and organized, though some technical details could be clearer\n\nSignificance: Medium-High - The problem of cross-domain robustness in E2E driving is important, and the uncertainty-based active learning is practically useful\n\nOverall assessment: This is a solid paper with good experimental evaluation, but the novelty is somewhat limited. The GP formulation is essentially a well-known technique applied to a new domain. The practical contributions (uncertainty-based adaptation, active learning) are valuable. I would lean toward acceptance but with reservations about the technical novelty and some methodological concerns.\n\nDecision: Accept (with moderate confidence)\n\nSoundness: 3 (Good)\nPresentation: 3 (Good)  \nContribution: 3 (Good)\nOverall: 6 (Weak Accept)\nConfidence: 4 (Confident)REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper proposes RoCA, a Gaussian process (GP)-based framework for robust cross-domain end-to-end autonomous driving. RoCA learns a codebook of basis tokens with associated trajectories that span diverse driving scenarios. Given a new driving scene, the GP probabilistically infers future trajectories by computing correlations between the current scene tokens and the learned basis tokens. The framework provides uncertainty estimates that are used for variance-weighted loss during training, regularization of the base E2E model, and uncertainty-guided active learning during domain adaptation. The method is evaluated on nuScenes across cross-city transfers, image degradations, and long-tail scenarios, showing improvements over baselines in both zero-shot generalization and adaptation settings.\",\n  \"Strengths\": [\n    \"Novel application of Gaussian processes to the cross-domain E2E driving problem, providing principled uncertainty estimation\",\n    \"Comprehensive experimental evaluation covering cross-city transfer, image degradations, active learning, and long-tail scenarios\",\n    \"The uncertainty-based active learning selection is a practical and useful contribution for efficient domain adaptation\",\n    \"Model-agnostic design that can be applied to any tokenized E2E planner (demonstrated with VAD and SparseDrive)\",\n    \"Consistent improvements over baselines in most settings, with particularly strong results in adaptation scenarios\",\n    \"The GP-based regularization improves the base model without incurring extra inference computation\",\n    \"Clear qualitative results demonstrating improved trajectory quality in challenging scenarios\"\n  ],\n  \"Weaknesses\": [\n    \"The GP formulation with basis tokens is essentially a sparse GP regression model with learned inducing points, which is well-established in ML literature; the novelty lies mainly in the application to E2E driving rather than the technical approach\",\n    \"Applying GP kernels to high-dimensional learned token embeddings may not satisfy the smoothness assumptions of GP models, and the paper does not discuss the theoretical validity of this approach\",\n    \"The claim that RoCA works 'without requiring extra inference computation' only holds for the training regularization mode; the GP trajectory prediction mode does add latency (75.7ms vs 59.5ms for VAD)\",\n    \"Cross-domain evaluation is limited to two cities within nuScenes (Boston and Singapore); more diverse domains (different weather, sensors, countries) would strengthen the claims\",\n    \"No direct comparison with recent LLM-based driving models, despite discussing them in the introduction; the comparison to VLP is in the appendix and uses a different evaluation protocol\",\n    \"The ablation study is limited to source-domain training; no ablation on the adaptation components (e.g., effect of uncertainty weighting during adaptation)\",\n    \"The paper does not discuss potential failure modes of the GP approach, such as when the codebook fails to capture target domain characteristics\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How is the RBF kernel computed on the high-dimensional token embeddings? What is the dimensionality of the tokens, and does the kernel computation scale reasonably with the codebook size?\",\n    \"The paper mentions that RoCA supports online adaptation, but no online adaptation experiments are presented. Could you provide results or discussion on this claimed capability?\",\n    \"In the unsupervised adaptation setting, what prevents the model from drifting or collapsing without ground-truth supervision? Is there any regularization to prevent this?\",\n    \"How sensitive is the performance to the choice of hyperparameters such as the number of basis groups (N_code) and group size (C)? Were any sensitivity analyses performed?\",\n    \"The GP trajectory prediction mode shows the best performance but adds inference cost. In practice, how would a user decide between using the training regularization mode versus the GP prediction mode?\",\n    \"For the active learning experiments, how does the uncertainty-based selection compare to other criteria such as diversity-based sampling or margin-based sampling?\",\n    \"Could you provide more details on the classification of tokens into basis groups? Is the classification learned jointly with the basis tokens, and how is the MLP structured?\"\n  ],\n  \"Limitations\": [\n    \"The evaluation is limited to nuScenes with only two cities; broader validation across more diverse domains (e.g., different countries, sensor configurations, weather conditions beyond synthetic corruptions) is needed\",\n    \"The GP-based approach adds a training pipeline with three stages (base training, GP training, finetuning), which may be complex for practical deployment\",\n    \"The paper does not address potential negative societal impacts of autonomous driving systems, such as safety concerns during deployment or potential job displacement\",\n    \"The method assumes tokenized representations are available from the base E2E model; this may not be the case for all E2E architectures, limiting general applicability\",\n    \"The uncertainty estimates from the GP may not be well-calibrated, and the paper does not evaluate calibration quality\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 18364,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 16572,
+        "completion_tokens": 1656,
+        "reasoning_tokens": 0,
+        "total_tokens": 20020
+      },
+      "attempts": 1,
+      "response_id": "d9d32532-0d4e-4e04-ba3b-f7952f0e93e8"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper proposes RoCA, a Gaussian Process-based framework for robust cross-domain end-to-end autonomous driving. RoCA learns a codebook of basis tokens with associated trajectories, then uses GP to probabilistically predict future trajectories based on similarity between input tokens and basis tokens. The framework is used for source-domain regularization, improving generalization, and for efficient domain adaptation (including unsupervised, active learning, and online settings). Experiments on nuScenes demonstrate improvements over baselines in cross-city and image degradation scenarios.",
+        "Strengths": [
+          "Novel combination of Gaussian Process modeling with end-to-end autonomous driving, which is underexplored",
+          "Comprehensive evaluation across multiple cross-domain scenarios (cross-city, image degradation) with consistent improvements",
+          "Demonstrates multiple practical benefits: source-domain regularization, unsupervised adaptation, active learning, and online adaptation",
+          "Clean ablation study showing contribution of each loss component",
+          "Includes practical analysis of computational costs and qualitative results",
+          "Works with multiple base models (VAD-T and SparseDrive-S), showing generalizability of the approach"
+        ],
+        "Weaknesses": [
+          "The GP formulation is somewhat heuristic: basis tokens are learned embeddings rather than strict GP training points, and the kernel operates on learned representations, which may limit theoretical justification",
+          "The classification of tokens into trajectory groups adds complexity that may not be fully justified compared to simpler approaches",
+          "Limited comparison with other cross-domain adaptation methods beyond VLP (only in appendix)",
+          "Same-domain performance improvements are modest (Table 1: 0.65 to 0.63 L2 for SparseDrive)",
+          "Some experimental details are missing, such as hyperparameter sensitivity analysis and exact adaptation procedures",
+          "The 'no extra inference computation' claim only holds for the regularization mode; trajectory prediction mode adds latency"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How sensitive is the performance to the number of basis groups (N_code) and group size (C)? Was there any hyperparameter search or sensitivity analysis?",
+          "For the unsupervised adaptation, what exactly is the training signal? Since L_gp relies on GP predictions, how is the reliability of these predictions ensured in the target domain?",
+          "How does RoCA compare to simpler regularization techniques such as weight decay, dropout, or feature-level noise injection?",
+          "The tSNE visualization shows better separability with RoCA - is this a cause or effect of the improved performance? Could this separability be achieved with simpler contrastive learning objectives?",
+          "For active learning, how is the predictive variance computed for each sample - is it averaged over ego and agent tokens? How does this compare to other uncertainty-based sampling methods like entropy or MC-dropout?",
+          "What is the impact of the triplet loss design (3 positive and 3 negative classes)? How were these selected and does the performance vary with this choice?"
+        ],
+        "Limitations": [
+          "The paper does not discuss potential negative societal impacts or safety implications of the proposed approach",
+          "No discussion of failure cases or scenarios where RoCA might not provide benefits",
+          "The approach requires three-stage training (base model, GP module, finetuning), which adds complexity compared to end-to-end single-stage training",
+          "The evaluation is limited to nuScenes; testing on more diverse datasets (e.g., Waymo, CARLA) would strengthen the cross-domain claims"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes RoCA, a Gaussian Process-based framework for cross-domain end-to-end autonomous driving. The core idea is to learn a codebook of basis tokens with associated trajectories, then use a GP to probabilistically predict trajectories for new scenes based on similarity to these basis tokens. The approach is evaluated on nuScenes with cross-city and image degradation scenarios.\n\nStrengths:\n- Novel approach combining GPs with E2E driving, which is underexplored\n- Clean formulation with clear probabilistic interpretation\n- Comprehensive experiments across multiple cross-domain scenarios (cities, degradations)\n- Demonstrates improvements in both domain generalization and adaptation\n- Includes active learning and unsupervised adaptation capabilities\n- Good ablation studies showing contribution of each loss component\n- Practical considerations (computation analysis, qualitative results)\n\nWeaknesses:\n- The GP formulation appears somewhat heuristic - the \"basis tokens\" are learned embeddings rather than strict GP training points, and the kernel operates on learned representations\n- The clustering of trajectories into groups and classification of tokens into groups adds complexity that may not be fully justified\n- Limited comparison with other cross-domain adaptation methods (only VLP in appendix)\n- The improvements in same-domain performance are modest (Table 1)\n- Some experimental details are missing (e.g., how many target domain samples for adaptation, hyperparameter choices)\n- The claim about \"no extra inference computation\" is only true for the regularization mode; trajectory prediction mode adds latency\n\nQuestions:\n1. How sensitive is performance to the number of basis groups (N_code) and group size (C)? Was there any hyperparameter search?\n2. For the unsupervised adaptation, what exactly is the training signal? The paper says L_gp is used, but this relies on the GP's predictions being reliable in the target domain. How is this ensured?\n3. How does the method compare to simpler regularization techniques, e.g., weight decay, dropout, or feature-level noise?\n4. The tSNE visualization shows better separability with RoCA - is this a cause or effect of the improved performance?\n5. For the active learning experiments, how is the variance computed for each sample - is it averaged over ego and agent tokens?\n\nLimitations:\n- The paper doesn't discuss potential negative societal impacts (e.g., safety implications, bias in training data)\n- Limited discussion of failure cases or scenarios where RoCA might not help\n- The approach requires training a separate GP module, adding training complexity\n\nEthical concerns: No significant ethical issues identified. The paper deals with autonomous driving safety which is generally beneficial, but the societal impact discussion is minimal.\n\nOverall assessment: This is a solid paper with a novel approach and comprehensive experiments. The technical soundness is good, though the GP formulation has some heuristic elements. The contributions are valuable for the cross-domain E2E driving community. I would rate this as a borderline accept - the work is technically solid with good evaluation, but there are some concerns about the theoretical justification and comparison with simpler baselines.\n\nREVIEW JSON:\n```json\n{\n\"Summary\": \"The paper proposes RoCA, a Gaussian Process-based framework for robust cross-domain end-to-end autonomous driving. RoCA learns a codebook of basis tokens with associated trajectories, then uses GP to probabilistically predict future trajectories based on similarity between input tokens and basis tokens. The framework is used for source-domain regularization, improving generalization, and for efficient domain adaptation (including unsupervised, active learning, and online settings). Experiments on nuScenes demonstrate improvements over baselines in cross-city and image degradation scenarios.\",\n\"Strengths\": [\n\"Novel combination of Gaussian Process modeling with end-to-end autonomous driving, which is underexplored\",\n\"Comprehensive evaluation across multiple cross-domain scenarios (cross-city, image degradation) with consistent improvements\",\n\"Demonstrates multiple practical benefits: source-domain regularization, unsupervised adaptation, active learning, and online adaptation\",\n\"Clean ablation study showing contribution of each loss component\",\n\"Includes practical analysis of computational costs and qualitative results\",\n\"Works with multiple base models (VAD-T and SparseDrive-S), showing generalizability of the approach\"\n],\n\"Weaknesses\": [\n\"The GP formulation is somewhat heuristic: basis tokens are learned embeddings rather than strict GP training points, and the kernel operates on learned representations, which may limit theoretical justification\",\n\"The classification of tokens into trajectory groups adds complexity that may not be fully justified compared to simpler approaches\",\n\"Limited comparison with other cross-domain adaptation methods beyond VLP (only in appendix)\",\n\"Same-domain performance improvements are modest (Table 1: 0.65 to 0.63 L2 for SparseDrive)\",\n\"Some experimental details are missing, such as hyperparameter sensitivity analysis and exact adaptation procedures\",\n\"The 'no extra inference computation' claim only holds for the regularization mode; trajectory prediction mode adds latency\"\n],\n\"Originality\": 4,\n\"Quality\": 3,\n\"Clarity\": 3,\n\"Significance\": 3,\n\"Questions\": [\n\"How sensitive is the performance to the number of basis groups (N_code) and group size (C)? Was there any hyperparameter search or sensitivity analysis?\",\n\"For the unsupervised adaptation, what exactly is the training signal? Since L_gp relies on GP predictions, how is the reliability of these predictions ensured in the target domain?\",\n\"How does RoCA compare to simpler regularization techniques such as weight decay, dropout, or feature-level noise injection?\",\n\"The tSNE visualization shows better separability with RoCA - is this a cause or effect of the improved performance? Could this separability be achieved with simpler contrastive learning objectives?\",\n\"For active learning, how is the predictive variance computed for each sample - is it averaged over ego and agent tokens? How does this compare to other uncertainty-based sampling methods like entropy or MC-dropout?\",\n\"What is the impact of the triplet loss design (3 positive and 3 negative classes)? How were these selected and does the performance vary with this choice?\"\n],\n\"Limitations\": [\n\"The paper does not discuss potential negative societal impacts or safety implications of the proposed approach\",\n\"No discussion of failure cases or scenarios where RoCA might not provide benefits\",\n\"The approach requires three-stage training (base model, GP module, finetuning), which adds complexity compared to end-to-end single-stage training\",\n\"The evaluation is limited to nuScenes; testing on more diverse datasets (e.g., Waymo, CARLA) would strengthen the cross-domain claims\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 3,\n\"Contribution\": 3,\n\"Overall\": 6,\n\"Confidence\": 4,\n\"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 18364,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 16572,
+        "completion_tokens": 1362,
+        "reasoning_tokens": 0,
+        "total_tokens": 19726
+      },
+      "attempts": 1,
+      "response_id": "c224a72f-8995-4fd0-9107-cfe839f45775"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper proposes RoCA, a Gaussian process (GP)-based framework for robust cross-domain end-to-end autonomous driving. RoCA learns a codebook of basis tokens with associated trajectories that span diverse driving scenarios. Given a new scene's token embeddings, a GP kernel computes correlations with basis tokens to probabilistically infer future trajectories. The predictive variance is used to weight training losses, enabling uncertainty-aware regularization during source-domain training and efficient adaptation to target domains. The framework supports supervised and unsupervised adaptation, active learning via uncertainty sampling, and online adaptation. Extensive experiments on nuScenes show improvements in cross-city generalization, image degradation robustness, and long-tail scenario handling over base models (VAD-T, SparseDrive-S) and existing methods.",
+        "Strengths": [
+          "Novel application of Gaussian processes to end-to-end autonomous driving for cross-domain robustness, which is an underexplored area.",
+          "Comprehensive experimental evaluation covering cross-city transfer, image corruptions, active learning, and long-tail scenarios, with consistent improvements over strong baselines.",
+          "The uncertainty-aware loss weighting and active learning contributions are practical and well-motivated for real-world deployment.",
+          "Clear writing and well-structured presentation with helpful figures and ablation studies.",
+          "The framework is model-agnostic and can be applied to various E2E planners, increasing its potential impact."
+        ],
+        "Weaknesses": [
+          "The GP formulation is somewhat simplified; the use of basis tokens as inducing points essentially reduces to a learned kernel regression, and the theoretical novelty over simpler codebook/attention-based methods is not fully articulated.",
+          "The ablation study (Table 6) is brief and only shows incremental gains from each loss component without deeper analysis of their interactions or sensitivity to hyperparameters.",
+          "Limited comparison with other domain adaptation methods for E2E driving (only VLP is compared in appendix); more baselines such as adversarial adaptation or meta-learning approaches would strengthen the claims.",
+          "The computational overhead of the GP module during inference is reported but not thoroughly discussed in the context of real-time autonomous driving requirements (latency increase of ~25%).",
+          "The training procedure involves multiple stages (base model, GP, finetuning), which could be complex to reproduce; some details on optimization schedules and hyperparameters are missing."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "Could you clarify the theoretical justification for using a Gaussian process here versus a simpler learned kernel regression or attention mechanism? What specific benefits does the GP formulation provide over these alternatives, beyond uncertainty estimation?",
+          "In Eq. (2), the predictive mean for reconstruction is computed as b_anchor + κ(e,B)κ(B)^{-1} B̄. How is the anchor b_anchor determined, and does it remain fixed or is it learned?",
+          "How are the basis trajectories W_k initialized and updated during training? Are they re-clustered or kept fixed after initialization?",
+          "For the active learning experiments, how sensitive are the results to the choice of uncertainty metric (e.g., variance vs. other measures like entropy)?",
+          "What is the additional memory overhead of storing the codebook (112 groups × 64 tokens) and how does this scale with more diverse domains?",
+          "Could you provide more details on the online adaptation setting mentioned in the contributions? Is it evaluated experimentally, and if so, what were the results?",
+          "In the unsupervised adaptation setting, how does the model avoid catastrophic forgetting of source-domain knowledge? Are there any regularization techniques used beyond L_gp?"
+        ],
+        "Limitations": [
+          "The evaluation is limited to nuScenes, which has only two cities (Boston and Singapore); broader evaluation on more diverse datasets or simulators would strengthen cross-domain claims.",
+          "The paper does not address potential safety-critical failure modes of the GP-based predictions (e.g., when the predictive variance is high but the prediction is still unsafe).",
+          "The computational cost of the GP during inference may limit deployment on embedded platforms with strict latency requirements.",
+          "The paper does not discuss potential negative societal impacts, such as the risk of over-reliance on automated driving systems or biases in training data.",
+          "The method assumes access to tokenized representations from the base model, which may not be available for all E2E architectures, limiting its general applicability."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThe paper proposes RoCA, a Gaussian process-based framework for robust cross-domain end-to-end autonomous driving. The core idea is to learn a codebook of basis tokens with associated trajectories, then use GP regression to probabilistically predict trajectories for new scenes based on similarity to these basis tokens. The GP's predictive variance is used to weight losses, enabling uncertainty-aware training and adaptation. The framework supports source-domain regularization, target-domain adaptation (supervised and unsupervised), active learning via uncertainty sampling, and online adaptation.\n\nThe paper is technically sound with a novel combination of GP and codebook learning for E2E driving. The experiments are extensive, covering cross-city generalization, image degradations, active learning, and long-tail scenarios. The results show consistent improvements over baselines. However, there are some concerns: the GP formulation is somewhat simplified (using basis tokens as inducing points is reasonable but the \"GP\" aspect is essentially a kernel regression with learned basis); the method's novelty over simpler approaches (e.g., prototypical networks or attention-based codebook lookup) could be questioned; and some technical details need clarification (e.g., how the classification and reconstruction work jointly, the exact role of the GP variance).\n\nStrengths: novel application of GP to E2E driving, comprehensive experiments, clear writing, practical contributions (active learning, unsupervised adaptation). Weaknesses: the GP framing might be somewhat superficial (could be seen as a learned kernel regression), ablation study is brief, limited comparison to other domain adaptation methods in E2E driving, and the computational cost of the GP during inference isn't fully addressed for real-time applications.\n\nI rate this as a solid paper with good technical quality and practical significance. The contribution is moderate—it's a novel combination of existing ideas (GP, codebook learning, uncertainty-aware training) applied to an important problem. The evaluation is thorough. I'd lean toward acceptance with a score around 7 (Accept).\n\nFor the review, I'll rate: Originality 3, Quality 3, Clarity 3, Significance 3, Soundness 3, Presentation 3, Contribution 3, Overall 7, Confidence 4. Decision: Accept.\n\nKey questions for authors: clarify the GP formulation's theoretical grounding, discuss computational overhead for real-time deployment, provide more comparison with alternative uncertainty-aware methods, and clarify the training procedure's interdependence between stages.REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper proposes RoCA, a Gaussian process (GP)-based framework for robust cross-domain end-to-end autonomous driving. RoCA learns a codebook of basis tokens with associated trajectories that span diverse driving scenarios. Given a new scene's token embeddings, a GP kernel computes correlations with basis tokens to probabilistically infer future trajectories. The predictive variance is used to weight training losses, enabling uncertainty-aware regularization during source-domain training and efficient adaptation to target domains. The framework supports supervised and unsupervised adaptation, active learning via uncertainty sampling, and online adaptation. Extensive experiments on nuScenes show improvements in cross-city generalization, image degradation robustness, and long-tail scenario handling over base models (VAD-T, SparseDrive-S) and existing methods.\",\n  \"Strengths\": [\n    \"Novel application of Gaussian processes to end-to-end autonomous driving for cross-domain robustness, which is an underexplored area.\",\n    \"Comprehensive experimental evaluation covering cross-city transfer, image corruptions, active learning, and long-tail scenarios, with consistent improvements over strong baselines.\",\n    \"The uncertainty-aware loss weighting and active learning contributions are practical and well-motivated for real-world deployment.\",\n    \"Clear writing and well-structured presentation with helpful figures and ablation studies.\",\n    \"The framework is model-agnostic and can be applied to various E2E planners, increasing its potential impact.\"\n  ],\n  \"Weaknesses\": [\n    \"The GP formulation is somewhat simplified; the use of basis tokens as inducing points essentially reduces to a learned kernel regression, and the theoretical novelty over simpler codebook/attention-based methods is not fully articulated.\",\n    \"The ablation study (Table 6) is brief and only shows incremental gains from each loss component without deeper analysis of their interactions or sensitivity to hyperparameters.\",\n    \"Limited comparison with other domain adaptation methods for E2E driving (only VLP is compared in appendix); more baselines such as adversarial adaptation or meta-learning approaches would strengthen the claims.\",\n    \"The computational overhead of the GP module during inference is reported but not thoroughly discussed in the context of real-time autonomous driving requirements (latency increase of ~25%).\",\n    \"The training procedure involves multiple stages (base model, GP, finetuning), which could be complex to reproduce; some details on optimization schedules and hyperparameters are missing.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"Could you clarify the theoretical justification for using a Gaussian process here versus a simpler learned kernel regression or attention mechanism? What specific benefits does the GP formulation provide over these alternatives, beyond uncertainty estimation?\",\n    \"In Eq. (2), the predictive mean for reconstruction is computed as b_anchor + κ(e,B)κ(B)^{-1} B̄. How is the anchor b_anchor determined, and does it remain fixed or is it learned?\",\n    \"How are the basis trajectories W_k initialized and updated during training? Are they re-clustered or kept fixed after initialization?\",\n    \"For the active learning experiments, how sensitive are the results to the choice of uncertainty metric (e.g., variance vs. other measures like entropy)?\",\n    \"What is the additional memory overhead of storing the codebook (112 groups × 64 tokens) and how does this scale with more diverse domains?\",\n    \"Could you provide more details on the online adaptation setting mentioned in the contributions? Is it evaluated experimentally, and if so, what were the results?\",\n    \"In the unsupervised adaptation setting, how does the model avoid catastrophic forgetting of source-domain knowledge? Are there any regularization techniques used beyond L_gp?\"\n  ],\n  \"Limitations\": [\n    \"The evaluation is limited to nuScenes, which has only two cities (Boston and Singapore); broader evaluation on more diverse datasets or simulators would strengthen cross-domain claims.\",\n    \"The paper does not address potential safety-critical failure modes of the GP-based predictions (e.g., when the predictive variance is high but the prediction is still unsafe).\",\n    \"The computational cost of the GP during inference may limit deployment on embedded platforms with strict latency requirements.\",\n    \"The paper does not discuss potential negative societal impacts, such as the risk of over-reliance on automated driving systems or biases in training data.\",\n    \"The method assumes access to tokenized representations from the base model, which may not be available for all E2E architectures, limiting its general applicability.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 18364,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 16572,
+        "completion_tokens": 1475,
+        "reasoning_tokens": 0,
+        "total_tokens": 19839
+      },
+      "attempts": 1,
+      "response_id": "1d551be7-7ff6-419b-99c2-a5a692190ab5"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper proposes RoCA, a Gaussian Process (GP)-based framework for robust cross-domain end-to-end autonomous driving. RoCA learns a codebook of basis tokens with associated trajectories, then uses a GP to probabilistically infer ego and agent trajectories by computing correlations between current scene tokens and basis tokens. The approach includes: (1) reconstruction losses for training basis tokens, (2) GP-based trajectory prediction with uncertainty estimates, (3) regularization of base E2E model training using GP as teacher, and (4) adaptation strategies including supervised finetuning, unsupervised adaptation, active learning via predictive variance, and online adaptation. Experiments on nuScenes demonstrate improvements in cross-city generalization, adaptation under image degradations, and long-tail scenario handling, with reduced L2 trajectory error and collision rates compared to baselines.",
+        "Strengths": [
+          "Novel integration of Gaussian processes with end-to-end autonomous driving, providing principled uncertainty estimates",
+          "Comprehensive evaluation covering cross-city transfer, image degradations, active learning, and long-tail scenarios",
+          "Consistent improvements over strong baselines (VAD-T, SparseDrive-S) across multiple metrics and settings",
+          "Multiple operational modes (training regularization, GP-based prediction, adaptation) providing flexibility",
+          "Uncertainty-guided active learning demonstrates practical value for efficient domain adaptation",
+          "Well-motivated approach addressing data imbalance and long-tail events without requiring LLMs"
+        ],
+        "Weaknesses": [
+          "GP formulation raises theoretical concerns: the kernel is applied on learned token embeddings rather than input space, making the GP interpretation questionable",
+          "The paper motivates the work by discussing LLM-based approaches but does not compare against any LLM-based driving methods",
+          "The 'unsupervised adaptation' still relies on GP pseudo-labels, which is not fully unsupervised",
+          "Only evaluated on nuScenes dataset; no simulation (CARLA) or real-world validation",
+          "The computational cost of GP inference at test time is only briefly addressed; the latency increase (16-34ms) may be significant for real-time systems",
+          "Limited analysis of sensitivity to hyperparameters (e.g., codebook size, group size, kernel parameters)",
+          "Missing details on how basis trajectories are sampled and clustered"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How is the RBF kernel applied to token embeddings? What is the feature space and how are kernel hyperparameters learned?",
+          "Can you provide theoretical justification for why the GP on learned tokens captures trajectory distributions better than direct regression?",
+          "How were the basis trajectories sampled and clustered? What clustering algorithm was used and how sensitive are results to this choice?",
+          "Why not compare with LLM-based driving approaches (e.g., DriveLM, EMMA) that are mentioned in the introduction?",
+          "In the unsupervised adaptation setting, what exactly is used as pseudo-ground-truth? Is it the GP's predictive mean?",
+          "How does the GP handle multi-modal trajectory distributions? The current formulation seems to predict a single trajectory per token.",
+          "What is the effect of codebook size (N_code) and group size (C) on performance? Any ablation?",
+          "How does RoCA perform when the base model has no explicit ego/agent tokens (as mentioned in the paper)?"
+        ],
+        "Limitations": [
+          "The approach is only tested on nuScenes; generalizability to other datasets or real-world deployment is unclear",
+          "The GP-based uncertainty may not be calibrated, which could affect active learning and adaptation decisions",
+          "The method adds computational overhead (especially for GP trajectory prediction mode), which may limit real-time deployment",
+          "Potential negative societal impact: autonomous driving systems could cause accidents if deployed prematurely; the paper does not discuss safety validation beyond open-loop metrics",
+          "The paper does not address potential biases in training data (e.g., geographic, demographic) that could affect cross-domain performance"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes RoCA, a Gaussian process-based framework for cross-domain end-to-end autonomous driving. The key idea is to learn a codebook of basis tokens with associated trajectories, then use a GP to probabilistically infer trajectories for new scenes by computing correlations with these basis tokens. The approach includes reconstruction losses, supervised trajectory losses, and a regularized finetuning stage. It also supports adaptation, active learning, and online adaptation.\n\nStrengths:\n- Novel combination of GP with E2E driving, providing uncertainty estimates\n- Comprehensive evaluation across multiple cross-domain scenarios (cross-city, image degradation)\n- Strong experimental results showing improvements over baselines\n- Well-motivated approach to address data imbalance and long-tail events\n- Multiple operational modes (training regularization, trajectory prediction, adaptation)\n\nWeaknesses:\n- The GP formulation appears to be a simplified version with potential conceptual issues regarding kernel computation on token embeddings\n- Limited comparison with recent LLM-based approaches despite the paper's motivation discussing them\n- The \"unsupervised adaptation\" still uses some supervision (through GP pseudo-labels)\n- Only evaluated on nuScenes; no simulation or real-world testing\n- The computational cost of GP inference at test time is not fully analyzed\n- Some experimental details are missing (e.g., how basis trajectories are sampled, clustering specifics)\n\nOriginality: The GP-based codebook approach for E2E driving is novel. The combination of uncertainty-aware training and adaptation is interesting. However, it builds on existing anchor-based trajectory prediction methods (SparseDrive).\n\nQuality: The paper is technically sound in its formulation, with proper loss definitions and training procedures. The experiments are extensive and well-designed. However, there are some concerns about the theoretical justification of the GP kernel on learned tokens and the \"pseudo GP\" nature of the approach.\n\nClarity: The paper is generally well-written and organized. The figures help understanding, though the overview figure is not visible in this text. Technical derivations are clear.\n\nSignificance: The approach addresses an important practical problem (cross-domain deployment) and shows meaningful improvements. The uncertainty-aware active learning is a nice contribution. The method could be useful for practitioners.\n\nOverall assessment: This is a solid paper with a novel approach and good experimental validation. The main concerns are about the theoretical soundness of the GP formulation and limited comparison with LLM-based methods. I would rate this as a borderline accept, leaning toward accept given the strong empirical results.\n\nDecision: Accept (with reservations about theoretical details)REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper proposes RoCA, a Gaussian Process (GP)-based framework for robust cross-domain end-to-end autonomous driving. RoCA learns a codebook of basis tokens with associated trajectories, then uses a GP to probabilistically infer ego and agent trajectories by computing correlations between current scene tokens and basis tokens. The approach includes: (1) reconstruction losses for training basis tokens, (2) GP-based trajectory prediction with uncertainty estimates, (3) regularization of base E2E model training using GP as teacher, and (4) adaptation strategies including supervised finetuning, unsupervised adaptation, active learning via predictive variance, and online adaptation. Experiments on nuScenes demonstrate improvements in cross-city generalization, adaptation under image degradations, and long-tail scenario handling, with reduced L2 trajectory error and collision rates compared to baselines.\",\n  \"Strengths\": [\n    \"Novel integration of Gaussian processes with end-to-end autonomous driving, providing principled uncertainty estimates\",\n    \"Comprehensive evaluation covering cross-city transfer, image degradations, active learning, and long-tail scenarios\",\n    \"Consistent improvements over strong baselines (VAD-T, SparseDrive-S) across multiple metrics and settings\",\n    \"Multiple operational modes (training regularization, GP-based prediction, adaptation) providing flexibility\",\n    \"Uncertainty-guided active learning demonstrates practical value for efficient domain adaptation\",\n    \"Well-motivated approach addressing data imbalance and long-tail events without requiring LLMs\"\n  ],\n  \"Weaknesses\": [\n    \"GP formulation raises theoretical concerns: the kernel is applied on learned token embeddings rather than input space, making the GP interpretation questionable\",\n    \"The paper motivates the work by discussing LLM-based approaches but does not compare against any LLM-based driving methods\",\n    \"The 'unsupervised adaptation' still relies on GP pseudo-labels, which is not fully unsupervised\",\n    \"Only evaluated on nuScenes dataset; no simulation (CARLA) or real-world validation\",\n    \"The computational cost of GP inference at test time is only briefly addressed; the latency increase (16-34ms) may be significant for real-time systems\",\n    \"Limited analysis of sensitivity to hyperparameters (e.g., codebook size, group size, kernel parameters)\",\n    \"Missing details on how basis trajectories are sampled and clustered\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How is the RBF kernel applied to token embeddings? What is the feature space and how are kernel hyperparameters learned?\",\n    \"Can you provide theoretical justification for why the GP on learned tokens captures trajectory distributions better than direct regression?\",\n    \"How were the basis trajectories sampled and clustered? What clustering algorithm was used and how sensitive are results to this choice?\",\n    \"Why not compare with LLM-based driving approaches (e.g., DriveLM, EMMA) that are mentioned in the introduction?\",\n    \"In the unsupervised adaptation setting, what exactly is used as pseudo-ground-truth? Is it the GP's predictive mean?\",\n    \"How does the GP handle multi-modal trajectory distributions? The current formulation seems to predict a single trajectory per token.\",\n    \"What is the effect of codebook size (N_code) and group size (C) on performance? Any ablation?\",\n    \"How does RoCA perform when the base model has no explicit ego/agent tokens (as mentioned in the paper)?\"\n  ],\n  \"Limitations\": [\n    \"The approach is only tested on nuScenes; generalizability to other datasets or real-world deployment is unclear\",\n    \"The GP-based uncertainty may not be calibrated, which could affect active learning and adaptation decisions\",\n    \"The method adds computational overhead (especially for GP trajectory prediction mode), which may limit real-time deployment\",\n    \"Potential negative societal impact: autonomous driving systems could cause accidents if deployed prematurely; the paper does not discuss safety validation beyond open-loop metrics\",\n    \"The paper does not address potential biases in training data (e.g., geographic, demographic) that could affect cross-domain performance\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 18364,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 16572,
+        "completion_tokens": 1421,
+        "reasoning_tokens": 0,
+        "total_tokens": 19785
+      },
+      "attempts": 1,
+      "response_id": "0e1a67dd-fb47-42ea-bb59-63f53fde0b18"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 5,
+      "Reject": 0
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          3,
+          3,
+          4,
+          3,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          6,
+          6,
+          6,
+          7,
+          7
+        ],
+        "mean": 6.4,
+        "rounded_mean": 6,
+        "population_sd": 0.49,
+        "min": 6,
+        "max": 7
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper proposes RoCA, a Gaussian Process (GP)-based framework for robust cross-domain end-to-end autonomous driving. RoCA learns a codebook of basis tokens representing diverse driving scenarios, each associated with trajectory prototypes. At inference, a GP kernel computes correlations between current scene tokens and basis tokens to probabilistically infer ego and agent trajectories, providing uncertainty estimates. These uncertainties are leveraged for variance-weighted training losses (source-domain regularization), GP-based trajectory prediction, and uncertainty-guided active learning during domain adaptation. The framework supports supervised and unsupervised adaptation, as well as online adaptation. Experiments on nuScenes demonstrate consistent improvements over base models (VAD-T, SparseDrive-S) in cross-city transfer, image degradation robustness, active learning efficiency, and long-tail scenario handling.",
+      "Strengths": [
+        "Novel application of Gaussian processes to end-to-end autonomous driving for cross-domain robustness, providing principled uncertainty estimation in an underexplored area.",
+        "Comprehensive experimental evaluation covering cross-city transfer, image degradations, active learning, and long-tail scenarios, with consistent improvements over strong baselines (VAD-T, SparseDrive-S).",
+        "Model-agnostic design that can be applied to any tokenized E2E planner, demonstrated with two different base models, increasing potential impact.",
+        "Multiple practical operational modes: source-domain regularization (with no extra inference cost), GP-based trajectory prediction, supervised/unsupervised adaptation, active learning via predictive variance, and online adaptation.",
+        "Uncertainty-guided active learning is a practical and well-motivated contribution for efficient domain adaptation.",
+        "Clean ablation study demonstrating the contribution of each loss component.",
+        "Clear qualitative results and practical analysis of computational costs.",
+        "Well-written and well-structured presentation with helpful figures."
+      ],
+      "Weaknesses": [
+        "The GP formulation is somewhat heuristic: basis tokens are learned embeddings rather than strict GP training points, and the kernel operates on learned token embeddings rather than input space, weakening theoretical justification. The approach essentially reduces to a sparse GP regression with learned inducing points, and the novelty lies mainly in the application rather than the technical method.",
+        "The GP trajectory prediction is essentially a weighted average of basis trajectories, which may limit expressiveness for complex multi-modal maneuvers; the paper does not discuss how multi-modality is handled.",
+        "Computational scalability of GP inference (matrix inversion and latency increase of ~25% in prediction mode) is only briefly addressed and not thoroughly analyzed for real-time deployment constraints.",
+        "Evaluation is limited to nuScenes with only two cities (Boston and Singapore); no simulation (e.g., CARLA) or real-world validation, and no comparison with diverse sensor configurations or weather conditions beyond synthetic corruptions.",
+        "No direct comparison with LLM-based driving approaches (e.g., DriveLM, EMMA) despite motivating the work with these methods in the introduction; comparison with VLP in the appendix uses different evaluation protocols, making it unreliable.",
+        "Lack of hyperparameter sensitivity analysis (e.g., number of basis groups, group size, kernel parameters, triplet loss design).",
+        "Missing details on the unsupervised adaptation setting: what prevents drift or collapse without ground-truth supervision, and what exactly is used as pseudo-labels (GP predictive mean?).",
+        "The 'no extra inference computation' claim only holds for the regularization mode; the GP trajectory prediction mode does add latency.",
+        "No ablation on the adaptation components (e.g., effect of uncertainty weighting during adaptation) and no online adaptation experiments despite being claimed as a contribution.",
+        "Limited analysis of failure modes or conditions where the GP approach might underperform, and no evaluation of uncertainty calibration quality."
+      ],
+      "Originality": 3,
+      "Quality": 3,
+      "Clarity": 3,
+      "Significance": 3,
+      "Questions": [
+        "What is the theoretical justification for applying a GP kernel on learned token embeddings rather than the input space? How does this differ from a simpler nearest-neighbor or attention-based lookup mechanism?",
+        "How are basis trajectories sampled and clustered initially? What clustering algorithm is used, and how sensitive are results to this initialization?",
+        "In the unsupervised adaptation setting, what exactly is used as pseudo-ground-truth (GP predictive mean?), and what prevents the model from drifting or collapsing without ground-truth supervision? Are there additional regularization terms?",
+        "How sensitive is performance to hyperparameters such as the number of basis groups (N_code=48/64) and group size (C=64)? Was any sensitivity analysis performed?",
+        "What is the computational cost of kernel matrix inversion at inference time (C×C matrices), and how does it scale with larger codebooks? What is the memory overhead of storing the codebook (112 groups × 64 tokens)?",
+        "How does the GP handle multi-modal trajectory distributions? The current formulation seems to predict a single trajectory per token.",
+        "Can you provide a fair comparison with VLP using the standardized evaluation protocol? Why were no LLM-based driving methods (e.g., DriveLM, EMMA) compared, given they are discussed in the introduction?",
+        "In the active learning experiments, how does predictive variance compare to other uncertainty-based sampling methods such as entropy or MC-dropout? How is variance computed (averaged over ego and agent tokens)?",
+        "How does RoCA compare to simpler regularization techniques such as weight decay, dropout, or feature-level noise injection?",
+        "The paper claims online adaptation support but does not present online adaptation experiments. Can you provide results or discussion on this capability?"
+      ],
+      "Limitations": [
+        "Evaluation is limited to nuScenes with only two cities; broader validation across more diverse domains (different countries, sensor configurations, weather conditions) or simulation environments (CARLA, Waymo) is needed to strengthen cross-domain claims.",
+        "The computational overhead of GP inference (especially in trajectory prediction mode) may limit real-time deployment on embedded systems with strict latency requirements.",
+        "The approach requires a three-stage training pipeline (base model training, GP training, finetuning), adding complexity for practical adoption.",
+        "The method assumes tokenized representations are available from the base E2E model, which may not be the case for all E2E architectures, limiting general applicability.",
+        "The uncertainty estimates from the GP may not be well-calibrated, and calibration quality is not evaluated, which could affect active learning and adaptation decisions.",
+        "The paper does not discuss potential negative societal impacts of autonomous driving systems, including safety risks in deployment, over-reliance on automated systems, or biases in training data (e.g., geographic, demographic).",
+        "No discussion of failure cases or safety-critical conditions where GP-based predictions might be unsafe despite high confidence or vice versa."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 3,
+      "Contribution": 3,
+      "Overall": 7,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "THOUGHT:\nThe five reviewers are largely in agreement: all recommend acceptance with overall scores of 6, 6, 6, 7, and 7. The consensus is that this is a technically solid paper with a novel application of Gaussian processes to end-to-end autonomous driving for cross-domain robustness. The strengths are consistently identified: comprehensive evaluation across cross-city, corruption, active learning, and long-tail scenarios; model-agnostic design; practical uncertainty estimation; and consistent improvements over strong baselines.\n\nThe weaknesses are also consistent across reviewers and center on: (1) the GP formulation being somewhat heuristic/ad-hoc (basis tokens as learned inducing points, kernel on learned embeddings rather than input space, theoretical justification thin); (2) limited comparison with other domain adaptation methods and LLM-based driving approaches; (3) evaluation limited to nuScenes (only two cities); (4) computational overhead of GP inference in prediction mode; (5) lack of hyperparameter sensitivity analysis; (6) missing details on unsupervised adaptation stability and online adaptation experiments; and (7) no discussion of failure modes or societal impact.\n\nGiven the consistent scores of 6-7 and all reviewers recommending acceptance, the meta-review should lean toward acceptance. The paper appears technically sound with good evaluation breadth for a cross-domain driving task. The main concerns are about theoretical depth and experimental breadth, but these do not appear to be fatal flaws. The reviewers seem to believe the contribution is valuable to the community despite these limitations.\n\nMy overall assessment: I will recommend Accept with an overall score of 7 (matching the higher end of the reviewer scores). The paper is technically solid, has a clear contribution, and the evaluation is thorough for the scope of the problem. The weaknesses are addressable in a rebuttal and do not undermine the core claims. I will note the need for the authors to address the GP formulation concerns and expand on experimental details in the final version.\n\nFor the JSON, I need to provide:\n- Summary: Aggregate the paper's contributions\n- Strengths: Consolidated from all reviewers\n- Weaknesses: Consolidated, highlighting the most critical and recurring issues\n- Ratings: Originality 3, Quality 3, Clarity 3, Significance 3 (matching reviewer consensus)\n- Questions: Consolidate the most important recurring questions\n- Limitations: Include the common limitations and societal impact concerns\n- Ethical Concerns: false\n- Soundness: 3, Presentation: 3, Contribution: 3\n- Overall: 7\n- Confidence: 4\n- Decision: Accept\n\nI'll be careful to respect the reviewer opinions while providing a balanced meta-review.REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper proposes RoCA, a Gaussian Process (GP)-based framework for robust cross-domain end-to-end autonomous driving. RoCA learns a codebook of basis tokens representing diverse driving scenarios, each associated with trajectory prototypes. At inference, a GP kernel computes correlations between current scene tokens and basis tokens to probabilistically infer ego and agent trajectories, providing uncertainty estimates. These uncertainties are leveraged for variance-weighted training losses (source-domain regularization), GP-based trajectory prediction, and uncertainty-guided active learning during domain adaptation. The framework supports supervised and unsupervised adaptation, as well as online adaptation. Experiments on nuScenes demonstrate consistent improvements over base models (VAD-T, SparseDrive-S) in cross-city transfer, image degradation robustness, active learning efficiency, and long-tail scenario handling.\",\n  \"Strengths\": [\n    \"Novel application of Gaussian processes to end-to-end autonomous driving for cross-domain robustness, providing principled uncertainty estimation in an underexplored area.\",\n    \"Comprehensive experimental evaluation covering cross-city transfer, image degradations, active learning, and long-tail scenarios, with consistent improvements over strong baselines (VAD-T, SparseDrive-S).\",\n    \"Model-agnostic design that can be applied to any tokenized E2E planner, demonstrated with two different base models, increasing potential impact.\",\n    \"Multiple practical operational modes: source-domain regularization (with no extra inference cost), GP-based trajectory prediction, supervised/unsupervised adaptation, active learning via predictive variance, and online adaptation.\",\n    \"Uncertainty-guided active learning is a practical and well-motivated contribution for efficient domain adaptation.\",\n    \"Clean ablation study demonstrating the contribution of each loss component.\",\n    \"Clear qualitative results and practical analysis of computational costs.\",\n    \"Well-written and well-structured presentation with helpful figures.\"\n  ],\n  \"Weaknesses\": [\n    \"The GP formulation is somewhat heuristic: basis tokens are learned embeddings rather than strict GP training points, and the kernel operates on learned token embeddings rather than input space, weakening theoretical justification. The approach essentially reduces to a sparse GP regression with learned inducing points, and the novelty lies mainly in the application rather than the technical method.\",\n    \"The GP trajectory prediction is essentially a weighted average of basis trajectories, which may limit expressiveness for complex multi-modal maneuvers; the paper does not discuss how multi-modality is handled.\",\n    \"Computational scalability of GP inference (matrix inversion and latency increase of ~25% in prediction mode) is only briefly addressed and not thoroughly analyzed for real-time deployment constraints.\",\n    \"Evaluation is limited to nuScenes with only two cities (Boston and Singapore); no simulation (e.g., CARLA) or real-world validation, and no comparison with diverse sensor configurations or weather conditions beyond synthetic corruptions.\",\n    \"No direct comparison with LLM-based driving approaches (e.g., DriveLM, EMMA) despite motivating the work with these methods in the introduction; comparison with VLP in the appendix uses different evaluation protocols, making it unreliable.\",\n    \"Lack of hyperparameter sensitivity analysis (e.g., number of basis groups, group size, kernel parameters, triplet loss design).\",\n    \"Missing details on the unsupervised adaptation setting: what prevents drift or collapse without ground-truth supervision, and what exactly is used as pseudo-labels (GP predictive mean?).\",\n    \"The 'no extra inference computation' claim only holds for the regularization mode; the GP trajectory prediction mode does add latency.\",\n    \"No ablation on the adaptation components (e.g., effect of uncertainty weighting during adaptation) and no online adaptation experiments despite being claimed as a contribution.\",\n    \"Limited analysis of failure modes or conditions where the GP approach might underperform, and no evaluation of uncertainty calibration quality.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"What is the theoretical justification for applying a GP kernel on learned token embeddings rather than the input space? How does this differ from a simpler nearest-neighbor or attention-based lookup mechanism?\",\n    \"How are basis trajectories sampled and clustered initially? What clustering algorithm is used, and how sensitive are results to this initialization?\",\n    \"In the unsupervised adaptation setting, what exactly is used as pseudo-ground-truth (GP predictive mean?), and what prevents the model from drifting or collapsing without ground-truth supervision? Are there additional regularization terms?\",\n    \"How sensitive is performance to hyperparameters such as the number of basis groups (N_code=48/64) and group size (C=64)? Was any sensitivity analysis performed?\",\n    \"What is the computational cost of kernel matrix inversion at inference time (C×C matrices), and how does it scale with larger codebooks? What is the memory overhead of storing the codebook (112 groups × 64 tokens)?\",\n    \"How does the GP handle multi-modal trajectory distributions? The current formulation seems to predict a single trajectory per token.\",\n    \"Can you provide a fair comparison with VLP using the standardized evaluation protocol? Why were no LLM-based driving methods (e.g., DriveLM, EMMA) compared, given they are discussed in the introduction?\",\n    \"In the active learning experiments, how does predictive variance compare to other uncertainty-based sampling methods such as entropy or MC-dropout? How is variance computed (averaged over ego and agent tokens)?\",\n    \"How does RoCA compare to simpler regularization techniques such as weight decay, dropout, or feature-level noise injection?\",\n    \"The paper claims online adaptation support but does not present online adaptation experiments. Can you provide results or discussion on this capability?\"\n  ],\n  \"Limitations\": [\n    \"Evaluation is limited to nuScenes with only two cities; broader validation across more diverse domains (different countries, sensor configurations, weather conditions) or simulation environments (CARLA, Waymo) is needed to strengthen cross-domain claims.\",\n    \"The computational overhead of GP inference (especially in trajectory prediction mode) may limit real-time deployment on embedded systems with strict latency requirements.\",\n    \"The approach requires a three-stage training pipeline (base model training, GP training, finetuning), adding complexity for practical adoption.\",\n    \"The method assumes tokenized representations are available from the base E2E model, which may not be the case for all E2E architectures, limiting general applicability.\",\n    \"The uncertainty estimates from the GP may not be well-calibrated, and calibration quality is not evaluated, which could affect active learning and adaptation decisions.\",\n    \"The paper does not discuss potential negative societal impacts of autonomous driving systems, including safety risks in deployment, over-reliance on automated systems, or biases in training data (e.g., geographic, demographic).\",\n    \"No discussion of failure cases or safety-critical conditions where GP-based predictions might be unsafe despite high confidence or vice versa.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 6302,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 6302,
+      "completion_tokens": 2007,
+      "reasoning_tokens": 0,
+      "total_tokens": 8309
+    },
+    "attempts": 1,
+    "response_id": "e3c59b6b-ffc2-48dc-a883-8af53ebcbc35"
+  },
+  "final_review": {
+    "Summary": "The paper proposes RoCA, a Gaussian Process (GP)-based framework for robust cross-domain end-to-end autonomous driving. RoCA learns a codebook of basis tokens representing diverse driving scenarios, each associated with trajectory prototypes. At inference, a GP kernel computes correlations between current scene tokens and basis tokens to probabilistically infer ego and agent trajectories, providing uncertainty estimates. These uncertainties are leveraged for variance-weighted training losses (source-domain regularization), GP-based trajectory prediction, and uncertainty-guided active learning during domain adaptation. The framework supports supervised and unsupervised adaptation, as well as online adaptation. Experiments on nuScenes demonstrate consistent improvements over base models (VAD-T, SparseDrive-S) in cross-city transfer, image degradation robustness, active learning efficiency, and long-tail scenario handling.",
+    "Strengths": [
+      "Novel application of Gaussian processes to end-to-end autonomous driving for cross-domain robustness, providing principled uncertainty estimation in an underexplored area.",
+      "Comprehensive experimental evaluation covering cross-city transfer, image degradations, active learning, and long-tail scenarios, with consistent improvements over strong baselines (VAD-T, SparseDrive-S).",
+      "Model-agnostic design that can be applied to any tokenized E2E planner, demonstrated with two different base models, increasing potential impact.",
+      "Multiple practical operational modes: source-domain regularization (with no extra inference cost), GP-based trajectory prediction, supervised/unsupervised adaptation, active learning via predictive variance, and online adaptation.",
+      "Uncertainty-guided active learning is a practical and well-motivated contribution for efficient domain adaptation.",
+      "Clean ablation study demonstrating the contribution of each loss component.",
+      "Clear qualitative results and practical analysis of computational costs.",
+      "Well-written and well-structured presentation with helpful figures."
+    ],
+    "Weaknesses": [
+      "The GP formulation is somewhat heuristic: basis tokens are learned embeddings rather than strict GP training points, and the kernel operates on learned token embeddings rather than input space, weakening theoretical justification. The approach essentially reduces to a sparse GP regression with learned inducing points, and the novelty lies mainly in the application rather than the technical method.",
+      "The GP trajectory prediction is essentially a weighted average of basis trajectories, which may limit expressiveness for complex multi-modal maneuvers; the paper does not discuss how multi-modality is handled.",
+      "Computational scalability of GP inference (matrix inversion and latency increase of ~25% in prediction mode) is only briefly addressed and not thoroughly analyzed for real-time deployment constraints.",
+      "Evaluation is limited to nuScenes with only two cities (Boston and Singapore); no simulation (e.g., CARLA) or real-world validation, and no comparison with diverse sensor configurations or weather conditions beyond synthetic corruptions.",
+      "No direct comparison with LLM-based driving approaches (e.g., DriveLM, EMMA) despite motivating the work with these methods in the introduction; comparison with VLP in the appendix uses different evaluation protocols, making it unreliable.",
+      "Lack of hyperparameter sensitivity analysis (e.g., number of basis groups, group size, kernel parameters, triplet loss design).",
+      "Missing details on the unsupervised adaptation setting: what prevents drift or collapse without ground-truth supervision, and what exactly is used as pseudo-labels (GP predictive mean?).",
+      "The 'no extra inference computation' claim only holds for the regularization mode; the GP trajectory prediction mode does add latency.",
+      "No ablation on the adaptation components (e.g., effect of uncertainty weighting during adaptation) and no online adaptation experiments despite being claimed as a contribution.",
+      "Limited analysis of failure modes or conditions where the GP approach might underperform, and no evaluation of uncertainty calibration quality."
+    ],
+    "Originality": 3,
+    "Quality": 3,
+    "Clarity": 3,
+    "Significance": 3,
+    "Questions": [
+      "What is the theoretical justification for applying a GP kernel on learned token embeddings rather than the input space? How does this differ from a simpler nearest-neighbor or attention-based lookup mechanism?",
+      "How are basis trajectories sampled and clustered initially? What clustering algorithm is used, and how sensitive are results to this initialization?",
+      "In the unsupervised adaptation setting, what exactly is used as pseudo-ground-truth (GP predictive mean?), and what prevents the model from drifting or collapsing without ground-truth supervision? Are there additional regularization terms?",
+      "How sensitive is performance to hyperparameters such as the number of basis groups (N_code=48/64) and group size (C=64)? Was any sensitivity analysis performed?",
+      "What is the computational cost of kernel matrix inversion at inference time (C×C matrices), and how does it scale with larger codebooks? What is the memory overhead of storing the codebook (112 groups × 64 tokens)?",
+      "How does the GP handle multi-modal trajectory distributions? The current formulation seems to predict a single trajectory per token.",
+      "Can you provide a fair comparison with VLP using the standardized evaluation protocol? Why were no LLM-based driving methods (e.g., DriveLM, EMMA) compared, given they are discussed in the introduction?",
+      "In the active learning experiments, how does predictive variance compare to other uncertainty-based sampling methods such as entropy or MC-dropout? How is variance computed (averaged over ego and agent tokens)?",
+      "How does RoCA compare to simpler regularization techniques such as weight decay, dropout, or feature-level noise injection?",
+      "The paper claims online adaptation support but does not present online adaptation experiments. Can you provide results or discussion on this capability?"
+    ],
+    "Limitations": [
+      "Evaluation is limited to nuScenes with only two cities; broader validation across more diverse domains (different countries, sensor configurations, weather conditions) or simulation environments (CARLA, Waymo) is needed to strengthen cross-domain claims.",
+      "The computational overhead of GP inference (especially in trajectory prediction mode) may limit real-time deployment on embedded systems with strict latency requirements.",
+      "The approach requires a three-stage training pipeline (base model training, GP training, finetuning), adding complexity for practical adoption.",
+      "The method assumes tokenized representations are available from the base E2E model, which may not be the case for all E2E architectures, limiting general applicability.",
+      "The uncertainty estimates from the GP may not be well-calibrated, and calibration quality is not evaluated, which could affect active learning and adaptation decisions.",
+      "The paper does not discuss potential negative societal impacts of autonomous driving systems, including safety risks in deployment, over-reliance on automated systems, or biases in training data (e.g., geographic, demographic).",
+      "No discussion of failure cases or safety-critical conditions where GP-based predictions might be unsafe despite high confidence or vice versa."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 3,
+    "Contribution": 3,
+    "Overall": 6,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 98122,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 89162,
+    "completion_tokens": 9252,
+    "reasoning_tokens": 0,
+    "total_tokens": 107374,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.01248268,
+    "output_usd": 0.00259056,
+    "total_usd": 0.01509833
+  },
+  "elapsed_seconds": 33.858,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Accept",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B141",
+    "filename": "B141.txt",
+    "blind_text_sha256": "1af54273546142e0745c46998e53f7304ff8b747d196c3e439e4740b9954a548",
+    "characters": 63240,
+    "full_text_saved": false
+  }
+}

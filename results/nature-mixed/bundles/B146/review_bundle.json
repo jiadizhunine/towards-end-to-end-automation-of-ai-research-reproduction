@@ -1,0 +1,707 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:49:16.742583+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper proposes Smoothed Gradient Ascent (SGA), a fine-tuning-based LLM unlearning method that extends standard Gradient Ascent (GA) by incorporating generated 'normal' data through a tunable smoothing rate r. SGA combines gradient ascent on the forget set with gradient descent on semantically similar safe data, aiming to mitigate GA's divergence problem while preserving model utility. The authors provide a theoretical analysis of the optimal smoothing rate, and evaluate SGA on three benchmarks (TOFU, Harry Potter, MUSE-News) across multiple base LLMs (Llama2-7B, OPT-2.7B, Phi-1.5B). Results show SGA consistently outperforms GA and achieves competitive performance against other baselines.",
+        "Strengths": [
+          "Addresses an important practical problem: GA's instability in LLM unlearning",
+          "Simple, intuitive method that extends label smoothing to the unlearning setting",
+          "Comprehensive evaluation across three diverse benchmarks and multiple base models",
+          "Consistent improvements over the GA baseline across all evaluated settings",
+          "Theoretical analysis on the sign of the optimal smoothing rate provides some guidance",
+          "Ablation study on normal data generation methods (embedding vs. GPT-4o-mini)"
+        ],
+        "Weaknesses": [
+          "The theoretical analysis (Section 4.3) is weak: minimizing the update norm does not necessarily correspond to optimal unlearning quality, and the connection is not justified rigorously",
+          "The optimal smoothing rate r* is highly data/model dependent and requires extensive grid search; no practical method for selecting r without tuning is provided",
+          "Results on TOFU show very small absolute differences in metrics (e.g., FQ 0.0068 vs 0.0030) with no error bars or statistical significance tests, making it unclear if improvements are meaningful",
+          "On Harry Potter, SGA still achieves extremely high PPL values (e.g., 1.3040e6) for some settings, indicating the divergence problem is not fully resolved",
+          "MUSE-News results show SGA only succeeds at a specific r value; most other r values fail the KnowMem on Dr criterion, suggesting sensitivity to hyperparameter choice",
+          "The method requires generating normal data (via embeddings or GPT-4o-mini), adding complexity and computational cost not present in simpler baselines",
+          "Limited comparison with more recent strong baselines (e.g., RULE, SimPO mentioned in related work but not included in experiments)"
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 3,
+        "Questions": [
+          "The theoretical analysis minimizes ||d(r)||^2 to find r*. How does minimizing the update norm relate to optimal forgetting quality and utility preservation? Could a larger update norm with a better direction lead to better unlearning?",
+          "In Equation 9, r* depends on gradients at the current step, which change during training. The paper fixes r at the start. Would a dynamic or scheduled r lead to better results? Have the authors explored this?",
+          "For TOFU, the FQ metric values are very small (e.g., 0.0068 vs 0.0030). Are these differences statistically significant? Can you provide confidence intervals or multiple seeds?",
+          "On Harry Potter, SGA at r=-0.4 for Llama2-7B achieves FQ Gap 0.5355 but at r=-0.2 achieves 0.0761. This is a large jump. How stable is the optimal r across different random seeds or data splits?",
+          "The paper claims SGA achieves 'top-2 performance on several key metrics.' Can you clarify which specific comparisons and metrics this refers to, given that many baseline values are taken from prior work with potentially different experimental setups?",
+          "The normal data generation for TOFU uses embedding similarity to select retain data, while Harry Potter and MUSE use GPT-4o-mini generation. How does the quality/choice of normal data affect the optimal r and final performance?",
+          "What is the computational overhead of generating normal data with GPT-4o-mini compared to the unlearning training itself? Is this cost justified by the improvement over simpler methods like GD?"
+        ],
+        "Limitations": [
+          "The optimal smoothing rate r* is highly dependent on the base model, forget data, and normal data, and must be tuned per scenario, limiting practical applicability",
+          "The paper does not address the potential negative societal impact of unlearning methods being used to remove safety-relevant knowledge (e.g., removing knowledge about harmful content could also remove useful safety information)",
+          "The method requires access to an external model (GPT-4o-mini) for normal data generation in some benchmarks, which may not be available in all settings and raises reproducibility concerns",
+          "No discussion of potential failure modes or cases where SGA might perform worse than simpler baselines",
+          "The theoretical analysis is limited to a single gradient step and does not account for the dynamics of multi-step training"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes Smoothed Gradient Ascent (SGA) for LLM unlearning, which combines gradient ascent on forget data with gradient descent on generated \"normal\" data using a smoothing rate parameter r. The key idea is to mitigate the instability/divergence of standard GA by anchoring the optimization with safe/normal data.\n\nStrengths:\n1. The problem is important - GA is widely used but known to be unstable\n2. The method is simple and intuitive - extending label smoothing to unlearning\n3. Good theoretical analysis of optimal smoothing rate (though somewhat limited)\n4. Comprehensive experiments across three benchmarks (TOFU, Harry Potter, MUSE-News) with multiple base models\n5. Consistent improvements over GA as claimed\n\nWeaknesses:\n1. The theoretical analysis in Section 4.3 is quite weak - it just finds the r that minimizes the update norm, which doesn't necessarily correspond to optimal unlearning. The connection between \"minimizing update norm\" and \"optimal unlearning\" is not well justified.\n2. The \"optimal\" smoothing rate r* is data/model dependent and must be tuned per experiment. The paper doesn't provide a practical way to select r without extensive grid search.\n3. The evaluation metrics for TOFU show very small differences (e.g., FQ values like 0.0068 vs 0.0030) which may not be statistically significant. No error bars or significance tests are reported.\n4. On Harry Potter, the PPL values for SGA are still astronomically high (1.3040e6) for some settings, suggesting the divergence problem is not fully solved.\n5. The MUSE-News results show that SGA only works at a specific r value (the one reported in main table), while other r values fail the KnowMem on Dr criterion.\n6. The method requires generating normal data (either via embeddings or GPT-4o-mini), which adds complexity and potential cost.\n\nClarity issues:\n- The paper has some confusing notation (e.g., the label space explanation in 4.1 is unclear)\n- Figure 2 is not clearly explained in the text\n- The ablation study is limited to TOFU only\n\nOriginality: Moderate - the idea of combining forget and normal data is novel, but it's essentially a form of regularization on GA. Related to existing work like GD (gradient difference) but with a different formulation.\n\nQuality: Fair to good - experiments are reasonably comprehensive but lack statistical rigor. The theoretical contribution is weak.\n\nSignificance: Moderate - could be useful for practitioners, but the need for tuning r and generating normal data limits its practical impact.\n\nOverall, this is a borderline paper. The core idea is reasonable but the contributions are incremental. The theoretical analysis is weak, and the experimental validation lacks rigor. I would lean toward reject given the limitations.\n\nDecision: Reject (borderline)\n\nLet me structure the review carefully now.REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper proposes Smoothed Gradient Ascent (SGA), a fine-tuning-based LLM unlearning method that extends standard Gradient Ascent (GA) by incorporating generated 'normal' data through a tunable smoothing rate r. SGA combines gradient ascent on the forget set with gradient descent on semantically similar safe data, aiming to mitigate GA's divergence problem while preserving model utility. The authors provide a theoretical analysis of the optimal smoothing rate, and evaluate SGA on three benchmarks (TOFU, Harry Potter, MUSE-News) across multiple base LLMs (Llama2-7B, OPT-2.7B, Phi-1.5B). Results show SGA consistently outperforms GA and achieves competitive performance against other baselines.\",\n  \"Strengths\": [\n    \"Addresses an important practical problem: GA's instability in LLM unlearning\",\n    \"Simple, intuitive method that extends label smoothing to the unlearning setting\",\n    \"Comprehensive evaluation across three diverse benchmarks and multiple base models\",\n    \"Consistent improvements over the GA baseline across all evaluated settings\",\n    \"Theoretical analysis on the sign of the optimal smoothing rate provides some guidance\",\n    \"Ablation study on normal data generation methods (embedding vs. GPT-4o-mini)\"\n  ],\n  \"Weaknesses\": [\n    \"The theoretical analysis (Section 4.3) is weak: minimizing the update norm does not necessarily correspond to optimal unlearning quality, and the connection is not justified rigorously\",\n    \"The optimal smoothing rate r* is highly data/model dependent and requires extensive grid search; no practical method for selecting r without tuning is provided\",\n    \"Results on TOFU show very small absolute differences in metrics (e.g., FQ 0.0068 vs 0.0030) with no error bars or statistical significance tests, making it unclear if improvements are meaningful\",\n    \"On Harry Potter, SGA still achieves extremely high PPL values (e.g., 1.3040e6) for some settings, indicating the divergence problem is not fully resolved\",\n    \"MUSE-News results show SGA only succeeds at a specific r value; most other r values fail the KnowMem on Dr criterion, suggesting sensitivity to hyperparameter choice\",\n    \"The method requires generating normal data (via embeddings or GPT-4o-mini), adding complexity and computational cost not present in simpler baselines\",\n    \"Limited comparison with more recent strong baselines (e.g., RULE, SimPO mentioned in related work but not included in experiments)\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"The theoretical analysis minimizes ||d(r)||^2 to find r*. How does minimizing the update norm relate to optimal forgetting quality and utility preservation? Could a larger update norm with a better direction lead to better unlearning?\",\n    \"In Equation 9, r* depends on gradients at the current step, which change during training. The paper fixes r at the start. Would a dynamic or scheduled r lead to better results? Have the authors explored this?\",\n    \"For TOFU, the FQ metric values are very small (e.g., 0.0068 vs 0.0030). Are these differences statistically significant? Can you provide confidence intervals or multiple seeds?\",\n    \"On Harry Potter, SGA at r=-0.4 for Llama2-7B achieves FQ Gap 0.5355 but at r=-0.2 achieves 0.0761. This is a large jump. How stable is the optimal r across different random seeds or data splits?\",\n    \"The paper claims SGA achieves 'top-2 performance on several key metrics.' Can you clarify which specific comparisons and metrics this refers to, given that many baseline values are taken from prior work with potentially different experimental setups?\",\n    \"The normal data generation for TOFU uses embedding similarity to select retain data, while Harry Potter and MUSE use GPT-4o-mini generation. How does the quality/choice of normal data affect the optimal r and final performance?\",\n    \"What is the computational overhead of generating normal data with GPT-4o-mini compared to the unlearning training itself? Is this cost justified by the improvement over simpler methods like GD?\"\n  ],\n  \"Limitations\": [\n    \"The optimal smoothing rate r* is highly dependent on the base model, forget data, and normal data, and must be tuned per scenario, limiting practical applicability\",\n    \"The paper does not address the potential negative societal impact of unlearning methods being used to remove safety-relevant knowledge (e.g., removing knowledge about harmful content could also remove useful safety information)\",\n    \"The method requires access to an external model (GPT-4o-mini) for normal data generation in some benchmarks, which may not be available in all settings and raises reproducibility concerns\",\n    \"No discussion of potential failure modes or cases where SGA might perform worse than simpler baselines\",\n    \"The theoretical analysis is limited to a single gradient step and does not account for the dynamics of multi-step training\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 25778,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 23986,
+        "completion_tokens": 1744,
+        "reasoning_tokens": 0,
+        "total_tokens": 27522
+      },
+      "attempts": 1,
+      "response_id": "becb0dc8-93c7-42af-8eb3-c24704d0d292"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper proposes Smoothed Gradient Ascent (SGA), a fine-tuning-based LLM unlearning method that extends standard Gradient Ascent (GA) by incorporating generated 'normal' data through a smoothing rate parameter r, inspired by generalized label smoothing. The method aims to mitigate GA's divergence/collapse issues while maintaining forgetting quality. The authors provide theoretical analysis of the optimal smoothing rate, empirical evaluation on TOFU, Harry Potter, and MUSE-NEWS benchmarks across multiple base models (Llama2-7B, OPT-2.7B, Phi-1.5B), and comparisons against several baselines including GA, GD, KL, NPO, DPO, LLMU, FLAT, and others. Results show SGA consistently outperforms GA and achieves top-2 performance on several key metrics when r is properly tuned.",
+        "Strengths": [
+          "The core idea is novel and intuitive: combining gradient ascent on forget data with gradient descent on semantically related normal data via label smoothing to stabilize unlearning",
+          "Comprehensive empirical evaluation across three distinct unlearning tasks (entity, copyright, news) and three different base models",
+          "The method consistently outperforms the GA baseline across most metrics and benchmarks when r is properly tuned",
+          "Theoretical analysis of the optimal smoothing rate provides some insight into the method's behavior, even if the guidance is qualitative",
+          "Ablation studies on normal data generation methods (embedding-based vs GPT-generated) add depth to the analysis",
+          "The paper is generally well-organized and clearly written"
+        ],
+        "Weaknesses": [
+          "The theoretical contribution is limited: the closed-form solution for r* (Eq. 9) is not directly usable, and the analysis only provides sign-based guidance (positive vs negative r), not actual values. The claim of 'theoretical guidance' is overstated.",
+          "On TOFU, the FQ scores are extremely low across all methods (mostly < 0.1), making improvements seem marginal. The practical significance of the gains is questionable.",
+          "On Harry Potter, many SGA configurations still produce catastrophic PPL values (e.g., 6.27e72, 6.85e30), indicating the divergence problem is not fully resolved—only mitigated for specific r values",
+          "On MUSE-NEWS, SGA only improves KnowMem on D_r from 0 to 1.95 (vs 55.0 for Retained LLM), which is a marginal practical improvement",
+          "The method requires generating normal data (via embedding similarity or GPT-4o-mini), adding complexity and cost. The optimal r shifts with different normal data sources, making hyperparameter selection unstable",
+          "Missing comparison with recent stronger baselines mentioned in related work (e.g., SimPO, RULE, DRAGON), limiting the assessment of state-of-the-art positioning",
+          "The optimal smoothing rate is determined via extensive grid search; the theoretical analysis doesn't provide actionable r values, reducing practical utility",
+          "Some presentation issues: malformed equations (e.g., Eq. 22 in Appendix C.3), inconsistent notation, and a very brief ethics statement"
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 2,
+        "Questions": [
+          "1. The theoretical analysis in Section 4.3 derives r* via minimizing ||d(r)||^2. However, this objective doesn't explicitly ensure forgetting quality. How would the analysis change if a forgetting constraint (e.g., lower bound on forget loss increase) were incorporated?",
+          "2. For the TOFU experiments, the FQ values are very low across all methods (most < 0.1). What is the practical interpretation of these values? Are there any methods that achieve FQ > 0.5, and why doesn't SGA achieve this?",
+          "3. On Harry Potter, several SGA configurations (e.g., r=-0.2, r=-0.4) still produce astronomically high PPL values. What is the stability of SGA across different random seeds? Are these collapse cases consistent?",
+          "4. The ablation study shows that the optimal r changes depending on the normal data source (embedding vs GPT). How should practitioners select r in practice without extensive grid search? Can the theoretical analysis be extended to provide more concrete guidance?",
+          "5. On MUSE-NEWS, SGA with r=-2 achieves KnowMem on D_r = 10.25, which is higher than the reported r value (15.57 for PrivLeak). Why was this configuration not highlighted as the best?",
+          "6. The paper doesn't compare against SimPO or RULE, which are mentioned in related work. How does SGA compare to these more recent methods?",
+          "7. What is the computational cost of generating normal data via GPT-4o-mini compared to the unlearning training itself? This is relevant for practical adoption."
+        ],
+        "Limitations": [
+          "The paper acknowledges that the optimal smoothing rate r* is model/data-dependent and evolves during training, but doesn't explore dynamic adjustment, which is a significant limitation",
+          "The method requires generating normal data, which adds complexity and potential cost (especially when using GPT-4o-mini), and the quality of normal data significantly affects the optimal r",
+          "The practical improvements over GA are inconsistent: on some benchmarks (e.g., MUSE-News D_r utility), the gains are marginal",
+          "The theoretical framework doesn't provide concrete r values, limiting its actionable guidance for practitioners",
+          "The paper doesn't address potential negative societal impacts beyond a brief statement, such as misuse of unlearning techniques to evade content moderation or accountability",
+          "Reproducibility is partially limited as code is promised only upon acceptance"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes Smoothed Gradient Ascent (SGA) for LLM unlearning, which combines gradient ascent on forget data with gradient descent on generated \"normal\" data via a smoothing rate parameter. The method is inspired by generalized label smoothing and aims to mitigate the divergence/collapse issues of standard Gradient Ascent.\n\n**Key strengths:**\n1. The problem is important and timely - LLM unlearning is a growing area with practical significance\n2. The core idea is simple yet novel - extending GA with normal data through label smoothing is an interesting combination\n3. The theoretical analysis of the optimal smoothing rate provides some guidance\n4. Comprehensive evaluation across three benchmarks (TOFU, Harry Potter, MUSE-NEWS) and multiple base models\n5. The method consistently outperforms GA and shows competitive results against strong baselines\n6. Ablation studies on normal data generation methods\n\n**Key weaknesses:**\n1. The theoretical analysis is somewhat superficial - Equation 9 gives a closed form but the discussion is mostly qualitative (sign-based analysis). The claim of \"theoretical guidance\" is overstated.\n2. The evaluation on TOFU shows very poor FQ scores across all methods (most < 0.1), making the improvements seem marginal in absolute terms. The \"top-2\" claims are often within noise levels.\n3. On Harry Potter, many SGA configurations still show catastrophic PPL values (e.g., 6.27e72), suggesting the divergence problem is not fully solved, just mitigated for certain r values.\n4. The MUSE-NEWS results show SGA only marginally improves KnowMem on D_r (from 0 to 1.95), which is still far below the Retained LLM (55.0). The practical significance is questionable.\n5. The method requires generating normal data (either via embedding similarity or GPT-4o-mini), which adds complexity and potential cost. The ablation shows the optimal r changes with different normal data sources, making hyperparameter selection unstable.\n6. The paper doesn't compare against more recent/stronger baselines beyond FLAT (2024). No comparison with methods like SimPO or RULE mentioned in related work.\n7. The \"optimal smoothing rate\" is determined empirically by grid search over r values, and the theoretical analysis only provides sign information, not actual values. This limits the practical utility of the theory.\n8. Minor presentation issues: some equations are malformed (e.g., Eq 22 in Appendix C.3), inconsistent notation, and the ethics statement is too brief.\n\n**Overall assessment:**\nThe paper presents a reasonable incremental contribution to LLM unlearning. The core idea is intuitive and the experiments are fairly comprehensive. However, the theoretical contribution is weak (mostly qualitative), the practical improvements over GA are modest in some cases, and the method introduces additional complexity (normal data generation, r tuning). The paper is technically sound but not groundbreaking. I would rate this as borderline - the strengths (novel idea, comprehensive evaluation) are balanced by weaknesses (limited theoretical depth, marginal improvements in some metrics, added complexity). \n\nI'll give it a borderline reject leaning toward reject because:\n- The theoretical analysis doesn't provide actionable guidance (just sign of r)\n- The improvements over GA are inconsistent across benchmarks\n- The method's practical value is questionable given the need to generate normal data and tune r extensively\n- Comparison with recent baselines is incomplete\n\n**Decision: Reject**\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper proposes Smoothed Gradient Ascent (SGA), a fine-tuning-based LLM unlearning method that extends standard Gradient Ascent (GA) by incorporating generated 'normal' data through a smoothing rate parameter r, inspired by generalized label smoothing. The method aims to mitigate GA's divergence/collapse issues while maintaining forgetting quality. The authors provide theoretical analysis of the optimal smoothing rate, empirical evaluation on TOFU, Harry Potter, and MUSE-NEWS benchmarks across multiple base models (Llama2-7B, OPT-2.7B, Phi-1.5B), and comparisons against several baselines including GA, GD, KL, NPO, DPO, LLMU, FLAT, and others. Results show SGA consistently outperforms GA and achieves top-2 performance on several key metrics when r is properly tuned.\",\n    \"Strengths\": [\n        \"The core idea is novel and intuitive: combining gradient ascent on forget data with gradient descent on semantically related normal data via label smoothing to stabilize unlearning\",\n        \"Comprehensive empirical evaluation across three distinct unlearning tasks (entity, copyright, news) and three different base models\",\n        \"The method consistently outperforms the GA baseline across most metrics and benchmarks when r is properly tuned\",\n        \"Theoretical analysis of the optimal smoothing rate provides some insight into the method's behavior, even if the guidance is qualitative\",\n        \"Ablation studies on normal data generation methods (embedding-based vs GPT-generated) add depth to the analysis\",\n        \"The paper is generally well-organized and clearly written\"\n    ],\n    \"Weaknesses\": [\n        \"The theoretical contribution is limited: the closed-form solution for r* (Eq. 9) is not directly usable, and the analysis only provides sign-based guidance (positive vs negative r), not actual values. The claim of 'theoretical guidance' is overstated.\",\n        \"On TOFU, the FQ scores are extremely low across all methods (mostly < 0.1), making improvements seem marginal. The practical significance of the gains is questionable.\",\n        \"On Harry Potter, many SGA configurations still produce catastrophic PPL values (e.g., 6.27e72, 6.85e30), indicating the divergence problem is not fully resolved—only mitigated for specific r values\",\n        \"On MUSE-NEWS, SGA only improves KnowMem on D_r from 0 to 1.95 (vs 55.0 for Retained LLM), which is a marginal practical improvement\",\n        \"The method requires generating normal data (via embedding similarity or GPT-4o-mini), adding complexity and cost. The optimal r shifts with different normal data sources, making hyperparameter selection unstable\",\n        \"Missing comparison with recent stronger baselines mentioned in related work (e.g., SimPO, RULE, DRAGON), limiting the assessment of state-of-the-art positioning\",\n        \"The optimal smoothing rate is determined via extensive grid search; the theoretical analysis doesn't provide actionable r values, reducing practical utility\",\n        \"Some presentation issues: malformed equations (e.g., Eq. 22 in Appendix C.3), inconsistent notation, and a very brief ethics statement\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 2,\n    \"Clarity\": 3,\n    \"Significance\": 2,\n    \"Questions\": [\n        \"1. The theoretical analysis in Section 4.3 derives r* via minimizing ||d(r)||^2. However, this objective doesn't explicitly ensure forgetting quality. How would the analysis change if a forgetting constraint (e.g., lower bound on forget loss increase) were incorporated?\",\n        \"2. For the TOFU experiments, the FQ values are very low across all methods (most < 0.1). What is the practical interpretation of these values? Are there any methods that achieve FQ > 0.5, and why doesn't SGA achieve this?\",\n        \"3. On Harry Potter, several SGA configurations (e.g., r=-0.2, r=-0.4) still produce astronomically high PPL values. What is the stability of SGA across different random seeds? Are these collapse cases consistent?\",\n        \"4. The ablation study shows that the optimal r changes depending on the normal data source (embedding vs GPT). How should practitioners select r in practice without extensive grid search? Can the theoretical analysis be extended to provide more concrete guidance?\",\n        \"5. On MUSE-NEWS, SGA with r=-2 achieves KnowMem on D_r = 10.25, which is higher than the reported r value (15.57 for PrivLeak). Why was this configuration not highlighted as the best?\",\n        \"6. The paper doesn't compare against SimPO or RULE, which are mentioned in related work. How does SGA compare to these more recent methods?\",\n        \"7. What is the computational cost of generating normal data via GPT-4o-mini compared to the unlearning training itself? This is relevant for practical adoption.\"\n    ],\n    \"Limitations\": [\n        \"The paper acknowledges that the optimal smoothing rate r* is model/data-dependent and evolves during training, but doesn't explore dynamic adjustment, which is a significant limitation\",\n        \"The method requires generating normal data, which adds complexity and potential cost (especially when using GPT-4o-mini), and the quality of normal data significantly affects the optimal r\",\n        \"The practical improvements over GA are inconsistent: on some benchmarks (e.g., MUSE-News D_r utility), the gains are marginal\",\n        \"The theoretical framework doesn't provide concrete r values, limiting its actionable guidance for practitioners\",\n        \"The paper doesn't address potential negative societal impacts beyond a brief statement, such as misuse of unlearning techniques to evade content moderation or accountability\",\n        \"Reproducibility is partially limited as code is promised only upon acceptance\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 2,\n    \"Presentation\": 3,\n    \"Contribution\": 2,\n    \"Overall\": 4,\n    \"Confidence\": 4,\n    \"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 25778,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 23986,
+        "completion_tokens": 2007,
+        "reasoning_tokens": 0,
+        "total_tokens": 27785
+      },
+      "attempts": 1,
+      "response_id": "79b849c3-e2ba-41fb-b2cf-2bcaf6888701"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper proposes Smoothed Gradient Ascent (SGA) for LLM unlearning, a fine-tuning-based method that combines forget data with constructed normal data using a tunable smoothing rate r. SGA extends standard Gradient Ascent (GA) by jointly learning on both forget and normal data to mitigate GA's divergence and preserve model utility. The paper provides theoretical analysis on the optimal smoothing rate, evaluates SGA on TOFU, Harry Potter, and MUSE-NEWS benchmarks across multiple base models, and demonstrates consistent improvements over GA and competitive performance against other baselines.",
+        "Strengths": [
+          "Addresses a relevant and timely problem in LLM unlearning with a simple, intuitive method",
+          "Provides both theoretical analysis (optimal smoothing rate) and extensive empirical evaluation across three benchmarks and multiple base models",
+          "Consistently outperforms standard Gradient Ascent, demonstrating the value of incorporating normal data",
+          "Includes ablation study comparing different normal data generation methods",
+          "The method is practical and could be easily adopted by practitioners"
+        ],
+        "Weaknesses": [
+          "Theoretical analysis is superficial; provides only sign estimation for r* rather than practical quantitative guidance",
+          "Empirical gains over GA are often marginal, and SGA does not consistently achieve top-2 across all metrics and benchmarks",
+          "Optimal smoothing rate requires extensive hyperparameter sweeping, which is computationally expensive and not well-guided by theory",
+          "Some results show extreme instability (e.g., PPL values of 1e72 on Harry Potter), indicating the divergence problem is not fully resolved",
+          "Lacks comparison with some recent strong baselines (e.g., SimPO, RULE) in main experiments",
+          "Claims are sometimes overstated relative to the evidence presented",
+          "Writing has issues: figures are not properly integrated into the text flow, and Table 1 is hard to parse"
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 2,
+        "Questions": [
+          "1. The theoretical derivation of r* minimizes ||d(r)||^2, but this is a heuristic. Can you provide a more principled justification for why minimizing the update norm leads to better unlearning outcomes?",
+          "2. In Section 4.3, you only estimate the sign of r*. Can you provide quantitative bounds on r* or a practical procedure to determine it without sweeping?",
+          "3. In Table 1, the FQ values for SGA on Llama2-7B are all very low (0.003-0.0068) compared to the retained model's 1.0. How does this indicate effective forgetting? Could you clarify the interpretation of FQ in this context?",
+          "4. The results on Harry Potter show extremely high PPL values (e.g., 1e72) for many SGA settings. How does this align with the claim that SGA mitigates divergence? What is the practical usability of models with such high PPL?",
+          "5. How was the smoothing rate r selected in the experiments? Was it tuned per model/benchmark, and what is the computational cost of this tuning?",
+          "6. The ablation study shows that GPT-generated normal data can change the optimal r. How should practitioners choose between embedding-based and GPT-based normal data generation?",
+          "7. Can you provide a comparison with more recent baselines like SimPO and RULE, which are mentioned in related work but not evaluated?",
+          "8. What happens if the normal data is semantically very different from the forget data? Does the method still work? Are there any constraints on the normal data?"
+        ],
+        "Limitations": [
+          "The optimal smoothing rate r* is model-dependent and changes during training, but the paper fixes it at the start, leaving dynamic adjustment as future work",
+          "The method requires generating or selecting normal data, which adds complexity and potential cost (especially when using GPT-4o-mini)",
+          "Extreme smoothing rates can still cause divergence (as seen in Harry Potter PPL values), so the method does not fully eliminate GA's instability",
+          "The paper does not address potential negative societal impacts, such as the possibility of using unlearning methods to evade content moderation or accountability",
+          "Evaluation is limited to English-language benchmarks; generalizability to other languages is not explored"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 3,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThe paper proposes Smoothed Gradient Ascent (SGA) for LLM unlearning, which combines forget data with normal data using a smoothing rate to mitigate the instability of standard Gradient Ascent (GA). The method is inspired by generalized label smoothing and aims to balance forgetting quality with model utility preservation.\n\nStrengths:\n1. The problem is relevant and timely - LLM unlearning is an important area with practical implications for privacy, copyright, and safety.\n2. The proposed method is simple and intuitive, extending GA with normal data in a principled way.\n3. The paper provides both theoretical analysis (optimal smoothing rate derivation) and extensive empirical evaluation across three benchmarks (TOFU, Harry Potter, MUSE-NEWS) and multiple base models.\n4. The method consistently outperforms GA, which is a widely used baseline, and achieves competitive results against stronger baselines.\n5. The ablation study on normal data generation methods (embedding-based vs. GPT-generated) adds useful insights.\n\nWeaknesses:\n1. The theoretical analysis in Section 4.3 is somewhat superficial. The derivation of r* is straightforward (minimizing squared norm), but the practical guidance is limited to sign estimation, which is a weak form of guidance. The claim that \"empirical optimum aligns with estimation\" is not strongly supported by the results (e.g., in Table 1, the optimal r varies inconsistently across models).\n2. The experimental results show mixed performance. While SGA beats GA, it does not consistently achieve top-2 across all metrics and benchmarks. For example, on TOFU with Llama2-7B, the FQ values are all very low (0.003-0.0068), which is far from the retained model's 1.0, suggesting weak forgetting. The improvement over GA is often marginal.\n3. The paper lacks a clear comparison with more recent strong baselines (e.g., RULE, SimPO) in the main experiments. Some baselines are only mentioned in related work.\n4. The evaluation on Harry Potter shows extreme PPL values for many SGA settings (e.g., 6.27e72), indicating severe instability even with SGA. The paper acknowledges this but doesn't fully address it.\n5. The optimal smoothing rate r requires sweeping across many values, which is computationally expensive and not well-guided by the theory. The paper doesn't provide a practical way to select r without extensive tuning.\n6. The claim that SGA \"achieves top-2 performance among all baseline methods on several key metrics\" is somewhat overstated given the variability in results.\n7. The paper's writing has some issues: Figure 1 and Figure 2 are not properly referenced in the text flow, and some table formatting is hard to parse (especially Table 1 with many columns).\n\nOriginality: The idea of combining forget data with normal data via label smoothing is a novel contribution, though it's closely related to existing approaches like GD (which uses retain data) and LLMU (which uses random completions). The theoretical analysis is not particularly deep but is a reasonable addition.\n\nQuality: The paper is technically sound but has some issues with evaluation completeness and the strength of claims. The experiments are extensive but don't always strongly support the claims.\n\nClarity: The paper is generally well-written but could be improved in terms of figure references and table readability.\n\nSignificance: This is a moderate contribution to the LLM unlearning field. The method is simple and could be useful in practice, but the improvements over existing methods are not dramatic.\n\nOverall assessment: I would rate this as a borderline accept. The method is reasonable and the evaluation is fairly thorough, but the theoretical contribution is weak, the practical guidance for r selection is limited, and the empirical gains over baselines are modest. The paper needs to address the above weaknesses to be a strong accept.\n\nDecision: I lean towards Reject because the contributions are incremental and the theoretical analysis doesn't provide strong practical value. However, the empirical evaluation is decent, so this is a borderline case. Given the instructions to only use Accept or Reject, I'll go with Reject due to the limited novelty and moderate empirical gains.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper proposes Smoothed Gradient Ascent (SGA) for LLM unlearning, a fine-tuning-based method that combines forget data with constructed normal data using a tunable smoothing rate r. SGA extends standard Gradient Ascent (GA) by jointly learning on both forget and normal data to mitigate GA's divergence and preserve model utility. The paper provides theoretical analysis on the optimal smoothing rate, evaluates SGA on TOFU, Harry Potter, and MUSE-NEWS benchmarks across multiple base models, and demonstrates consistent improvements over GA and competitive performance against other baselines.\",\n    \"Strengths\": [\n        \"Addresses a relevant and timely problem in LLM unlearning with a simple, intuitive method\",\n        \"Provides both theoretical analysis (optimal smoothing rate) and extensive empirical evaluation across three benchmarks and multiple base models\",\n        \"Consistently outperforms standard Gradient Ascent, demonstrating the value of incorporating normal data\",\n        \"Includes ablation study comparing different normal data generation methods\",\n        \"The method is practical and could be easily adopted by practitioners\"\n    ],\n    \"Weaknesses\": [\n        \"Theoretical analysis is superficial; provides only sign estimation for r* rather than practical quantitative guidance\",\n        \"Empirical gains over GA are often marginal, and SGA does not consistently achieve top-2 across all metrics and benchmarks\",\n        \"Optimal smoothing rate requires extensive hyperparameter sweeping, which is computationally expensive and not well-guided by theory\",\n        \"Some results show extreme instability (e.g., PPL values of 1e72 on Harry Potter), indicating the divergence problem is not fully resolved\",\n        \"Lacks comparison with some recent strong baselines (e.g., SimPO, RULE) in main experiments\",\n        \"Claims are sometimes overstated relative to the evidence presented\",\n        \"Writing has issues: figures are not properly integrated into the text flow, and Table 1 is hard to parse\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 2,\n    \"Clarity\": 2,\n    \"Significance\": 2,\n    \"Questions\": [\n        \"1. The theoretical derivation of r* minimizes ||d(r)||^2, but this is a heuristic. Can you provide a more principled justification for why minimizing the update norm leads to better unlearning outcomes?\",\n        \"2. In Section 4.3, you only estimate the sign of r*. Can you provide quantitative bounds on r* or a practical procedure to determine it without sweeping?\",\n        \"3. In Table 1, the FQ values for SGA on Llama2-7B are all very low (0.003-0.0068) compared to the retained model's 1.0. How does this indicate effective forgetting? Could you clarify the interpretation of FQ in this context?\",\n        \"4. The results on Harry Potter show extremely high PPL values (e.g., 1e72) for many SGA settings. How does this align with the claim that SGA mitigates divergence? What is the practical usability of models with such high PPL?\",\n        \"5. How was the smoothing rate r selected in the experiments? Was it tuned per model/benchmark, and what is the computational cost of this tuning?\",\n        \"6. The ablation study shows that GPT-generated normal data can change the optimal r. How should practitioners choose between embedding-based and GPT-based normal data generation?\",\n        \"7. Can you provide a comparison with more recent baselines like SimPO and RULE, which are mentioned in related work but not evaluated?\",\n        \"8. What happens if the normal data is semantically very different from the forget data? Does the method still work? Are there any constraints on the normal data?\"\n    ],\n    \"Limitations\": [\n        \"The optimal smoothing rate r* is model-dependent and changes during training, but the paper fixes it at the start, leaving dynamic adjustment as future work\",\n        \"The method requires generating or selecting normal data, which adds complexity and potential cost (especially when using GPT-4o-mini)\",\n        \"Extreme smoothing rates can still cause divergence (as seen in Harry Potter PPL values), so the method does not fully eliminate GA's instability\",\n        \"The paper does not address potential negative societal impacts, such as the possibility of using unlearning methods to evade content moderation or accountability\",\n        \"Evaluation is limited to English-language benchmarks; generalizability to other languages is not explored\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 2,\n    \"Presentation\": 2,\n    \"Contribution\": 2,\n    \"Overall\": 4,\n    \"Confidence\": 3,\n    \"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 25778,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 23986,
+        "completion_tokens": 1845,
+        "reasoning_tokens": 0,
+        "total_tokens": 27623
+      },
+      "attempts": 1,
+      "response_id": "10f84e61-ca27-431b-ba2b-9d0f59afbe63"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper proposes Smoothed Gradient Ascent (SGA), a fine-tuning-based LLM unlearning method that combines forget data with semantically related normal data via a tunable smoothing rate r, inspired by generalized label smoothing. SGA aims to mitigate the divergence and utility collapse issues of standard Gradient Ascent (GA) by jointly learning on normal data while unlearning on forget data. The paper provides a theoretical analysis of the optimal smoothing rate, indicating its feasible range based on gradient alignment. Empirically, SGA is evaluated on three benchmarks (TOFU, Harry Potter, MUSE-NEWS) across multiple base LLMs, consistently outperforming GA and achieving top-2 results on several key metrics.",
+        "Strengths": [
+          "Simple, intuitive, and well-motivated method that directly addresses the known instability of Gradient Ascent in LLM unlearning.",
+          "Novel application of generalized label smoothing to unlearning, providing a clean conceptual framework.",
+          "Theoretical analysis offers useful guidance on the sign and feasible range of the optimal smoothing rate, even if not fully rigorous.",
+          "Broad empirical evaluation across three diverse benchmarks (entity, copyright, news) and multiple base models (Llama2-7B, OPT-2.7B, Phi-1.5B).",
+          "Consistent improvements over GA across most metrics and models, demonstrating the practical value of the approach.",
+          "Ablation study comparing different normal data sources (embedding-based vs. GPT-generated) adds depth."
+        ],
+        "Weaknesses": [
+          "The theoretical derivation of the optimal smoothing rate minimizes the update norm, but the connection to the actual unlearning objective (forgetting vs. utility trade-off) is not rigorously established.",
+          "The method requires generating or selecting normal data, which adds complexity and an external dependency (GPT-4o-mini for some tasks).",
+          "The optimal smoothing rate r varies significantly across tasks and models and is found via grid search, limiting practical applicability without clear a priori guidance.",
+          "On the Harry Potter benchmark, some SGA settings still result in extremely high perplexity (e.g., 6.27e72 for OPT-2.7B), indicating the divergence problem is not fully solved.",
+          "Claims of 'top-2 performance' are not always accurate across all tables and metrics; some results show SGA below top-2 (e.g., Model Utility on TOFU).",
+          "Some implementation details are missing, such as the specific prompts used for GPT-4o-mini normal data generation (Appendix D appears empty)."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "In Section 4.3, the derivation of r* minimizes the update norm ||d(r)||^2. Could you provide more intuition on why minimizing the update norm leads to a better balance between forgetting and utility, rather than, say, maximizing forgetting subject to a utility constraint?",
+          "The optimal r is found via grid search in the experiments. Is there a heuristic or rule-of-thumb for practitioners to choose r without extensive search? For example, could the sign of <g_f, u> be estimated cheaply to narrow the search range?",
+          "On the Harry Potter benchmark, SGA with r=-0.2 on OPT-2.7B still yields a PPL of 6.27e72, which is catastrophic. What are the failure modes of SGA? Are there conditions under which it fails to prevent divergence?",
+          "The normal data generation uses GPT-4o-mini for Harry Potter and MUSE-News. Could you provide the exact prompts used (Appendix D appears empty in the submission)? How sensitive are the results to the quality or style of the generated normal data?",
+          "In Table 1, on TOFU, the Forget Quality (FQ) of SGA is often low (e.g., 0.0030 for Llama2-7B), which is not much better than the Original LLM. How should this be interpreted? Does a low FQ mean the model still retains some forget knowledge?",
+          "Could you discuss the computational overhead of SGA compared to GA? Generating normal data and the additional training on it must add cost. Is the benefit worth the extra computation?"
+        ],
+        "Limitations": [
+          "The paper acknowledges that the optimal smoothing rate is dynamic and task-dependent, and that dynamically adjusting it during training is left for future work.",
+          "The method relies on generating or selecting high-quality normal data, which may not always be feasible or may introduce bias.",
+          "The potential negative societal impact of unlearning methods (e.g., enabling models to evade accountability for harmful content) is not discussed in detail; the ethics statement is minimal.",
+          "The theoretical analysis is heuristic and does not provide a rigorous guarantee of convergence or utility preservation.",
+          "The evaluation, while broad, does not include larger or more recent models (e.g., Llama-3, Mistral), which may limit generalizability."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes Smoothed Gradient Ascent (SGA) for LLM unlearning, which combines forget data with normal data via a smoothing rate to mitigate the divergence issues of standard Gradient Ascent (GA). The method is simple and intuitive, leveraging generalized label smoothing. The paper provides theoretical analysis for the optimal smoothing rate and empirical evaluations on three benchmarks (TOFU, Harry Potter, MUSE-NEWS).\n\nStrengths:\n1. The core idea is simple, elegant, and well-motivated. The connection to generalized label smoothing is a nice conceptual framing.\n2. The method directly addresses a known weakness of GA (catastrophic collapse) by incorporating normal data, which is a practical improvement.\n3. The theoretical analysis of the optimal smoothing rate, while not fully rigorous, provides useful guidance (e.g., the sign of the inner product indicates the sign of the optimal r).\n4. The empirical evaluation is broad, covering three diverse benchmarks and multiple base models. The results consistently show SGA outperforming GA and often achieving top-2 results.\n5. The ablation study comparing embedding-based vs. GPT-generated normal data is valuable.\n\nWeaknesses:\n1. The theoretical analysis in Section 4.3 is somewhat heuristic. The derivation of r* minimizes the update norm, but it's unclear how this relates to the actual unlearning objective (balancing forgetting and utility). The connection between the derived r* and the empirically optimal r is not rigorously established.\n2. The method requires generating normal data, which adds complexity and potential cost. For TOFU, it uses retain data with high similarity; for others, it uses GPT-4o-mini, which is an external dependency.\n3. The selection of the smoothing rate r is done via grid search, and the optimal value varies significantly across tasks and models. This is a practical limitation, as the paper doesn't provide a clear a priori way to choose r.\n4. On the Harry Potter benchmark, some SGA configurations (e.g., r=-0.2 on OPT-2.7B) still result in catastrophic PPL (e.g., 6.27e72), which is not much better than GA. This suggests the method doesn't fully solve the divergence problem in all cases.\n5. The paper claims \"top-2 performance among all baseline methods on several key metrics,\" but the tables show that on some metrics (e.g., MU on TOFU), SGA is not top-2. The claims should be more precise.\n6. Some details are missing, such as the exact prompts used for generating normal data (Appendix D is empty in the provided text), and the computational cost of the method.\n\nOriginality: The method is a novel combination of label smoothing with gradient ascent for unlearning. While label smoothing is a well-known technique, its application to unlearning in this specific way appears novel. The paper clearly differentiates from prior work (GA, GD, NPO, etc.).\n\nQuality: The experimental methodology is generally sound, with consistent hyperparameter settings across baselines. However, the theoretical contribution is weak, and the practical need for grid search over r is a limitation. The evaluation is thorough but could benefit from more precise claims.\n\nClarity: The paper is well-written and organized. The method is clearly explained, and the figures help illustrate the key ideas. However, some parts (e.g., the derivation of the label distribution in Section 4.1) are slightly confusing and could be clarified.\n\nSignificance: The paper addresses an important problem (mitigating GA's instability) and proposes a practical solution. The results are promising and could be useful to practitioners. However, the need for external data generation and hyperparameter tuning may limit its immediate adoption.\n\nOverall, this is a solid paper with a clear contribution. The main concerns are the heuristic nature of the theoretical analysis and the practical challenges of choosing r. I would lean towards acceptance but with reservations.\n\nEthical Concerns: The paper states there are no ethical concerns. However, LLM unlearning itself has dual-use implications (e.g., could be used to hide problematic behavior). The paper's ethics statement is too brief. However, this is not a major issue for this paper.\n\nDecision: I'm leaning towards Accept. The method is simple, effective, and addresses a real problem. The limitations are acknowledged, and the empirical evidence is strong. The theoretical analysis, while not perfect, provides useful intuition. I would rate it as a borderline accept.\n\nRatings:\n- Originality: 3 (high)\n- Quality: 3 (good)\n- Clarity: 3 (good)\n- Significance: 3 (high)\n- Soundness: 3 (good)\n- Presentation: 3 (good)\n- Contribution: 3 (good)\n- Overall: 6 (Weak Accept)\n- Confidence: 4 (confident)\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper proposes Smoothed Gradient Ascent (SGA), a fine-tuning-based LLM unlearning method that combines forget data with semantically related normal data via a tunable smoothing rate r, inspired by generalized label smoothing. SGA aims to mitigate the divergence and utility collapse issues of standard Gradient Ascent (GA) by jointly learning on normal data while unlearning on forget data. The paper provides a theoretical analysis of the optimal smoothing rate, indicating its feasible range based on gradient alignment. Empirically, SGA is evaluated on three benchmarks (TOFU, Harry Potter, MUSE-NEWS) across multiple base LLMs, consistently outperforming GA and achieving top-2 results on several key metrics.\",\n    \"Strengths\": [\n        \"Simple, intuitive, and well-motivated method that directly addresses the known instability of Gradient Ascent in LLM unlearning.\",\n        \"Novel application of generalized label smoothing to unlearning, providing a clean conceptual framework.\",\n        \"Theoretical analysis offers useful guidance on the sign and feasible range of the optimal smoothing rate, even if not fully rigorous.\",\n        \"Broad empirical evaluation across three diverse benchmarks (entity, copyright, news) and multiple base models (Llama2-7B, OPT-2.7B, Phi-1.5B).\",\n        \"Consistent improvements over GA across most metrics and models, demonstrating the practical value of the approach.\",\n        \"Ablation study comparing different normal data sources (embedding-based vs. GPT-generated) adds depth.\"\n    ],\n    \"Weaknesses\": [\n        \"The theoretical derivation of the optimal smoothing rate minimizes the update norm, but the connection to the actual unlearning objective (forgetting vs. utility trade-off) is not rigorously established.\",\n        \"The method requires generating or selecting normal data, which adds complexity and an external dependency (GPT-4o-mini for some tasks).\",\n        \"The optimal smoothing rate r varies significantly across tasks and models and is found via grid search, limiting practical applicability without clear a priori guidance.\",\n        \"On the Harry Potter benchmark, some SGA settings still result in extremely high perplexity (e.g., 6.27e72 for OPT-2.7B), indicating the divergence problem is not fully solved.\",\n        \"Claims of 'top-2 performance' are not always accurate across all tables and metrics; some results show SGA below top-2 (e.g., Model Utility on TOFU).\",\n        \"Some implementation details are missing, such as the specific prompts used for GPT-4o-mini normal data generation (Appendix D appears empty).\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"In Section 4.3, the derivation of r* minimizes the update norm ||d(r)||^2. Could you provide more intuition on why minimizing the update norm leads to a better balance between forgetting and utility, rather than, say, maximizing forgetting subject to a utility constraint?\",\n        \"The optimal r is found via grid search in the experiments. Is there a heuristic or rule-of-thumb for practitioners to choose r without extensive search? For example, could the sign of <g_f, u> be estimated cheaply to narrow the search range?\",\n        \"On the Harry Potter benchmark, SGA with r=-0.2 on OPT-2.7B still yields a PPL of 6.27e72, which is catastrophic. What are the failure modes of SGA? Are there conditions under which it fails to prevent divergence?\",\n        \"The normal data generation uses GPT-4o-mini for Harry Potter and MUSE-News. Could you provide the exact prompts used (Appendix D appears empty in the submission)? How sensitive are the results to the quality or style of the generated normal data?\",\n        \"In Table 1, on TOFU, the Forget Quality (FQ) of SGA is often low (e.g., 0.0030 for Llama2-7B), which is not much better than the Original LLM. How should this be interpreted? Does a low FQ mean the model still retains some forget knowledge?\",\n        \"Could you discuss the computational overhead of SGA compared to GA? Generating normal data and the additional training on it must add cost. Is the benefit worth the extra computation?\"\n    ],\n    \"Limitations\": [\n        \"The paper acknowledges that the optimal smoothing rate is dynamic and task-dependent, and that dynamically adjusting it during training is left for future work.\",\n        \"The method relies on generating or selecting high-quality normal data, which may not always be feasible or may introduce bias.\",\n        \"The potential negative societal impact of unlearning methods (e.g., enabling models to evade accountability for harmful content) is not discussed in detail; the ethics statement is minimal.\",\n        \"The theoretical analysis is heuristic and does not provide a rigorous guarantee of convergence or utility preservation.\",\n        \"The evaluation, while broad, does not include larger or more recent models (e.g., Llama-3, Mistral), which may limit generalizability.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 25778,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 23986,
+        "completion_tokens": 2129,
+        "reasoning_tokens": 0,
+        "total_tokens": 27907
+      },
+      "attempts": 1,
+      "response_id": "0ff69e00-036a-4807-9891-eae887f3770b"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper proposes Smoothed Gradient Ascent (SGA), a fine-tuning-based LLM unlearning method that extends standard Gradient Ascent (GA) by incorporating normal (safe) data through a tunable smoothing rate r. The method combines forget data with generated normal data using generalized label smoothing, allowing the model to forget harmful knowledge while reinforcing correct responses. The authors provide theoretical analysis on the optimal smoothing rate, showing it depends on the gradient alignment between forget and normal losses. The method is evaluated on three benchmarks (TOFU, Harry Potter, MUSE-NEWS) across multiple base LLMs, demonstrating improvements over GA and competitive performance with other baselines.",
+        "Strengths": [
+          "Novel and intuitive idea of using label smoothing to combine forget and normal data for unlearning, directly addressing GA's divergence problem",
+          "Comprehensive evaluation across three diverse benchmarks (entity unlearning, copyright, news) and multiple base models (Llama2-7B, OPT-2.7B, Phi-1.5B)",
+          "Theoretical analysis provides some guidance on the feasible range of the smoothing rate, with empirical validation on TOFU",
+          "Simple and practical method that only requires forget data and generated normal data, avoiding the need for retain sets",
+          "Clear demonstration that incorporating normal data mitigates GA's catastrophic divergence, particularly visible in Harry Potter experiments"
+        ],
+        "Weaknesses": [
+          "Theoretical analysis is limited: the derivation of optimal r* is based on minimizing update norm rather than directly optimizing unlearning effectiveness, and the paper admits it can only estimate the sign of r*, not its precise value",
+          "Experimental results show high sensitivity to the smoothing rate r, with optimal values ranging from -8 to 0.4 across different models and tasks, limiting practical usability",
+          "On Harry Potter, SGA achieves FQ Gap of 0 on OPT-2.7B but with catastrophically high PPL (e.g., 6.27e72), indicating model collapse; these results are highlighted despite the severe utility degradation",
+          "On MUSE-NEWS, SGA's improvement on KnowMem for Dr is marginal (from 0 to 1.95, vs. retained model's 55.0), and most SGA variants fail the KnowMem criterion",
+          "The method requires generating normal data (via GPT-4o-mini or embedding similarity), adding complexity and potential cost; the paper doesn't fully analyze the trade-off compared to simpler baselines",
+          "Comparison with FLAT (another forget-data-only method) is not thoroughly discussed; SGA's advantages over FLAT are not consistently clear across all metrics"
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 2,
+        "Questions": [
+          "The theoretical analysis in Section 4.3 minimizes the update norm to derive r*. However, why is minimizing the update norm the right objective for unlearning? A smaller update might not guarantee effective forgetting. Can you provide a more direct theoretical connection between the update direction and unlearning quality?",
+          "The optimal smoothing rate r varies significantly across models and tasks (e.g., from -8 on OPT-2.7B TOFU to 0.4 on Phi-1.5B). How should practitioners choose r in practice without extensive tuning? Is there a heuristic or adaptive method?",
+          "On Harry Potter with OPT-2.7B, SGA with r=-0.2 or -0.4 achieves FQ Gap of 0 but with extremely high PPL (6.27e72 and 6.85e30). These models appear completely collapsed. How is this considered a successful unlearning result? What is the practical utility of such a model?",
+          "On MUSE-NEWS, most SGA variants fail the KnowMem criterion on Dr (score = 0). Only the 'SGA' entry (presumably with a specific r) achieves 1.95, which is still far below the retained model's 55.0. Can you explain this and discuss whether SGA truly preserves utility on this benchmark?",
+          "The normal data generation process differs across benchmarks (embedding similarity for TOFU, GPT-4o-mini for others). How does the quality and nature of normal data affect the optimal r and overall performance? Is there a risk that the method's success depends heavily on the quality of generated normal data?",
+          "In the ablation study (Table 4), GPT-generated normal data sometimes outperforms embedding-selected data. Can you provide more analysis on when each approach is preferable and how the choice interacts with the smoothing rate?"
+        ],
+        "Limitations": [
+          "The paper acknowledges that the optimal smoothing rate evolves during training but only uses a fixed r. Dynamic adjustment is left as future work, which limits the method's potential.",
+          "The method's sensitivity to the smoothing rate requires extensive hyperparameter tuning, which may limit its practical adoption.",
+          "The reliance on generated normal data (via GPT-4o-mini) introduces additional computational cost and potential dependency on external models, which may not be available in all settings.",
+          "The paper does not address potential negative societal impacts in depth. While unlearning is generally beneficial, the method could potentially be misused to remove safety-related knowledge from models, and this is not discussed.",
+          "The evaluation focuses on English-language benchmarks; the method's effectiveness on other languages or multimodal settings is unexplored."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes Smoothed Gradient Ascent (SGA) for LLM unlearning, which combines forget data with normal data using a smoothing rate to mitigate the instability of standard Gradient Ascent (GA). The method is evaluated on TOFU, Harry Potter, and MUSE-NEWS benchmarks.\n\nKey strengths:\n- The idea of using label smoothing to combine forget and normal data is novel and intuitive\n- The method is simple and addresses a real problem (GA instability)\n- Comprehensive evaluation across three benchmarks and multiple base models\n- Theoretical analysis of the optimal smoothing rate provides useful guidance\n\nKey weaknesses:\n- The theoretical analysis (Section 4.3) is somewhat superficial. The derivation of r* is straightforward (minimizing update norm), but the connection to actual unlearning effectiveness is not well-established. The paper admits it can't directly use the theoretical r* and only estimates its sign.\n- The experimental results are mixed. On TOFU (Table 1), SGA's improvements over GA are marginal in many cases, and the \"best\" r varies significantly across models (from -8 to 0.4), suggesting the method is highly sensitive to hyperparameter tuning.\n- On Harry Potter (Table 2), SGA achieves FQ Gap of 0 on OPT-2.7B, but with catastrophically high PPL values (e.g., 6.27e72), indicating the model has collapsed. The paper acknowledges this but still highlights these results.\n- The MUSE-NEWS results (Table 3) show SGA only marginally improves KnowMem on Dr (from 0 to 1.95), which is still far below the retained model's 55.0.\n- The method requires generating normal data, which adds complexity. The paper doesn't fully address the cost/benefit compared to simpler baselines.\n- The comparison to FLAT is particularly important since FLAT also claims to work with only forget data. SGA's advantages over FLAT are not always clear.\n\nClarity issues:\n- The paper has some typos and formatting issues (e.g., \"Smoothed Gradient Ascent ( SGA )\" with extra spaces)\n- The connection between GLS and the actual method could be explained more clearly\n- Figure 2 is referenced but not fully explained in text\n\nOriginality: The core idea of using label smoothing for unlearning is relatively novel, though it shares similarities with existing approaches that combine forget and retain data. The specific formulation with negative smoothing rates is interesting.\n\nQuality: The experimental evaluation is fairly thorough, but there are concerns about the consistency of results across different r values and the practical utility of the method given the sensitivity to hyperparameters.\n\nSignificance: The work addresses an important problem (GA instability) and provides a simple solution. However, the improvements over existing methods are not consistently dramatic, and the practical guidance for choosing r is limited.\n\nOverall, this is a borderline paper. The idea is interesting and the evaluation is broad, but the results are not consistently strong, and the theoretical contribution is limited. I would lean towards rejection due to the mixed experimental results and limited practical guidance.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper proposes Smoothed Gradient Ascent (SGA), a fine-tuning-based LLM unlearning method that extends standard Gradient Ascent (GA) by incorporating normal (safe) data through a tunable smoothing rate r. The method combines forget data with generated normal data using generalized label smoothing, allowing the model to forget harmful knowledge while reinforcing correct responses. The authors provide theoretical analysis on the optimal smoothing rate, showing it depends on the gradient alignment between forget and normal losses. The method is evaluated on three benchmarks (TOFU, Harry Potter, MUSE-NEWS) across multiple base LLMs, demonstrating improvements over GA and competitive performance with other baselines.\",\n    \"Strengths\": [\n        \"Novel and intuitive idea of using label smoothing to combine forget and normal data for unlearning, directly addressing GA's divergence problem\",\n        \"Comprehensive evaluation across three diverse benchmarks (entity unlearning, copyright, news) and multiple base models (Llama2-7B, OPT-2.7B, Phi-1.5B)\",\n        \"Theoretical analysis provides some guidance on the feasible range of the smoothing rate, with empirical validation on TOFU\",\n        \"Simple and practical method that only requires forget data and generated normal data, avoiding the need for retain sets\",\n        \"Clear demonstration that incorporating normal data mitigates GA's catastrophic divergence, particularly visible in Harry Potter experiments\"\n    ],\n    \"Weaknesses\": [\n        \"Theoretical analysis is limited: the derivation of optimal r* is based on minimizing update norm rather than directly optimizing unlearning effectiveness, and the paper admits it can only estimate the sign of r*, not its precise value\",\n        \"Experimental results show high sensitivity to the smoothing rate r, with optimal values ranging from -8 to 0.4 across different models and tasks, limiting practical usability\",\n        \"On Harry Potter, SGA achieves FQ Gap of 0 on OPT-2.7B but with catastrophically high PPL (e.g., 6.27e72), indicating model collapse; these results are highlighted despite the severe utility degradation\",\n        \"On MUSE-NEWS, SGA's improvement on KnowMem for Dr is marginal (from 0 to 1.95, vs. retained model's 55.0), and most SGA variants fail the KnowMem criterion\",\n        \"The method requires generating normal data (via GPT-4o-mini or embedding similarity), adding complexity and potential cost; the paper doesn't fully analyze the trade-off compared to simpler baselines\",\n        \"Comparison with FLAT (another forget-data-only method) is not thoroughly discussed; SGA's advantages over FLAT are not consistently clear across all metrics\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 2,\n    \"Clarity\": 2,\n    \"Significance\": 2,\n    \"Questions\": [\n        \"The theoretical analysis in Section 4.3 minimizes the update norm to derive r*. However, why is minimizing the update norm the right objective for unlearning? A smaller update might not guarantee effective forgetting. Can you provide a more direct theoretical connection between the update direction and unlearning quality?\",\n        \"The optimal smoothing rate r varies significantly across models and tasks (e.g., from -8 on OPT-2.7B TOFU to 0.4 on Phi-1.5B). How should practitioners choose r in practice without extensive tuning? Is there a heuristic or adaptive method?\",\n        \"On Harry Potter with OPT-2.7B, SGA with r=-0.2 or -0.4 achieves FQ Gap of 0 but with extremely high PPL (6.27e72 and 6.85e30). These models appear completely collapsed. How is this considered a successful unlearning result? What is the practical utility of such a model?\",\n        \"On MUSE-NEWS, most SGA variants fail the KnowMem criterion on Dr (score = 0). Only the 'SGA' entry (presumably with a specific r) achieves 1.95, which is still far below the retained model's 55.0. Can you explain this and discuss whether SGA truly preserves utility on this benchmark?\",\n        \"The normal data generation process differs across benchmarks (embedding similarity for TOFU, GPT-4o-mini for others). How does the quality and nature of normal data affect the optimal r and overall performance? Is there a risk that the method's success depends heavily on the quality of generated normal data?\",\n        \"In the ablation study (Table 4), GPT-generated normal data sometimes outperforms embedding-selected data. Can you provide more analysis on when each approach is preferable and how the choice interacts with the smoothing rate?\"\n    ],\n    \"Limitations\": [\n        \"The paper acknowledges that the optimal smoothing rate evolves during training but only uses a fixed r. Dynamic adjustment is left as future work, which limits the method's potential.\",\n        \"The method's sensitivity to the smoothing rate requires extensive hyperparameter tuning, which may limit its practical adoption.\",\n        \"The reliance on generated normal data (via GPT-4o-mini) introduces additional computational cost and potential dependency on external models, which may not be available in all settings.\",\n        \"The paper does not address potential negative societal impacts in depth. While unlearning is generally beneficial, the method could potentially be misused to remove safety-related knowledge from models, and this is not discussed.\",\n        \"The evaluation focuses on English-language benchmarks; the method's effectiveness on other languages or multimodal settings is unexplored.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 2,\n    \"Presentation\": 2,\n    \"Contribution\": 2,\n    \"Overall\": 4,\n    \"Confidence\": 4,\n    \"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 25778,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 23986,
+        "completion_tokens": 1864,
+        "reasoning_tokens": 0,
+        "total_tokens": 27642
+      },
+      "attempts": 1,
+      "response_id": "62236307-286b-47b8-a9f6-05d8f8487487"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 1,
+      "Reject": 4
+    },
+    "unanimous_decision": false,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Quality": {
+        "values": [
+          2,
+          2,
+          2,
+          3,
+          2
+        ],
+        "mean": 2.2,
+        "rounded_mean": 2,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          2,
+          3,
+          2,
+          3,
+          2
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          3,
+          2,
+          2,
+          3,
+          2
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Soundness": {
+        "values": [
+          2,
+          2,
+          2,
+          3,
+          2
+        ],
+        "mean": 2.2,
+        "rounded_mean": 2,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          2,
+          3,
+          2,
+          3,
+          2
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          2,
+          2,
+          2,
+          3,
+          2
+        ],
+        "mean": 2.2,
+        "rounded_mean": 2,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          4,
+          4,
+          4,
+          6,
+          4
+        ],
+        "mean": 4.4,
+        "rounded_mean": 4,
+        "population_sd": 0.8,
+        "min": 4,
+        "max": 6
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          3,
+          4,
+          4
+        ],
+        "mean": 3.8,
+        "rounded_mean": 4,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper proposes Smoothed Gradient Ascent (SGA), a fine-tuning-based LLM unlearning method that extends standard Gradient Ascent (GA) by incorporating semantically related 'normal' data through a tunable smoothing rate r. SGA combines gradient ascent on the forget set with gradient descent on safe data to mitigate GA's divergence problem while preserving model utility. The authors provide a theoretical analysis of the optimal smoothing rate, and evaluate SGA on three benchmarks (TOFU, Harry Potter, MUSE-News) across multiple base LLMs (Llama2-7B, OPT-2.7B, Phi-1.5B). Results show SGA consistently outperforms GA and achieves competitive performance against other baselines when r is properly tuned.",
+      "Strengths": [
+        "Addresses a relevant and practical problem: the instability of standard Gradient Ascent in LLM unlearning.",
+        "The core idea is simple, intuitive, and novel—applying generalized label smoothing to combine forget and normal data.",
+        "Comprehensive empirical evaluation across three diverse benchmarks (entity, copyright, news) and three base models.",
+        "Consistently outperforms the GA baseline across most metrics and benchmarks, demonstrating the value of incorporating normal data.",
+        "Theoretical analysis provides some qualitative guidance on the sign and feasible range of the smoothing rate.",
+        "Ablation studies on normal data generation methods add useful depth."
+      ],
+      "Weaknesses": [
+        "The theoretical analysis is heuristic: minimizing the update norm does not directly correspond to optimal unlearning quality, and the connection is not rigorously justified.",
+        "The optimal smoothing rate r is highly data/model-dependent and requires extensive grid search; no practical selection method is provided, limiting real-world applicability.",
+        "Empirical gains over GA are often marginal (e.g., TOFU FQ differences are tiny), and statistical significance is not reported.",
+        "On Harry Potter, many SGA configurations still produce astronomically high PPL (e.g., 6.27e72), indicating the divergence problem is not fully resolved.",
+        "On MUSE-News, SGA only marginally improves KnowMem on Dr (from 0 to 1.95 vs. retained model's 55.0), and most r values fail the criterion—suggesting high sensitivity and limited practical utility.",
+        "The method requires generating or selecting normal data (via embeddings or GPT-4o-mini), adding complexity and computational cost not present in simpler baselines.",
+        "Missing comparison with recent strong baselines (e.g., RULE, SimPO, DRAGON) limits the assessment of its state-of-the-art positioning.",
+        "Some presentation issues: malformed equations, empty appendix sections, and figures/tables not well integrated into the text."
+      ],
+      "Originality": 3,
+      "Quality": 2,
+      "Clarity": 2,
+      "Significance": 2,
+      "Questions": [
+        "How does minimizing the update norm relate to optimal forgetting quality and utility preservation? Could a larger update with a better direction lead to better unlearning?",
+        "The optimal r is found via grid search. Is there a heuristic or adaptive method to select r in practice without extensive tuning? Could the sign of gradient alignment be estimated cheaply?",
+        "On Harry Potter, several SGA settings still produce catastrophic PPL values (e.g., 6.27e72). How is this considered successful unlearning? What is the practical utility of such models?",
+        "On TOFU, FQ values are extremely low across all methods. How should these be interpreted? Are the differences statistically significant (e.g., confidence intervals, multiple seeds)?",
+        "The normal data generation differs across benchmarks (embedding similarity vs. GPT-4o-mini). How does the quality and nature of normal data affect the optimal r and final performance? What prompts were used for GPT generation (Appendix D appears empty)?",
+        "Why is SGA not compared with RULE and SimPO, which are mentioned in related work? How does it fare against these more recent methods?",
+        "What is the computational overhead of generating normal data and training on it, compared to simpler baselines like GA or FLAT?",
+        "In the ablation study, the optimal r shifts depending on the normal data source. How should practitioners choose between embedding-based and GPT-based generation?"
+      ],
+      "Limitations": [
+        "The optimal smoothing rate is model/task-dependent and fixed during training; dynamic adjustment is left as future work, limiting the method's potential.",
+        "The reliance on generated normal data (especially GPT-4o-mini) adds computational cost and external dependencies, raising reproducibility concerns.",
+        "Extreme smoothing rates still cause divergence, so the method does not fully eliminate GA's instability.",
+        "The paper does not discuss potential negative societal impacts in depth, such as misuse of unlearning to evade content moderation or accountability.",
+        "Evaluation is limited to English-language benchmarks; generalizability to other languages or modalities is unexplored.",
+        "The theoretical analysis covers only a single gradient step and does not account for multi-step training dynamics."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 2,
+      "Presentation": 2,
+      "Contribution": 2,
+      "Overall": 4,
+      "Confidence": 4,
+      "Decision": "Reject"
+    },
+    "raw_response": "THOUGHT:\nThe paper proposes SGA, a simple extension of gradient ascent for LLM unlearning that adds normal data with a smoothing rate. Four out of five reviewers recommend rejection, with one recommending acceptance. The main concerns are: (1) the theoretical analysis is heuristic and not directly tied to unlearning quality, (2) the optimal smoothing rate requires extensive grid search and varies wildly across settings, (3) results are inconsistent and often still show catastrophic divergence (PPL values in the 1e72 range), (4) gains over GA are often marginal or benchmark-specific, and (5) missing comparisons with recent strong baselines. The accepting reviewer acknowledges weaknesses but finds the method novel and broadly evaluated. However, the consensus is that the technical soundness is weak, the practical utility is limited due to hyperparameter sensitivity, and the claims are overstated. I align with the majority: the paper has a potentially interesting idea but insufficient evidence and theoretical grounding to warrant acceptance at a top venue. I will produce a meta-review that reflects these concerns, with a Reject decision.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper proposes Smoothed Gradient Ascent (SGA), a fine-tuning-based LLM unlearning method that extends standard Gradient Ascent (GA) by incorporating semantically related 'normal' data through a tunable smoothing rate r. SGA combines gradient ascent on the forget set with gradient descent on safe data to mitigate GA's divergence problem while preserving model utility. The authors provide a theoretical analysis of the optimal smoothing rate, and evaluate SGA on three benchmarks (TOFU, Harry Potter, MUSE-News) across multiple base LLMs (Llama2-7B, OPT-2.7B, Phi-1.5B). Results show SGA consistently outperforms GA and achieves competitive performance against other baselines when r is properly tuned.\",\n  \"Strengths\": [\n    \"Addresses a relevant and practical problem: the instability of standard Gradient Ascent in LLM unlearning.\",\n    \"The core idea is simple, intuitive, and novel—applying generalized label smoothing to combine forget and normal data.\",\n    \"Comprehensive empirical evaluation across three diverse benchmarks (entity, copyright, news) and three base models.\",\n    \"Consistently outperforms the GA baseline across most metrics and benchmarks, demonstrating the value of incorporating normal data.\",\n    \"Theoretical analysis provides some qualitative guidance on the sign and feasible range of the smoothing rate.\",\n    \"Ablation studies on normal data generation methods add useful depth.\"\n  ],\n  \"Weaknesses\": [\n    \"The theoretical analysis is heuristic: minimizing the update norm does not directly correspond to optimal unlearning quality, and the connection is not rigorously justified.\",\n    \"The optimal smoothing rate r is highly data/model-dependent and requires extensive grid search; no practical selection method is provided, limiting real-world applicability.\",\n    \"Empirical gains over GA are often marginal (e.g., TOFU FQ differences are tiny), and statistical significance is not reported.\",\n    \"On Harry Potter, many SGA configurations still produce astronomically high PPL (e.g., 6.27e72), indicating the divergence problem is not fully resolved.\",\n    \"On MUSE-News, SGA only marginally improves KnowMem on Dr (from 0 to 1.95 vs. retained model's 55.0), and most r values fail the criterion—suggesting high sensitivity and limited practical utility.\",\n    \"The method requires generating or selecting normal data (via embeddings or GPT-4o-mini), adding complexity and computational cost not present in simpler baselines.\",\n    \"Missing comparison with recent strong baselines (e.g., RULE, SimPO, DRAGON) limits the assessment of its state-of-the-art positioning.\",\n    \"Some presentation issues: malformed equations, empty appendix sections, and figures/tables not well integrated into the text.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"How does minimizing the update norm relate to optimal forgetting quality and utility preservation? Could a larger update with a better direction lead to better unlearning?\",\n    \"The optimal r is found via grid search. Is there a heuristic or adaptive method to select r in practice without extensive tuning? Could the sign of gradient alignment be estimated cheaply?\",\n    \"On Harry Potter, several SGA settings still produce catastrophic PPL values (e.g., 6.27e72). How is this considered successful unlearning? What is the practical utility of such models?\",\n    \"On TOFU, FQ values are extremely low across all methods. How should these be interpreted? Are the differences statistically significant (e.g., confidence intervals, multiple seeds)?\",\n    \"The normal data generation differs across benchmarks (embedding similarity vs. GPT-4o-mini). How does the quality and nature of normal data affect the optimal r and final performance? What prompts were used for GPT generation (Appendix D appears empty)?\",\n    \"Why is SGA not compared with RULE and SimPO, which are mentioned in related work? How does it fare against these more recent methods?\",\n    \"What is the computational overhead of generating normal data and training on it, compared to simpler baselines like GA or FLAT?\",\n    \"In the ablation study, the optimal r shifts depending on the normal data source. How should practitioners choose between embedding-based and GPT-based generation?\"\n  ],\n  \"Limitations\": [\n    \"The optimal smoothing rate is model/task-dependent and fixed during training; dynamic adjustment is left as future work, limiting the method's potential.\",\n    \"The reliance on generated normal data (especially GPT-4o-mini) adds computational cost and external dependencies, raising reproducibility concerns.\",\n    \"Extreme smoothing rates still cause divergence, so the method does not fully eliminate GA's instability.\",\n    \"The paper does not discuss potential negative societal impacts in depth, such as misuse of unlearning to evade content moderation or accountability.\",\n    \"Evaluation is limited to English-language benchmarks; generalizability to other languages or modalities is unexplored.\",\n    \"The theoretical analysis covers only a single gradient step and does not account for multi-step training dynamics.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 7410,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 7410,
+      "completion_tokens": 1353,
+      "reasoning_tokens": 0,
+      "total_tokens": 8763
+    },
+    "attempts": 1,
+    "response_id": "f1b8a3e7-6846-4bb9-9eca-f1d5a81b3b32"
+  },
+  "final_review": {
+    "Summary": "The paper proposes Smoothed Gradient Ascent (SGA), a fine-tuning-based LLM unlearning method that extends standard Gradient Ascent (GA) by incorporating semantically related 'normal' data through a tunable smoothing rate r. SGA combines gradient ascent on the forget set with gradient descent on safe data to mitigate GA's divergence problem while preserving model utility. The authors provide a theoretical analysis of the optimal smoothing rate, and evaluate SGA on three benchmarks (TOFU, Harry Potter, MUSE-News) across multiple base LLMs (Llama2-7B, OPT-2.7B, Phi-1.5B). Results show SGA consistently outperforms GA and achieves competitive performance against other baselines when r is properly tuned.",
+    "Strengths": [
+      "Addresses a relevant and practical problem: the instability of standard Gradient Ascent in LLM unlearning.",
+      "The core idea is simple, intuitive, and novel—applying generalized label smoothing to combine forget and normal data.",
+      "Comprehensive empirical evaluation across three diverse benchmarks (entity, copyright, news) and three base models.",
+      "Consistently outperforms the GA baseline across most metrics and benchmarks, demonstrating the value of incorporating normal data.",
+      "Theoretical analysis provides some qualitative guidance on the sign and feasible range of the smoothing rate.",
+      "Ablation studies on normal data generation methods add useful depth."
+    ],
+    "Weaknesses": [
+      "The theoretical analysis is heuristic: minimizing the update norm does not directly correspond to optimal unlearning quality, and the connection is not rigorously justified.",
+      "The optimal smoothing rate r is highly data/model-dependent and requires extensive grid search; no practical selection method is provided, limiting real-world applicability.",
+      "Empirical gains over GA are often marginal (e.g., TOFU FQ differences are tiny), and statistical significance is not reported.",
+      "On Harry Potter, many SGA configurations still produce astronomically high PPL (e.g., 6.27e72), indicating the divergence problem is not fully resolved.",
+      "On MUSE-News, SGA only marginally improves KnowMem on Dr (from 0 to 1.95 vs. retained model's 55.0), and most r values fail the criterion—suggesting high sensitivity and limited practical utility.",
+      "The method requires generating or selecting normal data (via embeddings or GPT-4o-mini), adding complexity and computational cost not present in simpler baselines.",
+      "Missing comparison with recent strong baselines (e.g., RULE, SimPO, DRAGON) limits the assessment of its state-of-the-art positioning.",
+      "Some presentation issues: malformed equations, empty appendix sections, and figures/tables not well integrated into the text."
+    ],
+    "Originality": 3,
+    "Quality": 2,
+    "Clarity": 2,
+    "Significance": 2,
+    "Questions": [
+      "How does minimizing the update norm relate to optimal forgetting quality and utility preservation? Could a larger update with a better direction lead to better unlearning?",
+      "The optimal r is found via grid search. Is there a heuristic or adaptive method to select r in practice without extensive tuning? Could the sign of gradient alignment be estimated cheaply?",
+      "On Harry Potter, several SGA settings still produce catastrophic PPL values (e.g., 6.27e72). How is this considered successful unlearning? What is the practical utility of such models?",
+      "On TOFU, FQ values are extremely low across all methods. How should these be interpreted? Are the differences statistically significant (e.g., confidence intervals, multiple seeds)?",
+      "The normal data generation differs across benchmarks (embedding similarity vs. GPT-4o-mini). How does the quality and nature of normal data affect the optimal r and final performance? What prompts were used for GPT generation (Appendix D appears empty)?",
+      "Why is SGA not compared with RULE and SimPO, which are mentioned in related work? How does it fare against these more recent methods?",
+      "What is the computational overhead of generating normal data and training on it, compared to simpler baselines like GA or FLAT?",
+      "In the ablation study, the optimal r shifts depending on the normal data source. How should practitioners choose between embedding-based and GPT-based generation?"
+    ],
+    "Limitations": [
+      "The optimal smoothing rate is model/task-dependent and fixed during training; dynamic adjustment is left as future work, limiting the method's potential.",
+      "The reliance on generated normal data (especially GPT-4o-mini) adds computational cost and external dependencies, raising reproducibility concerns.",
+      "Extreme smoothing rates still cause divergence, so the method does not fully eliminate GA's instability.",
+      "The paper does not discuss potential negative societal impacts in depth, such as misuse of unlearning to evade content moderation or accountability.",
+      "Evaluation is limited to English-language benchmarks; generalizability to other languages or modalities is unexplored.",
+      "The theoretical analysis covers only a single gradient step and does not account for multi-step training dynamics."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 2,
+    "Presentation": 2,
+    "Contribution": 2,
+    "Overall": 4,
+    "Confidence": 4,
+    "Decision": "Reject"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 136300,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 127340,
+    "completion_tokens": 10942,
+    "reasoning_tokens": 0,
+    "total_tokens": 147242,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.0178276,
+    "output_usd": 0.00306376,
+    "total_usd": 0.02091645
+  },
+  "elapsed_seconds": 31.345,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Reject",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B146",
+    "filename": "B146.txt",
+    "blind_text_sha256": "11570d1525fa45ea1291bcd2597dad885db3e3304237e463be92581660d0abb0",
+    "characters": 77888,
+    "full_text_saved": false
+  }
+}

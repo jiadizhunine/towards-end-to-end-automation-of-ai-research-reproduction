@@ -1,0 +1,593 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T09:55:59.464768+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "max",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "meta",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper studies multi-answer retrieval, where a query has multiple valid answer documents. It first shows that existing single-embedding dense retrievers degrade as the target documents become more dissimilar in embedding space. To address this, the authors propose AMER, an autoregressive multi-embedding retriever that generates multiple query embeddings conditioned on the query and previously generated embeddings. Training uses an InfoNCE loss with Hungarian matching and scheduled sampling. Experiments on a synthetic vector dataset show AMER perfectly retrieves all targets while a single-query baseline fails. On two real-world datasets, AmbigQA and QAMPARI, AMER obtains modest average gains, with larger relative gains on a subset of examples where target documents are less similar. The paper also compares against query expansion and MMR re-ranking, and provides ablations of scheduled sampling.",
+        "Strengths": [
+          "Addresses an important and under-explored problem: retrieving diverse documents for ambiguous or multi-answer queries.",
+          "Provides a clean synthetic benchmark that isolates the issue of multimodal target distributions and clearly shows the limitation of single-vector retrievers.",
+          "The proposed architecture (autoregressive generation of multiple query embeddings) is novel and technically sound, with sensible components like Hungarian matching and scheduled sampling.",
+          "Experiments include multiple backbone language models (Llama-1B/3B/8B, Qwen3-4B) and two real-world datasets, with statistical significance testing.",
+          "The analysis of output embedding diversity and the relation between target distance and performance gain is insightful."
+        ],
+        "Weaknesses": [
+          "The biggest gap is the absence of comparison to existing multi-vector retrieval methods, most notably ColBERT, which already outputs multiple query vectors. Without such a baseline, it is unclear whether AMER offers a real practical advantage over established approaches.",
+          "Real-world improvements are modest on the full test sets; the large relative gains on the 'low similarity set' are mostly due to very low absolute baseline scores (e.g., MRecall@100 around 1.5-8.5 on QAMPARI), making the relative percentages misleading.",
+          "The synthetic task is deterministic and overly simple: each of the 5 target vectors is a fixed transformation of the input, so a model with 5 output heads can learn the transformations trivially. This does not reflect the open-ended, noisy ambiguity of real language queries.",
+          "Evaluation relies solely on MRecall@100, which is an all-or-nothing metric; it does not report per-answer Recall@k, diversity metrics, or graded novelty/diversity measures, so the practical retrieval quality is not fully characterized.",
+          "The training setup uses random negatives and a frozen document encoder, which may understate the performance of strong baselines and is not aligned with common dense retrieval training that uses hard negatives and jointly updated encoders.",
+          "No efficiency or latency analysis is provided: AMER needs to generate multiple embeddings and perform multiple ANN searches per query, which can be substantially slower than single-vector retrieval, yet this cost is not discussed.",
+          "The number of predicted query embeddings is fixed per dataset (2 for AmbigQA, 5 for QAMPARI), and the paper does not show how to choose this number for unseen queries with varying target counts."
+        ],
+        "Originality": 2,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 2,
+        "Questions": [
+          "How does AMER compare against ColBERT, a well-established late-interaction multi-vector retriever, on AmbigQA and QAMPARI under the same training setup? ColBERT is not evaluated, which is a critical missing baseline.",
+          "Why are hard negatives and joint document-encoder updates not used? Since these are standard in dense retrieval, could the conclusions change if the single-query baseline and AMER were trained with harder negatives?",
+          "The low-similarity subset is selected after seeing test-set embeddings. Is this selection representative of real-world queries, or does it overstate the practical value of AMER?",
+          "How is the fixed number of query embeddings (2 or 5) selected? In practice, the number of answers per query is unknown; does AMER support adaptive prediction of the number of embeddings?",
+          "What is the additional computational cost of AMER (generating m embeddings and retrieving m times) compared to single-vector retrieval? Is the gain worth the latency increase?",
+          "Why is MRecall@100 used instead of also reporting standard Recall@100 for individual targets? The all-or-nothing nature of MRecall can hide improvements in partial coverage.",
+          "Could a simpler model with multiple independent output heads (not autoregressive) achieve the same performance on the synthetic task? What is the specific benefit of the autoregressive conditioning?"
+        ],
+        "Limitations": [
+          "No comparison with strong multi-vector retrieval baselines such as ColBERT, limiting the evidence for the proposed architecture's advantage.",
+          "The synthetic experiments are deterministic and may not transfer to the complexity of natural language ambiguity.",
+          "Real-world gains are small on whole test sets; the large relative improvements are on a subset with very low absolute performance, so the practical impact is uncertain.",
+          "The retriever is evaluated only with random negatives and a frozen document encoder, which may not reflect best practices for dense retrieval.",
+          "Inference efficiency and scalability are not analyzed; multiple query embeddings and multiple retrieval rounds increase query-time cost.",
+          "The method requires a preset number of query embeddings per dataset, which may not generalize to queries with variable numbers of answers."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper studies multi-answer retrieval, where a query has multiple valid answer documents. It first shows that existing single-embedding dense retrievers degrade as the target documents become more dissimilar in embedding space. To address this, the authors propose AMER, an autoregressive multi-embedding retriever that generates multiple query embeddings conditioned on the query and previously generated embeddings. Training uses an InfoNCE loss with Hungarian matching and scheduled sampling. Experiments on a synthetic vector dataset show AMER perfectly retrieves all targets while a single-query baseline fails. On two real-world datasets, AmbigQA and QAMPARI, AMER obtains modest average gains, with larger relative gains on a subset of examples where target documents are less similar. The paper also compares against query expansion and MMR re-ranking, and provides ablations of scheduled sampling.\",\n  \"Strengths\": [\n    \"Addresses an important and under-explored problem: retrieving diverse documents for ambiguous or multi-answer queries.\",\n    \"Provides a clean synthetic benchmark that isolates the issue of multimodal target distributions and clearly shows the limitation of single-vector retrievers.\",\n    \"The proposed architecture (autoregressive generation of multiple query embeddings) is novel and technically sound, with sensible components like Hungarian matching and scheduled sampling.\",\n    \"Experiments include multiple backbone language models (Llama-1B/3B/8B, Qwen3-4B) and two real-world datasets, with statistical significance testing.\",\n    \"The analysis of output embedding diversity and the relation between target distance and performance gain is insightful.\"\n  ],\n  \"Weaknesses\": [\n    \"The biggest gap is the absence of comparison to existing multi-vector retrieval methods, most notably ColBERT, which already outputs multiple query vectors. Without such a baseline, it is unclear whether AMER offers a real practical advantage over established approaches.\",\n    \"Real-world improvements are modest on the full test sets; the large relative gains on the 'low similarity set' are mostly due to very low absolute baseline scores (e.g., MRecall@100 around 1.5-8.5 on QAMPARI), making the relative percentages misleading.\",\n    \"The synthetic task is deterministic and overly simple: each of the 5 target vectors is a fixed transformation of the input, so a model with 5 output heads can learn the transformations trivially. This does not reflect the open-ended, noisy ambiguity of real language queries.\",\n    \"Evaluation relies solely on MRecall@100, which is an all-or-nothing metric; it does not report per-answer Recall@k, diversity metrics, or graded novelty/diversity measures, so the practical retrieval quality is not fully characterized.\",\n    \"The training setup uses random negatives and a frozen document encoder, which may understate the performance of strong baselines and is not aligned with common dense retrieval training that uses hard negatives and jointly updated encoders.\",\n    \"No efficiency or latency analysis is provided: AMER needs to generate multiple embeddings and perform multiple ANN searches per query, which can be substantially slower than single-vector retrieval, yet this cost is not discussed.\",\n    \"The number of predicted query embeddings is fixed per dataset (2 for AmbigQA, 5 for QAMPARI), and the paper does not show how to choose this number for unseen queries with varying target counts.\"\n  ],\n  \"Originality\": 2,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"How does AMER compare against ColBERT, a well-established late-interaction multi-vector retriever, on AmbigQA and QAMPARI under the same training setup? ColBERT is not evaluated, which is a critical missing baseline.\",\n    \"Why are hard negatives and joint document-encoder updates not used? Since these are standard in dense retrieval, could the conclusions change if the single-query baseline and AMER were trained with harder negatives?\",\n    \"The low-similarity subset is selected after seeing test-set embeddings. Is this selection representative of real-world queries, or does it overstate the practical value of AMER?\",\n    \"How is the fixed number of query embeddings (2 or 5) selected? In practice, the number of answers per query is unknown; does AMER support adaptive prediction of the number of embeddings?\",\n    \"What is the additional computational cost of AMER (generating m embeddings and retrieving m times) compared to single-vector retrieval? Is the gain worth the latency increase?\",\n    \"Why is MRecall@100 used instead of also reporting standard Recall@100 for individual targets? The all-or-nothing nature of MRecall can hide improvements in partial coverage.\",\n    \"Could a simpler model with multiple independent output heads (not autoregressive) achieve the same performance on the synthetic task? What is the specific benefit of the autoregressive conditioning?\"\n  ],\n  \"Limitations\": [\n    \"No comparison with strong multi-vector retrieval baselines such as ColBERT, limiting the evidence for the proposed architecture's advantage.\",\n    \"The synthetic experiments are deterministic and may not transfer to the complexity of natural language ambiguity.\",\n    \"Real-world gains are small on whole test sets; the large relative improvements are on a subset with very low absolute performance, so the practical impact is uncertain.\",\n    \"The retriever is evaluated only with random negatives and a frozen document encoder, which may not reflect best practices for dense retrieval.\",\n    \"Inference efficiency and scalability are not analyzed; multiple query embeddings and multiple retrieval rounds increase query-time cost.\",\n    \"The method requires a preset number of query embeddings per dataset, which may not generalize to queries with variable numbers of answers.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 18430,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 17662,
+        "completion_tokens": 4386,
+        "reasoning_tokens": 3160,
+        "total_tokens": 22816
+      },
+      "attempts": 1,
+      "response_id": "a5d93e19-4b65-4ef2-a87c-17e38d6f4eac"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper proposes AMER (Autoregressive Multi-Embedding Retriever), a dense retrieval architecture that generates multiple query embeddings autoregressively to handle queries with multiple valid answers. The authors first demonstrate that existing single-vector retrievers degrade as the distance between target document embeddings increases. AMER trains a query encoder to predict a sequence of embeddings using a contrastive loss with Hungarian matching and scheduled sampling, then aggregates retrieval results from each embedding via round-robin. Synthetic experiments show that AMER perfectly retrieves all targets while a single-query baseline fails, and real-world experiments on AmbigQA and QAMPARI show modest but consistent gains, particularly on subsets where target documents are less similar.",
+        "Strengths": [
+          "Clearly identifies and empirically validates a real limitation of single-vector dense retrievers for multi-answer retrieval.",
+          "Novel architecture that generates multiple query embeddings in a continuous latent space, with principled training using Hungarian matching and scheduled sampling.",
+          "Strong synthetic results demonstrating the ability to capture multimodal target distributions.",
+          "Consistent gains across multiple base LMs and datasets, with larger gains on low-similarity subsets.",
+          "Provides analysis of output embedding diversity and an ablation of scheduled sampling."
+        ],
+        "Weaknesses": [
+          "Real-world gains are modest, with low absolute MRecall@100, especially on QAMPARI; the large relative gains on the low-similarity set are from very low baselines and may be unstable.",
+          "The method relies on a fixed document encoder and a large LM, making it computationally expensive; no comparison with more efficient multi-vector approaches like ColBERT.",
+          "The number of query embeddings is fixed per dataset and not adaptive to the number of answers, limiting practical applicability.",
+          "Synthetic transformations are somewhat contrived (e.g., linear targets averaging to zero), which may overstate the advantage of AMER.",
+          "Evaluation uses only MRecall@100, and the round-robin aggregation is simplistic; no comparison with other diversity techniques on strong retrievers.",
+          "The high similarity among gold documents in real-world datasets suggests the benchmarks may not fully exercise the method's intended benefit."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How does AMER compare to ColBERT or other multi-vector retrievers in terms of performance and efficiency?",
+          "How is the number of predicted query embeddings determined? Could it be learned or made adaptive?",
+          "What is the inference cost of AMER compared to a single-query retriever?",
+          "How would jointly training the document encoder affect the results?",
+          "Are the large relative gains on the low-similarity set statistically robust given the extremely low absolute MRecall values?",
+          "What is the effect of different merging strategies beyond round-robin (e.g., score fusion or voting)?",
+          "Does the autoregressive generation of embeddings provide clear benefits over predicting multiple independent embeddings (e.g., via a mixture of experts)?"
+        ],
+        "Limitations": [
+          "Real-world evaluation is limited to two datasets where gold documents are relatively homogeneous, limiting observed gains.",
+          "The document encoder is fixed, which may cap potential performance.",
+          "The approach is computationally expensive due to large LM backbones and autoregressive decoding of embeddings.",
+          "The number of query embeddings is predetermined and fixed, not accommodating varying numbers of answers.",
+          "The synthetic setting is a simplified vectorized task and may not fully reflect text retrieval complexity."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes AMER (Autoregressive Multi-Embedding Retriever), a dense retrieval architecture that generates multiple query embeddings autoregressively to handle queries with multiple valid answers. The authors first demonstrate that existing single-vector retrievers degrade as the distance between target document embeddings increases. AMER trains a query encoder to predict a sequence of embeddings using a contrastive loss with Hungarian matching and scheduled sampling, then aggregates retrieval results from each embedding via round-robin. Synthetic experiments show that AMER perfectly retrieves all targets while a single-query baseline fails, and real-world experiments on AmbigQA and QAMPARI show modest but consistent gains, particularly on subsets where target documents are less similar.\",\n  \"Strengths\": [\n    \"Clearly identifies and empirically validates a real limitation of single-vector dense retrievers for multi-answer retrieval.\",\n    \"Novel architecture that generates multiple query embeddings in a continuous latent space, with principled training using Hungarian matching and scheduled sampling.\",\n    \"Strong synthetic results demonstrating the ability to capture multimodal target distributions.\",\n    \"Consistent gains across multiple base LMs and datasets, with larger gains on low-similarity subsets.\",\n    \"Provides analysis of output embedding diversity and an ablation of scheduled sampling.\"\n  ],\n  \"Weaknesses\": [\n    \"Real-world gains are modest, with low absolute MRecall@100, especially on QAMPARI; the large relative gains on the low-similarity set are from very low baselines and may be unstable.\",\n    \"The method relies on a fixed document encoder and a large LM, making it computationally expensive; no comparison with more efficient multi-vector approaches like ColBERT.\",\n    \"The number of query embeddings is fixed per dataset and not adaptive to the number of answers, limiting practical applicability.\",\n    \"Synthetic transformations are somewhat contrived (e.g., linear targets averaging to zero), which may overstate the advantage of AMER.\",\n    \"Evaluation uses only MRecall@100, and the round-robin aggregation is simplistic; no comparison with other diversity techniques on strong retrievers.\",\n    \"The high similarity among gold documents in real-world datasets suggests the benchmarks may not fully exercise the method's intended benefit.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does AMER compare to ColBERT or other multi-vector retrievers in terms of performance and efficiency?\",\n    \"How is the number of predicted query embeddings determined? Could it be learned or made adaptive?\",\n    \"What is the inference cost of AMER compared to a single-query retriever?\",\n    \"How would jointly training the document encoder affect the results?\",\n    \"Are the large relative gains on the low-similarity set statistically robust given the extremely low absolute MRecall values?\",\n    \"What is the effect of different merging strategies beyond round-robin (e.g., score fusion or voting)?\",\n    \"Does the autoregressive generation of embeddings provide clear benefits over predicting multiple independent embeddings (e.g., via a mixture of experts)?\"\n  ],\n  \"Limitations\": [\n    \"Real-world evaluation is limited to two datasets where gold documents are relatively homogeneous, limiting observed gains.\",\n    \"The document encoder is fixed, which may cap potential performance.\",\n    \"The approach is computationally expensive due to large LM backbones and autoregressive decoding of embeddings.\",\n    \"The number of query embeddings is predetermined and fixed, not accommodating varying numbers of answers.\",\n    \"The synthetic setting is a simplified vectorized task and may not fully reflect text retrieval complexity.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 18430,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 17662,
+        "completion_tokens": 3829,
+        "reasoning_tokens": 3024,
+        "total_tokens": 22259
+      },
+      "attempts": 1,
+      "response_id": "8c0e6ad1-e6ad-457c-bd02-336833b02854"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper proposes AMER, a retriever that autoregressively generates multiple query embeddings instead of a single one, to better handle multi-answer queries whose target documents may be diverse. It first analyzes existing dense retrievers and shows that their performance degrades as the distance between target document embeddings grows. AMER is trained with a matching loss and scheduled sampling, and at inference retrieves using all predicted query embeddings. Experiments on synthetic vector data show that a single-query model captures at most 21% of targets while AMER achieves 100%. On real-world multi-answer datasets (AmbigQA, QAMPARI), AMER yields modest overall gains (4% and 21% relative) but much larger gains on low-similarity subsets, especially QAMPARI. The paper also shows that current benchmarks have relatively homogeneous targets, which limits measured gains.",
+        "Strengths": [
+          "The paper tackles an important and under-explored problem: retrieving a diverse set of documents for multi-answer queries.",
+          "It provides a clear empirical analysis demonstrating that existing single-vector retrievers degrade as target documents become more diverse, motivating the proposed approach.",
+          "The proposed AMER architecture is novel, combining autoregressive generation of multiple query embeddings with a matching loss and scheduled sampling.",
+          "Synthetic experiments provide a strong proof-of-concept, showing that single-vector models fail on multimodal targets while AMER can perfectly retrieve all targets.",
+          "Real-world experiments are conducted across multiple base LMs, with ablations and comparisons to query expansion and re-ranking baselines."
+        ],
+        "Weaknesses": [
+          "Real-world performance gains are modest in absolute terms (e.g., QAMPARI MRecall@100 increases from ~6-12 to ~8-12), and the large relative gains on low-similarity subsets are driven by very low baselines.",
+          "The synthetic task is somewhat contrived: the fixed transformations include opposite pairs (e.g., T2 = -T4), making the average target zero, which inherently disadvantages a single-vector model. The perfect synthetic performance may not reflect practical complexity.",
+          "The paper does not compare AMER to existing multi-vector retrievers such as ColBERT, or to a single-query model trained with all targets as positives, which would isolate the benefit of the architecture.",
+          "The document encoder is frozen and only random negatives are used, which limits the strength of the real-world conclusions; hard negatives or joint training could change the results.",
+          "The number of query embeddings is fixed in advance (2 for AmbigQA, 5 for QAMPARI) with no adaptive mechanism, and the paper does not analyze the sensitivity to this hyperparameter.",
+          "The evaluation uses MRecall@k, a strict all-or-nothing metric, which does not capture partial coverage that might still be useful for downstream QA."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How does AMER compare to ColBERT or other multi-vector retrievers on these datasets, and why were they not included as baselines?",
+          "Does the improvement in retrieval recall translate to better downstream question-answering performance, or is it only a retrieval metric gain?",
+          "Would a single-query model trained with all target documents as positives (rather than one random positive) also fail on the synthetic task? Have you tested this baseline?",
+          "How is the number of query embeddings determined, and how does performance vary with N? Is N always set to the maximum number of answers?",
+          "What is the additional inference cost of AMER compared to single-query retrieval, in terms of number of ANN searches and latency?",
+          "Are the large relative gains on the low-similarity subset statistically robust given the small subset size and low absolute scores, especially with multiple testing across settings?",
+          "Why does scheduled sampling outperform always using predicted embeddings? Could this be due to exposure bias reduction or other factors?"
+        ],
+        "Limitations": [
+          "The document encoder is fixed and only random negatives are used, limiting the potential for joint optimization and realistic hard-negative mining.",
+          "Real-world datasets (AmbigQA, QAMPARI) have target documents that are highly similar (cosine similarity ~0.86-0.9), which limits the diversity that AMER can exploit.",
+          "The number of query embeddings is fixed per dataset and not adaptive to each query.",
+          "The synthetic data may not capture the complexity of real text retrieval, and the 'perfect' performance is likely an artifact of the task design.",
+          "The paper does not measure efficiency, memory overhead, or latency of generating and searching with multiple query vectors.",
+          "No analysis of downstream impact on RAG systems or end-to-end QA performance is provided."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes AMER, a retriever that autoregressively generates multiple query embeddings instead of a single one, to better handle multi-answer queries whose target documents may be diverse. It first analyzes existing dense retrievers and shows that their performance degrades as the distance between target document embeddings grows. AMER is trained with a matching loss and scheduled sampling, and at inference retrieves using all predicted query embeddings. Experiments on synthetic vector data show that a single-query model captures at most 21% of targets while AMER achieves 100%. On real-world multi-answer datasets (AmbigQA, QAMPARI), AMER yields modest overall gains (4% and 21% relative) but much larger gains on low-similarity subsets, especially QAMPARI. The paper also shows that current benchmarks have relatively homogeneous targets, which limits measured gains.\",\n  \"Strengths\": [\n    \"The paper tackles an important and under-explored problem: retrieving a diverse set of documents for multi-answer queries.\",\n    \"It provides a clear empirical analysis demonstrating that existing single-vector retrievers degrade as target documents become more diverse, motivating the proposed approach.\",\n    \"The proposed AMER architecture is novel, combining autoregressive generation of multiple query embeddings with a matching loss and scheduled sampling.\",\n    \"Synthetic experiments provide a strong proof-of-concept, showing that single-vector models fail on multimodal targets while AMER can perfectly retrieve all targets.\",\n    \"Real-world experiments are conducted across multiple base LMs, with ablations and comparisons to query expansion and re-ranking baselines.\"\n  ],\n  \"Weaknesses\": [\n    \"Real-world performance gains are modest in absolute terms (e.g., QAMPARI MRecall@100 increases from ~6-12 to ~8-12), and the large relative gains on low-similarity subsets are driven by very low baselines.\",\n    \"The synthetic task is somewhat contrived: the fixed transformations include opposite pairs (e.g., T2 = -T4), making the average target zero, which inherently disadvantages a single-vector model. The perfect synthetic performance may not reflect practical complexity.\",\n    \"The paper does not compare AMER to existing multi-vector retrievers such as ColBERT, or to a single-query model trained with all targets as positives, which would isolate the benefit of the architecture.\",\n    \"The document encoder is frozen and only random negatives are used, which limits the strength of the real-world conclusions; hard negatives or joint training could change the results.\",\n    \"The number of query embeddings is fixed in advance (2 for AmbigQA, 5 for QAMPARI) with no adaptive mechanism, and the paper does not analyze the sensitivity to this hyperparameter.\",\n    \"The evaluation uses MRecall@k, a strict all-or-nothing metric, which does not capture partial coverage that might still be useful for downstream QA.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does AMER compare to ColBERT or other multi-vector retrievers on these datasets, and why were they not included as baselines?\",\n    \"Does the improvement in retrieval recall translate to better downstream question-answering performance, or is it only a retrieval metric gain?\",\n    \"Would a single-query model trained with all target documents as positives (rather than one random positive) also fail on the synthetic task? Have you tested this baseline?\",\n    \"How is the number of query embeddings determined, and how does performance vary with N? Is N always set to the maximum number of answers?\",\n    \"What is the additional inference cost of AMER compared to single-query retrieval, in terms of number of ANN searches and latency?\",\n    \"Are the large relative gains on the low-similarity subset statistically robust given the small subset size and low absolute scores, especially with multiple testing across settings?\",\n    \"Why does scheduled sampling outperform always using predicted embeddings? Could this be due to exposure bias reduction or other factors?\"\n  ],\n  \"Limitations\": [\n    \"The document encoder is fixed and only random negatives are used, limiting the potential for joint optimization and realistic hard-negative mining.\",\n    \"Real-world datasets (AmbigQA, QAMPARI) have target documents that are highly similar (cosine similarity ~0.86-0.9), which limits the diversity that AMER can exploit.\",\n    \"The number of query embeddings is fixed per dataset and not adaptive to each query.\",\n    \"The synthetic data may not capture the complexity of real text retrieval, and the 'perfect' performance is likely an artifact of the task design.\",\n    \"The paper does not measure efficiency, memory overhead, or latency of generating and searching with multiple query vectors.\",\n    \"No analysis of downstream impact on RAG systems or end-to-end QA performance is provided.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 18430,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 17662,
+        "completion_tokens": 3538,
+        "reasoning_tokens": 2467,
+        "total_tokens": 21968
+      },
+      "attempts": 1,
+      "response_id": "3acd9ea6-7659-4799-9033-eb1e03c8e2b7"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper proposes AMER, an autoregressive multi-embedding retriever that generates multiple query embeddings per query to handle multimodal target distributions in multi-answer retrieval. The authors first analyze existing dense retrievers and show that their performance degrades as the embedding distance between target documents grows. They then introduce an architecture that autoregressively predicts multiple query embeddings, trained with a Hungarian matching loss and scheduled sampling. Experiments on synthetic vector data show that AMER perfectly retrieves all targets while a single-embedding model fails. On real-world datasets (AmbigQA and QAMPARI), AMER yields modest average gains over a single-query baseline, with larger relative gains on subsets where target documents are less similar.",
+        "Strengths": [
+          "The paper identifies a clear and important limitation of single-vector dense retrievers for multi-answer retrieval, supported by an empirical analysis across several modern retrievers.",
+          "The proposed autoregressive multi-embedding architecture is novel, and the training techniques (Hungarian matching for permutation invariance, scheduled sampling for the train/inference gap) are well-motivated.",
+          "The synthetic experiments provide a clean demonstration that a single query embedding cannot capture multiple distinct target distributions, while AMER can.",
+          "Real-world experiments include multiple base language models and datasets, with paired bootstrap significance tests, showing consistent gains that are larger on low-similarity target subsets."
+        ],
+        "Weaknesses": [
+          "The real-world gains are modest in absolute terms, especially on QAMPARI where MRecall@100 remains low (e.g., 6-12%), making the practical significance uncertain.",
+          "The baselines are weak: only a single-query model trained with random negatives, GPT-based query expansion, and MMR reranking. There is no comparison with strong multi-vector retrievers like ColBERT, nor with prior multi-answer retrieval methods (e.g., joint passage ranking), nor with hard-negative training.",
+          "The low-similarity subset results may be affected by selection bias; the paper does not report the size of these subsets or confidence intervals for the large relative gains (e.g., 144%, 238%).",
+          "The number of query vectors is fixed per dataset (2 for AmbigQA, 5 for QAMPARI) without an analysis of sensitivity to this hyperparameter or an adaptive mechanism.",
+          "Some technical details needed for reproduction are missing, such as how target document embeddings are converted into input tokens for the language model and how output embeddings are extracted.",
+          "The inference cost of retrieving with multiple query vectors is not discussed; this could be a significant practical overhead."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 2,
+        "Questions": [
+          "How exactly are the target document embeddings represented as input to the LM? Are they projected and added to token embeddings, and what is the sequence format (query tokens + embedding tokens)?",
+          "How sensitive are the results to the fixed number of query embeddings N? Did the authors experiment with N=1,3,4, etc., and is there a way to predict N adaptively?",
+          "Why were strong multi-vector baselines such as ColBERT, or prior multi-answer retrieval methods, not included in the comparison? Would hard-negative training improve the single-query baseline and reduce the reported gains?",
+          "What are the sizes of the low-similarity subsets, and what is the variance of the reported gains across seeds and subsets?",
+          "What is the computational overhead at inference time (e.g., latency, FLOPs) of retrieving with multiple query vectors versus a single query vector?",
+          "Do the performance gains on the low-similarity set persist after controlling for answer set size or other potential confounds (e.g., query difficulty)?"
+        ],
+        "Limitations": [
+          "The document encoder is fixed and only random negatives are used during training, which may understate the performance of strong single-query baselines and limit the generality of the findings.",
+          "Real-world datasets used in the paper have high pairwise similarity among target documents, which limits the observable gains of a diversity-oriented method.",
+          "Inference cost and storage increase with the number of query embeddings, which is not addressed.",
+          "The method requires a predetermined number of query vectors and does not naturally handle queries with varying numbers of answers.",
+          "Evaluation is limited to two Wikipedia-based datasets; no zero-shot or out-of-domain evaluation is provided."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes AMER, an autoregressive multi-embedding retriever that generates multiple query embeddings per query to handle multimodal target distributions in multi-answer retrieval. The authors first analyze existing dense retrievers and show that their performance degrades as the embedding distance between target documents grows. They then introduce an architecture that autoregressively predicts multiple query embeddings, trained with a Hungarian matching loss and scheduled sampling. Experiments on synthetic vector data show that AMER perfectly retrieves all targets while a single-embedding model fails. On real-world datasets (AmbigQA and QAMPARI), AMER yields modest average gains over a single-query baseline, with larger relative gains on subsets where target documents are less similar.\",\n  \"Strengths\": [\n    \"The paper identifies a clear and important limitation of single-vector dense retrievers for multi-answer retrieval, supported by an empirical analysis across several modern retrievers.\",\n    \"The proposed autoregressive multi-embedding architecture is novel, and the training techniques (Hungarian matching for permutation invariance, scheduled sampling for the train/inference gap) are well-motivated.\",\n    \"The synthetic experiments provide a clean demonstration that a single query embedding cannot capture multiple distinct target distributions, while AMER can.\",\n    \"Real-world experiments include multiple base language models and datasets, with paired bootstrap significance tests, showing consistent gains that are larger on low-similarity target subsets.\"\n  ],\n  \"Weaknesses\": [\n    \"The real-world gains are modest in absolute terms, especially on QAMPARI where MRecall@100 remains low (e.g., 6-12%), making the practical significance uncertain.\",\n    \"The baselines are weak: only a single-query model trained with random negatives, GPT-based query expansion, and MMR reranking. There is no comparison with strong multi-vector retrievers like ColBERT, nor with prior multi-answer retrieval methods (e.g., joint passage ranking), nor with hard-negative training.\",\n    \"The low-similarity subset results may be affected by selection bias; the paper does not report the size of these subsets or confidence intervals for the large relative gains (e.g., 144%, 238%).\",\n    \"The number of query vectors is fixed per dataset (2 for AmbigQA, 5 for QAMPARI) without an analysis of sensitivity to this hyperparameter or an adaptive mechanism.\",\n    \"Some technical details needed for reproduction are missing, such as how target document embeddings are converted into input tokens for the language model and how output embeddings are extracted.\",\n    \"The inference cost of retrieving with multiple query vectors is not discussed; this could be a significant practical overhead.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"How exactly are the target document embeddings represented as input to the LM? Are they projected and added to token embeddings, and what is the sequence format (query tokens + embedding tokens)?\",\n    \"How sensitive are the results to the fixed number of query embeddings N? Did the authors experiment with N=1,3,4, etc., and is there a way to predict N adaptively?\",\n    \"Why were strong multi-vector baselines such as ColBERT, or prior multi-answer retrieval methods, not included in the comparison? Would hard-negative training improve the single-query baseline and reduce the reported gains?\",\n    \"What are the sizes of the low-similarity subsets, and what is the variance of the reported gains across seeds and subsets?\",\n    \"What is the computational overhead at inference time (e.g., latency, FLOPs) of retrieving with multiple query vectors versus a single query vector?\",\n    \"Do the performance gains on the low-similarity set persist after controlling for answer set size or other potential confounds (e.g., query difficulty)?\"\n  ],\n  \"Limitations\": [\n    \"The document encoder is fixed and only random negatives are used during training, which may understate the performance of strong single-query baselines and limit the generality of the findings.\",\n    \"Real-world datasets used in the paper have high pairwise similarity among target documents, which limits the observable gains of a diversity-oriented method.\",\n    \"Inference cost and storage increase with the number of query embeddings, which is not addressed.\",\n    \"The method requires a predetermined number of query vectors and does not naturally handle queries with varying numbers of answers.\",\n    \"Evaluation is limited to two Wikipedia-based datasets; no zero-shot or out-of-domain evaluation is provided.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 18430,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 17662,
+        "completion_tokens": 3160,
+        "reasoning_tokens": 2159,
+        "total_tokens": 21590
+      },
+      "attempts": 1,
+      "response_id": "0d0ca959-6a69-4ea3-b7ff-efc6e2440d4b"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper argues that single-vector dense retrievers struggle to retrieve multiple relevant documents when target documents are diverse in embedding space. It first empirically shows that several off-the-shelf retrievers degrade as the pairwise embedding distance among gold targets increases. To address this, the paper proposes AMER, an autoregressive multi-embedding retriever that generates multiple query embeddings per query, trained with a matching loss and scheduled sampling. Experiments on synthetic vector data show AMER outperforms a single-embedding baseline dramatically. On real-world multi-answer retrieval datasets (AmbigQA and QAMPARI), AMER yields modest but consistent gains over a single-query baseline, especially on a subset where target embeddings are less similar.",
+        "Strengths": [
+          "The paper identifies a meaningful limitation of single-vector dense retrievers and provides empirical evidence across several models and datasets that performance degrades as target diversity increases.",
+          "The proposed AMER architecture is novel: it combines autoregressive generation of multiple query embeddings with Hungarian matching and scheduled sampling, which is a clean and technically sound way to train a multi-embedding retriever.",
+          "Synthetic experiments are well-designed to isolate the multimodality problem and demonstrate that a single query vector is fundamentally insufficient in controlled settings.",
+          "The paper includes experiments with multiple backbone LMs, an ablation of scheduled sampling, and statistical significance tests, strengthening the empirical claims.",
+          "Reproducibility details, including hyperparameters and dataset construction, are extensive."
+        ],
+        "Weaknesses": [
+          "Real-world gains are modest on the whole test sets (about 4% on AmbigQA and 21% on QAMPARI relative), and the large gains on the low-similarity subset are partly driven by very low absolute performance of the single-query baseline (e.g., MRecall@100 around 2–8 on QAMPARI).",
+          "The evaluation uses MRecall@100, which is very lenient because the number of targets (2–8) is far smaller than 100; it is unclear whether the reported gains hold at lower, more practically relevant cutoffs such as R@10 or R@20.",
+          "No comparison is made to multi-vector retrieval models like ColBERT, or to stronger diversity-promoting baselines such as iterative query generation or agentic retrieval, which limits the significance of the claimed advance.",
+          "The retriever is trained with only random negatives and a frozen document encoder; this is acknowledged but means the results may not transfer to settings with hard negatives or when the document encoder is also updated.",
+          "The diversity analysis relies on embeddings from the same document encoder used in the experiments, which could introduce circularity when measuring target distance and selecting the low-similarity subset.",
+          "The paper does not analyze computational cost or latency of autoregressively generating multiple query embeddings and performing multiple retrieval rounds, which is important for practical use.",
+          "The synthetic experiments use a simplified setting where target vectors are generated by a fixed set of transformations, which may not capture the complexity of text retrieval and could make the multi-embedding objective artificially easy."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How does AMER compare to ColBERT-style multi-vector retrieval or to generating multiple query reformulations and aggregating results, in terms of both effectiveness and computational overhead?",
+          "Why was MRecall@100 chosen as the primary metric, and do the observed gains persist at lower cutoffs (e.g., R@10, R@20) that are more relevant for practical retrieval?",
+          "Is the improvement on the low-similarity subset still significant after controlling for answer set size, question difficulty, or other potential confounds?",
+          "How sensitive is performance to the fixed number of query embeddings (N=2 for AmbigQA and N=5 for QAMPARI) and to the scheduling sampling schedule?",
+          "Does the use of the document encoder's own embedding space to define 'diversity' exaggerate the failure of single-vector retrievers?",
+          "What is the additional inference cost of AMER compared to the single-query baseline, and how does the round-robin aggregation affect end-to-end retrieval quality?"
+        ],
+        "Limitations": [
+          "The synthetic setup is a simplified vector-based task and may not translate to the complexity of real text retrieval.",
+          "The real-world evaluation is limited to two datasets (AmbigQA and QAMPARI) with a fixed document encoder and random negatives, so generalization to other domains or training regimes is unclear.",
+          "The paper does not study the semantic coherence or interpretability of the predicted query embeddings.",
+          "The low-similarity subset is curated post hoc, and the reported gains on this subset may reflect selection bias.",
+          "Computational and memory costs of generating multiple embeddings and conducting multiple ANN searches are not analyzed."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper argues that single-vector dense retrievers struggle to retrieve multiple relevant documents when target documents are diverse in embedding space. It first empirically shows that several off-the-shelf retrievers degrade as the pairwise embedding distance among gold targets increases. To address this, the paper proposes AMER, an autoregressive multi-embedding retriever that generates multiple query embeddings per query, trained with a matching loss and scheduled sampling. Experiments on synthetic vector data show AMER outperforms a single-embedding baseline dramatically. On real-world multi-answer retrieval datasets (AmbigQA and QAMPARI), AMER yields modest but consistent gains over a single-query baseline, especially on a subset where target embeddings are less similar.\",\n  \"Strengths\": [\n    \"The paper identifies a meaningful limitation of single-vector dense retrievers and provides empirical evidence across several models and datasets that performance degrades as target diversity increases.\",\n    \"The proposed AMER architecture is novel: it combines autoregressive generation of multiple query embeddings with Hungarian matching and scheduled sampling, which is a clean and technically sound way to train a multi-embedding retriever.\",\n    \"Synthetic experiments are well-designed to isolate the multimodality problem and demonstrate that a single query vector is fundamentally insufficient in controlled settings.\",\n    \"The paper includes experiments with multiple backbone LMs, an ablation of scheduled sampling, and statistical significance tests, strengthening the empirical claims.\",\n    \"Reproducibility details, including hyperparameters and dataset construction, are extensive.\"\n  ],\n  \"Weaknesses\": [\n    \"Real-world gains are modest on the whole test sets (about 4% on AmbigQA and 21% on QAMPARI relative), and the large gains on the low-similarity subset are partly driven by very low absolute performance of the single-query baseline (e.g., MRecall@100 around 2–8 on QAMPARI).\",\n    \"The evaluation uses MRecall@100, which is very lenient because the number of targets (2–8) is far smaller than 100; it is unclear whether the reported gains hold at lower, more practically relevant cutoffs such as R@10 or R@20.\",\n    \"No comparison is made to multi-vector retrieval models like ColBERT, or to stronger diversity-promoting baselines such as iterative query generation or agentic retrieval, which limits the significance of the claimed advance.\",\n    \"The retriever is trained with only random negatives and a frozen document encoder; this is acknowledged but means the results may not transfer to settings with hard negatives or when the document encoder is also updated.\",\n    \"The diversity analysis relies on embeddings from the same document encoder used in the experiments, which could introduce circularity when measuring target distance and selecting the low-similarity subset.\",\n    \"The paper does not analyze computational cost or latency of autoregressively generating multiple query embeddings and performing multiple retrieval rounds, which is important for practical use.\",\n    \"The synthetic experiments use a simplified setting where target vectors are generated by a fixed set of transformations, which may not capture the complexity of text retrieval and could make the multi-embedding objective artificially easy.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does AMER compare to ColBERT-style multi-vector retrieval or to generating multiple query reformulations and aggregating results, in terms of both effectiveness and computational overhead?\",\n    \"Why was MRecall@100 chosen as the primary metric, and do the observed gains persist at lower cutoffs (e.g., R@10, R@20) that are more relevant for practical retrieval?\",\n    \"Is the improvement on the low-similarity subset still significant after controlling for answer set size, question difficulty, or other potential confounds?\",\n    \"How sensitive is performance to the fixed number of query embeddings (N=2 for AmbigQA and N=5 for QAMPARI) and to the scheduling sampling schedule?\",\n    \"Does the use of the document encoder's own embedding space to define 'diversity' exaggerate the failure of single-vector retrievers?\",\n    \"What is the additional inference cost of AMER compared to the single-query baseline, and how does the round-robin aggregation affect end-to-end retrieval quality?\"\n  ],\n  \"Limitations\": [\n    \"The synthetic setup is a simplified vector-based task and may not translate to the complexity of real text retrieval.\",\n    \"The real-world evaluation is limited to two datasets (AmbigQA and QAMPARI) with a fixed document encoder and random negatives, so generalization to other domains or training regimes is unclear.\",\n    \"The paper does not study the semantic coherence or interpretability of the predicted query embeddings.\",\n    \"The low-similarity subset is curated post hoc, and the reported gains on this subset may reflect selection bias.\",\n    \"Computational and memory costs of generating multiple embeddings and conducting multiple ANN searches are not analyzed.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 18430,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 17662,
+        "completion_tokens": 2528,
+        "reasoning_tokens": 1435,
+        "total_tokens": 20958
+      },
+      "attempts": 1,
+      "response_id": "8b4f4392-46b6-46f2-b8e9-0dae9688da07"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 3,
+      "Reject": 2
+    },
+    "unanimous_decision": false,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          2,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Quality": {
+        "values": [
+          2,
+          3,
+          3,
+          2,
+          3
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          2,
+          3,
+          3,
+          2,
+          3
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Soundness": {
+        "values": [
+          2,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          2,
+          3,
+          3,
+          2,
+          3
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          4,
+          6,
+          6,
+          4,
+          6
+        ],
+        "mean": 5.2,
+        "rounded_mean": 5,
+        "population_sd": 0.98,
+        "min": 4,
+        "max": 6
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper addresses multi-answer retrieval, where a query can have multiple valid documents. It first demonstrates that single-vector dense retrievers degrade as the target documents become more dissimilar. It then proposes AMER, an autoregressive multi-embedding retriever that generates multiple query embeddings per query, trained with a permutation-invariant contrastive loss and scheduled sampling. Experiments on a synthetic vector task show that AMER retrieves all targets perfectly whereas a single-vector baseline fails. On two real-world multi-answer datasets (AmbigQA and QAMPARI), AMER yields modest average gains, with larger relative gains on a subset of queries whose gold documents are less similar. The paper also provides ablations and analysis of embedding diversity.",
+      "Strengths": [
+        "Addresses a real and under-explored problem: retrieving diverse documents for ambiguous/multi-answer queries.",
+        "Provides clear empirical evidence that single-vector retrievers fail as target embedding distance increases.",
+        "The proposed autoregressive multi-embedding architecture is novel and technically sound, with well-motivated training components (Hungarian matching, scheduled sampling).",
+        "Synthetic experiments convincingly demonstrate the limitation of single-query embeddings in a controlled setting.",
+        "Real-world experiments span multiple LMs and include statistical significance testing; gains are consistent and larger on low-similarity subsets."
+      ],
+      "Weaknesses": [
+        "Critical missing baseline: no comparison to existing multi-vector retrievers such as ColBERT, which already uses multiple query vectors and may achieve similar or better performance.",
+        "Real-world gains are modest in absolute terms (especially QAMPARI MRecall@100 remains under ~12%), and large relative gains on low-similarity subsets are driven by very low baselines, making practical significance uncertain.",
+        "Training uses only random negatives and a frozen document encoder, which are weaker than standard dense retrieval practices (hard negatives, joint encoder updates), potentially understating the single-query baseline and overstating AMER's advantage.",
+        "The number of predicted query embeddings is fixed per dataset (2 for AmbigQA, 5 for QAMPARI) with no adaptive mechanism or sensitivity analysis; this limits generalization to queries with variable answer counts.",
+        "Inference efficiency is not analyzed: generating multiple embeddings and performing multiple ANN searches increases query-time cost, which may outweigh modest gains.",
+        "The synthetic task uses fixed transformations including opposite pairs, which makes it artificially easy for multi-embedding models; perfect performance may not transfer to noisy real text.",
+        "Evaluation relies solely on MRecall@100, a lenient all-or-nothing metric; no per-document Recall@k or diversity metrics are reported."
+      ],
+      "Originality": 3,
+      "Quality": 3,
+      "Clarity": 3,
+      "Significance": 3,
+      "Questions": [
+        "How does AMER compare to ColBERT or other late-interaction multi-vector retrievers under the same training setup?",
+        "Would a single-query model trained with hard negatives and/or joint document-encoder updates narrow the reported gap?",
+        "How is the number of query embeddings chosen, and how sensitive are results to this hyperparameter? Could it be predicted adaptively?",
+        "What is the additional inference latency and computational cost of AMER relative to a single-vector retriever?",
+        "Do the improvements on the low-similarity subset hold after controlling for answer-set size, query difficulty, or other confounds, and what are the subset sizes and variance?",
+        "Does improved multi-answer retrieval translate into better downstream question answering or RAG performance?"
+      ],
+      "Limitations": [
+        "No evaluation against strong multi-vector baselines or prior multi-answer ranking methods.",
+        "Real-world benchmark targets are highly similar, limiting the scope of the demonstrated diversity benefit.",
+        "Frozen document encoder and random negatives reduce the strength of conclusions.",
+        "Predetermined number of query embeddings and lack of adaptive selection.",
+        "No efficiency analysis; multiple embeddings and ANN searches increase query-time cost.",
+        "Synthetic experiments are deterministic and may not capture real language ambiguity."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 3,
+      "Contribution": 3,
+      "Overall": 6,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "{\n  \"Summary\": \"The paper addresses multi-answer retrieval, where a query can have multiple valid documents. It first demonstrates that single-vector dense retrievers degrade as the target documents become more dissimilar. It then proposes AMER, an autoregressive multi-embedding retriever that generates multiple query embeddings per query, trained with a permutation-invariant contrastive loss and scheduled sampling. Experiments on a synthetic vector task show that AMER retrieves all targets perfectly whereas a single-vector baseline fails. On two real-world multi-answer datasets (AmbigQA and QAMPARI), AMER yields modest average gains, with larger relative gains on a subset of queries whose gold documents are less similar. The paper also provides ablations and analysis of embedding diversity.\",\n  \"Strengths\": [\n    \"Addresses a real and under-explored problem: retrieving diverse documents for ambiguous/multi-answer queries.\",\n    \"Provides clear empirical evidence that single-vector retrievers fail as target embedding distance increases.\",\n    \"The proposed autoregressive multi-embedding architecture is novel and technically sound, with well-motivated training components (Hungarian matching, scheduled sampling).\",\n    \"Synthetic experiments convincingly demonstrate the limitation of single-query embeddings in a controlled setting.\",\n    \"Real-world experiments span multiple LMs and include statistical significance testing; gains are consistent and larger on low-similarity subsets.\"\n  ],\n  \"Weaknesses\": [\n    \"Critical missing baseline: no comparison to existing multi-vector retrievers such as ColBERT, which already uses multiple query vectors and may achieve similar or better performance.\",\n    \"Real-world gains are modest in absolute terms (especially QAMPARI MRecall@100 remains under ~12%), and large relative gains on low-similarity subsets are driven by very low baselines, making practical significance uncertain.\",\n    \"Training uses only random negatives and a frozen document encoder, which are weaker than standard dense retrieval practices (hard negatives, joint encoder updates), potentially understating the single-query baseline and overstating AMER's advantage.\",\n    \"The number of predicted query embeddings is fixed per dataset (2 for AmbigQA, 5 for QAMPARI) with no adaptive mechanism or sensitivity analysis; this limits generalization to queries with variable answer counts.\",\n    \"Inference efficiency is not analyzed: generating multiple embeddings and performing multiple ANN searches increases query-time cost, which may outweigh modest gains.\",\n    \"The synthetic task uses fixed transformations including opposite pairs, which makes it artificially easy for multi-embedding models; perfect performance may not transfer to noisy real text.\",\n    \"Evaluation relies solely on MRecall@100, a lenient all-or-nothing metric; no per-document Recall@k or diversity metrics are reported.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does AMER compare to ColBERT or other late-interaction multi-vector retrievers under the same training setup?\",\n    \"Would a single-query model trained with hard negatives and/or joint document-encoder updates narrow the reported gap?\",\n    \"How is the number of query embeddings chosen, and how sensitive are results to this hyperparameter? Could it be predicted adaptively?\",\n    \"What is the additional inference latency and computational cost of AMER relative to a single-vector retriever?\",\n    \"Do the improvements on the low-similarity subset hold after controlling for answer-set size, query difficulty, or other confounds, and what are the subset sizes and variance?\",\n    \"Does improved multi-answer retrieval translate into better downstream question answering or RAG performance?\"\n  ],\n  \"Limitations\": [\n    \"No evaluation against strong multi-vector baselines or prior multi-answer ranking methods.\",\n    \"Real-world benchmark targets are highly similar, limiting the scope of the demonstrated diversity benefit.\",\n    \"Frozen document encoder and random negatives reduce the strength of conclusions.\",\n    \"Predetermined number of query embeddings and lack of adaptive selection.\",\n    \"No efficiency analysis; multiple embeddings and ANN searches increase query-time cost.\",\n    \"Synthetic experiments are deterministic and may not capture real language ambiguity.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+    "usage": {
+      "prompt_tokens": 6011,
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 5755,
+      "completion_tokens": 3007,
+      "reasoning_tokens": 2086,
+      "total_tokens": 9018
+    },
+    "attempts": 1,
+    "response_id": "7115635d-e0b3-4d79-8dd3-f59f91168be9"
+  },
+  "final_review": {
+    "Summary": "The paper addresses multi-answer retrieval, where a query can have multiple valid documents. It first demonstrates that single-vector dense retrievers degrade as the target documents become more dissimilar. It then proposes AMER, an autoregressive multi-embedding retriever that generates multiple query embeddings per query, trained with a permutation-invariant contrastive loss and scheduled sampling. Experiments on a synthetic vector task show that AMER retrieves all targets perfectly whereas a single-vector baseline fails. On two real-world multi-answer datasets (AmbigQA and QAMPARI), AMER yields modest average gains, with larger relative gains on a subset of queries whose gold documents are less similar. The paper also provides ablations and analysis of embedding diversity.",
+    "Strengths": [
+      "Addresses a real and under-explored problem: retrieving diverse documents for ambiguous/multi-answer queries.",
+      "Provides clear empirical evidence that single-vector retrievers fail as target embedding distance increases.",
+      "The proposed autoregressive multi-embedding architecture is novel and technically sound, with well-motivated training components (Hungarian matching, scheduled sampling).",
+      "Synthetic experiments convincingly demonstrate the limitation of single-query embeddings in a controlled setting.",
+      "Real-world experiments span multiple LMs and include statistical significance testing; gains are consistent and larger on low-similarity subsets."
+    ],
+    "Weaknesses": [
+      "Critical missing baseline: no comparison to existing multi-vector retrievers such as ColBERT, which already uses multiple query vectors and may achieve similar or better performance.",
+      "Real-world gains are modest in absolute terms (especially QAMPARI MRecall@100 remains under ~12%), and large relative gains on low-similarity subsets are driven by very low baselines, making practical significance uncertain.",
+      "Training uses only random negatives and a frozen document encoder, which are weaker than standard dense retrieval practices (hard negatives, joint encoder updates), potentially understating the single-query baseline and overstating AMER's advantage.",
+      "The number of predicted query embeddings is fixed per dataset (2 for AmbigQA, 5 for QAMPARI) with no adaptive mechanism or sensitivity analysis; this limits generalization to queries with variable answer counts.",
+      "Inference efficiency is not analyzed: generating multiple embeddings and performing multiple ANN searches increases query-time cost, which may outweigh modest gains.",
+      "The synthetic task uses fixed transformations including opposite pairs, which makes it artificially easy for multi-embedding models; perfect performance may not transfer to noisy real text.",
+      "Evaluation relies solely on MRecall@100, a lenient all-or-nothing metric; no per-document Recall@k or diversity metrics are reported."
+    ],
+    "Originality": 3,
+    "Quality": 3,
+    "Clarity": 3,
+    "Significance": 3,
+    "Questions": [
+      "How does AMER compare to ColBERT or other late-interaction multi-vector retrievers under the same training setup?",
+      "Would a single-query model trained with hard negatives and/or joint document-encoder updates narrow the reported gap?",
+      "How is the number of query embeddings chosen, and how sensitive are results to this hyperparameter? Could it be predicted adaptively?",
+      "What is the additional inference latency and computational cost of AMER relative to a single-vector retriever?",
+      "Do the improvements on the low-similarity subset hold after controlling for answer-set size, query difficulty, or other confounds, and what are the subset sizes and variance?",
+      "Does improved multi-answer retrieval translate into better downstream question answering or RAG performance?"
+    ],
+    "Limitations": [
+      "No evaluation against strong multi-vector baselines or prior multi-answer ranking methods.",
+      "Real-world benchmark targets are highly similar, limiting the scope of the demonstrated diversity benefit.",
+      "Frozen document encoder and random negatives reduce the strength of conclusions.",
+      "Predetermined number of query embeddings and lack of adaptive selection.",
+      "No efficiency analysis; multiple embeddings and ANN searches increase query-time cost.",
+      "Synthetic experiments are deterministic and may not capture real language ambiguity."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 3,
+    "Contribution": 3,
+    "Overall": 6,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair model output",
+  "usage": {
+    "prompt_tokens": 98161,
+    "prompt_cache_hit_tokens": 4096,
+    "prompt_cache_miss_tokens": 94065,
+    "completion_tokens": 20448,
+    "reasoning_tokens": 14331,
+    "total_tokens": 118609,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 1.147e-05,
+    "cache_miss_input_usd": 0.0131691,
+    "output_usd": 0.00572544,
+    "total_usd": 0.01890601
+  },
+  "elapsed_seconds": 60.452,
+  "input": {
+    "blind_id": "B193",
+    "filename": "B193.txt",
+    "blind_text_sha256": "420b0c95b7ed9522fdae8be835e8bc59ced1f2eb1923884ee5bd178b7e3a1020",
+    "characters": 68179,
+    "full_text_saved": false
+  }
+}

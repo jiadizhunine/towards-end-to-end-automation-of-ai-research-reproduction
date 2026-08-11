@@ -1,0 +1,617 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-10T22:26:14.470285+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "max",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "meta",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "DynaProt is a lightweight, SE(3)-invariant framework that predicts protein dynamics descriptors directly from static structures. It models dynamics through multivariate Gaussians at two scales: per-residue 3x3 marginal covariance matrices capturing local anisotropy, and an NxN pairwise scalar covariance matrix encoding residue-residue coupling. The model uses an IPA backbone from AlphaFold2, predicts covariance matrices via Cholesky factorization, and trains with a log-Euclidean loss. DynaProt also enables fast ensemble generation by reconstructing an approximate full 3Nx3N joint covariance from the marginal and pairwise outputs. The paper evaluates DynaProt on ATLAS MD data, showing improved RMSF prediction over FlexPert3D, comparable marginal anisotropy to AFMD+Templates, better coupling prediction than NMA, and orders-of-magnitude faster ensemble sampling. A zero-shot case study on BPTI and a cryptic pocket example are also included.",
+        "Strengths": [
+          "Novel formulation: casting protein dynamics prediction as learning marginal 3x3 covariance matrices and NxN pairwise scalar covariances, enabling direct prediction of a full joint covariance via a heuristic; first to explicitly learn both marginal and pairwise Gaussian representations in a data-driven way.",
+          "Extreme parameter efficiency: DynaProt uses 955K parameters for the marginal model and 2.86M total, compared to 95M for AFMD+Templates and 1.2B for FlexPert3D, while achieving competitive or better accuracy on several tasks.",
+          "Strong empirical results: DynaProt-M achieves higher RMSF Pearson correlation (0.865 median) than FlexPert3D (0.830) and NMA (0.697), and comparable marginal anisotropy to AFMD+Templates while being ~350,000x faster in ensemble sampling.",
+          "Ultra-fast ensemble generation: sampling 250 structures takes ~0.14s vs ~10,000s for AFMD+Templates, making it practical for large-scale applications.",
+          "Ablations validate design choices: log-Euclidean loss and SE(3)-invariant IPA blocks are both critical for performance.",
+          "Zero-shot generalization: DynaProt applied to BPTI with millisecond-scale reference dynamics shows RMSF correlation 0.88 and good contact recovery, suggesting transferability.",
+          "Case study on cryptic pocket discovery demonstrates potential for functional interpretation, though preliminary."
+        ],
+        "Weaknesses": [
+          "The joint covariance reconstruction is an ad-hoc heuristic (Eq. 5) and not directly optimized; it may produce approximate rather than faithful joint distributions. The paper does not analyze the error introduced by this approximation.",
+          "Ensemble generation quality lags behind AFMD+T on distributional metrics: MD PCA W2 of 1.74 vs 1.25, Joint PCA W2 of 2.39 vs 1.58, and transient contact Jaccard of 0.29 vs 0.47. This suggests the Gaussian approximation may be too restrictive for complex dynamics.",
+          "The pairwise evaluation is limited to a 50-residue diagonal band, ignoring long-range couplings that may be biologically important. Also, the scalar coupling matrix is trained with log-Euclidean loss on the full NxN matrix, but the impact of the Cholesky parameterization on off-diagonal errors is not studied.",
+          "The claim of 'first to predict full 3Nx3N covariance structure' is overstated: the method does not directly predict the full covariance but only marginals and pairwise scalars, and the full matrix is composed heuristically. NMA already provides full covariances analytically.",
+          "The model is trained on only ~1,000 proteins from ATLAS (100 ns each), which may limit generalization to diverse folds and slow dynamics. The BPTI result is encouraging but is a single test case.",
+          "There are missing implementation details: it is unclear whether the IPA backbone is initialized from AlphaFold2 weights or trained from scratch, how pairwise attention blocks are designed, and whether the models are trained jointly or separately. This affects reproducibility.",
+          "The cryptic pocket analysis is anecdotal and lacks quantitative comparison to existing pocket prediction methods (e.g., PocketMiner)."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How are the IPA blocks initialized—are they pretrained from AlphaFold2 or trained from scratch? What is the impact on parameter count and performance?",
+          "Could the joint reconstruction heuristic be improved by training the marginal and coupling models together with a full-covariance loss, or is the current two-stage approach necessary?",
+          "Why is the pairwise coupling evaluation restricted to a 50-residue band? What are the results for longer-range couplings, and does the model capture any meaningful allostery-relevant correlations?",
+          "How does the method scale to larger proteins (e.g., >500 residues) given the O(N^2) pairwise computation and memory usage for NxN matrices?",
+          "Does the assumption that the input structure is the ensemble mean hold for homology models or structures far from the native state? How sensitive are the predictions to input structure perturbations?",
+          "In the ablation, replacing IPA with MLPs removes both SE(3) invariance and geometric attention. Have you compared against a simpler SE(3)-invariant architecture to isolate the benefit of IPA?",
+          "What is the effect of using MeanPooling as the scalar projection for pairwise coupling? Would trace or another projection yield better results?",
+          "Can DynaProt be extended to predict side-chain or all-atom dynamics, or is Cα-only a fundamental limitation?"
+        ],
+        "Limitations": [
+          "Coarse-grained Cα representation only; side-chain dynamics and non-backbone motions are not modeled.",
+          "Training data from 100 ns ATLAS MD may not capture slow conformational changes; dynamics beyond this timescale may be underrepresented.",
+          "The Gaussian assumption may be inadequate for proteins with multimodal or highly anharmonic dynamics (e.g., intrinsically disordered regions, multiple stable conformations).",
+          "The joint reconstruction heuristic does not guarantee physical accuracy of cross-correlations and is not end-to-end trained.",
+          "The computational and memory cost of NxN matrices may limit application to very large protein complexes.",
+          "Potential negative societal impact is low, but the method could be used for drug design; no immediate misuse identified."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"DynaProt is a lightweight, SE(3)-invariant framework that predicts protein dynamics descriptors directly from static structures. It models dynamics through multivariate Gaussians at two scales: per-residue 3x3 marginal covariance matrices capturing local anisotropy, and an NxN pairwise scalar covariance matrix encoding residue-residue coupling. The model uses an IPA backbone from AlphaFold2, predicts covariance matrices via Cholesky factorization, and trains with a log-Euclidean loss. DynaProt also enables fast ensemble generation by reconstructing an approximate full 3Nx3N joint covariance from the marginal and pairwise outputs. The paper evaluates DynaProt on ATLAS MD data, showing improved RMSF prediction over FlexPert3D, comparable marginal anisotropy to AFMD+Templates, better coupling prediction than NMA, and orders-of-magnitude faster ensemble sampling. A zero-shot case study on BPTI and a cryptic pocket example are also included.\",\n  \"Strengths\": [\n    \"Novel formulation: casting protein dynamics prediction as learning marginal 3x3 covariance matrices and NxN pairwise scalar covariances, enabling direct prediction of a full joint covariance via a heuristic; first to explicitly learn both marginal and pairwise Gaussian representations in a data-driven way.\",\n    \"Extreme parameter efficiency: DynaProt uses 955K parameters for the marginal model and 2.86M total, compared to 95M for AFMD+Templates and 1.2B for FlexPert3D, while achieving competitive or better accuracy on several tasks.\",\n    \"Strong empirical results: DynaProt-M achieves higher RMSF Pearson correlation (0.865 median) than FlexPert3D (0.830) and NMA (0.697), and comparable marginal anisotropy to AFMD+Templates while being ~350,000x faster in ensemble sampling.\",\n    \"Ultra-fast ensemble generation: sampling 250 structures takes ~0.14s vs ~10,000s for AFMD+Templates, making it practical for large-scale applications.\",\n    \"Ablations validate design choices: log-Euclidean loss and SE(3)-invariant IPA blocks are both critical for performance.\",\n    \"Zero-shot generalization: DynaProt applied to BPTI with millisecond-scale reference dynamics shows RMSF correlation 0.88 and good contact recovery, suggesting transferability.\",\n    \"Case study on cryptic pocket discovery demonstrates potential for functional interpretation, though preliminary.\"\n  ],\n  \"Weaknesses\": [\n    \"The joint covariance reconstruction is an ad-hoc heuristic (Eq. 5) and not directly optimized; it may produce approximate rather than faithful joint distributions. The paper does not analyze the error introduced by this approximation.\",\n    \"Ensemble generation quality lags behind AFMD+T on distributional metrics: MD PCA W2 of 1.74 vs 1.25, Joint PCA W2 of 2.39 vs 1.58, and transient contact Jaccard of 0.29 vs 0.47. This suggests the Gaussian approximation may be too restrictive for complex dynamics.\",\n    \"The pairwise evaluation is limited to a 50-residue diagonal band, ignoring long-range couplings that may be biologically important. Also, the scalar coupling matrix is trained with log-Euclidean loss on the full NxN matrix, but the impact of the Cholesky parameterization on off-diagonal errors is not studied.\",\n    \"The claim of 'first to predict full 3Nx3N covariance structure' is overstated: the method does not directly predict the full covariance but only marginals and pairwise scalars, and the full matrix is composed heuristically. NMA already provides full covariances analytically.\",\n    \"The model is trained on only ~1,000 proteins from ATLAS (100 ns each), which may limit generalization to diverse folds and slow dynamics. The BPTI result is encouraging but is a single test case.\",\n    \"There are missing implementation details: it is unclear whether the IPA backbone is initialized from AlphaFold2 weights or trained from scratch, how pairwise attention blocks are designed, and whether the models are trained jointly or separately. This affects reproducibility.\",\n    \"The cryptic pocket analysis is anecdotal and lacks quantitative comparison to existing pocket prediction methods (e.g., PocketMiner).\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How are the IPA blocks initialized—are they pretrained from AlphaFold2 or trained from scratch? What is the impact on parameter count and performance?\",\n    \"Could the joint reconstruction heuristic be improved by training the marginal and coupling models together with a full-covariance loss, or is the current two-stage approach necessary?\",\n    \"Why is the pairwise coupling evaluation restricted to a 50-residue band? What are the results for longer-range couplings, and does the model capture any meaningful allostery-relevant correlations?\",\n    \"How does the method scale to larger proteins (e.g., >500 residues) given the O(N^2) pairwise computation and memory usage for NxN matrices?\",\n    \"Does the assumption that the input structure is the ensemble mean hold for homology models or structures far from the native state? How sensitive are the predictions to input structure perturbations?\",\n    \"In the ablation, replacing IPA with MLPs removes both SE(3) invariance and geometric attention. Have you compared against a simpler SE(3)-invariant architecture to isolate the benefit of IPA?\",\n    \"What is the effect of using MeanPooling as the scalar projection for pairwise coupling? Would trace or another projection yield better results?\",\n    \"Can DynaProt be extended to predict side-chain or all-atom dynamics, or is Cα-only a fundamental limitation?\"\n  ],\n  \"Limitations\": [\n    \"Coarse-grained Cα representation only; side-chain dynamics and non-backbone motions are not modeled.\",\n    \"Training data from 100 ns ATLAS MD may not capture slow conformational changes; dynamics beyond this timescale may be underrepresented.\",\n    \"The Gaussian assumption may be inadequate for proteins with multimodal or highly anharmonic dynamics (e.g., intrinsically disordered regions, multiple stable conformations).\",\n    \"The joint reconstruction heuristic does not guarantee physical accuracy of cross-correlations and is not end-to-end trained.\",\n    \"The computational and memory cost of NxN matrices may limit application to very large protein complexes.\",\n    \"Potential negative societal impact is low, but the method could be used for drug design; no immediate misuse identified.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 15402,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 14634,
+        "completion_tokens": 5472,
+        "reasoning_tokens": 4055,
+        "total_tokens": 20874
+      },
+      "attempts": 1,
+      "response_id": "5ae2fd8c-29eb-43a3-8716-be4ba866c55e"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper introduces DynaProt, a lightweight SE(3)-invariant framework that predicts protein dynamics descriptors directly from static structures. It models dynamics through multivariate Gaussians, predicting per-residue 3x3 marginal covariance matrices and an NxN scalar residue-residue coupling matrix. These outputs can be combined via a heuristic to approximate the full 3N x 3N joint covariance, enabling fast ensemble sampling. Trained on ~1,000 MD-derived proteins without large-scale pretraining, DynaProt achieves high accuracy in RMSF prediction, outperforms NMA and FlexPert3D, and is competitive with AFMD+Templates while using orders of magnitude fewer parameters and being much faster.",
+        "Strengths": [
+          "Novel formulation: learns both per-residue marginal Gaussians and pairwise scalar covariances, providing a hierarchical Gaussian representation of protein dynamics that includes more information than scalar-only methods.",
+          "Extremely lightweight and fast: uses ~1M parameters (vs. 95M-1.2B for baselines) and samples ensembles in ~0.14 s (vs. ~10,000 s for AFMD+Templates), making it suitable for high-throughput applications.",
+          "Outperforms NMA and FlexPert3D on RMSF prediction and marginal anisotropy prediction, and is competitive with AFMD+Templates on several ensemble metrics, as shown in Tables 2-4.",
+          "Careful design choices: enforcing SPD via Cholesky factorization, using a log-Euclidean loss that respects the Riemannian geometry of covariance matrices, and ablations confirm the importance of these choices and of SE(3) invariance.",
+          "Demonstrates zero-shot generalization to BPTI millisecond-scale dynamics and provides a qualitative case study of cryptic pocket discovery, showcasing potential practical value.",
+          "The joint reconstruction heuristic, while approximate, is shown to be valid (SPD closure) and enables ultra-fast sampling, a pragmatic alternative to expensive generative modeling."
+        ],
+        "Weaknesses": [
+          "The Gaussian assumption is a strong limitation: it cannot represent multi-modal conformational states, anharmonic motions, or discrete state transitions, which are common in protein dynamics (e.g., large domain rearrangements).",
+          "The joint covariance reconstruction is a heuristic without rigorous theoretical justification beyond SPD closure; its accuracy is only indirectly evaluated via ensemble metrics, not by direct comparison to ground-truth covariance matrices.",
+          "The pairwise coupling uses a scalar projection (MeanPooling) of each 3x3 block, discarding directional information about residue-residue coupling; the choice of projection is not justified or compared to alternatives.",
+          "The model assumes the input structure's coordinates are the ensemble mean, which may not hold for apo/holo differences or if the input structure is not aligned to the MD ensemble; the manuscript does not describe any alignment correction during training or inference.",
+          "Training data is limited to ~1,000 ATLAS proteins with 100 ns simulations, covering only a fraction of protein space; the BPTI zero-shot result is anecdotal and lacks systematic evaluation across diverse proteins or comparison to other methods on the same example.",
+          "The marginal and pairwise models are trained separately, which may lead to inconsistencies between the two types of predictions and suboptimal joint performance.",
+          "Several details are under-specified: the exact computation of the ground-truth pairwise covariance, the construction of the correlation matrix in the reconstruction heuristic, and the handling of variable protein lengths are not fully clarified."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How exactly is the scalar pairwise covariance C computed from the MD trajectories? What does 'MeanPooling' entail: averaging all 9 entries of each 3x3 block, or using trace/3, or another operation?",
+          "How is the correlation matrix \\widetilde{C} derived from C? Is it the Pearson correlation (C_ij / sqrt(C_ii*C_jj))? Does the SPD property of C guarantee that \\widetilde{C} is also SPD?",
+          "The mean of the predicted distribution is set to the input structure coordinates. How are the input structures aligned to the MD ensemble average during training? If the input PDB structure is not the mean, could this assumption bias the covariance predictions?",
+          "In the pairwise module, why predict the Cholesky factor L directly and reconstruct C = LL^T rather than predicting C and then projecting to SPD? Does this parameterization restrict the range of achievable covariance matrices?",
+          "Have you compared the reconstructed joint covariance \\Sigma_joint directly to the ground-truth full covariance (e.g., by Frobenius or spectral norm) on test proteins? If so, what was the error?",
+          "The ensemble metrics show DynaProt lags on PCA Wasserstein distances. Are these differences statistically significant, and what are the main failure modes (e.g., over-conservative variances, missing long-range correlations)?",
+          "The BPTI zero-shot results are impressive, but this is only one small protein. Could you show performance on other proteins with slow dynamics or multiple states to support generalization claims?",
+          "Was there any ablation on the number of IPA blocks or the pairwise attention block architecture? How sensitive is performance to these hyperparameters?"
+        ],
+        "Limitations": [
+          "The Gaussian representation captures only second-order moments and thus cannot model multi-modal or anharmonic dynamics, which are crucial for many proteins.",
+          "The model operates on C-alpha atoms only, ignoring side-chain flexibility and dynamics.",
+          "The joint covariance reconstruction is heuristic and lacks a rigorous derivation; the resulting full covariance may be inaccurate for cross-residue correlations.",
+          "Training data is limited to ~1,000 MD trajectories, and generalization to diverse protein families, longer timescales, or large conformational changes is not systematically validated.",
+          "The assumption that the input structure is the ensemble mean may be violated in practice, especially for different conformations.",
+          "The pairwise scalar coupling loses directional information, and the choice of scalar projection is not justified.",
+          "The cryptic pocket discovery analysis is qualitative and based on a single case study, not a systematic benchmark.",
+          "The paper does not discuss potential negative societal impacts, although these are likely minimal for this type of research."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper introduces DynaProt, a lightweight SE(3)-invariant framework that predicts protein dynamics descriptors directly from static structures. It models dynamics through multivariate Gaussians, predicting per-residue 3x3 marginal covariance matrices and an NxN scalar residue-residue coupling matrix. These outputs can be combined via a heuristic to approximate the full 3N x 3N joint covariance, enabling fast ensemble sampling. Trained on ~1,000 MD-derived proteins without large-scale pretraining, DynaProt achieves high accuracy in RMSF prediction, outperforms NMA and FlexPert3D, and is competitive with AFMD+Templates while using orders of magnitude fewer parameters and being much faster.\",\n  \"Strengths\": [\n    \"Novel formulation: learns both per-residue marginal Gaussians and pairwise scalar covariances, providing a hierarchical Gaussian representation of protein dynamics that includes more information than scalar-only methods.\",\n    \"Extremely lightweight and fast: uses ~1M parameters (vs. 95M-1.2B for baselines) and samples ensembles in ~0.14 s (vs. ~10,000 s for AFMD+Templates), making it suitable for high-throughput applications.\",\n    \"Outperforms NMA and FlexPert3D on RMSF prediction and marginal anisotropy prediction, and is competitive with AFMD+Templates on several ensemble metrics, as shown in Tables 2-4.\",\n    \"Careful design choices: enforcing SPD via Cholesky factorization, using a log-Euclidean loss that respects the Riemannian geometry of covariance matrices, and ablations confirm the importance of these choices and of SE(3) invariance.\",\n    \"Demonstrates zero-shot generalization to BPTI millisecond-scale dynamics and provides a qualitative case study of cryptic pocket discovery, showcasing potential practical value.\",\n    \"The joint reconstruction heuristic, while approximate, is shown to be valid (SPD closure) and enables ultra-fast sampling, a pragmatic alternative to expensive generative modeling.\"\n  ],\n  \"Weaknesses\": [\n    \"The Gaussian assumption is a strong limitation: it cannot represent multi-modal conformational states, anharmonic motions, or discrete state transitions, which are common in protein dynamics (e.g., large domain rearrangements).\",\n    \"The joint covariance reconstruction is a heuristic without rigorous theoretical justification beyond SPD closure; its accuracy is only indirectly evaluated via ensemble metrics, not by direct comparison to ground-truth covariance matrices.\",\n    \"The pairwise coupling uses a scalar projection (MeanPooling) of each 3x3 block, discarding directional information about residue-residue coupling; the choice of projection is not justified or compared to alternatives.\",\n    \"The model assumes the input structure's coordinates are the ensemble mean, which may not hold for apo/holo differences or if the input structure is not aligned to the MD ensemble; the manuscript does not describe any alignment correction during training or inference.\",\n    \"Training data is limited to ~1,000 ATLAS proteins with 100 ns simulations, covering only a fraction of protein space; the BPTI zero-shot result is anecdotal and lacks systematic evaluation across diverse proteins or comparison to other methods on the same example.\",\n    \"The marginal and pairwise models are trained separately, which may lead to inconsistencies between the two types of predictions and suboptimal joint performance.\",\n    \"Several details are under-specified: the exact computation of the ground-truth pairwise covariance, the construction of the correlation matrix in the reconstruction heuristic, and the handling of variable protein lengths are not fully clarified.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How exactly is the scalar pairwise covariance C computed from the MD trajectories? What does 'MeanPooling' entail: averaging all 9 entries of each 3x3 block, or using trace/3, or another operation?\",\n    \"How is the correlation matrix \\\\widetilde{C} derived from C? Is it the Pearson correlation (C_ij / sqrt(C_ii*C_jj))? Does the SPD property of C guarantee that \\\\widetilde{C} is also SPD?\",\n    \"The mean of the predicted distribution is set to the input structure coordinates. How are the input structures aligned to the MD ensemble average during training? If the input PDB structure is not the mean, could this assumption bias the covariance predictions?\",\n    \"In the pairwise module, why predict the Cholesky factor L directly and reconstruct C = LL^T rather than predicting C and then projecting to SPD? Does this parameterization restrict the range of achievable covariance matrices?\",\n    \"Have you compared the reconstructed joint covariance \\\\Sigma_joint directly to the ground-truth full covariance (e.g., by Frobenius or spectral norm) on test proteins? If so, what was the error?\",\n    \"The ensemble metrics show DynaProt lags on PCA Wasserstein distances. Are these differences statistically significant, and what are the main failure modes (e.g., over-conservative variances, missing long-range correlations)?\",\n    \"The BPTI zero-shot results are impressive, but this is only one small protein. Could you show performance on other proteins with slow dynamics or multiple states to support generalization claims?\",\n    \"Was there any ablation on the number of IPA blocks or the pairwise attention block architecture? How sensitive is performance to these hyperparameters?\"\n  ],\n  \"Limitations\": [\n    \"The Gaussian representation captures only second-order moments and thus cannot model multi-modal or anharmonic dynamics, which are crucial for many proteins.\",\n    \"The model operates on C-alpha atoms only, ignoring side-chain flexibility and dynamics.\",\n    \"The joint covariance reconstruction is heuristic and lacks a rigorous derivation; the resulting full covariance may be inaccurate for cross-residue correlations.\",\n    \"Training data is limited to ~1,000 MD trajectories, and generalization to diverse protein families, longer timescales, or large conformational changes is not systematically validated.\",\n    \"The assumption that the input structure is the ensemble mean may be violated in practice, especially for different conformations.\",\n    \"The pairwise scalar coupling loses directional information, and the choice of scalar projection is not justified.\",\n    \"The cryptic pocket discovery analysis is qualitative and based on a single case study, not a systematic benchmark.\",\n    \"The paper does not discuss potential negative societal impacts, although these are likely minimal for this type of research.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 15402,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 14634,
+        "completion_tokens": 4450,
+        "reasoning_tokens": 3068,
+        "total_tokens": 19852
+      },
+      "attempts": 1,
+      "response_id": "38cc9f9e-a5d0-41da-83ca-3abd49d36ca6"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper introduces DynaProt, a lightweight SE(3)-invariant framework that predicts protein dynamics descriptors directly from static Cα structures. It predicts per-residue marginal 3x3 covariance matrices capturing local anisotropic flexibility, and an NxN scalar covariance matrix capturing pairwise coupling. The framework uses an IPA backbone with two readout heads, enforces SPD via Cholesky decomposition, and employs a log-Euclidean loss. DynaProt is trained on ~1000 MD simulations from ATLAS and evaluated on RMSF prediction, marginal anisotropy, coupling, and ensemble generation. It shows competitive accuracy with far fewer parameters and much faster sampling than AFMD+Templates, and outperforms NMA and FlexPert3D on flexibility metrics. The paper also demonstrates zero-shot generalization to BPTI and a case study on cryptic pocket discovery.",
+        "Strengths": [
+          "Novel representation: predicts per-residue anisotropic covariances and pairwise couplings, going beyond scalar RMSF and offering more expressive dynamics information.",
+          "Extreme efficiency: uses 2.86M parameters and samples ensembles in ~0.14s, orders of magnitude faster than generative models like AFMD+Templates, enabling scalable applications.",
+          "Comprehensive evaluation across RMSF, marginal Gaussian fidelity, coupling, and ensemble generation, with competitive performance against much larger models.",
+          "Zero-shot generalization to BPTI and a cryptic pocket case study suggest practical utility beyond training distribution.",
+          "Technically sound design: Cholesky parameterization for SPD, log-Euclidean loss for manifold geometry, and ablations justify design choices."
+        ],
+        "Weaknesses": [
+          "Limited baseline comparisons: only NMA and AFMD+Templates are used for dynamics; other explicit predictors like Dyna-1 are not evaluated, and sequence-based methods are only in the appendix.",
+          "Joint covariance reconstruction heuristic is ad-hoc and assumes Kronecker structure, which may limit ensemble fidelity; distributional metrics (MD PCA and Joint PCA W2) lag behind AFMD+Templates.",
+          "Pairwise coupling is only evaluated up to 50 residues in sequence; long-range couplings (important for allostery) are not assessed and appear weak in ground truth.",
+          "Lack of statistical significance tests and error bars; some evaluation details are ambiguous (e.g., Table 4 parenthetical values).",
+          "Training data is limited to ~1000 proteins and 100 ns simulations, which may not cover slow dynamics, despite promising BPTI zero-shot results."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How exactly is the scalar covariance target C computed from the 3x3 blocks? What does 'MeanPooling' entail? After predicting C, how is the correlation matrix derived for joint reconstruction, and is it guaranteed to be SPD?",
+          "In Table 4, what do the values '=2.89' and '=1.48' represent? Are they ground-truth test-set means? If so, why do all methods fall below these values?",
+          "How do DynaProt-M and DynaProt-J interact? Are they trained jointly or separately? When sampling ensembles, how are the two models combined?",
+          "What is the maximum protein length that DynaProt can handle given the O(N^2) pairwise attention? How does memory scale with N?",
+          "Does the joint reconstruction heuristic have theoretical justification beyond preserving SPD? How sensitive are ensemble quality metrics to the Kronecker approximation?",
+          "Why is long-range coupling weak in the ground truth? Is this due to RMSD alignment or the scalar projection? Could this limit the model's ability to capture allosteric motions?"
+        ],
+        "Limitations": [
+          "The model uses a Cα coarse-grained representation, ignoring side-chain flexibility and dynamics.",
+          "The Gaussian assumption may not capture multimodal or anharmonic protein dynamics.",
+          "The joint covariance reconstruction is approximate and may not accurately reproduce all second-order correlations, especially long-range ones.",
+          "Training data is limited to 100 ns MD trajectories from ATLAS, which may not cover slow conformational changes.",
+          "The method relies on the input structure being a good estimate of the ensemble mean; if this assumption fails (e.g., input is not the equilibrium structure), predictions may be inaccurate."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper introduces DynaProt, a lightweight SE(3)-invariant framework that predicts protein dynamics descriptors directly from static Cα structures. It predicts per-residue marginal 3x3 covariance matrices capturing local anisotropic flexibility, and an NxN scalar covariance matrix capturing pairwise coupling. The framework uses an IPA backbone with two readout heads, enforces SPD via Cholesky decomposition, and employs a log-Euclidean loss. DynaProt is trained on ~1000 MD simulations from ATLAS and evaluated on RMSF prediction, marginal anisotropy, coupling, and ensemble generation. It shows competitive accuracy with far fewer parameters and much faster sampling than AFMD+Templates, and outperforms NMA and FlexPert3D on flexibility metrics. The paper also demonstrates zero-shot generalization to BPTI and a case study on cryptic pocket discovery.\",\n  \"Strengths\": [\n    \"Novel representation: predicts per-residue anisotropic covariances and pairwise couplings, going beyond scalar RMSF and offering more expressive dynamics information.\",\n    \"Extreme efficiency: uses 2.86M parameters and samples ensembles in ~0.14s, orders of magnitude faster than generative models like AFMD+Templates, enabling scalable applications.\",\n    \"Comprehensive evaluation across RMSF, marginal Gaussian fidelity, coupling, and ensemble generation, with competitive performance against much larger models.\",\n    \"Zero-shot generalization to BPTI and a cryptic pocket case study suggest practical utility beyond training distribution.\",\n    \"Technically sound design: Cholesky parameterization for SPD, log-Euclidean loss for manifold geometry, and ablations justify design choices.\"\n  ],\n  \"Weaknesses\": [\n    \"Limited baseline comparisons: only NMA and AFMD+Templates are used for dynamics; other explicit predictors like Dyna-1 are not evaluated, and sequence-based methods are only in the appendix.\",\n    \"Joint covariance reconstruction heuristic is ad-hoc and assumes Kronecker structure, which may limit ensemble fidelity; distributional metrics (MD PCA and Joint PCA W2) lag behind AFMD+Templates.\",\n    \"Pairwise coupling is only evaluated up to 50 residues in sequence; long-range couplings (important for allostery) are not assessed and appear weak in ground truth.\",\n    \"Lack of statistical significance tests and error bars; some evaluation details are ambiguous (e.g., Table 4 parenthetical values).\",\n    \"Training data is limited to ~1000 proteins and 100 ns simulations, which may not cover slow dynamics, despite promising BPTI zero-shot results.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How exactly is the scalar covariance target C computed from the 3x3 blocks? What does 'MeanPooling' entail? After predicting C, how is the correlation matrix derived for joint reconstruction, and is it guaranteed to be SPD?\",\n    \"In Table 4, what do the values '=2.89' and '=1.48' represent? Are they ground-truth test-set means? If so, why do all methods fall below these values?\",\n    \"How do DynaProt-M and DynaProt-J interact? Are they trained jointly or separately? When sampling ensembles, how are the two models combined?\",\n    \"What is the maximum protein length that DynaProt can handle given the O(N^2) pairwise attention? How does memory scale with N?\",\n    \"Does the joint reconstruction heuristic have theoretical justification beyond preserving SPD? How sensitive are ensemble quality metrics to the Kronecker approximation?\",\n    \"Why is long-range coupling weak in the ground truth? Is this due to RMSD alignment or the scalar projection? Could this limit the model's ability to capture allosteric motions?\"\n  ],\n  \"Limitations\": [\n    \"The model uses a Cα coarse-grained representation, ignoring side-chain flexibility and dynamics.\",\n    \"The Gaussian assumption may not capture multimodal or anharmonic protein dynamics.\",\n    \"The joint covariance reconstruction is approximate and may not accurately reproduce all second-order correlations, especially long-range ones.\",\n    \"Training data is limited to 100 ns MD trajectories from ATLAS, which may not cover slow conformational changes.\",\n    \"The method relies on the input structure being a good estimate of the ensemble mean; if this assumption fails (e.g., input is not the equilibrium structure), predictions may be inaccurate.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 15402,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 14634,
+        "completion_tokens": 3859,
+        "reasoning_tokens": 2882,
+        "total_tokens": 19261
+      },
+      "attempts": 1,
+      "response_id": "8fdeac62-ee63-4acd-b116-b29929dd7595"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper introduces DynaProt, a lightweight SE(3)-invariant framework that predicts protein dynamics descriptors directly from static structures. It models dynamics through multivariate Gaussians, predicting per-residue 3x3 covariance matrices (marginal anisotropy) and an NxN scalar residue-residue coupling matrix. Using an IPA backbone with Cholesky parameterization and a log-Euclidean loss, DynaProt is trained on ~1000 ATLAS MD proteins. The outputs can be composed into an approximate full joint covariance for fast ensemble sampling. Experiments show superior RMSF prediction compared to FlexPert-3D, competitive marginal Gaussian accuracy versus AFMD+Templates, better pairwise coupling than NMA, and much faster ensemble generation with reasonable fidelity, also demonstrating zero-shot cryptic pocket and BPTI generalization.",
+        "Strengths": [
+          "Novel representation: explicitly predicts full 3x3 anisotropic marginal covariances and pairwise residue couplings, going beyond scalar RMSF and capturing directional and correlated motion information.",
+          "Exceptional parameter and computational efficiency: only ~1M parameters for marginals and ~3M for the full model, three orders of magnitude fewer than FlexPert-3D and AFMD+Templates, with sampling times under a second versus hours.",
+          "Principled modeling of SPD matrices via Cholesky decomposition and a Riemannian log-Euclidean loss, with ablations confirming the importance of these choices.",
+          "Solid empirical results: outperforms NMA on RMSF, marginals, and coupling, and matches or approaches the more expensive AFMD+Templates on several metrics.",
+          "Impressive zero-shot generalization: reasonable BPTI ensemble despite training on short 100 ns trajectories, and promising qualitative cryptic pocket discovery on adenylosuccinate synthetase."
+        ],
+        "Weaknesses": [
+          "The joint covariance reconstruction heuristic is ad hoc and not learned; no direct comparison between the reconstructed 3N x 3N covariance and ground truth is provided, making it unclear how much fidelity is lost in off-diagonal 3x3 blocks.",
+          "Pairwise coupling evaluation is limited to band-wise correlation against NMA and does not compare to other learned approaches (e.g., generative models) on coupling accuracy.",
+          "Ensemble generation metrics show notable gaps: MD PCA W2 and Joint PCA W2 are substantially worse than AFMD+Templates (1.74/2.39 vs 1.25/1.58), and transient contact recovery is low (0.29 vs 0.47), raising questions about the quality of sampled diverse conformations.",
+          "The assumption that the input structure is the ensemble mean is untested; it may fail for proteins with large conformational changes between apo and holo states or multiple stable states.",
+          "Cryptic pocket analysis is purely qualitative with a single example, lacking systematic validation or comparison to dedicated pocket detection methods.",
+          "Coarse-grained Cα-only representation ignores side chain dynamics, limiting applicability to backbone-centric questions."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "How is the MeanPooling projection for scalar pairwise coupling justified compared to other possible projections (e.g., trace, Frobenius norm, or learned)? Could this choice affect prediction difficulty and downstream ensemble quality?",
+          "Why not train the model to directly predict the full 3N x 3N joint covariance using the proposed reconstruction as a structured output? Would a learned combination of marginals and couplings improve joint fidelity?",
+          "How accurate is the reconstructed joint covariance? Are there experiments quantifying the error in off-diagonal 3x3 blocks relative to MD ground truth, and how does the heuristic's approximation degrade for larger proteins or stronger long-range couplings?",
+          "What are the hyperparameters and training details (e.g., separate vs. joint training, loss weighting, number of epochs, learning rate)? Are the two modules (marginal and pairwise) trained independently or jointly, and does joint training improve results?",
+          "How sensitive are results to the assumption that the input structure equals the ensemble mean? For proteins where the PDB structure differs substantially from the MD average (e.g., large domain movements), how does this affect RMSF and ensemble quality?",
+          "The BPTI result is promising but based on a single protein; are there other long-timescale simulations (e.g., from DESRES or other sources) that could be used to more rigorously assess generalization beyond the 100 ns training timescale?",
+          "For cryptic pocket prediction, can the authors provide quantitative validation (e.g., using PocketMiner or comparing predicted high-variance residues to known pocket residues) to support the qualitative claim?",
+          "How does DynaProt perform on proteins with multiple distinct conformational states (e.g., fold-switching proteins) where a Gaussian assumption is clearly violated? Are there metrics that reveal such failures?"
+        ],
+        "Limitations": [
+          "The Gaussian assumption limits modeling of multi-modal dynamics and anharmonic motions; proteins with discrete conformational states may be poorly captured.",
+          "The joint covariance reconstruction heuristic is approximate and not validated against ground truth joint matrices, potentially limiting its reliability for downstream tasks.",
+          "The evaluation on pairwise coupling is limited to a single baseline (NMA) and a restricted sequence-distance band (|i-j| <= 50), ignoring long-range coupling that may be biologically important.",
+          "Training data consists of short 100 ns MD simulations (ATLAS), which may not capture slow conformational changes; zero-shot BPTI is only a single case.",
+          "The model assumes the input structure corresponds to the ensemble mean, which may be inaccurate for proteins with large conformational changes or when using predicted structures that differ from the native ensemble.",
+          "Only Cα atoms are modeled, so side-chain dynamics and all-atom fluctuations are not addressed.",
+          "No systematic analysis of failure cases or biases across protein families, lengths, or structural classes.",
+          "The comparison to sequence-based generative methods (e.g., ConfDiff, BioEMU) is only briefly mentioned in an appendix, not fully evaluated in the main text."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 4,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper introduces DynaProt, a lightweight SE(3)-invariant framework that predicts protein dynamics descriptors directly from static structures. It models dynamics through multivariate Gaussians, predicting per-residue 3x3 covariance matrices (marginal anisotropy) and an NxN scalar residue-residue coupling matrix. Using an IPA backbone with Cholesky parameterization and a log-Euclidean loss, DynaProt is trained on ~1000 ATLAS MD proteins. The outputs can be composed into an approximate full joint covariance for fast ensemble sampling. Experiments show superior RMSF prediction compared to FlexPert-3D, competitive marginal Gaussian accuracy versus AFMD+Templates, better pairwise coupling than NMA, and much faster ensemble generation with reasonable fidelity, also demonstrating zero-shot cryptic pocket and BPTI generalization.\",\n  \"Strengths\": [\n    \"Novel representation: explicitly predicts full 3x3 anisotropic marginal covariances and pairwise residue couplings, going beyond scalar RMSF and capturing directional and correlated motion information.\",\n    \"Exceptional parameter and computational efficiency: only ~1M parameters for marginals and ~3M for the full model, three orders of magnitude fewer than FlexPert-3D and AFMD+Templates, with sampling times under a second versus hours.\",\n    \"Principled modeling of SPD matrices via Cholesky decomposition and a Riemannian log-Euclidean loss, with ablations confirming the importance of these choices.\",\n    \"Solid empirical results: outperforms NMA on RMSF, marginals, and coupling, and matches or approaches the more expensive AFMD+Templates on several metrics.\",\n    \"Impressive zero-shot generalization: reasonable BPTI ensemble despite training on short 100 ns trajectories, and promising qualitative cryptic pocket discovery on adenylosuccinate synthetase.\"\n  ],\n  \"Weaknesses\": [\n    \"The joint covariance reconstruction heuristic is ad hoc and not learned; no direct comparison between the reconstructed 3N x 3N covariance and ground truth is provided, making it unclear how much fidelity is lost in off-diagonal 3x3 blocks.\",\n    \"Pairwise coupling evaluation is limited to band-wise correlation against NMA and does not compare to other learned approaches (e.g., generative models) on coupling accuracy.\",\n    \"Ensemble generation metrics show notable gaps: MD PCA W2 and Joint PCA W2 are substantially worse than AFMD+Templates (1.74/2.39 vs 1.25/1.58), and transient contact recovery is low (0.29 vs 0.47), raising questions about the quality of sampled diverse conformations.\",\n    \"The assumption that the input structure is the ensemble mean is untested; it may fail for proteins with large conformational changes between apo and holo states or multiple stable states.\",\n    \"Cryptic pocket analysis is purely qualitative with a single example, lacking systematic validation or comparison to dedicated pocket detection methods.\",\n    \"Coarse-grained Cα-only representation ignores side chain dynamics, limiting applicability to backbone-centric questions.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"How is the MeanPooling projection for scalar pairwise coupling justified compared to other possible projections (e.g., trace, Frobenius norm, or learned)? Could this choice affect prediction difficulty and downstream ensemble quality?\",\n    \"Why not train the model to directly predict the full 3N x 3N joint covariance using the proposed reconstruction as a structured output? Would a learned combination of marginals and couplings improve joint fidelity?\",\n    \"How accurate is the reconstructed joint covariance? Are there experiments quantifying the error in off-diagonal 3x3 blocks relative to MD ground truth, and how does the heuristic's approximation degrade for larger proteins or stronger long-range couplings?\",\n    \"What are the hyperparameters and training details (e.g., separate vs. joint training, loss weighting, number of epochs, learning rate)? Are the two modules (marginal and pairwise) trained independently or jointly, and does joint training improve results?\",\n    \"How sensitive are results to the assumption that the input structure equals the ensemble mean? For proteins where the PDB structure differs substantially from the MD average (e.g., large domain movements), how does this affect RMSF and ensemble quality?\",\n    \"The BPTI result is promising but based on a single protein; are there other long-timescale simulations (e.g., from DESRES or other sources) that could be used to more rigorously assess generalization beyond the 100 ns training timescale?\",\n    \"For cryptic pocket prediction, can the authors provide quantitative validation (e.g., using PocketMiner or comparing predicted high-variance residues to known pocket residues) to support the qualitative claim?\",\n    \"How does DynaProt perform on proteins with multiple distinct conformational states (e.g., fold-switching proteins) where a Gaussian assumption is clearly violated? Are there metrics that reveal such failures?\"\n  ],\n  \"Limitations\": [\n    \"The Gaussian assumption limits modeling of multi-modal dynamics and anharmonic motions; proteins with discrete conformational states may be poorly captured.\",\n    \"The joint covariance reconstruction heuristic is approximate and not validated against ground truth joint matrices, potentially limiting its reliability for downstream tasks.\",\n    \"The evaluation on pairwise coupling is limited to a single baseline (NMA) and a restricted sequence-distance band (|i-j| <= 50), ignoring long-range coupling that may be biologically important.\",\n    \"Training data consists of short 100 ns MD simulations (ATLAS), which may not capture slow conformational changes; zero-shot BPTI is only a single case.\",\n    \"The model assumes the input structure corresponds to the ensemble mean, which may be inaccurate for proteins with large conformational changes or when using predicted structures that differ from the native ensemble.\",\n    \"Only Cα atoms are modeled, so side-chain dynamics and all-atom fluctuations are not addressed.\",\n    \"No systematic analysis of failure cases or biases across protein families, lengths, or structural classes.\",\n    \"The comparison to sequence-based generative methods (e.g., ConfDiff, BioEMU) is only briefly mentioned in an appendix, not fully evaluated in the main text.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 4,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 15402,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 14634,
+        "completion_tokens": 2241,
+        "reasoning_tokens": 898,
+        "total_tokens": 17643
+      },
+      "attempts": 1,
+      "response_id": "26d56440-2869-44aa-83d2-ea48ce7d87fe"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper presents DynaProt, a lightweight SE(3)-invariant framework that directly predicts protein dynamics descriptors from a static Cα structure: per-residue 3×3 marginal covariance matrices and an N×N scalar pairwise coupling matrix. Using an IPA backbone and Cholesky-parameterized SPD outputs with a log-Euclidean loss, it derives RMSF, reconstructs an approximate 3N×3N covariance via a Kronecker-product heuristic, and samples ensembles extremely fast. Trained on ~1,000 ATLAS MD proteins without PDB pretraining, it reports competitive RMSF/anisotropy accuracy and superior speed/parameter efficiency versus FlexPert3D, NMA, and AFMD+Templates, plus zero-shot BPTI and cryptic-pocket case studies.",
+        "Strengths": [
+          "The Gaussian hierarchy (RMSF, marginal 3×3 covariances, N×N couplings, full joint) is a clean and interpretable formulation that unifies existing dynamics descriptors and motivates explicit prediction.",
+          "Cholesky parameterization with log-Euclidean loss is technically sound for SPD prediction; ablations demonstrate its importance over Euclidean MSE.",
+          "DynaProt is extremely parameter- and compute-efficient (955K/2.86M parameters, sub-second inference/sampling) compared to FlexPert3D and AFMD+T, while delivering competitive or better flexibility/anisotropy accuracy.",
+          "The SE(3)-invariant IPA backbone is appropriate for structure input and enables zero-shot generalization (BPTI) and a promising cryptic-pocket case study.",
+          "The paper includes a useful taxonomy of dynamics representations and demonstrates a learned explicit prediction of the full joint covariance via a simple composition heuristic."
+        ],
+        "Weaknesses": [
+          "The joint covariance reconstruction heuristic is not validated against the predicted scalar coupling matrix; re-projecting the reconstructed 3×3 blocks via MeanPooling likely fails to recover the original C, so the composition consistency is unexamined.",
+          "Empirical comparisons are incomplete: pairwise coupling is only compared to NMA; RMSF is compared only to FlexPert3D; no error bars, multiple seeds, or statistical significance are reported.",
+          "Ensemble generation metrics show DynaProt substantially underperforming AFMD+T on distributional similarity (MD PCA W₂ 1.74 vs 1.25; Joint PCA W₂ 2.39 vs 1.58) and transient contacts (Jaccard 0.29 vs 0.47), weakening the claim of 'reasonable reconstruction'.",
+          "Training/architecture details are insufficient for reproducibility: no hyperparameters, embedding dimensions, number of attention blocks, exact pairwise-label construction, standardization procedure for C, training time, or code release.",
+          "The novelty claims may be overstated: NMA already predicts full joint covariance analytically, and Dyna-1/FlexPert3D predict dynamics descriptors; the paper's contribution is a learned explicit variant but not clearly positioned against all prior work.",
+          "The assumption that the input structure equals the ensemble mean is not evaluated; for apo/holo or multi-state proteins this can introduce systematic mean error that is ignored by the covariance-only evaluation."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 3,
+        "Questions": [
+          "What exactly is the MeanPooling scalar projection, and does the reconstructed joint covariance reproduce the predicted C when re-projecting off-diagonal 3×3 blocks? If not, how faithful is the composition?",
+          "How is the predicted N×N covariance C standardized into a correlation matrix, and is the Cholesky parameterization of C necessary given that standardization?",
+          "What are the training details: batch size, learning rate, epochs, embedding dimension d, projection dimension d′, number of IPA/pairwise attention blocks, and parameter count per module?",
+          "Why are there no learned baselines for pairwise coupling (e.g., Dyna-1 or sequence-based methods), and why is the coupling evaluation restricted to diagonal bands up to 50 residues?",
+          "How stable are the reported medians across multiple training runs/seeds, and are the differences to baselines statistically significant?",
+          "How does DynaProt scale to proteins with N > 1000 given the O(N²) pairwise attention and the N×N log-Euclidean loss?"
+        ],
+        "Limitations": [
+          "Cα-only coarse-graining ignores side-chain dynamics and may miss functionally important motions.",
+          "The assumption that input structure equals the ensemble mean is unevaluated and can fail for non-equilibrium or multi-state proteins.",
+          "The joint covariance reconstruction is heuristic and not guaranteed to reproduce the predicted scalar couplings; no consistency check is provided.",
+          "Zero-shot BPTI and cryptic-pocket results are anecdotal (single proteins) and do not constitute systematic evidence of generalization.",
+          "Training data are limited to ~100 ns MD trajectories; longer-timescale dynamics are only tested on one protein.",
+          "Potential dual-use of protein dynamics prediction for drug design is not discussed, though this is standard in the field."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 2,
+        "Contribution": 3,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper presents DynaProt, a lightweight SE(3)-invariant framework that directly predicts protein dynamics descriptors from a static Cα structure: per-residue 3×3 marginal covariance matrices and an N×N scalar pairwise coupling matrix. Using an IPA backbone and Cholesky-parameterized SPD outputs with a log-Euclidean loss, it derives RMSF, reconstructs an approximate 3N×3N covariance via a Kronecker-product heuristic, and samples ensembles extremely fast. Trained on ~1,000 ATLAS MD proteins without PDB pretraining, it reports competitive RMSF/anisotropy accuracy and superior speed/parameter efficiency versus FlexPert3D, NMA, and AFMD+Templates, plus zero-shot BPTI and cryptic-pocket case studies.\",\n  \"Strengths\": [\n    \"The Gaussian hierarchy (RMSF, marginal 3×3 covariances, N×N couplings, full joint) is a clean and interpretable formulation that unifies existing dynamics descriptors and motivates explicit prediction.\",\n    \"Cholesky parameterization with log-Euclidean loss is technically sound for SPD prediction; ablations demonstrate its importance over Euclidean MSE.\",\n    \"DynaProt is extremely parameter- and compute-efficient (955K/2.86M parameters, sub-second inference/sampling) compared to FlexPert3D and AFMD+T, while delivering competitive or better flexibility/anisotropy accuracy.\",\n    \"The SE(3)-invariant IPA backbone is appropriate for structure input and enables zero-shot generalization (BPTI) and a promising cryptic-pocket case study.\",\n    \"The paper includes a useful taxonomy of dynamics representations and demonstrates a learned explicit prediction of the full joint covariance via a simple composition heuristic.\"\n  ],\n  \"Weaknesses\": [\n    \"The joint covariance reconstruction heuristic is not validated against the predicted scalar coupling matrix; re-projecting the reconstructed 3×3 blocks via MeanPooling likely fails to recover the original C, so the composition consistency is unexamined.\",\n    \"Empirical comparisons are incomplete: pairwise coupling is only compared to NMA; RMSF is compared only to FlexPert3D; no error bars, multiple seeds, or statistical significance are reported.\",\n    \"Ensemble generation metrics show DynaProt substantially underperforming AFMD+T on distributional similarity (MD PCA W₂ 1.74 vs 1.25; Joint PCA W₂ 2.39 vs 1.58) and transient contacts (Jaccard 0.29 vs 0.47), weakening the claim of 'reasonable reconstruction'.\",\n    \"Training/architecture details are insufficient for reproducibility: no hyperparameters, embedding dimensions, number of attention blocks, exact pairwise-label construction, standardization procedure for C, training time, or code release.\",\n    \"The novelty claims may be overstated: NMA already predicts full joint covariance analytically, and Dyna-1/FlexPert3D predict dynamics descriptors; the paper's contribution is a learned explicit variant but not clearly positioned against all prior work.\",\n    \"The assumption that the input structure equals the ensemble mean is not evaluated; for apo/holo or multi-state proteins this can introduce systematic mean error that is ignored by the covariance-only evaluation.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"What exactly is the MeanPooling scalar projection, and does the reconstructed joint covariance reproduce the predicted C when re-projecting off-diagonal 3×3 blocks? If not, how faithful is the composition?\",\n    \"How is the predicted N×N covariance C standardized into a correlation matrix, and is the Cholesky parameterization of C necessary given that standardization?\",\n    \"What are the training details: batch size, learning rate, epochs, embedding dimension d, projection dimension d′, number of IPA/pairwise attention blocks, and parameter count per module?\",\n    \"Why are there no learned baselines for pairwise coupling (e.g., Dyna-1 or sequence-based methods), and why is the coupling evaluation restricted to diagonal bands up to 50 residues?\",\n    \"How stable are the reported medians across multiple training runs/seeds, and are the differences to baselines statistically significant?\",\n    \"How does DynaProt scale to proteins with N > 1000 given the O(N²) pairwise attention and the N×N log-Euclidean loss?\"\n  ],\n  \"Limitations\": [\n    \"Cα-only coarse-graining ignores side-chain dynamics and may miss functionally important motions.\",\n    \"The assumption that input structure equals the ensemble mean is unevaluated and can fail for non-equilibrium or multi-state proteins.\",\n    \"The joint covariance reconstruction is heuristic and not guaranteed to reproduce the predicted scalar couplings; no consistency check is provided.\",\n    \"Zero-shot BPTI and cryptic-pocket results are anecdotal (single proteins) and do not constitute systematic evidence of generalization.\",\n    \"Training data are limited to ~100 ns MD trajectories; longer-timescale dynamics are only tested on one protein.\",\n    \"Potential dual-use of protein dynamics prediction for drug design is not discussed, though this is standard in the field.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 2,\n  \"Contribution\": 3,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 15402,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 14634,
+        "completion_tokens": 5552,
+        "reasoning_tokens": 4417,
+        "total_tokens": 20954
+      },
+      "attempts": 1,
+      "response_id": "276ed710-a6aa-4559-be93-f6c7550c8ed1"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 4,
+      "Reject": 1
+    },
+    "unanimous_decision": false,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          3,
+          4,
+          3,
+          4,
+          3
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          2
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          2
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          3,
+          3,
+          3,
+          4,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          2
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          3,
+          3,
+          3,
+          4,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Overall": {
+        "values": [
+          6,
+          6,
+          6,
+          6,
+          4
+        ],
+        "mean": 5.6,
+        "rounded_mean": 6,
+        "population_sd": 0.8,
+        "min": 4,
+        "max": 6
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "DynaProt is a lightweight SE(3)-invariant framework that predicts protein dynamics descriptors directly from static Cα structures. It models dynamics through multivariate Gaussians: per-residue 3x3 marginal covariance matrices capturing local anisotropy and an NxN scalar residue-residue coupling matrix. Using an IPA backbone with Cholesky factorization and a log-Euclidean loss, it trains on ~1000 ATLAS MD proteins. The outputs can be heuristically combined into an approximate full 3Nx3N joint covariance, enabling ultra-fast ensemble sampling. Evaluations show improved RMSF prediction over FlexPert3D and NMA, competitive marginal anisotropy and coupling prediction versus AFMD+Templates and NMA, and orders-of-magnitude faster ensemble generation. Zero-shot BPTI and cryptic pocket case studies demonstrate potential generalization.",
+      "Strengths": [
+        "Novel hierarchical Gaussian representation: explicitly predicts both per-residue anisotropic covariances and pairwise couplings, moving beyond scalar RMSF and capturing richer dynamics information.",
+        "Exceptional parameter and computational efficiency: ~1M parameters for the marginal model and ~3M total, three orders of magnitude fewer than FlexPert3D and AFMD+Templates, with ensemble sampling in ~0.14 s vs ~10,000 s.",
+        "Technically sound SPD modeling: Cholesky parameterization and Riemannian log-Euclidean loss are appropriate, with ablations confirming their importance.",
+        "Comprehensive evaluation across RMSF, marginal anisotropy, pairwise coupling, and ensemble quality, with competitive or superior performance to much larger baselines.",
+        "Promising zero-shot generalization to BPTI and a plausible cryptic pocket discovery case study, suggesting practical utility beyond training distribution.",
+        "The SE(3)-invariant IPA backbone is suitable for structure input and enables efficient learning without large-scale pretraining."
+      ],
+      "Weaknesses": [
+        "The joint covariance reconstruction is an ad-hoc heuristic (Kronecker structure) and is not validated against ground-truth full covariances; re-projection consistency is unexamined.",
+        "The Gaussian assumption limits modeling of multi-modal or anharmonic dynamics, which are common in proteins with discrete conformational states.",
+        "Empirical comparisons are incomplete: pairwise coupling is evaluated only against NMA and restricted to a 50-residue diagonal band; RMSF is compared only to FlexPert3D; no error bars or statistical significance tests are reported.",
+        "Ensemble generation metrics show notable gaps versus AFMD+Templates (MD PCA W2 1.74 vs 1.25, Joint PCA W2 2.39 vs 1.58, transient contact Jaccard 0.29 vs 0.47), raising concerns about fidelity of sampled conformations.",
+        "Several implementation details are missing: initialization of IPA from AlphaFold2 or scratch, pairwise label construction, exact MeanPooling operation, hyperparameters, training time, and code release.",
+        "Training data are limited to ~1,000 proteins with 100 ns simulations; generalization to slow dynamics or diverse fold families is only demonstrated anecdotally.",
+        "The assumption that the input structure equals the ensemble mean is unevaluated and may be violated for apo/holo or multi-state proteins."
+      ],
+      "Originality": 3,
+      "Quality": 3,
+      "Clarity": 3,
+      "Significance": 3,
+      "Questions": [
+        "How exactly is the scalar pairwise covariance target C computed? What does MeanPooling entail (e.g., average of 3x3 block entries vs trace/3)?",
+        "Is the IPA backbone initialized from AlphaFold2 weights or trained from scratch, and how does that affect parameter count and performance?",
+        "How is the correlation matrix derived from the predicted scalar covariance C, and is it guaranteed to be SPD? Does the reconstructed joint covariance reproduce the predicted C when re-projecting off-diagonal blocks?",
+        "Why is the pairwise coupling evaluation restricted to |i-j| <= 50? What are the results for longer-range couplings, and could the model capture allostery-relevant correlations?",
+        "Are DynaProt-M and DynaProt-J trained jointly or separately? Could joint training with a full-covariance loss improve fidelity?",
+        "How does the method scale to proteins with N > 1000 given the O(N^2) pairwise attention and NxN matrix operations?",
+        "Are the differences between DynaProt and baselines statistically significant across multiple seeds? What are the error bars for Table 4?",
+        "How sensitive are predictions to perturbation of the input structure, especially if the input is not the ensemble mean?",
+        "In the ablation replacing IPA with MLPs, is the comparison fair? Would a simple SE(3)-invariant architecture isolate the benefit of geometric attention?"
+      ],
+      "Limitations": [
+        "Coarse-grained Cα representation ignores side-chain dynamics and all-atom fluctuations.",
+        "Gaussian assumption cannot represent multi-modal or anharmonic protein dynamics, limiting applicability to intrinsically disordered or fold-switching proteins.",
+        "Joint covariance reconstruction is heuristic and not learned or rigorously justified; its accuracy is only indirectly assessed via ensemble metrics.",
+        "Training data are limited to 100 ns MD trajectories from ATLAS, which may not capture slow conformational changes; zero-shot evidence is only on one protein (BPTI).",
+        "The pairwise scalar projection discards directional information from 3x3 blocks, and the choice of projection is not justified.",
+        "The model assumes the input structure is the ensemble mean; this may fail for homology models or structures far from the equilibrium state.",
+        "Cryptic pocket analysis is qualitative and single-case, lacking quantitative comparison to dedicated pocket prediction methods.",
+        "Potential dual-use in drug design is not discussed, though this is standard in the field."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 3,
+      "Contribution": 3,
+      "Overall": 6,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "{\n  \"Summary\": \"DynaProt is a lightweight SE(3)-invariant framework that predicts protein dynamics descriptors directly from static Cα structures. It models dynamics through multivariate Gaussians: per-residue 3x3 marginal covariance matrices capturing local anisotropy and an NxN scalar residue-residue coupling matrix. Using an IPA backbone with Cholesky factorization and a log-Euclidean loss, it trains on ~1000 ATLAS MD proteins. The outputs can be heuristically combined into an approximate full 3Nx3N joint covariance, enabling ultra-fast ensemble sampling. Evaluations show improved RMSF prediction over FlexPert3D and NMA, competitive marginal anisotropy and coupling prediction versus AFMD+Templates and NMA, and orders-of-magnitude faster ensemble generation. Zero-shot BPTI and cryptic pocket case studies demonstrate potential generalization.\",\n  \"Strengths\": [\n    \"Novel hierarchical Gaussian representation: explicitly predicts both per-residue anisotropic covariances and pairwise couplings, moving beyond scalar RMSF and capturing richer dynamics information.\",\n    \"Exceptional parameter and computational efficiency: ~1M parameters for the marginal model and ~3M total, three orders of magnitude fewer than FlexPert3D and AFMD+Templates, with ensemble sampling in ~0.14 s vs ~10,000 s.\",\n    \"Technically sound SPD modeling: Cholesky parameterization and Riemannian log-Euclidean loss are appropriate, with ablations confirming their importance.\",\n    \"Comprehensive evaluation across RMSF, marginal anisotropy, pairwise coupling, and ensemble quality, with competitive or superior performance to much larger baselines.\",\n    \"Promising zero-shot generalization to BPTI and a plausible cryptic pocket discovery case study, suggesting practical utility beyond training distribution.\",\n    \"The SE(3)-invariant IPA backbone is suitable for structure input and enables efficient learning without large-scale pretraining.\"\n  ],\n  \"Weaknesses\": [\n    \"The joint covariance reconstruction is an ad-hoc heuristic (Kronecker structure) and is not validated against ground-truth full covariances; re-projection consistency is unexamined.\",\n    \"The Gaussian assumption limits modeling of multi-modal or anharmonic dynamics, which are common in proteins with discrete conformational states.\",\n    \"Empirical comparisons are incomplete: pairwise coupling is evaluated only against NMA and restricted to a 50-residue diagonal band; RMSF is compared only to FlexPert3D; no error bars or statistical significance tests are reported.\",\n    \"Ensemble generation metrics show notable gaps versus AFMD+Templates (MD PCA W2 1.74 vs 1.25, Joint PCA W2 2.39 vs 1.58, transient contact Jaccard 0.29 vs 0.47), raising concerns about fidelity of sampled conformations.\",\n    \"Several implementation details are missing: initialization of IPA from AlphaFold2 or scratch, pairwise label construction, exact MeanPooling operation, hyperparameters, training time, and code release.\",\n    \"Training data are limited to ~1,000 proteins with 100 ns simulations; generalization to slow dynamics or diverse fold families is only demonstrated anecdotally.\",\n    \"The assumption that the input structure equals the ensemble mean is unevaluated and may be violated for apo/holo or multi-state proteins.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How exactly is the scalar pairwise covariance target C computed? What does MeanPooling entail (e.g., average of 3x3 block entries vs trace/3)?\",\n    \"Is the IPA backbone initialized from AlphaFold2 weights or trained from scratch, and how does that affect parameter count and performance?\",\n    \"How is the correlation matrix derived from the predicted scalar covariance C, and is it guaranteed to be SPD? Does the reconstructed joint covariance reproduce the predicted C when re-projecting off-diagonal blocks?\",\n    \"Why is the pairwise coupling evaluation restricted to |i-j| <= 50? What are the results for longer-range couplings, and could the model capture allostery-relevant correlations?\",\n    \"Are DynaProt-M and DynaProt-J trained jointly or separately? Could joint training with a full-covariance loss improve fidelity?\",\n    \"How does the method scale to proteins with N > 1000 given the O(N^2) pairwise attention and NxN matrix operations?\",\n    \"Are the differences between DynaProt and baselines statistically significant across multiple seeds? What are the error bars for Table 4?\",\n    \"How sensitive are predictions to perturbation of the input structure, especially if the input is not the ensemble mean?\",\n    \"In the ablation replacing IPA with MLPs, is the comparison fair? Would a simple SE(3)-invariant architecture isolate the benefit of geometric attention?\"\n  ],\n  \"Limitations\": [\n    \"Coarse-grained Cα representation ignores side-chain dynamics and all-atom fluctuations.\",\n    \"Gaussian assumption cannot represent multi-modal or anharmonic protein dynamics, limiting applicability to intrinsically disordered or fold-switching proteins.\",\n    \"Joint covariance reconstruction is heuristic and not learned or rigorously justified; its accuracy is only indirectly assessed via ensemble metrics.\",\n    \"Training data are limited to 100 ns MD trajectories from ATLAS, which may not capture slow conformational changes; zero-shot evidence is only on one protein (BPTI).\",\n    \"The pairwise scalar projection discards directional information from 3x3 blocks, and the choice of projection is not justified.\",\n    \"The model assumes the input structure is the ensemble mean; this may fail for homology models or structures far from the equilibrium state.\",\n    \"Cryptic pocket analysis is qualitative and single-case, lacking quantitative comparison to dedicated pocket prediction methods.\",\n    \"Potential dual-use in drug design is not discussed, though this is standard in the field.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+    "usage": {
+      "prompt_tokens": 7069,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 7069,
+      "completion_tokens": 1843,
+      "reasoning_tokens": 566,
+      "total_tokens": 8912
+    },
+    "attempts": 1,
+    "response_id": "a8676cc6-791f-4854-ac63-267687c81368"
+  },
+  "final_review": {
+    "Summary": "DynaProt is a lightweight SE(3)-invariant framework that predicts protein dynamics descriptors directly from static Cα structures. It models dynamics through multivariate Gaussians: per-residue 3x3 marginal covariance matrices capturing local anisotropy and an NxN scalar residue-residue coupling matrix. Using an IPA backbone with Cholesky factorization and a log-Euclidean loss, it trains on ~1000 ATLAS MD proteins. The outputs can be heuristically combined into an approximate full 3Nx3N joint covariance, enabling ultra-fast ensemble sampling. Evaluations show improved RMSF prediction over FlexPert3D and NMA, competitive marginal anisotropy and coupling prediction versus AFMD+Templates and NMA, and orders-of-magnitude faster ensemble generation. Zero-shot BPTI and cryptic pocket case studies demonstrate potential generalization.",
+    "Strengths": [
+      "Novel hierarchical Gaussian representation: explicitly predicts both per-residue anisotropic covariances and pairwise couplings, moving beyond scalar RMSF and capturing richer dynamics information.",
+      "Exceptional parameter and computational efficiency: ~1M parameters for the marginal model and ~3M total, three orders of magnitude fewer than FlexPert3D and AFMD+Templates, with ensemble sampling in ~0.14 s vs ~10,000 s.",
+      "Technically sound SPD modeling: Cholesky parameterization and Riemannian log-Euclidean loss are appropriate, with ablations confirming their importance.",
+      "Comprehensive evaluation across RMSF, marginal anisotropy, pairwise coupling, and ensemble quality, with competitive or superior performance to much larger baselines.",
+      "Promising zero-shot generalization to BPTI and a plausible cryptic pocket discovery case study, suggesting practical utility beyond training distribution.",
+      "The SE(3)-invariant IPA backbone is suitable for structure input and enables efficient learning without large-scale pretraining."
+    ],
+    "Weaknesses": [
+      "The joint covariance reconstruction is an ad-hoc heuristic (Kronecker structure) and is not validated against ground-truth full covariances; re-projection consistency is unexamined.",
+      "The Gaussian assumption limits modeling of multi-modal or anharmonic dynamics, which are common in proteins with discrete conformational states.",
+      "Empirical comparisons are incomplete: pairwise coupling is evaluated only against NMA and restricted to a 50-residue diagonal band; RMSF is compared only to FlexPert3D; no error bars or statistical significance tests are reported.",
+      "Ensemble generation metrics show notable gaps versus AFMD+Templates (MD PCA W2 1.74 vs 1.25, Joint PCA W2 2.39 vs 1.58, transient contact Jaccard 0.29 vs 0.47), raising concerns about fidelity of sampled conformations.",
+      "Several implementation details are missing: initialization of IPA from AlphaFold2 or scratch, pairwise label construction, exact MeanPooling operation, hyperparameters, training time, and code release.",
+      "Training data are limited to ~1,000 proteins with 100 ns simulations; generalization to slow dynamics or diverse fold families is only demonstrated anecdotally.",
+      "The assumption that the input structure equals the ensemble mean is unevaluated and may be violated for apo/holo or multi-state proteins."
+    ],
+    "Originality": 3,
+    "Quality": 3,
+    "Clarity": 3,
+    "Significance": 3,
+    "Questions": [
+      "How exactly is the scalar pairwise covariance target C computed? What does MeanPooling entail (e.g., average of 3x3 block entries vs trace/3)?",
+      "Is the IPA backbone initialized from AlphaFold2 weights or trained from scratch, and how does that affect parameter count and performance?",
+      "How is the correlation matrix derived from the predicted scalar covariance C, and is it guaranteed to be SPD? Does the reconstructed joint covariance reproduce the predicted C when re-projecting off-diagonal blocks?",
+      "Why is the pairwise coupling evaluation restricted to |i-j| <= 50? What are the results for longer-range couplings, and could the model capture allostery-relevant correlations?",
+      "Are DynaProt-M and DynaProt-J trained jointly or separately? Could joint training with a full-covariance loss improve fidelity?",
+      "How does the method scale to proteins with N > 1000 given the O(N^2) pairwise attention and NxN matrix operations?",
+      "Are the differences between DynaProt and baselines statistically significant across multiple seeds? What are the error bars for Table 4?",
+      "How sensitive are predictions to perturbation of the input structure, especially if the input is not the ensemble mean?",
+      "In the ablation replacing IPA with MLPs, is the comparison fair? Would a simple SE(3)-invariant architecture isolate the benefit of geometric attention?"
+    ],
+    "Limitations": [
+      "Coarse-grained Cα representation ignores side-chain dynamics and all-atom fluctuations.",
+      "Gaussian assumption cannot represent multi-modal or anharmonic protein dynamics, limiting applicability to intrinsically disordered or fold-switching proteins.",
+      "Joint covariance reconstruction is heuristic and not learned or rigorously justified; its accuracy is only indirectly assessed via ensemble metrics.",
+      "Training data are limited to 100 ns MD trajectories from ATLAS, which may not capture slow conformational changes; zero-shot evidence is only on one protein (BPTI).",
+      "The pairwise scalar projection discards directional information from 3x3 blocks, and the choice of projection is not justified.",
+      "The model assumes the input structure is the ensemble mean; this may fail for homology models or structures far from the equilibrium state.",
+      "Cryptic pocket analysis is qualitative and single-case, lacking quantitative comparison to dedicated pocket prediction methods.",
+      "Potential dual-use in drug design is not discussed, though this is standard in the field."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 3,
+    "Contribution": 3,
+    "Overall": 6,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair model output",
+  "usage": {
+    "prompt_tokens": 84079,
+    "prompt_cache_hit_tokens": 3840,
+    "prompt_cache_miss_tokens": 80239,
+    "completion_tokens": 23417,
+    "reasoning_tokens": 15886,
+    "total_tokens": 107496,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 1.075e-05,
+    "cache_miss_input_usd": 0.01123346,
+    "output_usd": 0.00655676,
+    "total_usd": 0.01780097
+  },
+  "elapsed_seconds": 77.877,
+  "input": {
+    "blind_id": "B006",
+    "filename": "B006.txt",
+    "blind_text_sha256": "3c0f9d8e7e6a33f41d798f3420c36942dbdde806ac7dd121925f40f0fc9be5f9",
+    "characters": 57212,
+    "full_text_saved": false
+  }
+}

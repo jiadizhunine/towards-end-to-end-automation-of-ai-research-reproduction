@@ -1,0 +1,722 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:47:05.946924+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "This paper introduces Darling (Diversity-Aware Reinforcement Learning), a framework that jointly optimizes for response quality and semantic diversity during post-training of Large Language Models. The core idea is to use a learned semantic classifier to partition generated responses into equivalence classes, then multiply the quality reward by a normalized diversity score to amplify gradient updates for responses that are both high-quality and semantically distinct. The method is validated across two regimes: non-verifiable tasks (instruction following and creative writing) and verifiable tasks (competition math). Results show that Darling outperforms quality-only RL baselines on both quality and diversity metrics, and notably improves pass@k in math tasks, demonstrating that explicit diversity optimization catalyzes exploration and can even improve pass@1. The paper includes thorough ablations on key design choices: multiplicative vs. additive reward aggregation, semantic vs. lexical diversity signals, and advantage normalization.",
+        "Strengths": [
+          "Clear and well-motivated problem formulation: the tension between post-training quality improvements and diversity collapse is well-articulated.",
+          "Novel contribution: using a learned semantic classifier as a scalable diversity signal integrated into online RL training is a meaningful advance over lexical-only or inference-time approaches.",
+          "Comprehensive experimental validation across multiple model families (Llama, Qwen), sizes (4B to 70B), and task types (non-verifiable and verifiable).",
+          "Strong ablations on key design choices (multiplicative vs. additive, semantic vs. lexical, advantage normalization) with clear insights.",
+          "Qualitative analysis provides intuitive understanding of the method's benefits, showing concrete differences in output diversity.",
+          "Surprising and significant finding: explicitly optimizing for diversity improves pass@1 in math tasks, not just pass@k, suggesting that diversity aids exploration and quality.",
+          "The method is simple and practical, using GRPO as a base with a clean reward modification, making it easy to adopt.",
+          "Thorough evaluation using multiple benchmarks (AlpacaEval 2.0, ArenaHard, EQ-Bench, NoveltyBench, and four math benchmarks) with appropriate metrics."
+        ],
+        "Weaknesses": [
+          "The diversity classifier training details are somewhat brief. The math classifier uses Llama-3.3-70B for annotation, which is itself a proxy for ground truth; more details on annotation quality and potential biases would strengthen the work.",
+          "The paper does not deeply explore the interaction between the diversity reward and the KL constraint. Since KL regularization already limits deviation from the reference model, it's unclear how Darling interacts with this constraint.",
+          "The EQ-Bench results show a dramatic improvement (905 vs 659 for GRPO at 8B scale), which seems almost too good. Confidence intervals or multiple evaluation runs would increase confidence.",
+          "The paper does not compare against state-of-the-art diversity-preserving methods beyond the cited baselines, such as more recent entropy regularization techniques or exploration-based RL methods.",
+          "The computational cost of computing pairwise semantic diversity for all rollouts (8 per prompt) is not discussed. The classifier inference overhead could be significant, especially at 70B scale.",
+          "The paper does not address potential failure modes where diversity reward could lead to generating off-topic or irrelevant responses that are 'diverse' but not useful, though the multiplicative combination with quality reward partially mitigates this.",
+          "The pass@k evaluation for math uses a single run with 256 samples; variance estimates or multiple seeds would strengthen the reliability of the reported improvements."
+        ],
+        "Originality": 4,
+        "Quality": 4,
+        "Clarity": 4,
+        "Significance": 4,
+        "Questions": [
+          "How sensitive is the method to the accuracy of the semantic classifier? Have you tested with classifiers of varying quality or with different model architectures?",
+          "What is the computational overhead of the diversity computation in the training loop? How does it scale with more rollouts per prompt, and how does this affect wall-clock training time?",
+          "Have you observed any cases where Darling produces diverse but lower-quality responses that are still rewarded due to the multiplicative formulation? If so, how does the method handle this?",
+          "How does the method interact with different KL coefficients (β)? Is there a tradeoff between diversity preservation and KL constraint strength, and how should practitioners set these hyperparameters?",
+          "For the math classifier, could you provide more details on the annotation process? Specifically, what was the inter-annotator agreement, and were there any systematic biases when using Llama-3.3-70B as the annotator?",
+          "The EQ-Bench results show a very large improvement. Can you provide confidence intervals or results from multiple evaluation runs to ensure this is not due to randomness?",
+          "Have you considered testing Darling on other verifiable tasks beyond math, such as code generation, to assess its generality?",
+          "The paper mentions that 'removing normalization by standard deviation' improves performance. Does this finding hold across different reward models and task types, or is it specific to the dense reward setting you tested?"
+        ],
+        "Limitations": [
+          "The diversity classifier is trained on a specific distribution of prompts (WildChat for non-verifiable, DeepScaleR for math). Its generalization to other domains or prompt distributions is not tested.",
+          "The method's effectiveness depends on the quality of the semantic equivalence classifier. Misclassification could lead to suboptimal diversity rewards, though the ablations suggest robustness.",
+          "The paper does not discuss potential negative societal impacts, such as the possibility that encouraging diversity in outputs could lead to more harmful or misleading content if not properly constrained.",
+          "The computational cost of the classifier is not analyzed, which could be a practical limitation for large-scale deployments.",
+          "The method is evaluated on English-language tasks only; its effectiveness on multilingual or low-resource settings is unknown."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 4,
+        "Presentation": 4,
+        "Contribution": 4,
+        "Overall": 8,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces Darling (Diversity-Aware Reinforcement Learning), a framework that jointly optimizes for response quality and semantic diversity during post-training of LLMs. The key innovation is a learned semantic classifier that partitions generated responses into equivalence classes, and then multiplies the quality reward by a diversity score to amplify gradient updates for responses that are both high-quality and semantically distinct.\n\nThe paper is well-structured with experiments across two regimes: non-verifiable tasks (instruction following, creative writing) and verifiable tasks (competition math). Results show Darling outperforms quality-only RL baselines on both quality and diversity metrics, and notably improves pass@k in math tasks, suggesting that diversity optimization aids exploration.\n\nStrengths:\n1. Clear motivation and problem formulation - the tension between post-training quality and diversity is well-articulated\n2. Novel contribution of using a learned semantic classifier for diversity measurement in online RL\n3. Comprehensive experimental validation across multiple model families (Llama, Qwen), sizes (4B, 8B, 14B, 70B), and task types\n4. Strong ablations on key design choices (multiplicative vs additive, semantic vs lexical diversity, advantage normalization)\n5. Qualitative analysis provides intuitive understanding of the method's benefits\n6. The finding that diversity optimization improves pass@1 in math (beyond just pass@k) is a significant and surprising result\n\nWeaknesses:\n1. The diversity classifier training details are somewhat brief; the math classifier uses Llama-3.3-70B for annotation, which is itself a proxy for ground truth. The accuracy of 89% on a held-out set is reported, but more details on annotation quality and potential biases would strengthen the work.\n2. The paper does not deeply explore the interaction between the diversity reward and the KL constraint. Since KL regularization already limits deviation from the reference model, it's unclear how Darling interacts with this constraint.\n3. The EQ-Bench results show a dramatic improvement (905 vs 659 for GRPO at 8B scale), which seems almost too good. It would be helpful to see confidence intervals or multiple evaluation runs.\n4. The paper does not compare against state-of-the-art diversity-preserving methods like entropy regularization or more recent exploration-based RL methods beyond the cited baselines.\n5. The computational cost of computing pairwise semantic diversity for all rollouts (8 per prompt) is not discussed. The classifier inference overhead could be significant, especially at 70B scale.\n6. The paper does not address potential failure modes where diversity reward could lead to generating off-topic or irrelevant responses that are \"diverse\" but not useful, though the multiplicative combination with quality reward partially mitigates this.\n\nQuestions for authors:\n1. How sensitive is the method to the accuracy of the semantic classifier? Have you tested with classifiers of varying quality?\n2. What is the computational overhead of the diversity computation in the training loop? How does it scale with more rollouts per prompt?\n3. Have you observed any cases where Darling produces diverse but lower-quality responses that are still rewarded due to the multiplicative formulation?\n4. How does the method interact with different KL coefficients? Is there a tradeoff between diversity preservation and KL constraint strength?\n5. For the math classifier, could you provide more details on the annotation process and any potential biases in using Llama-3.3-70B as the annotator?\n\nOverall, this is a solid paper with a clear contribution, thorough experimentation, and practical significance. The method is simple yet effective, and the results are convincing. The main concerns are around the robustness of the semantic classifier and the generalizability of the approach to more diverse task types. I would rate this as a strong accept.\n\nSoundness: 4 (excellent - well-supported claims, thorough ablations)\nPresentation: 4 (excellent - clear writing, good organization)\nContribution: 4 (excellent - novel method, practical significance)\nOverall: 8 (Strong Accept)\n\nConfidence: 4 (confident, but some areas like classifier details could be better understood)```json\n{\n    \"Summary\": \"This paper introduces Darling (Diversity-Aware Reinforcement Learning), a framework that jointly optimizes for response quality and semantic diversity during post-training of Large Language Models. The core idea is to use a learned semantic classifier to partition generated responses into equivalence classes, then multiply the quality reward by a normalized diversity score to amplify gradient updates for responses that are both high-quality and semantically distinct. The method is validated across two regimes: non-verifiable tasks (instruction following and creative writing) and verifiable tasks (competition math). Results show that Darling outperforms quality-only RL baselines on both quality and diversity metrics, and notably improves pass@k in math tasks, demonstrating that explicit diversity optimization catalyzes exploration and can even improve pass@1. The paper includes thorough ablations on key design choices: multiplicative vs. additive reward aggregation, semantic vs. lexical diversity signals, and advantage normalization.\",\n    \"Strengths\": [\n        \"Clear and well-motivated problem formulation: the tension between post-training quality improvements and diversity collapse is well-articulated.\",\n        \"Novel contribution: using a learned semantic classifier as a scalable diversity signal integrated into online RL training is a meaningful advance over lexical-only or inference-time approaches.\",\n        \"Comprehensive experimental validation across multiple model families (Llama, Qwen), sizes (4B to 70B), and task types (non-verifiable and verifiable).\",\n        \"Strong ablations on key design choices (multiplicative vs. additive, semantic vs. lexical, advantage normalization) with clear insights.\",\n        \"Qualitative analysis provides intuitive understanding of the method's benefits, showing concrete differences in output diversity.\",\n        \"Surprising and significant finding: explicitly optimizing for diversity improves pass@1 in math tasks, not just pass@k, suggesting that diversity aids exploration and quality.\",\n        \"The method is simple and practical, using GRPO as a base with a clean reward modification, making it easy to adopt.\",\n        \"Thorough evaluation using multiple benchmarks (AlpacaEval 2.0, ArenaHard, EQ-Bench, NoveltyBench, and four math benchmarks) with appropriate metrics.\"\n    ],\n    \"Weaknesses\": [\n        \"The diversity classifier training details are somewhat brief. The math classifier uses Llama-3.3-70B for annotation, which is itself a proxy for ground truth; more details on annotation quality and potential biases would strengthen the work.\",\n        \"The paper does not deeply explore the interaction between the diversity reward and the KL constraint. Since KL regularization already limits deviation from the reference model, it's unclear how Darling interacts with this constraint.\",\n        \"The EQ-Bench results show a dramatic improvement (905 vs 659 for GRPO at 8B scale), which seems almost too good. Confidence intervals or multiple evaluation runs would increase confidence.\",\n        \"The paper does not compare against state-of-the-art diversity-preserving methods beyond the cited baselines, such as more recent entropy regularization techniques or exploration-based RL methods.\",\n        \"The computational cost of computing pairwise semantic diversity for all rollouts (8 per prompt) is not discussed. The classifier inference overhead could be significant, especially at 70B scale.\",\n        \"The paper does not address potential failure modes where diversity reward could lead to generating off-topic or irrelevant responses that are 'diverse' but not useful, though the multiplicative combination with quality reward partially mitigates this.\",\n        \"The pass@k evaluation for math uses a single run with 256 samples; variance estimates or multiple seeds would strengthen the reliability of the reported improvements.\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 4,\n    \"Clarity\": 4,\n    \"Significance\": 4,\n    \"Questions\": [\n        \"How sensitive is the method to the accuracy of the semantic classifier? Have you tested with classifiers of varying quality or with different model architectures?\",\n        \"What is the computational overhead of the diversity computation in the training loop? How does it scale with more rollouts per prompt, and how does this affect wall-clock training time?\",\n        \"Have you observed any cases where Darling produces diverse but lower-quality responses that are still rewarded due to the multiplicative formulation? If so, how does the method handle this?\",\n        \"How does the method interact with different KL coefficients (β)? Is there a tradeoff between diversity preservation and KL constraint strength, and how should practitioners set these hyperparameters?\",\n        \"For the math classifier, could you provide more details on the annotation process? Specifically, what was the inter-annotator agreement, and were there any systematic biases when using Llama-3.3-70B as the annotator?\",\n        \"The EQ-Bench results show a very large improvement. Can you provide confidence intervals or results from multiple evaluation runs to ensure this is not due to randomness?\",\n        \"Have you considered testing Darling on other verifiable tasks beyond math, such as code generation, to assess its generality?\",\n        \"The paper mentions that 'removing normalization by standard deviation' improves performance. Does this finding hold across different reward models and task types, or is it specific to the dense reward setting you tested?\"\n    ],\n    \"Limitations\": [\n        \"The diversity classifier is trained on a specific distribution of prompts (WildChat for non-verifiable, DeepScaleR for math). Its generalization to other domains or prompt distributions is not tested.\",\n        \"The method's effectiveness depends on the quality of the semantic equivalence classifier. Misclassification could lead to suboptimal diversity rewards, though the ablations suggest robustness.\",\n        \"The paper does not discuss potential negative societal impacts, such as the possibility that encouraging diversity in outputs could lead to more harmful or misleading content if not properly constrained.\",\n        \"The computational cost of the classifier is not analyzed, which could be a practical limitation for large-scale deployments.\",\n        \"The method is evaluated on English-language tasks only; its effectiveness on multilingual or low-resource settings is unknown.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 4,\n    \"Presentation\": 4,\n    \"Contribution\": 4,\n    \"Overall\": 8,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 30487,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 28695,
+        "completion_tokens": 2115,
+        "reasoning_tokens": 0,
+        "total_tokens": 32602
+      },
+      "attempts": 1,
+      "response_id": "9f2841ab-8d81-4c03-a8ff-baee00a06ffc"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper proposes Darling (Diversity-Aware Reinforcement Learning), a framework for LM post-training that jointly optimizes response quality and semantic diversity. Darling uses a learned semantic classifier to partition generated responses into equivalence clusters, then defines a diversity reward per response as the normalized count of semantically distinct responses in the group. This diversity signal is multiplied with the quality reward in a GRPO-style objective, amplifying gradient updates for responses that are both high-quality and diverse. The method is evaluated on non-verifiable tasks (instruction following, creative writing) using Llama-3.1-8B and Llama-3.3-70B, and on verifiable math tasks (competition math) using Qwen3-4B and Qwen3-14B. Results show Darling outperforms quality-only RL baselines (GRPO, DivPO, GRPO-Unlikeliness) on both quality and diversity metrics, with notable pass@1 and pass@k improvements on math benchmarks. Ablations confirm the benefit of semantic over lexical diversity, multiplicative over additive reward fusion, and removing standard deviation normalization for dense noisy rewards.",
+        "Strengths": [
+          "Well-motivated problem: addresses diversity collapse in RL post-training, a significant and timely issue.",
+          "Simple yet effective method: multiplicative fusion of quality and semantic diversity rewards is easy to implement and understand.",
+          "Comprehensive evaluation: covers two regimes (non-verifiable and verifiable), multiple model families/sizes, and multiple benchmarks per regime.",
+          "Strong empirical results: Darling consistently outperforms baselines on both quality and diversity, and improves pass@k in math, demonstrating the value of diversity for exploration.",
+          "Thorough ablations: additive vs. multiplicative fusion, n-gram vs. semantic diversity, and normalization effects are all isolated and analyzed.",
+          "Clear writing and organization, with helpful figures and qualitative examples.",
+          "Addresses reward hacking for lexical diversity, providing insight into why semantic diversity is necessary."
+        ],
+        "Weaknesses": [
+          "The semantic classifier for non-verifiable tasks is largely borrowed from NoveltyBench with only a context length extension; the novelty of the classifier contribution is limited.",
+          "The math classifier is trained using LLM annotations (Llama-3.3-70B-Instruct) without human validation, raising questions about the reliability of the semantic equivalence labels for complex math solutions.",
+          "No statistical significance testing or error bars are reported for the main results, making it difficult to assess the robustness of the improvements.",
+          "The claim that diversity promotes exploration is not deeply analyzed; the mechanism (e.g., interaction with KL constraint, effect on entropy) is not investigated.",
+          "Limited baselines: more recent diversity-promoting RL methods (e.g., entropy-based exploration, SEED-GRPO) are cited but not compared empirically.",
+          "The quality-diversity Pareto analysis (Figure 3) lacks error bars or repeated runs, so the consistency of the Pareto improvement is unclear.",
+          "Potential reward hacking of the semantic classifier itself is not discussed; the classifier's failure modes could limit the method's generalizability."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "1. For the math classifier, what is the human-level agreement on semantic equivalence of math solutions? Could you provide a small human evaluation to validate the LLM annotations?",
+          "2. How sensitive are the results to the number of rollouts per prompt (n=8)? Does a larger n improve the stability or effectiveness of the diversity reward?",
+          "3. The paper shows Darling improves both quality and diversity. Can you provide a deeper analysis of the exploration mechanism? For example, how does the entropy of the policy evolve during training compared to GRPO?",
+          "4. Are there any cases where Darling fails or underperforms GRPO? For instance, on tasks where diversity is not important?",
+          "5. The ablation on normalization shows improvement for dense rewards. For the math setting, normalization had little effect. How do you reconcile this with the pass@1 improvements in math? Is the improvement purely from diversity?",
+          "6. Could you report the variance across multiple training runs (e.g., 3 seeds) for the main benchmarks?",
+          "7. How is the threshold for the binary classifier determined? Is it a fixed probability threshold, and how does its calibration affect the diversity reward?",
+          "8. The paper mentions that the classifier is trained on 1000 annotations. What is the performance on different prompt types (e.g., math vs. creative writing) when transferred across domains?"
+        ],
+        "Limitations": [
+          "The semantic classifier may not generalize to all domains or prompt types, and its accuracy directly impacts the diversity reward.",
+          "The method adds computational overhead for classifier training and inference during RL rollouts, which is not quantified.",
+          "The improvements in creative writing are measured by automated judges (GPT-4o, Claude), which may not fully capture human perception of diversity and quality.",
+          "The paper does not explore the interaction of Darling with other exploration techniques (e.g., entropy regularization, diverse decoding).",
+          "Potential negative societal impact: increased diversity in LLM outputs could amplify generation of harmful or misleading content if quality reward is not robust. The paper does not discuss this."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces Darling, a diversity-aware RL framework for LM post-training. The core idea is to combine quality rewards with a semantic diversity measure based on a learned classifier that partitions responses into equivalence classes. The method multiplies the quality reward by a normalized diversity score, encouraging high-quality and distinct responses.\n\nThe paper has several strengths:\n- The problem is well-motivated: post-training RL often collapses output diversity.\n- The method is simple and practical: it builds on GRPO with a semantic classifier.\n- Strong empirical validation across two regimes (non-verifiable and verifiable tasks), multiple model families/sizes.\n- The ablation studies are thorough (additive vs. multiplicative, n-gram vs. semantic, normalization).\n- The math results show both pass@1 and pass@k improvements, which is compelling.\n\nKey weaknesses:\n- The diversity classifier for non-verifiable tasks is essentially borrowed from NoveltyBench, with only minor extension (context length). The novelty of the classifier contribution is limited.\n- The math classifier is trained using Llama-3.3-70B-Instruct annotations, which may not be a reliable ground truth for semantic equivalence of math solutions. No human validation is mentioned for this classifier.\n- The claim that \"explicitly optimizing for diversity catalyzes exploration\" is interesting but the mechanism is not deeply analyzed. For instance, how does diversity interact with the KL constraint?\n- The quality-diversity Pareto analysis (Figure 3) is presented but lacks statistical significance testing or error bars.\n- The paper does not report run-to-run variance or seed variance, which is important for RL training.\n- The baselines are reasonable but limited: DivPO, GRPO-Unlikeliness. There are other recent diversity-promoting RL methods not compared (e.g., entropy regularization methods).\n- The \"reward hacking\" for n-gram diversity is a good analysis but suggests the semantic classifier is crucial; however, the classifier's own failure modes are not discussed.\n\nOriginality: The idea of using a semantic classifier as a diversity reward in online RL is novel, though it builds heavily on NoveltyBench's classifier. The multiplicative fusion is a simple but effective design choice. The paper differentiates itself from prior work (DivPO, GRPO-Unlikeliness) clearly.\n\nQuality: The experimental design is solid with multiple benchmarks and model sizes. The ablations are informative. However, the lack of statistical significance testing and limited analysis of the classifier's reliability (especially for math) are concerns.\n\nClarity: The paper is well-written and organized. The method is clearly explained. The figures aid understanding. Minor issues: some notation is dense, and the appendix is extensive but necessary.\n\nSignificance: This is a relevant problem with a practical solution. The improvements in both quality and diversity are notable. The approach could be adopted by practitioners. The pass@k improvements in math are particularly valuable.\n\nEthical concerns: None apparent. The work does not raise new ethical issues beyond general LLM training.\n\nOverall, I lean towards acceptance. The paper is technically solid, addresses an important problem, and has good experimental support. The weaknesses are not fatal but should be addressed in the rebuttal (e.g., classifier reliability, statistical significance, discussion of failure modes).\n\nI will assign:\n- Soundness: 3 (good)\n- Presentation: 3 (good)\n- Contribution: 3 (good)\n- Overall: 7 (Accept)\n\nConfidence: 4 (confident)REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper proposes Darling (Diversity-Aware Reinforcement Learning), a framework for LM post-training that jointly optimizes response quality and semantic diversity. Darling uses a learned semantic classifier to partition generated responses into equivalence clusters, then defines a diversity reward per response as the normalized count of semantically distinct responses in the group. This diversity signal is multiplied with the quality reward in a GRPO-style objective, amplifying gradient updates for responses that are both high-quality and diverse. The method is evaluated on non-verifiable tasks (instruction following, creative writing) using Llama-3.1-8B and Llama-3.3-70B, and on verifiable math tasks (competition math) using Qwen3-4B and Qwen3-14B. Results show Darling outperforms quality-only RL baselines (GRPO, DivPO, GRPO-Unlikeliness) on both quality and diversity metrics, with notable pass@1 and pass@k improvements on math benchmarks. Ablations confirm the benefit of semantic over lexical diversity, multiplicative over additive reward fusion, and removing standard deviation normalization for dense noisy rewards.\",\n  \"Strengths\": [\n    \"Well-motivated problem: addresses diversity collapse in RL post-training, a significant and timely issue.\",\n    \"Simple yet effective method: multiplicative fusion of quality and semantic diversity rewards is easy to implement and understand.\",\n    \"Comprehensive evaluation: covers two regimes (non-verifiable and verifiable), multiple model families/sizes, and multiple benchmarks per regime.\",\n    \"Strong empirical results: Darling consistently outperforms baselines on both quality and diversity, and improves pass@k in math, demonstrating the value of diversity for exploration.\",\n    \"Thorough ablations: additive vs. multiplicative fusion, n-gram vs. semantic diversity, and normalization effects are all isolated and analyzed.\",\n    \"Clear writing and organization, with helpful figures and qualitative examples.\",\n    \"Addresses reward hacking for lexical diversity, providing insight into why semantic diversity is necessary.\"\n  ],\n  \"Weaknesses\": [\n    \"The semantic classifier for non-verifiable tasks is largely borrowed from NoveltyBench with only a context length extension; the novelty of the classifier contribution is limited.\",\n    \"The math classifier is trained using LLM annotations (Llama-3.3-70B-Instruct) without human validation, raising questions about the reliability of the semantic equivalence labels for complex math solutions.\",\n    \"No statistical significance testing or error bars are reported for the main results, making it difficult to assess the robustness of the improvements.\",\n    \"The claim that diversity promotes exploration is not deeply analyzed; the mechanism (e.g., interaction with KL constraint, effect on entropy) is not investigated.\",\n    \"Limited baselines: more recent diversity-promoting RL methods (e.g., entropy-based exploration, SEED-GRPO) are cited but not compared empirically.\",\n    \"The quality-diversity Pareto analysis (Figure 3) lacks error bars or repeated runs, so the consistency of the Pareto improvement is unclear.\",\n    \"Potential reward hacking of the semantic classifier itself is not discussed; the classifier's failure modes could limit the method's generalizability.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"1. For the math classifier, what is the human-level agreement on semantic equivalence of math solutions? Could you provide a small human evaluation to validate the LLM annotations?\",\n    \"2. How sensitive are the results to the number of rollouts per prompt (n=8)? Does a larger n improve the stability or effectiveness of the diversity reward?\",\n    \"3. The paper shows Darling improves both quality and diversity. Can you provide a deeper analysis of the exploration mechanism? For example, how does the entropy of the policy evolve during training compared to GRPO?\",\n    \"4. Are there any cases where Darling fails or underperforms GRPO? For instance, on tasks where diversity is not important?\",\n    \"5. The ablation on normalization shows improvement for dense rewards. For the math setting, normalization had little effect. How do you reconcile this with the pass@1 improvements in math? Is the improvement purely from diversity?\",\n    \"6. Could you report the variance across multiple training runs (e.g., 3 seeds) for the main benchmarks?\",\n    \"7. How is the threshold for the binary classifier determined? Is it a fixed probability threshold, and how does its calibration affect the diversity reward?\",\n    \"8. The paper mentions that the classifier is trained on 1000 annotations. What is the performance on different prompt types (e.g., math vs. creative writing) when transferred across domains?\"\n  ],\n  \"Limitations\": [\n    \"The semantic classifier may not generalize to all domains or prompt types, and its accuracy directly impacts the diversity reward.\",\n    \"The method adds computational overhead for classifier training and inference during RL rollouts, which is not quantified.\",\n    \"The improvements in creative writing are measured by automated judges (GPT-4o, Claude), which may not fully capture human perception of diversity and quality.\",\n    \"The paper does not explore the interaction of Darling with other exploration techniques (e.g., entropy regularization, diverse decoding).\",\n    \"Potential negative societal impact: increased diversity in LLM outputs could amplify generation of harmful or misleading content if quality reward is not robust. The paper does not discuss this.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 30487,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 28695,
+        "completion_tokens": 1897,
+        "reasoning_tokens": 0,
+        "total_tokens": 32384
+      },
+      "attempts": 1,
+      "response_id": "7d9243f1-ce39-4a10-a6d9-d459bc4102e7"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper introduces Darling (Diversity-Aware Reinforcement Learning), a framework that jointly optimizes for response quality and semantic diversity in LLM post-training. The method uses a learned semantic classifier to partition sampled responses into equivalence classes, and then multiplies the quality reward by a normalized diversity score during GRPO training. This multiplicative reward amplification encourages the policy to favor responses that are both high-quality and semantically distinct. The paper validates Darling on non-verifiable tasks (instruction following with WildChat, creative writing with EQ-Bench) and verifiable tasks (competition math on AIME25, HMMT, OlympiadBench, Brumo), across multiple model families (Llama-3.1-8B, Llama-3.3-70B, Qwen3-4B, Qwen3-14B). Results show Darling simultaneously improves quality metrics (win rates, pass@1) and diversity metrics (NoveltyBench distinct counts, pass@k) compared to GRPO and other baselines. The paper also includes ablations on reward aggregation (multiplicative vs additive), diversity measurement (semantic classifier vs n-gram), and advantage normalization.",
+        "Strengths": [
+          "Addresses an important and timely problem: diversity collapse in post-trained LLMs, which is increasingly recognized as a critical limitation",
+          "Elegant and simple method: multiplicative combination of quality and diversity rewards is conceptually clean and easy to implement on top of GRPO",
+          "Comprehensive experimental validation across multiple model families (Llama, Qwen), sizes (4B to 70B), and task types (non-verifiable and verifiable)",
+          "Strong ablation studies that isolate design choices: multiplicative vs additive aggregation, semantic vs lexical diversity, and the effect of advantage normalization",
+          "The semantic classifier approach is well-motivated and shows clear advantages over lexical diversity metrics, particularly in avoiding reward hacking",
+          "Qualitative analysis and examples provide intuitive understanding of the method's behavior",
+          "The method shows consistent improvements in both quality and diversity, suggesting it pushes the Pareto frontier rather than trading off one for the other"
+        ],
+        "Weaknesses": [
+          "The gains in verifiable tasks (pass@1) are modest (+3.51% for 4B, +1.9% for 14B), and the paper doesn't deeply analyze the mechanism by which diversity improves solution quality",
+          "The paper lacks comparison with some recent diversity-promoting RL methods (e.g., SEED-GRPO, entropy-based exploration methods), which limits the assessment of relative novelty",
+          "The diversity classifier for math is trained using Llama-3.3-70B annotations rather than human annotations, which raises questions about annotation quality and potential biases",
+          "The claim that diversity 'catalyzes exploration' is inferred from results rather than directly measured (e.g., no analysis of rollout diversity during training)",
+          "The NoveltyBench diversity metric may not fully capture semantic diversity in specialized domains like math, where solution traces are more structured",
+          "The paper doesn't provide a thorough analysis of the computational overhead of the semantic classifier during training, which could be a practical concern",
+          "The normalization ablation is theoretically motivated but the empirical results are somewhat mixed across settings (non-verifiable vs verifiable), and the explanation could be more rigorous"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "Could you provide more detail on the mechanism by which diversity improves pass@1 in math? Is it primarily through better exploration of solution strategies, or are there other factors?",
+          "How does the performance of Darling compare to recent entropy-based exploration methods (e.g., SEED-GRPO, entropy regularization approaches)? Have you considered these as baselines?",
+          "What is the computational overhead of running the semantic classifier during training? Does it significantly slow down the RL loop compared to standard GRPO?",
+          "For the math classifier, how did you validate the Llama-3.3-70B annotations? Were there any cases where the annotations were inconsistent or incorrect?",
+          "The paper mentions 'token-level averaging' as a modification. Could you clarify the exact difference from standard GRPO and whether this interacts with the diversity reward?",
+          "Have you considered measuring diversity during training (e.g., rollout entropy) to directly support the claim that Darling 'catalyzes exploration'?",
+          "How sensitive is Darling to the choice of the number of rollouts per prompt (n=8)? Would more rollouts improve the diversity signal?",
+          "The paper uses a fixed temperature of 1.0 during training. How does Darling perform at lower temperatures, where diversity might be more constrained?"
+        ],
+        "Limitations": [
+          "The diversity classifier is trained on a specific distribution (WildChat for non-verifiable, DeepScaleR for math) and may not generalize to other domains or prompt types without retraining",
+          "The paper doesn't address potential negative societal impacts of increasing diversity, such as generating more varied but potentially harmful or misleading content",
+          "The evaluation relies heavily on LLM-as-a-judge metrics, which have known biases and limitations",
+          "The paper doesn't discuss the interaction between Darling and inference-time diversity techniques (e.g., temperature scaling, diverse decoding), though it claims orthogonality",
+          "The study is limited to English-language tasks and a few model families; broader generalization is not assessed"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces Darling, a diversity-aware reinforcement learning framework that jointly optimizes for response quality and semantic diversity. The method uses a learned classifier to partition responses into semantic equivalence classes, then multiplies the quality reward by a normalized diversity score during GRPO training. The paper evaluates on both non-verifiable tasks (instruction following, creative writing) and verifiable tasks (competition math), showing improvements in both quality and diversity metrics.\n\nStrengths:\n- The paper addresses an important and timely problem: diversity collapse in post-trained LMs\n- The method is elegant and simple: combining diversity with quality rewards multiplicatively\n- Strong experimental validation across multiple model families/sizes and task types\n- Good ablation studies (additive vs multiplicative, n-gram vs semantic diversity, normalization)\n- The qualitative analysis and examples are helpful\n- The method shows consistent improvements over baselines\n\nWeaknesses:\n- The diversity classifier training details are somewhat sparse (especially for math, which uses Llama-3.3-70B for annotations instead of human annotators)\n- The improvement in pass@1 for math is modest (+3.51% for 4B, +1.9% for 14B), and the paper doesn't deeply analyze why diversity helps quality in verifiable tasks\n- The paper doesn't compare against some recent diversity-promoting RL methods (e.g., entropy-based methods, SEED-GRPO)\n- The evaluation on non-verifiable tasks uses reward models that might have biases; the diversity metric (NoveltyBench) is also somewhat narrow\n- The paper claims \"semantic diversity\" but the classifier is trained on a specific distribution (WildChat prompts), and generalization to other domains is not thoroughly tested\n- The ablation on normalization is interesting but the theoretical justification is somewhat hand-wavy\n\nOriginality: The idea of using a learned semantic classifier for diversity measurement in RL is novel. The multiplicative combination of quality and diversity rewards is a clean contribution. However, the overall approach builds on existing work (GRPO, NoveltyBench's classifier).\n\nQuality: The experiments are generally well-designed, with multiple benchmarks and model scales. The ablations are thoughtful. However, some claims (e.g., \"catalyzes exploration\") are not directly measured but inferred from results.\n\nClarity: The paper is well-written and organized. The method is clearly explained with good figures. Some details (e.g., classifier training specifics) are in the appendix as expected.\n\nSignificance: The problem of diversity collapse is important and timely. The method is simple, general, and shows consistent improvements. This could be useful for practitioners working on creative tasks and reasoning tasks.\n\nOverall, I think this is a solid paper with a clear contribution. The main concerns are the modest gains in verifiable tasks and the lack of comparison with some recent diversity-promoting methods. I'd lean towards acceptance.\n\nRatings:\n- Originality: 3 (high)\n- Quality: 3 (good)\n- Clarity: 4 (excellent)\n- Significance: 3 (high)\n- Soundness: 3 (good)\n- Presentation: 4 (excellent)\n- Contribution: 3 (good)\n- Overall: 7 (Accept)\n\nConfidence: 4 (confident)\nDecision: AcceptREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper introduces Darling (Diversity-Aware Reinforcement Learning), a framework that jointly optimizes for response quality and semantic diversity in LLM post-training. The method uses a learned semantic classifier to partition sampled responses into equivalence classes, and then multiplies the quality reward by a normalized diversity score during GRPO training. This multiplicative reward amplification encourages the policy to favor responses that are both high-quality and semantically distinct. The paper validates Darling on non-verifiable tasks (instruction following with WildChat, creative writing with EQ-Bench) and verifiable tasks (competition math on AIME25, HMMT, OlympiadBench, Brumo), across multiple model families (Llama-3.1-8B, Llama-3.3-70B, Qwen3-4B, Qwen3-14B). Results show Darling simultaneously improves quality metrics (win rates, pass@1) and diversity metrics (NoveltyBench distinct counts, pass@k) compared to GRPO and other baselines. The paper also includes ablations on reward aggregation (multiplicative vs additive), diversity measurement (semantic classifier vs n-gram), and advantage normalization.\",\n  \"Strengths\": [\n    \"Addresses an important and timely problem: diversity collapse in post-trained LLMs, which is increasingly recognized as a critical limitation\",\n    \"Elegant and simple method: multiplicative combination of quality and diversity rewards is conceptually clean and easy to implement on top of GRPO\",\n    \"Comprehensive experimental validation across multiple model families (Llama, Qwen), sizes (4B to 70B), and task types (non-verifiable and verifiable)\",\n    \"Strong ablation studies that isolate design choices: multiplicative vs additive aggregation, semantic vs lexical diversity, and the effect of advantage normalization\",\n    \"The semantic classifier approach is well-motivated and shows clear advantages over lexical diversity metrics, particularly in avoiding reward hacking\",\n    \"Qualitative analysis and examples provide intuitive understanding of the method's behavior\",\n    \"The method shows consistent improvements in both quality and diversity, suggesting it pushes the Pareto frontier rather than trading off one for the other\"\n  ],\n  \"Weaknesses\": [\n    \"The gains in verifiable tasks (pass@1) are modest (+3.51% for 4B, +1.9% for 14B), and the paper doesn't deeply analyze the mechanism by which diversity improves solution quality\",\n    \"The paper lacks comparison with some recent diversity-promoting RL methods (e.g., SEED-GRPO, entropy-based exploration methods), which limits the assessment of relative novelty\",\n    \"The diversity classifier for math is trained using Llama-3.3-70B annotations rather than human annotations, which raises questions about annotation quality and potential biases\",\n    \"The claim that diversity 'catalyzes exploration' is inferred from results rather than directly measured (e.g., no analysis of rollout diversity during training)\",\n    \"The NoveltyBench diversity metric may not fully capture semantic diversity in specialized domains like math, where solution traces are more structured\",\n    \"The paper doesn't provide a thorough analysis of the computational overhead of the semantic classifier during training, which could be a practical concern\",\n    \"The normalization ablation is theoretically motivated but the empirical results are somewhat mixed across settings (non-verifiable vs verifiable), and the explanation could be more rigorous\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 4,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"Could you provide more detail on the mechanism by which diversity improves pass@1 in math? Is it primarily through better exploration of solution strategies, or are there other factors?\",\n    \"How does the performance of Darling compare to recent entropy-based exploration methods (e.g., SEED-GRPO, entropy regularization approaches)? Have you considered these as baselines?\",\n    \"What is the computational overhead of running the semantic classifier during training? Does it significantly slow down the RL loop compared to standard GRPO?\",\n    \"For the math classifier, how did you validate the Llama-3.3-70B annotations? Were there any cases where the annotations were inconsistent or incorrect?\",\n    \"The paper mentions 'token-level averaging' as a modification. Could you clarify the exact difference from standard GRPO and whether this interacts with the diversity reward?\",\n    \"Have you considered measuring diversity during training (e.g., rollout entropy) to directly support the claim that Darling 'catalyzes exploration'?\",\n    \"How sensitive is Darling to the choice of the number of rollouts per prompt (n=8)? Would more rollouts improve the diversity signal?\",\n    \"The paper uses a fixed temperature of 1.0 during training. How does Darling perform at lower temperatures, where diversity might be more constrained?\"\n  ],\n  \"Limitations\": [\n    \"The diversity classifier is trained on a specific distribution (WildChat for non-verifiable, DeepScaleR for math) and may not generalize to other domains or prompt types without retraining\",\n    \"The paper doesn't address potential negative societal impacts of increasing diversity, such as generating more varied but potentially harmful or misleading content\",\n    \"The evaluation relies heavily on LLM-as-a-judge metrics, which have known biases and limitations\",\n    \"The paper doesn't discuss the interaction between Darling and inference-time diversity techniques (e.g., temperature scaling, diverse decoding), though it claims orthogonality\",\n    \"The study is limited to English-language tasks and a few model families; broader generalization is not assessed\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 4,\n  \"Contribution\": 3,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 30487,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 28695,
+        "completion_tokens": 1894,
+        "reasoning_tokens": 0,
+        "total_tokens": 32381
+      },
+      "attempts": 1,
+      "response_id": "0189dc5c-a2ed-45cd-8775-b1ce3b0e755f"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "This paper introduces Darling (Diversity-Aware Reinforcement Learning), a framework that jointly optimizes for response quality and semantic diversity during LLM post-training. The method uses a learned semantic classifier to partition generated responses into equivalence classes, then combines a diversity score based on this partitioning with a quality reward through multiplicative aggregation in a GRPO-style online RL objective. The paper demonstrates that Darling outperforms quality-only RL baselines (GRPO, DivPO, GRPO-Unlikeliness) on both non-verifiable tasks (instruction following, creative writing) and verifiable tasks (competition math), achieving simultaneously higher quality and diversity. Notably, explicitly optimizing for diversity appears to catalyze exploration, leading to quality improvements. The paper includes ablations showing the benefits of multiplicative vs additive reward aggregation, semantic vs lexical diversity signals, and removal of standard deviation normalization in advantage computation.",
+        "Strengths": [
+          "Clear and well-motivated problem formulation addressing diversity collapse during LM post-training",
+          "Novel approach of using a learned semantic classifier as a scalable diversity signal integrated into online RL training",
+          "Comprehensive experimental evaluation across multiple model families and sizes (Llama-3.1-8B, Llama-3.3-70B, Qwen3-4B, Qwen3-14B) and both non-verifiable and verifiable tasks",
+          "Strong empirical results showing simultaneous improvements in both quality and diversity, with Darling outperforming all baselines",
+          "Good ablation studies covering reward aggregation methods, diversity metrics (semantic vs lexical), and advantage normalization",
+          "Addresses potential reward hacking issues with n-gram diversity and provides qualitative analysis of model outputs",
+          "Demonstrates generalization to competition math with improved pass@1 and pass@k metrics"
+        ],
+        "Weaknesses": [
+          "The diversity classifier for math tasks is trained using Llama-3.3-70B annotations, which may introduce bias and the accuracy is only reported on a small held-out set (200 examples)",
+          "Limited analysis of the diversity classifier's failure cases or sensitivity to its accuracy during training",
+          "Comparison with more recent diversity-promoting RL methods (e.g., entropy-based approaches, SEED-GRPO) is somewhat limited",
+          "Some competition math benchmarks are quite small (30 examples for AIME, Brumo, HMMT), which may limit statistical significance of results",
+          "Computational overhead of running the semantic classifier during training is not discussed",
+          "The claim that diversity optimization 'catalyzes exploration' could benefit from more detailed analysis of training dynamics or intermediate checkpoints",
+          "The paper doesn't explore the effect of different numbers of rollouts per prompt (n) on the diversity-quality tradeoff"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "How does the accuracy of the diversity classifier affect the final training performance? Is there a sensitivity analysis or ablation on classifier quality?",
+          "What is the computational overhead of running the semantic classifier during training? Does it significantly slow down the RL loop?",
+          "Could the improvements in the non-verifiable setting be partially attributed to the removal of standard deviation normalization rather than the diversity reward itself? The ablation in Table 5 shows GRPO (w/o norm) already improves over GRPO.",
+          "How sensitive is Darling to the choice of quality reward model? Would results hold with different reward models?",
+          "Have you experimented with different numbers of rollouts per prompt (n)? Does the diversity signal become more or less effective with larger n?",
+          "How does Darling compare to methods that use entropy regularization or other exploration-promoting techniques in the math setting?",
+          "Could you provide more analysis on the training dynamics - e.g., how does the diversity metric evolve during training compared to GRPO?"
+        ],
+        "Limitations": [
+          "The diversity classifier is trained on specific domains (WildChat for non-verifiable, DeepScaleR for math) and may not generalize to other domains without retraining",
+          "The paper focuses on English text and specific model families; generalization to other languages or model architectures is not explored",
+          "Potential computational costs of the semantic classifier during training are not quantified",
+          "The math benchmarks used are relatively small, and the classifier for math is trained with a limited number of annotated examples",
+          "The paper doesn't deeply explore potential negative societal impacts, such as whether diversity optimization could amplify harmful or biased content generation",
+          "The approach assumes that semantic equivalence can be reliably determined by a classifier, which may fail for nuanced or creative outputs"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces Darling, a framework for diversity-aware reinforcement learning that combines quality and semantic diversity rewards during post-training of LLMs. The core idea is to use a learned semantic classifier to partition responses into equivalence classes and then multiply the quality reward by a normalized diversity score. The paper demonstrates results on both non-verifiable tasks (instruction following, creative writing) and verifiable tasks (competition math).\n\nStrengths:\n1. Clear problem formulation - diversity collapse in post-training is well-motivated\n2. Novel combination of semantic diversity measurement with RL training\n3. Comprehensive experiments across multiple model sizes (8B, 70B for non-verifiable; 4B, 14B for math) and task types\n4. Good ablations (multiplicative vs additive, n-gram vs semantic diversity, normalization)\n5. Strong empirical results showing improvements in both quality and diversity\n6. Addresses reward hacking issues with n-gram diversity\n\nWeaknesses:\n1. The diversity classifier training details for math tasks are somewhat limited - using Llama-3.3-70B for annotation might introduce bias\n2. The paper doesn't deeply analyze failure cases or limitations of the semantic classifier\n3. Limited comparison with more recent diversity-promoting RL methods\n4. The math experiments use relatively small benchmarks (30 examples for some)\n5. The paper doesn't discuss computational overhead of the diversity classifier during training\n6. Some claims about \"catalyzing exploration\" could benefit from more analysis of training dynamics\n\nOriginality: The approach of using a learned semantic classifier for diversity measurement in RL is novel. While similar ideas exist (DivPO, GRPO-Unlikeliness), the multiplicative combination and the semantic-level diversity signal are distinct contributions.\n\nQuality: The experimental methodology is solid with appropriate baselines and ablations. However, some aspects like the classifier quality for math tasks could be better validated.\n\nClarity: The paper is well-written and organized. The figures and examples help illustrate the concepts effectively.\n\nSignificance: This addresses an important problem in LLM post-training and shows promising results. The framework could be useful for practitioners working on creative tasks or exploration in RL.\n\nOverall assessment: This is a solid paper with good empirical evidence. The main contributions are the semantic diversity signal integration into RL and the demonstration that diversity optimization can improve quality. I would rate this as a strong accept with some reservations about the depth of analysis in certain areas.\n\nQuestions for authors:\n1. How does the diversity classifier's accuracy affect training performance? Any sensitivity analysis?\n2. What is the computational overhead of running the semantic classifier during training?\n3. How does Darling perform with different numbers of rollouts per prompt (n)?\n4. Could the improvements be partially attributed to the removal of normalization rather than the diversity reward itself?\n5. How sensitive is the method to the quality reward model choice?\n\nLimitations:\n- The diversity classifier may not generalize well to all domains\n- The paper focuses on English text and specific model families\n- Potential computational costs of the classifier during training\n- The math benchmarks are relatively small\n\nEthical concerns: No significant ethical issues identified. The work doesn't involve human subjects or sensitive data.\n\nSoundness: 3 (good) - Experiments are well-designed but some analyses could be deeper\nPresentation: 4 (excellent) - Clear writing, good organization, helpful figures\nContribution: 3 (good) - Novel approach with demonstrated utility\nOverall: 7 (Accept) - Technically solid with good impact on the sub-area\n\nConfidence: 4 - I'm confident in my assessment based on careful reading of the paper.REVIEW JSON:\n```json\n{\n\"Summary\": \"This paper introduces Darling (Diversity-Aware Reinforcement Learning), a framework that jointly optimizes for response quality and semantic diversity during LLM post-training. The method uses a learned semantic classifier to partition generated responses into equivalence classes, then combines a diversity score based on this partitioning with a quality reward through multiplicative aggregation in a GRPO-style online RL objective. The paper demonstrates that Darling outperforms quality-only RL baselines (GRPO, DivPO, GRPO-Unlikeliness) on both non-verifiable tasks (instruction following, creative writing) and verifiable tasks (competition math), achieving simultaneously higher quality and diversity. Notably, explicitly optimizing for diversity appears to catalyze exploration, leading to quality improvements. The paper includes ablations showing the benefits of multiplicative vs additive reward aggregation, semantic vs lexical diversity signals, and removal of standard deviation normalization in advantage computation.\",\n\"Strengths\": [\n\"Clear and well-motivated problem formulation addressing diversity collapse during LM post-training\",\n\"Novel approach of using a learned semantic classifier as a scalable diversity signal integrated into online RL training\",\n\"Comprehensive experimental evaluation across multiple model families and sizes (Llama-3.1-8B, Llama-3.3-70B, Qwen3-4B, Qwen3-14B) and both non-verifiable and verifiable tasks\",\n\"Strong empirical results showing simultaneous improvements in both quality and diversity, with Darling outperforming all baselines\",\n\"Good ablation studies covering reward aggregation methods, diversity metrics (semantic vs lexical), and advantage normalization\",\n\"Addresses potential reward hacking issues with n-gram diversity and provides qualitative analysis of model outputs\",\n\"Demonstrates generalization to competition math with improved pass@1 and pass@k metrics\"\n],\n\"Weaknesses\": [\n\"The diversity classifier for math tasks is trained using Llama-3.3-70B annotations, which may introduce bias and the accuracy is only reported on a small held-out set (200 examples)\",\n\"Limited analysis of the diversity classifier's failure cases or sensitivity to its accuracy during training\",\n\"Comparison with more recent diversity-promoting RL methods (e.g., entropy-based approaches, SEED-GRPO) is somewhat limited\",\n\"Some competition math benchmarks are quite small (30 examples for AIME, Brumo, HMMT), which may limit statistical significance of results\",\n\"Computational overhead of running the semantic classifier during training is not discussed\",\n\"The claim that diversity optimization 'catalyzes exploration' could benefit from more detailed analysis of training dynamics or intermediate checkpoints\",\n\"The paper doesn't explore the effect of different numbers of rollouts per prompt (n) on the diversity-quality tradeoff\"\n],\n\"Originality\": 4,\n\"Quality\": 3,\n\"Clarity\": 4,\n\"Significance\": 3,\n\"Questions\": [\n\"How does the accuracy of the diversity classifier affect the final training performance? Is there a sensitivity analysis or ablation on classifier quality?\",\n\"What is the computational overhead of running the semantic classifier during training? Does it significantly slow down the RL loop?\",\n\"Could the improvements in the non-verifiable setting be partially attributed to the removal of standard deviation normalization rather than the diversity reward itself? The ablation in Table 5 shows GRPO (w/o norm) already improves over GRPO.\",\n\"How sensitive is Darling to the choice of quality reward model? Would results hold with different reward models?\",\n\"Have you experimented with different numbers of rollouts per prompt (n)? Does the diversity signal become more or less effective with larger n?\",\n\"How does Darling compare to methods that use entropy regularization or other exploration-promoting techniques in the math setting?\",\n\"Could you provide more analysis on the training dynamics - e.g., how does the diversity metric evolve during training compared to GRPO?\"\n],\n\"Limitations\": [\n\"The diversity classifier is trained on specific domains (WildChat for non-verifiable, DeepScaleR for math) and may not generalize to other domains without retraining\",\n\"The paper focuses on English text and specific model families; generalization to other languages or model architectures is not explored\",\n\"Potential computational costs of the semantic classifier during training are not quantified\",\n\"The math benchmarks used are relatively small, and the classifier for math is trained with a limited number of annotated examples\",\n\"The paper doesn't deeply explore potential negative societal impacts, such as whether diversity optimization could amplify harmful or biased content generation\",\n\"The approach assumes that semantic equivalence can be reliably determined by a classifier, which may fail for nuanced or creative outputs\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 4,\n\"Contribution\": 3,\n\"Overall\": 7,\n\"Confidence\": 4,\n\"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 30487,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 28695,
+        "completion_tokens": 1724,
+        "reasoning_tokens": 0,
+        "total_tokens": 32211
+      },
+      "attempts": 1,
+      "response_id": "f02f482b-3873-4abe-b181-dd2d080e1a71"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper introduces Darling (Diversity-Aware Reinforcement Learning), a framework for post-training LLMs that jointly optimizes response quality and semantic diversity. The method uses a learned semantic equivalence classifier to partition generated responses into clusters, then computes a diversity score for each response based on how semantically distinct it is from others in the group. This diversity score is multiplied with the quality reward to form a combined reward, which is used in a GRPO-style online RL objective. Experiments on non-verifiable tasks (instruction following, creative writing) with Llama-3.1-8B and 3.3-70B show Darling achieves better quality (AlpacaEval, ArenaHard, EQ-Bench) and diversity (NoveltyBench) than GRPO, DivPO, and GRPO-Unlikeliness. On verifiable math tasks (AIME25, HMMT, OlympiadBench, Brumo) with Qwen3-4B and 14B, Darling improves both pass@1 and pass@k over GRPO. Ablations show multiplicative reward fusion is better than additive, semantic diversity outperforms n-gram diversity, and removing standard deviation normalization in GRPO helps with dense rewards.",
+        "Strengths": [
+          "The paper addresses an important and timely problem: diversity collapse during LLM post-training, which has significant implications for creative and exploratory applications.",
+          "The proposed method is novel in its use of a learned semantic equivalence classifier to measure diversity at the semantic level, going beyond surface-level lexical metrics, and integrating this into online RL training.",
+          "The experimental validation is thorough, covering multiple model families and sizes (Llama-3.1-8B, Llama-3.3-70B, Qwen3-4B, Qwen3-14B) and two distinct task regimes (non-verifiable and verifiable), with consistent improvements over strong baselines.",
+          "The ablations are well-designed and informative, particularly the comparison of multiplicative vs additive reward fusion, semantic vs n-gram diversity, and the analysis of GRPO normalization, which provides useful insights for the community.",
+          "The paper demonstrates that explicitly optimizing for diversity also improves quality, challenging the common assumption of a strict quality-diversity tradeoff, and provides qualitative examples to support this claim.",
+          "The writing is clear and well-organized, with helpful figures and examples that illustrate the method and its effects."
+        ],
+        "Weaknesses": [
+          "The normalization function Norm(Div) in Equation 5 is not explicitly defined. It is unclear whether min-max normalization, mean-std, or another method is used, which is important for reproducibility.",
+          "The semantic classifier for non-verifiable tasks is borrowed from NoveltyBench with only 78% accuracy on a held-out set. The authors do not discuss how classification errors might affect training stability or final performance.",
+          "For the math classifier, annotations are generated by Llama-3.3-70B rather than humans, and the agreement between this LLM annotation and human judgment is not validated, which raises concerns about the reliability of the diversity signal in this setting.",
+          "The comparison to DivPO is limited to the non-verifiable setting and does not include math tasks, where the diversity definition and optimization dynamics may differ significantly.",
+          "The paper does not report the computational overhead of running the semantic classifier during RL training, which could be a practical concern for scaling to larger models or group sizes.",
+          "The Pareto front plots (Figure 3) only compare GRPO and Darling, omitting other baselines like DivPO and GRPO-Unlikeliness, which would have provided a more complete picture of the quality-diversity tradeoff.",
+          "The claim that diversity optimization 'catalyzes exploration' and leads to higher quality is somewhat speculative; the paper could benefit from a deeper analysis of the training dynamics, such as entropy or diversity metrics over training steps."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "How is Norm(Div) in Equation 5 exactly computed? Please specify the normalization method (e.g., min-max, mean-std) and its bounds.",
+          "For the math equivalence classifier, what is the agreement between Llama-3.3-70B annotations and human judgment? Have you validated the classifier on human-annotated math solution pairs?",
+          "What is the computational overhead of the semantic classifier during RL training? How does it scale with the number of rollouts per prompt and the response length?",
+          "In Figure 3, why are only GRPO and Darling shown in the Pareto front plots? Including DivPO and GRPO-Unlikeliness would strengthen the comparison.",
+          "How sensitive is Darling to the number of rollouts per prompt (n)? Would the diversity signal become more stable or effective with larger n?",
+          "For the math experiments, what is the semantic diversity of the generated solutions? Are the improvements in pass@k driven by semantically diverse solution strategies or just lexical variations?",
+          "Have you analyzed the training curves (e.g., diversity and quality metrics over steps) to better understand how diversity optimization affects exploration and convergence?"
+        ],
+        "Limitations": [
+          "The reliance on a learned semantic classifier introduces potential noise and domain-specific training requirements; the classifier must be retrained for each new domain, which may limit scalability and generalizability.",
+          "The method's effectiveness depends on the quality of the diversity signal; if the classifier is inaccurate, it may incorrectly reward or penalize responses, potentially leading to suboptimal training.",
+          "The paper does not explore the interaction of Darling with inference-time diversity techniques (e.g., diverse beam search, prompt conditioning), which could provide additional gains or insights.",
+          "The potential for reward hacking of the diversity signal is not thoroughly analyzed. While n-gram reward hacking is shown, the semantic classifier could also be exploited (e.g., generating off-topic but semantically unique responses), and this risk is not discussed.",
+          "The paper does not evaluate the method on a broader range of tasks (e.g., code generation, dialogue), which would strengthen the claims of generalizability.",
+          "Potential negative societal impact: Increasing diversity in LLM outputs could lead to more unpredictable or potentially harmful content in safety-critical applications. The paper does not discuss this aspect."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 4,
+        "Overall": 8,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThe paper proposes Darling, a diversity-aware RL framework for post-training LLMs that jointly optimizes quality and semantic diversity. The key idea is to use a learned semantic equivalence classifier to partition responses into clusters, then multiply the quality reward by a normalized diversity score to amplify gradients for high-quality, diverse responses. Experiments cover non-verifiable tasks (instruction following, creative writing) and verifiable tasks (competition math), showing improvements over GRPO and other baselines.\n\nStrengths:\n- Clear problem motivation: post-training causes diversity collapse, which is an important issue\n- Novel combination: using semantic classifier for diversity measurement integrated into online RL\n- Solid experimental validation across multiple model sizes and task types\n- Good ablations (multiplicative vs additive, n-gram vs semantic, normalization)\n- Addresses both quality and diversity simultaneously, showing Pareto improvements\n\nWeaknesses:\n- The diversity reward is defined per-response within a group, but the normalization (Norm) is not clearly specified (how is it normalized? min-max? mean-std?)\n- The semantic classifier for non-verifiable tasks is borrowed from NoveltyBench with only 78% accuracy; this could introduce noise\n- For math tasks, the classifier is trained with Llama-3.3-70B annotations (not human), which may be biased\n- The comparison to DivPO is limited (only one benchmark set, no math)\n- The paper doesn't discuss computational overhead of the classifier during training\n- The quality-diversity tradeoff plots are nice but only show two methods (GRPO and Darling), not all baselines\n- Some claims about \"exploration catalyzing quality\" are somewhat speculative without deeper analysis\n\nOriginality: Medium-high. The idea of using semantic diversity in RL is novel, though related to DivPO and other diversity-promoting methods. The multiplicative reward fusion is simple but effective.\n\nQuality: Good. Experiments are thorough with multiple benchmarks and model sizes. Ablations are informative. However, some details are missing (normalization specifics, classifier training details for math).\n\nClarity: Good. The paper is well-structured and readable. Figures are helpful.\n\nSignificance: High. Addresses an important problem (diversity collapse) with a practical solution that shows consistent improvements. The approach could be widely adopted.\n\nQuestions:\n1. How exactly is Norm(Div) computed? Min-max normalization? What are the bounds?\n2. For the math classifier, what is the agreement between Llama-3.3-70B annotations and human judgment? Have you validated this?\n3. What is the computational overhead of running the classifier during RL training? How does it scale with group size?\n4. In the Pareto front plots, why are only GRPO and Darling shown? What about DivPO and GRPO-Unlikeliness?\n5. How sensitive is the method to the number of rollouts per prompt? Would diversity signals be more stable with more rollouts?\n6. For the math experiments, what is the diversity of the generated solutions? Are they semantically diverse or just lexically different?\n\nLimitations:\n- The classifier accuracy (78% for non-verifiable, 89% for math) could limit effectiveness; errors in classification may misguide training\n- The method requires training a separate classifier for each domain, which may limit scalability\n- The paper doesn't explore the interaction of Darling with inference-time diversity methods\n- Potential reward hacking of the diversity signal is not thoroughly analyzed (though n-gram hacking is shown)\n- The diversity reward could potentially encourage lower-quality but \"unique\" responses if the quality reward is noisy\n\nEthical concerns: None apparent.\n\nOverall assessment: The paper is technically solid with good experimental validation. The core idea is novel and practically useful. The main weaknesses are some missing implementation details and limited comparison to some baselines. I would rate this as a strong accept (8).\n\nDecision: Accept\n\nConfidence: I am fairly confident but not absolutely certain about all details. Rating: 4.REVIEW JSON:\n```json\n{\n\"Summary\": \"The paper introduces Darling (Diversity-Aware Reinforcement Learning), a framework for post-training LLMs that jointly optimizes response quality and semantic diversity. The method uses a learned semantic equivalence classifier to partition generated responses into clusters, then computes a diversity score for each response based on how semantically distinct it is from others in the group. This diversity score is multiplied with the quality reward to form a combined reward, which is used in a GRPO-style online RL objective. Experiments on non-verifiable tasks (instruction following, creative writing) with Llama-3.1-8B and 3.3-70B show Darling achieves better quality (AlpacaEval, ArenaHard, EQ-Bench) and diversity (NoveltyBench) than GRPO, DivPO, and GRPO-Unlikeliness. On verifiable math tasks (AIME25, HMMT, OlympiadBench, Brumo) with Qwen3-4B and 14B, Darling improves both pass@1 and pass@k over GRPO. Ablations show multiplicative reward fusion is better than additive, semantic diversity outperforms n-gram diversity, and removing standard deviation normalization in GRPO helps with dense rewards.\",\n\"Strengths\": [\n\"The paper addresses an important and timely problem: diversity collapse during LLM post-training, which has significant implications for creative and exploratory applications.\",\n\"The proposed method is novel in its use of a learned semantic equivalence classifier to measure diversity at the semantic level, going beyond surface-level lexical metrics, and integrating this into online RL training.\",\n\"The experimental validation is thorough, covering multiple model families and sizes (Llama-3.1-8B, Llama-3.3-70B, Qwen3-4B, Qwen3-14B) and two distinct task regimes (non-verifiable and verifiable), with consistent improvements over strong baselines.\",\n\"The ablations are well-designed and informative, particularly the comparison of multiplicative vs additive reward fusion, semantic vs n-gram diversity, and the analysis of GRPO normalization, which provides useful insights for the community.\",\n\"The paper demonstrates that explicitly optimizing for diversity also improves quality, challenging the common assumption of a strict quality-diversity tradeoff, and provides qualitative examples to support this claim.\",\n\"The writing is clear and well-organized, with helpful figures and examples that illustrate the method and its effects.\"\n],\n\"Weaknesses\": [\n\"The normalization function Norm(Div) in Equation 5 is not explicitly defined. It is unclear whether min-max normalization, mean-std, or another method is used, which is important for reproducibility.\",\n\"The semantic classifier for non-verifiable tasks is borrowed from NoveltyBench with only 78% accuracy on a held-out set. The authors do not discuss how classification errors might affect training stability or final performance.\",\n\"For the math classifier, annotations are generated by Llama-3.3-70B rather than humans, and the agreement between this LLM annotation and human judgment is not validated, which raises concerns about the reliability of the diversity signal in this setting.\",\n\"The comparison to DivPO is limited to the non-verifiable setting and does not include math tasks, where the diversity definition and optimization dynamics may differ significantly.\",\n\"The paper does not report the computational overhead of running the semantic classifier during RL training, which could be a practical concern for scaling to larger models or group sizes.\",\n\"The Pareto front plots (Figure 3) only compare GRPO and Darling, omitting other baselines like DivPO and GRPO-Unlikeliness, which would have provided a more complete picture of the quality-diversity tradeoff.\",\n\"The claim that diversity optimization 'catalyzes exploration' and leads to higher quality is somewhat speculative; the paper could benefit from a deeper analysis of the training dynamics, such as entropy or diversity metrics over training steps.\"\n],\n\"Originality\": 4,\n\"Quality\": 3,\n\"Clarity\": 3,\n\"Significance\": 4,\n\"Questions\": [\n\"How is Norm(Div) in Equation 5 exactly computed? Please specify the normalization method (e.g., min-max, mean-std) and its bounds.\",\n\"For the math equivalence classifier, what is the agreement between Llama-3.3-70B annotations and human judgment? Have you validated the classifier on human-annotated math solution pairs?\",\n\"What is the computational overhead of the semantic classifier during RL training? How does it scale with the number of rollouts per prompt and the response length?\",\n\"In Figure 3, why are only GRPO and Darling shown in the Pareto front plots? Including DivPO and GRPO-Unlikeliness would strengthen the comparison.\",\n\"How sensitive is Darling to the number of rollouts per prompt (n)? Would the diversity signal become more stable or effective with larger n?\",\n\"For the math experiments, what is the semantic diversity of the generated solutions? Are the improvements in pass@k driven by semantically diverse solution strategies or just lexical variations?\",\n\"Have you analyzed the training curves (e.g., diversity and quality metrics over steps) to better understand how diversity optimization affects exploration and convergence?\"\n],\n\"Limitations\": [\n\"The reliance on a learned semantic classifier introduces potential noise and domain-specific training requirements; the classifier must be retrained for each new domain, which may limit scalability and generalizability.\",\n\"The method's effectiveness depends on the quality of the diversity signal; if the classifier is inaccurate, it may incorrectly reward or penalize responses, potentially leading to suboptimal training.\",\n\"The paper does not explore the interaction of Darling with inference-time diversity techniques (e.g., diverse beam search, prompt conditioning), which could provide additional gains or insights.\",\n\"The potential for reward hacking of the diversity signal is not thoroughly analyzed. While n-gram reward hacking is shown, the semantic classifier could also be exploited (e.g., generating off-topic but semantically unique responses), and this risk is not discussed.\",\n\"The paper does not evaluate the method on a broader range of tasks (e.g., code generation, dialogue), which would strengthen the claims of generalizability.\",\n\"Potential negative societal impact: Increasing diversity in LLM outputs could lead to more unpredictable or potentially harmful content in safety-critical applications. The paper does not discuss this aspect.\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 3,\n\"Contribution\": 4,\n\"Overall\": 8,\n\"Confidence\": 4,\n\"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 30487,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 28695,
+        "completion_tokens": 2142,
+        "reasoning_tokens": 0,
+        "total_tokens": 32629
+      },
+      "attempts": 1,
+      "response_id": "303da9d8-56a3-46ec-98b8-6af2e97369f5"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 5,
+      "Reject": 0
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          4,
+          3,
+          3,
+          4,
+          4
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          4,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Clarity": {
+        "values": [
+          4,
+          3,
+          4,
+          4,
+          3
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Significance": {
+        "values": [
+          4,
+          3,
+          3,
+          3,
+          4
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Soundness": {
+        "values": [
+          4,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Presentation": {
+        "values": [
+          4,
+          3,
+          4,
+          4,
+          3
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Contribution": {
+        "values": [
+          4,
+          3,
+          3,
+          3,
+          4
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Overall": {
+        "values": [
+          8,
+          7,
+          7,
+          7,
+          8
+        ],
+        "mean": 7.4,
+        "rounded_mean": 7,
+        "population_sd": 0.49,
+        "min": 7,
+        "max": 8
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "This paper introduces Darling (Diversity-Aware Reinforcement Learning), a framework for post-training Large Language Models that jointly optimizes response quality and semantic diversity. The method uses a learned semantic classifier to partition generated responses into equivalence classes, then combines a diversity score with a quality reward via multiplicative aggregation in a GRPO-style online RL objective. Darling is evaluated on non-verifiable tasks (instruction following, creative writing) and verifiable tasks (competition math) across multiple model families and sizes (Llama-3.1-8B, Llama-3.3-70B, Qwen3-4B, Qwen3-14B). Results show Darling consistently outperforms quality-only RL baselines (GRPO, DivPO, GRPO-Unlikeliness) on both quality and diversity metrics, with notable pass@1 and pass@k improvements in math. Ablations reveal that multiplicative reward fusion, semantic diversity signals, and removal of standard deviation normalization are key design choices. The paper argues that explicit diversity optimization catalyzes exploration, leading to improved quality.",
+      "Strengths": [
+        "Addresses an important and timely problem: diversity collapse in LLM post-training, with clear motivation and articulation of the quality-diversity tension.",
+        "Novel contribution: using a learned semantic equivalence classifier as a scalable diversity signal integrated into online RL training, going beyond lexical-level metrics.",
+        "Comprehensive experimental validation across multiple model families (Llama, Qwen), sizes (4B to 70B), and task types (non-verifiable and verifiable), with consistent improvements over strong baselines.",
+        "Well-designed ablations that isolate key design choices: multiplicative vs additive reward fusion, semantic vs n-gram diversity, and the effect of advantage normalization.",
+        "Demonstrates that diversity optimization can simultaneously improve quality (pass@1 in math), challenging the assumption of a strict quality-diversity tradeoff.",
+        "Simple and practical method that can be easily implemented on top of GRPO, with clear writing and helpful qualitative examples."
+      ],
+      "Weaknesses": [
+        "The semantic classifier for math is trained using Llama-3.3-70B annotations without human validation; the reliability of semantic equivalence labels for complex math solutions is not established.",
+        "No statistical significance testing, confidence intervals, or multiple training runs are reported for main results, making it difficult to assess robustness of improvements.",
+        "Comparison with more recent diversity-promoting RL methods (e.g., SEED-GRPO, entropy-based exploration) is missing, limiting assessment of relative novelty.",
+        "The computational overhead of running the semantic classifier during training is not quantified, which could be a practical concern for large-scale deployments.",
+        "The claim that diversity 'catalyzes exploration' is inferred from final results rather than directly supported by analysis of training dynamics (e.g., rollout entropy, diversity metrics over time).",
+        "The interaction between the diversity reward and the KL constraint is not explored; it is unclear how practitioners should set hyperparameters (e.g., KL coefficient) in conjunction with Darling.",
+        "Potential reward hacking of the semantic classifier itself (e.g., generating off-topic but semantically unique responses) is not thoroughly analyzed, though the multiplicative combination with quality reward partially mitigates this."
+      ],
+      "Originality": 4,
+      "Quality": 3,
+      "Clarity": 4,
+      "Significance": 4,
+      "Questions": [
+        "How is Norm(Div) in Equation 5 exactly computed? Please specify the normalization method and its bounds.",
+        "For the math equivalence classifier, what is the agreement between Llama-3.3-70B annotations and human judgment? Could you provide a small human evaluation to validate the annotations?",
+        "What is the computational overhead of the semantic classifier during RL training? How does it scale with the number of rollouts per prompt and response length?",
+        "How sensitive is Darling to the choice of the number of rollouts per prompt (n=8)? Would a larger n improve the stability or effectiveness of the diversity reward?",
+        "How does Darling interact with different KL coefficients (β)? Is there a tradeoff between diversity preservation and KL constraint strength?",
+        "Could you provide a deeper analysis of the exploration mechanism, e.g., how entropy or diversity metrics evolve during training compared to GRPO?",
+        "In Figure 3, why are only GRPO and Darling shown in the Pareto front plots? Including other baselines would strengthen the comparison.",
+        "Have you considered testing Darling on other verifiable tasks beyond math (e.g., code generation) to assess its generality?",
+        "The ablation shows that removing standard deviation normalization improves performance for dense rewards. Does this hold across different reward models and task types?",
+        "Are there any cases where Darling fails or underperforms GRPO, e.g., on tasks where diversity is not important?"
+      ],
+      "Limitations": [
+        "The diversity classifier is trained on specific distributions (WildChat for non-verifiable, DeepScaleR for math) and may not generalize to other domains or prompt types without retraining.",
+        "The method's effectiveness depends on the quality of the semantic equivalence classifier; misclassification could lead to suboptimal diversity rewards, and the paper does not provide a sensitivity analysis.",
+        "The computational cost of the classifier is not analyzed, which could be a practical limitation for large-scale training.",
+        "The evaluation relies heavily on LLM-as-a-judge metrics, which have known biases and limitations; human evaluation would strengthen the claims.",
+        "The paper does not explore the interaction of Darling with inference-time diversity techniques (e.g., diverse beam search, temperature scaling), though it claims orthogonality.",
+        "Potential negative societal impact: encouraging diversity in outputs could amplify generation of harmful or misleading content if the quality reward is not robust. This is not discussed."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 4,
+      "Contribution": 4,
+      "Overall": 8,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "THOUGHT:\nThe five reviewers are largely positive about this paper, with overall scores of 8, 7, 7, 7, and 8, and all recommend \"Accept.\" The paper addresses a timely and important problem (diversity collapse in RLHF), proposes a clean and practical method (multiplicative quality-diversity reward in GRPO), and provides broad empirical validation across multiple model families, sizes, and task types. The reviewers consistently praise the clarity, motivation, and thorough ablations.\n\nHowever, there are recurring concerns that temper enthusiasm: (1) the semantic classifier is trained on LLM-generated annotations (Llama-3.3-70B) without human validation; (2) no statistical significance testing or multiple seeds; (3) limited comparison with more recent diversity-promoting methods (e.g., SEED-GRPO, entropy-based approaches); (4) computational overhead of the classifier is not quantified; (5) the \"catalyzes exploration\" claim is not directly supported by training dynamics analysis; (6) the method's generalization to other domains and potential reward hacking of the semantic classifier are not fully addressed.\n\nGiven the consensus of all reviewers to accept, and the paper's clear contribution and solid experimental scope, I lean toward acceptance. However, the weaknesses are non-trivial and should be addressed in the final version or rebuttal. My meta-review will reflect a \"Strong Accept\" (8) decision, acknowledging the strengths while flagging the issues that need attention. I will set confidence at 4, as I have not independently verified the technical details.\n\nI will write a balanced meta-review that summarizes the paper, synthesizes strengths and weaknesses, and provides a clear recommendation to accept with suggestions for revision.REVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper introduces Darling (Diversity-Aware Reinforcement Learning), a framework for post-training Large Language Models that jointly optimizes response quality and semantic diversity. The method uses a learned semantic classifier to partition generated responses into equivalence classes, then combines a diversity score with a quality reward via multiplicative aggregation in a GRPO-style online RL objective. Darling is evaluated on non-verifiable tasks (instruction following, creative writing) and verifiable tasks (competition math) across multiple model families and sizes (Llama-3.1-8B, Llama-3.3-70B, Qwen3-4B, Qwen3-14B). Results show Darling consistently outperforms quality-only RL baselines (GRPO, DivPO, GRPO-Unlikeliness) on both quality and diversity metrics, with notable pass@1 and pass@k improvements in math. Ablations reveal that multiplicative reward fusion, semantic diversity signals, and removal of standard deviation normalization are key design choices. The paper argues that explicit diversity optimization catalyzes exploration, leading to improved quality.\",\n    \"Strengths\": [\n        \"Addresses an important and timely problem: diversity collapse in LLM post-training, with clear motivation and articulation of the quality-diversity tension.\",\n        \"Novel contribution: using a learned semantic equivalence classifier as a scalable diversity signal integrated into online RL training, going beyond lexical-level metrics.\",\n        \"Comprehensive experimental validation across multiple model families (Llama, Qwen), sizes (4B to 70B), and task types (non-verifiable and verifiable), with consistent improvements over strong baselines.\",\n        \"Well-designed ablations that isolate key design choices: multiplicative vs additive reward fusion, semantic vs n-gram diversity, and the effect of advantage normalization.\",\n        \"Demonstrates that diversity optimization can simultaneously improve quality (pass@1 in math), challenging the assumption of a strict quality-diversity tradeoff.\",\n        \"Simple and practical method that can be easily implemented on top of GRPO, with clear writing and helpful qualitative examples.\"\n    ],\n    \"Weaknesses\": [\n        \"The semantic classifier for math is trained using Llama-3.3-70B annotations without human validation; the reliability of semantic equivalence labels for complex math solutions is not established.\",\n        \"No statistical significance testing, confidence intervals, or multiple training runs are reported for main results, making it difficult to assess robustness of improvements.\",\n        \"Comparison with more recent diversity-promoting RL methods (e.g., SEED-GRPO, entropy-based exploration) is missing, limiting assessment of relative novelty.\",\n        \"The computational overhead of running the semantic classifier during training is not quantified, which could be a practical concern for large-scale deployments.\",\n        \"The claim that diversity 'catalyzes exploration' is inferred from final results rather than directly supported by analysis of training dynamics (e.g., rollout entropy, diversity metrics over time).\",\n        \"The interaction between the diversity reward and the KL constraint is not explored; it is unclear how practitioners should set hyperparameters (e.g., KL coefficient) in conjunction with Darling.\",\n        \"Potential reward hacking of the semantic classifier itself (e.g., generating off-topic but semantically unique responses) is not thoroughly analyzed, though the multiplicative combination with quality reward partially mitigates this.\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 4,\n    \"Significance\": 4,\n    \"Questions\": [\n        \"How is Norm(Div) in Equation 5 exactly computed? Please specify the normalization method and its bounds.\",\n        \"For the math equivalence classifier, what is the agreement between Llama-3.3-70B annotations and human judgment? Could you provide a small human evaluation to validate the annotations?\",\n        \"What is the computational overhead of the semantic classifier during RL training? How does it scale with the number of rollouts per prompt and response length?\",\n        \"How sensitive is Darling to the choice of the number of rollouts per prompt (n=8)? Would a larger n improve the stability or effectiveness of the diversity reward?\",\n        \"How does Darling interact with different KL coefficients (β)? Is there a tradeoff between diversity preservation and KL constraint strength?\",\n        \"Could you provide a deeper analysis of the exploration mechanism, e.g., how entropy or diversity metrics evolve during training compared to GRPO?\",\n        \"In Figure 3, why are only GRPO and Darling shown in the Pareto front plots? Including other baselines would strengthen the comparison.\",\n        \"Have you considered testing Darling on other verifiable tasks beyond math (e.g., code generation) to assess its generality?\",\n        \"The ablation shows that removing standard deviation normalization improves performance for dense rewards. Does this hold across different reward models and task types?\",\n        \"Are there any cases where Darling fails or underperforms GRPO, e.g., on tasks where diversity is not important?\"\n    ],\n    \"Limitations\": [\n        \"The diversity classifier is trained on specific distributions (WildChat for non-verifiable, DeepScaleR for math) and may not generalize to other domains or prompt types without retraining.\",\n        \"The method's effectiveness depends on the quality of the semantic equivalence classifier; misclassification could lead to suboptimal diversity rewards, and the paper does not provide a sensitivity analysis.\",\n        \"The computational cost of the classifier is not analyzed, which could be a practical limitation for large-scale training.\",\n        \"The evaluation relies heavily on LLM-as-a-judge metrics, which have known biases and limitations; human evaluation would strengthen the claims.\",\n        \"The paper does not explore the interaction of Darling with inference-time diversity techniques (e.g., diverse beam search, temperature scaling), though it claims orthogonality.\",\n        \"Potential negative societal impact: encouraging diversity in outputs could amplify generation of harmful or misleading content if the quality reward is not robust. This is not discussed.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 4,\n    \"Contribution\": 4,\n    \"Overall\": 8,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 7745,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 7745,
+      "completion_tokens": 1637,
+      "reasoning_tokens": 0,
+      "total_tokens": 9382
+    },
+    "attempts": 1,
+    "response_id": "584e0452-a0b5-465f-a9a5-b09c45b5fde1"
+  },
+  "final_review": {
+    "Summary": "This paper introduces Darling (Diversity-Aware Reinforcement Learning), a framework for post-training Large Language Models that jointly optimizes response quality and semantic diversity. The method uses a learned semantic classifier to partition generated responses into equivalence classes, then combines a diversity score with a quality reward via multiplicative aggregation in a GRPO-style online RL objective. Darling is evaluated on non-verifiable tasks (instruction following, creative writing) and verifiable tasks (competition math) across multiple model families and sizes (Llama-3.1-8B, Llama-3.3-70B, Qwen3-4B, Qwen3-14B). Results show Darling consistently outperforms quality-only RL baselines (GRPO, DivPO, GRPO-Unlikeliness) on both quality and diversity metrics, with notable pass@1 and pass@k improvements in math. Ablations reveal that multiplicative reward fusion, semantic diversity signals, and removal of standard deviation normalization are key design choices. The paper argues that explicit diversity optimization catalyzes exploration, leading to improved quality.",
+    "Strengths": [
+      "Addresses an important and timely problem: diversity collapse in LLM post-training, with clear motivation and articulation of the quality-diversity tension.",
+      "Novel contribution: using a learned semantic equivalence classifier as a scalable diversity signal integrated into online RL training, going beyond lexical-level metrics.",
+      "Comprehensive experimental validation across multiple model families (Llama, Qwen), sizes (4B to 70B), and task types (non-verifiable and verifiable), with consistent improvements over strong baselines.",
+      "Well-designed ablations that isolate key design choices: multiplicative vs additive reward fusion, semantic vs n-gram diversity, and the effect of advantage normalization.",
+      "Demonstrates that diversity optimization can simultaneously improve quality (pass@1 in math), challenging the assumption of a strict quality-diversity tradeoff.",
+      "Simple and practical method that can be easily implemented on top of GRPO, with clear writing and helpful qualitative examples."
+    ],
+    "Weaknesses": [
+      "The semantic classifier for math is trained using Llama-3.3-70B annotations without human validation; the reliability of semantic equivalence labels for complex math solutions is not established.",
+      "No statistical significance testing, confidence intervals, or multiple training runs are reported for main results, making it difficult to assess robustness of improvements.",
+      "Comparison with more recent diversity-promoting RL methods (e.g., SEED-GRPO, entropy-based exploration) is missing, limiting assessment of relative novelty.",
+      "The computational overhead of running the semantic classifier during training is not quantified, which could be a practical concern for large-scale deployments.",
+      "The claim that diversity 'catalyzes exploration' is inferred from final results rather than directly supported by analysis of training dynamics (e.g., rollout entropy, diversity metrics over time).",
+      "The interaction between the diversity reward and the KL constraint is not explored; it is unclear how practitioners should set hyperparameters (e.g., KL coefficient) in conjunction with Darling.",
+      "Potential reward hacking of the semantic classifier itself (e.g., generating off-topic but semantically unique responses) is not thoroughly analyzed, though the multiplicative combination with quality reward partially mitigates this."
+    ],
+    "Originality": 4,
+    "Quality": 3,
+    "Clarity": 4,
+    "Significance": 3,
+    "Questions": [
+      "How is Norm(Div) in Equation 5 exactly computed? Please specify the normalization method and its bounds.",
+      "For the math equivalence classifier, what is the agreement between Llama-3.3-70B annotations and human judgment? Could you provide a small human evaluation to validate the annotations?",
+      "What is the computational overhead of the semantic classifier during RL training? How does it scale with the number of rollouts per prompt and response length?",
+      "How sensitive is Darling to the choice of the number of rollouts per prompt (n=8)? Would a larger n improve the stability or effectiveness of the diversity reward?",
+      "How does Darling interact with different KL coefficients (β)? Is there a tradeoff between diversity preservation and KL constraint strength?",
+      "Could you provide a deeper analysis of the exploration mechanism, e.g., how entropy or diversity metrics evolve during training compared to GRPO?",
+      "In Figure 3, why are only GRPO and Darling shown in the Pareto front plots? Including other baselines would strengthen the comparison.",
+      "Have you considered testing Darling on other verifiable tasks beyond math (e.g., code generation) to assess its generality?",
+      "The ablation shows that removing standard deviation normalization improves performance for dense rewards. Does this hold across different reward models and task types?",
+      "Are there any cases where Darling fails or underperforms GRPO, e.g., on tasks where diversity is not important?"
+    ],
+    "Limitations": [
+      "The diversity classifier is trained on specific distributions (WildChat for non-verifiable, DeepScaleR for math) and may not generalize to other domains or prompt types without retraining.",
+      "The method's effectiveness depends on the quality of the semantic equivalence classifier; misclassification could lead to suboptimal diversity rewards, and the paper does not provide a sensitivity analysis.",
+      "The computational cost of the classifier is not analyzed, which could be a practical limitation for large-scale training.",
+      "The evaluation relies heavily on LLM-as-a-judge metrics, which have known biases and limitations; human evaluation would strengthen the claims.",
+      "The paper does not explore the interaction of Darling with inference-time diversity techniques (e.g., diverse beam search, temperature scaling), though it claims orthogonality.",
+      "Potential negative societal impact: encouraging diversity in outputs could amplify generation of harmful or misleading content if the quality reward is not robust. This is not discussed."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 4,
+    "Contribution": 3,
+    "Overall": 7,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 160180,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 151220,
+    "completion_tokens": 11409,
+    "reasoning_tokens": 0,
+    "total_tokens": 171589,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.0211708,
+    "output_usd": 0.00319452,
+    "total_usd": 0.02439041
+  },
+  "elapsed_seconds": 35.569,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Accept",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B105",
+    "filename": "B105.txt",
+    "blind_text_sha256": "cde5d607c1043693ae1f6909619f238d39e6018e0609baf322e39e9cfe9567df",
+    "characters": 94543,
+    "full_text_saved": false
+  }
+}

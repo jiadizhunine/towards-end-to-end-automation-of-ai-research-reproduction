@@ -1,0 +1,710 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:50:34.423800+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper proposes Patch Rebirth Inversion (PRI), a method for efficient model inversion of Vision Transformers (ViTs). The key observation is that Sparse Model Inversion (SMI)'s strategy of discarding unimportant patches is suboptimal, because even initially low-importance patches can acquire transferable knowledge through continued inversion (the 'Re-Birth effect'). PRI instead progressively detaches the most important patches at multiple time points during inversion, generating multiple sparse images from a single inversion trajectory, while allowing remaining patches to continue evolving. This balances class-agnostic and class-specific features, improving both efficiency (up to 10x faster than DMI, 2x faster than SMI) and downstream task performance (consistently better than SMI, competitive with DMI). The paper includes theoretical analysis of computational complexity, extensive experiments on quantization and knowledge distillation across multiple architectures and datasets, and analyses demonstrating the preservation of class-agnostic knowledge.",
+        "Strengths": [
+          "The paper challenges a core assumption of SMI with strong empirical evidence (Table 1 shows selection criterion has little impact on final performance), providing a compelling motivation for the new method.",
+          "The Re-Birth effect is a novel and well-documented phenomenon, with clear visualizations (Figure 2) and quantitative analysis (Figure 4, confidence distributions).",
+          "PRI is a simple yet elegant method that naturally balances class-agnostic and class-specific features by generating multiple sparse images at different inversion stages.",
+          "The theoretical analysis (Theorem 1) provides clear complexity comparisons, showing PRI is more efficient than both DMI and SMI under practical conditions (N/d < 3), with the proof provided in the appendix.",
+          "Comprehensive experimental evaluation across multiple tasks (data-free quantization, knowledge distillation), datasets (CIFAR-10/100, Tiny-ImageNet, ImageNet), and architectures (DeiT-Tiny/Small/Base) demonstrates consistent improvements over SMI and competitive performance with DMI.",
+          "The one-class distillation experiment and confidence analysis provide strong evidence for the claim that PRI preserves class-agnostic knowledge, which is crucial for generalization in data-free settings.",
+          "The paper is well-written and clearly motivated, with a logical flow from empirical observation to method design to evaluation."
+        ],
+        "Weaknesses": [
+          "The claim that PRI 'matches the performance of DMI' is somewhat overstated. At high sparsity (86%), DMI clearly outperforms PRI in several settings (e.g., DeiT-Tiny distillation in Table 3b), and PRI's advantage over DMI is not consistent across all configurations.",
+          "The theoretical analysis assumes an idealized SMI (SMI^*) that prunes patches immediately, which is an optimistic assumption. Real SMI prunes gradually over iterations, so the actual speedup of PRI over SMI may be less than the theoretical bound suggests.",
+          "The paper lacks a detailed ablation study on the detachment schedule. Only the division factor v is varied, but the effect of non-uniform detachment intervals (e.g., earlier vs. later detachment points) is not explored.",
+          "The comparison with SMI uses a fixed pruning schedule (iterations 50, 100, 200, 300) from the original SMI paper. It is unclear whether SMI's performance could be improved with a different schedule, which would make the comparison fairer and more convincing.",
+          "The paper does not discuss the applicability of PRI to other ViT variants (e.g., Swin Transformer, DeiT-III) or to inversion losses beyond the standard cross-entropy + TV regularization. This limits the generalizability of the findings.",
+          "The one-class distillation experiment uses only 2.5k images per class, which may not be representative of the full PRI pipeline. More analysis on how the number of detachment points and the total number of inverted images affect performance would strengthen the paper."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "In Table 3b, at 86% sparsity, DMI outperforms PRI in the DeiT-Tiny distillation setting. Can you explain why PRI fails to match DMI in this case? Is it due to the reduced number of effective patches per image, or the specific characteristics of the smaller student model?",
+          "The theoretical analysis compares PRI with an idealized SMI^* that prunes patches immediately. In practice, SMI prunes gradually over iterations. How does the actual speedup of PRI over SMI compare to the theoretical bound? Could you provide an empirical breakdown of the computational cost at different inversion stages?",
+          "The detachment points are uniformly spaced (t_k = k * floor(T/v)). Have you explored non-uniform schedules (e.g., more frequent detachments early in the process)? How does the schedule affect the balance between class-agnostic and class-specific features?",
+          "In the one-class distillation experiment, you use 2.5k images per detachment point. How sensitive are the results to the number of images? Would the class-agnostic generalization hold with fewer or more images?",
+          "Have you tested PRI with other ViT architectures (e.g., Swin, DeiT-III) or with different inversion losses (e.g., feature-matching losses)? Do the findings generalize beyond the DeiT family and the standard inversion loss?",
+          "The paper mentions that PRI 'consistently outperforms SMI in accuracy.' However, in some settings (e.g., Table A2 for DeiT-Tiny), SMI appears to be competitive. Could you clarify the conditions under which PRI's advantage over SMI is most pronounced?"
+        ],
+        "Limitations": [
+          "The paper's evaluation is limited to the DeiT family of ViTs and the standard inversion loss (cross-entropy + TV regularization). The generalizability of PRI to other ViT architectures and inversion objectives is not established.",
+          "The comparison with SMI uses a fixed pruning schedule from the original paper, which may not be optimal for SMI. This could underestimate SMI's performance and overstate PRI's relative advantage.",
+          "The paper does not discuss the computational overhead of the patch selection mechanism (attention score computation) in PRI, which may partially offset the efficiency gains, especially for very small models.",
+          "The method generates sparse images by masking out detached patches (shown as black regions). These masked regions could potentially confuse downstream tasks if not handled properly, and the paper does not discuss this potential issue in detail.",
+          "The paper does not address potential negative societal impacts of model inversion, such as privacy risks. While the method is intended for data-free learning, the underlying technique could be used for model inversion attacks."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThe paper proposes Patch Rebirth Inversion (PRI), a method to improve the efficiency and effectiveness of model inversion for Vision Transformers. The key insight is that SMI's strategy of discarding unimportant patches is flawed because even initially unimportant patches can acquire transferable knowledge through continued inversion. PRI instead progressively detaches the most important patches at multiple time points, creating multiple sparse images from a single inversion trajectory, while allowing remaining patches to continue evolving.\n\nStrengths:\n1. The paper challenges a core assumption of SMI with empirical evidence (Table 1 shows random selection performs comparably to importance-based selection).\n2. The Re-Birth effect is an interesting and well-documented phenomenon with visualizations.\n3. The proposed method is novel and well-motivated, providing a principled way to balance class-agnostic and class-specific features.\n4. The theoretical analysis (Theorem 1) provides clear complexity comparisons, showing PRI is more efficient than both DMI and SMI under practical conditions.\n5. Comprehensive experiments across multiple tasks (quantization, distillation), datasets (CIFAR-10/100, Tiny-ImageNet, ImageNet), and architectures (DeiT-Tiny/Small/Base) demonstrate consistent improvements over SMI and competitive performance with DMI.\n6. The one-class distillation analysis and confidence distribution analysis provide strong evidence for the class-agnostic knowledge preservation claim.\n\nWeaknesses:\n1. The paper claims PRI \"outperforms SMI in accuracy and matches the performance of DMI,\" but the results show that at high sparsity (86%), DMI clearly outperforms PRI in some settings (e.g., DeiT-Tiny distillation). The claim of \"matching\" DMI is somewhat overstated.\n2. The theoretical analysis assumes an idealized SMI (SMI^*) that prunes patches immediately, which is an optimistic assumption. Real SMI prunes gradually, so the actual speedup of PRI over SMI may be less than claimed.\n3. The paper lacks a detailed ablation study on the detachment scheduling. Only the division factor v is varied, but the schedule (e.g., uniform vs. non-uniform intervals) is not explored.\n4. The comparison with SMI uses a fixed pruning schedule (iterations 50, 100, 200, 300) from the original SMI paper. It's unclear if SMI's performance could be improved with a different schedule, which would make the comparison fairer.\n5. The paper does not discuss the potential limitations of PRI when applied to other ViT variants (e.g., Swin, DeiT-III) or when using different inversion losses (e.g., feature-based losses).\n6. The one-class distillation experiment is interesting but uses only 2.5k images per class, which may not be representative of the full PRI pipeline. More analysis of how the number of detachment points affects performance would be helpful.\n\nOverall, the paper is technically sound, presents a novel and well-motivated method, and provides strong empirical evidence. The main concerns are the overstatement of \"matching DMI\" performance and the lack of deeper ablation studies on the detachment mechanism. I would rate this as a borderline accept to accept.\n\nOriginality: 4 (high) - The Re-Birth effect and the progressive detachment mechanism are novel.\nQuality: 3 (good) - Technically sound with solid experiments, but some claims are overstated.\nClarity: 3 (good) - Well-written but could benefit from clearer explanation of the detachment schedule and its effect.\nSignificance: 3 (high) - Addresses an important problem (efficiency of ViT inversion) with a practical solution.\n\nSoundness: 3 (good)\nPresentation: 3 (good)\nContribution: 3 (good)\nOverall: 6 (Weak Accept)\nConfidence: 4 (confident)\n\nDecision: Accept (since the instruction says only Accept or Reject, and this is a solid paper with minor concerns that could be addressed in rebuttal)REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper proposes Patch Rebirth Inversion (PRI), a method for efficient model inversion of Vision Transformers (ViTs). The key observation is that Sparse Model Inversion (SMI)'s strategy of discarding unimportant patches is suboptimal, because even initially low-importance patches can acquire transferable knowledge through continued inversion (the 'Re-Birth effect'). PRI instead progressively detaches the most important patches at multiple time points during inversion, generating multiple sparse images from a single inversion trajectory, while allowing remaining patches to continue evolving. This balances class-agnostic and class-specific features, improving both efficiency (up to 10x faster than DMI, 2x faster than SMI) and downstream task performance (consistently better than SMI, competitive with DMI). The paper includes theoretical analysis of computational complexity, extensive experiments on quantization and knowledge distillation across multiple architectures and datasets, and analyses demonstrating the preservation of class-agnostic knowledge.\",\n  \"Strengths\": [\n    \"The paper challenges a core assumption of SMI with strong empirical evidence (Table 1 shows selection criterion has little impact on final performance), providing a compelling motivation for the new method.\",\n    \"The Re-Birth effect is a novel and well-documented phenomenon, with clear visualizations (Figure 2) and quantitative analysis (Figure 4, confidence distributions).\",\n    \"PRI is a simple yet elegant method that naturally balances class-agnostic and class-specific features by generating multiple sparse images at different inversion stages.\",\n    \"The theoretical analysis (Theorem 1) provides clear complexity comparisons, showing PRI is more efficient than both DMI and SMI under practical conditions (N/d < 3), with the proof provided in the appendix.\",\n    \"Comprehensive experimental evaluation across multiple tasks (data-free quantization, knowledge distillation), datasets (CIFAR-10/100, Tiny-ImageNet, ImageNet), and architectures (DeiT-Tiny/Small/Base) demonstrates consistent improvements over SMI and competitive performance with DMI.\",\n    \"The one-class distillation experiment and confidence analysis provide strong evidence for the claim that PRI preserves class-agnostic knowledge, which is crucial for generalization in data-free settings.\",\n    \"The paper is well-written and clearly motivated, with a logical flow from empirical observation to method design to evaluation.\"\n  ],\n  \"Weaknesses\": [\n    \"The claim that PRI 'matches the performance of DMI' is somewhat overstated. At high sparsity (86%), DMI clearly outperforms PRI in several settings (e.g., DeiT-Tiny distillation in Table 3b), and PRI's advantage over DMI is not consistent across all configurations.\",\n    \"The theoretical analysis assumes an idealized SMI (SMI^*) that prunes patches immediately, which is an optimistic assumption. Real SMI prunes gradually over iterations, so the actual speedup of PRI over SMI may be less than the theoretical bound suggests.\",\n    \"The paper lacks a detailed ablation study on the detachment schedule. Only the division factor v is varied, but the effect of non-uniform detachment intervals (e.g., earlier vs. later detachment points) is not explored.\",\n    \"The comparison with SMI uses a fixed pruning schedule (iterations 50, 100, 200, 300) from the original SMI paper. It is unclear whether SMI's performance could be improved with a different schedule, which would make the comparison fairer and more convincing.\",\n    \"The paper does not discuss the applicability of PRI to other ViT variants (e.g., Swin Transformer, DeiT-III) or to inversion losses beyond the standard cross-entropy + TV regularization. This limits the generalizability of the findings.\",\n    \"The one-class distillation experiment uses only 2.5k images per class, which may not be representative of the full PRI pipeline. More analysis on how the number of detachment points and the total number of inverted images affect performance would strengthen the paper.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"In Table 3b, at 86% sparsity, DMI outperforms PRI in the DeiT-Tiny distillation setting. Can you explain why PRI fails to match DMI in this case? Is it due to the reduced number of effective patches per image, or the specific characteristics of the smaller student model?\",\n    \"The theoretical analysis compares PRI with an idealized SMI^* that prunes patches immediately. In practice, SMI prunes gradually over iterations. How does the actual speedup of PRI over SMI compare to the theoretical bound? Could you provide an empirical breakdown of the computational cost at different inversion stages?\",\n    \"The detachment points are uniformly spaced (t_k = k * floor(T/v)). Have you explored non-uniform schedules (e.g., more frequent detachments early in the process)? How does the schedule affect the balance between class-agnostic and class-specific features?\",\n    \"In the one-class distillation experiment, you use 2.5k images per detachment point. How sensitive are the results to the number of images? Would the class-agnostic generalization hold with fewer or more images?\",\n    \"Have you tested PRI with other ViT architectures (e.g., Swin, DeiT-III) or with different inversion losses (e.g., feature-matching losses)? Do the findings generalize beyond the DeiT family and the standard inversion loss?\",\n    \"The paper mentions that PRI 'consistently outperforms SMI in accuracy.' However, in some settings (e.g., Table A2 for DeiT-Tiny), SMI appears to be competitive. Could you clarify the conditions under which PRI's advantage over SMI is most pronounced?\"\n  ],\n  \"Limitations\": [\n    \"The paper's evaluation is limited to the DeiT family of ViTs and the standard inversion loss (cross-entropy + TV regularization). The generalizability of PRI to other ViT architectures and inversion objectives is not established.\",\n    \"The comparison with SMI uses a fixed pruning schedule from the original paper, which may not be optimal for SMI. This could underestimate SMI's performance and overstate PRI's relative advantage.\",\n    \"The paper does not discuss the computational overhead of the patch selection mechanism (attention score computation) in PRI, which may partially offset the efficiency gains, especially for very small models.\",\n    \"The method generates sparse images by masking out detached patches (shown as black regions). These masked regions could potentially confuse downstream tasks if not handled properly, and the paper does not discuss this potential issue in detail.\",\n    \"The paper does not address potential negative societal impacts of model inversion, such as privacy risks. While the method is intended for data-free learning, the underlying technique could be used for model inversion attacks.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 20780,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 18988,
+        "completion_tokens": 2297,
+        "reasoning_tokens": 0,
+        "total_tokens": 23077
+      },
+      "attempts": 1,
+      "response_id": "5eb3213a-2171-498e-a011-70a2cd331061"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper proposes Patch Rebirth Inversion (PRI), a novel model inversion method for Vision Transformers (ViTs) that improves both efficiency and effectiveness compared to existing methods like Dense Model Inversion (DMI) and Sparse Model Inversion (SMI). The key insight is that discarding patches early in inversion (as done in SMI) is suboptimal because even initially unimportant patches can acquire transferable knowledge through continued optimization (the 'Re-Birth effect'). PRI progressively detaches the most important patches at scheduled intervals to form multiple sparse synthetic images, while keeping the remaining patches inverting so they can accumulate more class-relevant features. This approach generates a sequence of sparse images capturing both class-agnostic and class-specific features, achieving up to 10x faster inversion than DMI and 2x faster than SMI, while maintaining or improving accuracy in data-free quantization and knowledge distillation tasks. The paper includes theoretical analysis showing PRI's computational advantage and extensive experiments across multiple datasets and architectures.",
+        "Strengths": [
+          "Novel and well-motivated approach: The paper challenges the core assumption of SMI with empirical evidence (Table 1) showing that patch selection criterion has limited impact on final performance, leading to the interesting 'Re-Birth effect' phenomenon.",
+          "Theoretical analysis: Provides a formal theorem (Theorem 1) proving that PRI achieves lower computational cost than both DMI and SMI (even an idealized SMI*) under practical conditions satisfied by standard ViT architectures.",
+          "Comprehensive experiments: Evaluates PRI across multiple sparsity levels, architectures (DeiT-Tiny/Small/Base), datasets (CIFAR-10/100, ImageNet, Tiny-ImageNet), and tasks (quantization, distillation), with consistent improvements over SMI and competitive/ superior performance to DMI.",
+          "Insightful analysis: The one-class distillation experiment (Figure 4) and confidence distribution analysis (Figure 5) provide strong evidence that PRI captures more class-agnostic knowledge than DMI or SMI, explaining its better transferability.",
+          "Clear presentation: The paper is well-structured with clear motivation, method description, and experimental validation. The pseudocode and visualizations aid understanding.",
+          "Practical significance: Addresses a real computational bottleneck in ViT inversion, with demonstrated speedups that could make data-free learning from ViTs more practical."
+        ],
+        "Weaknesses": [
+          "Fairness of speedup comparison: The claim of '10x faster than DMI' may be misleading. Since PRI generates v sparse images per trajectory, the effective per-image cost should be compared differently. The paper's theoretical analysis scales PRI's cost by 1/v for per-image comparison, but this seems like an apples-to-oranges comparison.",
+          "Limited baseline comparisons: Only compares against DMI and SMI. There are other recent ViT inversion methods (e.g., PSAQ-ViT, MimiQ) that could provide additional context, though these focus on different tasks.",
+          "Re-Birth effect evidence: The phenomenon is primarily demonstrated qualitatively through visualizations (Figure 2). While the quantitative results (Table 1) support the claim that patch selection doesn't matter much, the underlying mechanism of 'rebirth' could be better characterized quantitatively.",
+          "Sensitivity analysis missing: The paper doesn't thoroughly analyze how the choice of division factor v affects the trade-off between efficiency and accuracy, or how the detachment schedule (fixed vs adaptive) impacts performance.",
+          "Scope limitations: Experiments are limited to classification tasks with standard ViTs. The applicability to other transformer architectures (e.g., Swin, DeiT-III) or tasks (e.g., detection, segmentation) is not explored.",
+          "Reproducibility details: While the appendix provides many details, some implementation specifics (e.g., exact attention score computation for importance, masking strategy during inversion) could be clearer."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "The paper claims PRI achieves 'up to 10x faster inversion than DMI'. Could you clarify how this metric is computed? Since PRI generates v sparse images per trajectory, should the comparison be based on total time to generate a fixed number of images (e.g., 128) rather than per-trajectory throughput?",
+          "In Table 2, how is throughput measured? Is it iterations per second during inversion of a batch of 128 images? For PRI with v=4, you invert 32 images per batch. Does this mean the effective throughput for generating 128 images is different from what's reported?",
+          "How is the attention-based importance score exactly computed? Is it averaged over all layers and heads, or only the last layer? How sensitive is PRI to this choice?",
+          "What happens if a patch that was detached early (at t1) would have become important again later? Is there a mechanism to 're-attach' patches, or is detachment permanent?",
+          "How does PRI perform with adaptive detachment scheduling instead of fixed intervals? Could the detachment points be determined based on convergence of importance scores?",
+          "The one-class distillation experiment (Figure 4) shows PRI generalizes across classes. Is this consistent across different classes and datasets? Are there cases where PRI fails to capture class-agnostic features?",
+          "For v=7 (86% sparsity), the batch size is 126 instead of 128. Does this small discrepancy affect the comparison with SMI and DMI, which use 128?"
+        ],
+        "Limitations": [
+          "The paper does not discuss potential negative societal impacts of model inversion, particularly regarding privacy. While the focus is on data-free learning, the method could potentially be used for model inversion attacks.",
+          "The method is specifically designed for ViTs and may not generalize to other architectures (e.g., CNNs, hybrid models) without modification.",
+          "The performance advantage of PRI over DMI is modest at high sparsity levels (86%), and in some cases (e.g., DeiT-Tiny distillation), DMI still outperforms PRI.",
+          "The experiments are limited to image classification. The effectiveness of PRI for other data types (e.g., text, audio) or tasks (e.g., segmentation, detection) is unexplored.",
+          "The paper does not provide a thorough analysis of failure cases or limitations of the Re-Birth effect."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 4,
+        "Presentation": 3,
+        "Contribution": 4,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThe paper proposes Patch Rebirth Inversion (PRI) for efficient model inversion of Vision Transformers. It challenges the assumption of Sparse Model Inversion (SMI) that discarding unimportant patches early is beneficial, showing that even randomly selected patches can become informative with continued inversion. PRI progressively detaches important patches to form multiple sparse images while keeping the rest inverting, achieving speedups and better accuracy than SMI.\n\nStrengths: \n- Clear motivation and empirical observations challenging prior work (SMI)\n- Novel approach that generates multiple sparse images from a single inversion trajectory\n- Strong theoretical analysis of computational cost ordering\n- Comprehensive experiments across quantization and distillation tasks\n- Interesting \"Re-Birth effect\" phenomenon with visualization support\n- Good analysis of class-agnostic vs class-specific feature balance\n\nWeaknesses:\n- The claim of \"10x faster than DMI\" needs careful scrutiny; the effective comparison should account for the fact that PRI generates v images per trajectory, so the per-image cost comparison may be misleading\n- The experimental setup for SMI comparison might not be entirely fair (SMI's gradual pruning vs PRI's progressive detachment)\n- Limited evaluation on larger datasets (e.g., ImageNet-1k for distillation)\n- The \"Re-Birth effect\" is mostly qualitative; quantitative evidence is indirect\n- The theoretical analysis assumes an idealized SMI* which may not reflect actual SMI performance\n- Missing comparisons with other recent inversion methods beyond SMI\n\nOriginality: High - the concept of progressive patch detachment with rebirth is novel and well-motivated.\nQuality: Good - solid theoretical analysis and comprehensive experiments, but some concerns about fairness of comparisons.\nClarity: Good - well-written and organized, though some technical details in the appendix could be clearer.\nSignificance: High - addresses an important computational bottleneck in ViT inversion with practical implications for data-free learning.\n\nQuestions for authors:\n1. How does PRI handle the case where the same patch might be important at multiple detachment points? (Though they are non-overlapping, the selection criterion might be unstable)\n2. Is the 10x speedup claim fair? Since PRI generates v images per trajectory, the effective throughput per image should be compared differently\n3. What happens if the detachment points are chosen adaptively based on importance saturation rather than fixed intervals?\n4. How sensitive is PRI to the division factor v? Is there a sweet spot?\n5. Does the Re-Birth effect depend on the teacher model architecture or dataset?\n6. How does PRI compare to simply running DMI with fewer iterations and using intermediate checkpoints as separate images?\n\nLimitations:\n- The paper doesn't fully address potential negative societal impacts of model inversion (privacy concerns)\n- Limited to ViT architectures; applicability to other transformer-based models unclear\n- The performance gains over DMI at high sparsity are modest\n- Experiments limited to CIFAR and ImageNet; broader datasets needed\n\nEthical concerns: Model inversion can be used for privacy attacks, but the paper focuses on data-free learning applications. This is a standard trade-off in the field and not a new ethical issue introduced by this work.\n\nSoundness: 4 (excellent) - The theoretical analysis is sound, and the empirical results support the claims.\nPresentation: 3 (good) - Well-written but some figures/tables could be clearer, and the main text is dense.\nContribution: 4 (excellent) - Novel method with clear practical benefits and good theoretical grounding.\n\nOverall: 7 (Accept) - Technically solid with novel ideas and good evaluation. The paper makes a meaningful contribution to efficient model inversion for ViTs.\n\nConfidence: 4 - I'm confident in my assessment, though I didn't check all mathematical details in the appendix carefully.REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper proposes Patch Rebirth Inversion (PRI), a novel model inversion method for Vision Transformers (ViTs) that improves both efficiency and effectiveness compared to existing methods like Dense Model Inversion (DMI) and Sparse Model Inversion (SMI). The key insight is that discarding patches early in inversion (as done in SMI) is suboptimal because even initially unimportant patches can acquire transferable knowledge through continued optimization (the 'Re-Birth effect'). PRI progressively detaches the most important patches at scheduled intervals to form multiple sparse synthetic images, while keeping the remaining patches inverting so they can accumulate more class-relevant features. This approach generates a sequence of sparse images capturing both class-agnostic and class-specific features, achieving up to 10x faster inversion than DMI and 2x faster than SMI, while maintaining or improving accuracy in data-free quantization and knowledge distillation tasks. The paper includes theoretical analysis showing PRI's computational advantage and extensive experiments across multiple datasets and architectures.\",\n  \"Strengths\": [\n    \"Novel and well-motivated approach: The paper challenges the core assumption of SMI with empirical evidence (Table 1) showing that patch selection criterion has limited impact on final performance, leading to the interesting 'Re-Birth effect' phenomenon.\",\n    \"Theoretical analysis: Provides a formal theorem (Theorem 1) proving that PRI achieves lower computational cost than both DMI and SMI (even an idealized SMI*) under practical conditions satisfied by standard ViT architectures.\",\n    \"Comprehensive experiments: Evaluates PRI across multiple sparsity levels, architectures (DeiT-Tiny/Small/Base), datasets (CIFAR-10/100, ImageNet, Tiny-ImageNet), and tasks (quantization, distillation), with consistent improvements over SMI and competitive/ superior performance to DMI.\",\n    \"Insightful analysis: The one-class distillation experiment (Figure 4) and confidence distribution analysis (Figure 5) provide strong evidence that PRI captures more class-agnostic knowledge than DMI or SMI, explaining its better transferability.\",\n    \"Clear presentation: The paper is well-structured with clear motivation, method description, and experimental validation. The pseudocode and visualizations aid understanding.\",\n    \"Practical significance: Addresses a real computational bottleneck in ViT inversion, with demonstrated speedups that could make data-free learning from ViTs more practical.\"\n  ],\n  \"Weaknesses\": [\n    \"Fairness of speedup comparison: The claim of '10x faster than DMI' may be misleading. Since PRI generates v sparse images per trajectory, the effective per-image cost should be compared differently. The paper's theoretical analysis scales PRI's cost by 1/v for per-image comparison, but this seems like an apples-to-oranges comparison.\",\n    \"Limited baseline comparisons: Only compares against DMI and SMI. There are other recent ViT inversion methods (e.g., PSAQ-ViT, MimiQ) that could provide additional context, though these focus on different tasks.\",\n    \"Re-Birth effect evidence: The phenomenon is primarily demonstrated qualitatively through visualizations (Figure 2). While the quantitative results (Table 1) support the claim that patch selection doesn't matter much, the underlying mechanism of 'rebirth' could be better characterized quantitatively.\",\n    \"Sensitivity analysis missing: The paper doesn't thoroughly analyze how the choice of division factor v affects the trade-off between efficiency and accuracy, or how the detachment schedule (fixed vs adaptive) impacts performance.\",\n    \"Scope limitations: Experiments are limited to classification tasks with standard ViTs. The applicability to other transformer architectures (e.g., Swin, DeiT-III) or tasks (e.g., detection, segmentation) is not explored.\",\n    \"Reproducibility details: While the appendix provides many details, some implementation specifics (e.g., exact attention score computation for importance, masking strategy during inversion) could be clearer.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"The paper claims PRI achieves 'up to 10x faster inversion than DMI'. Could you clarify how this metric is computed? Since PRI generates v sparse images per trajectory, should the comparison be based on total time to generate a fixed number of images (e.g., 128) rather than per-trajectory throughput?\",\n    \"In Table 2, how is throughput measured? Is it iterations per second during inversion of a batch of 128 images? For PRI with v=4, you invert 32 images per batch. Does this mean the effective throughput for generating 128 images is different from what's reported?\",\n    \"How is the attention-based importance score exactly computed? Is it averaged over all layers and heads, or only the last layer? How sensitive is PRI to this choice?\",\n    \"What happens if a patch that was detached early (at t1) would have become important again later? Is there a mechanism to 're-attach' patches, or is detachment permanent?\",\n    \"How does PRI perform with adaptive detachment scheduling instead of fixed intervals? Could the detachment points be determined based on convergence of importance scores?\",\n    \"The one-class distillation experiment (Figure 4) shows PRI generalizes across classes. Is this consistent across different classes and datasets? Are there cases where PRI fails to capture class-agnostic features?\",\n    \"For v=7 (86% sparsity), the batch size is 126 instead of 128. Does this small discrepancy affect the comparison with SMI and DMI, which use 128?\"\n  ],\n  \"Limitations\": [\n    \"The paper does not discuss potential negative societal impacts of model inversion, particularly regarding privacy. While the focus is on data-free learning, the method could potentially be used for model inversion attacks.\",\n    \"The method is specifically designed for ViTs and may not generalize to other architectures (e.g., CNNs, hybrid models) without modification.\",\n    \"The performance advantage of PRI over DMI is modest at high sparsity levels (86%), and in some cases (e.g., DeiT-Tiny distillation), DMI still outperforms PRI.\",\n    \"The experiments are limited to image classification. The effectiveness of PRI for other data types (e.g., text, audio) or tasks (e.g., segmentation, detection) is unexplored.\",\n    \"The paper does not provide a thorough analysis of failure cases or limitations of the Re-Birth effect.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 4,\n  \"Presentation\": 3,\n  \"Contribution\": 4,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 20780,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 18988,
+        "completion_tokens": 2181,
+        "reasoning_tokens": 0,
+        "total_tokens": 22961
+      },
+      "attempts": 1,
+      "response_id": "4b2b4fc1-1d9a-4411-acd2-a1d1babeaf39"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "This paper proposes Patch Rebirth Inversion (PRI), a novel model inversion method for Vision Transformers (ViTs) that improves both efficiency and effectiveness in data-free learning. The authors challenge the core assumption of Sparse Model Inversion (SMI), which discards unimportant patches early during inversion. Through empirical analysis, they demonstrate that even randomly selected patches can acquire transferable knowledge through continued inversion, a phenomenon they term the 'Re-Birth effect'. PRI alternates between detaching the most important patches at regular intervals (forming multiple sparse images) and allowing the remaining patches to continue evolving. This progressive strategy generates multiple sparse synthetic images from a single inversion trajectory, capturing both class-agnostic and class-specific features. The method achieves up to 10x faster inversion than DMI and 2x faster than SMI, while consistently outperforming SMI in accuracy and matching DMI performance. Extensive experiments on data-free quantization and knowledge distillation tasks validate the approach, with theoretical analysis confirming computational efficiency advantages.",
+        "Strengths": [
+          "Novel and elegant approach: PRI's progressive patch detachment strategy is conceptually simple yet effective, challenging the existing SMI paradigm with strong empirical evidence",
+          "Interesting empirical findings: The observation that random patch selection performs comparably to importance-based selection, and the Re-Birth effect, are valuable insights for the model inversion community",
+          "Comprehensive experimental validation: Evaluations across multiple architectures (DeiT-Tiny/Small/Base), datasets (CIFAR-10/100, Tiny-ImageNet, ImageNet), tasks (quantization, distillation), and sparsity levels (50%, 75%, 86%)",
+          "Theoretical analysis: Provides formal complexity comparisons showing PRI's efficiency advantages over both DMI and SMI, with practical conditions (N/d<3) satisfied by standard ViT architectures",
+          "The one-class distillation experiment is particularly compelling, demonstrating PRI's unique ability to capture class-agnostic knowledge that transfers across classes",
+          "Clear and well-structured presentation with helpful visualizations of the Re-Birth effect and progressive detachment process",
+          "Reproducibility considerations: Provides pseudocode, detailed experimental settings, and uses standard libraries (timm) and fixed seeds"
+        ],
+        "Weaknesses": [
+          "Theoretical analysis assumes an idealized SMI* that prunes patches upfront, whereas real SMI uses gradual pruning over iterations. This makes the theoretical comparison more favorable to PRI than a direct comparison with actual SMI would be",
+          "Limited comparison to other data-free learning methods beyond SMI and DMI; no comparison to more recent generative approaches or other ViT-specific inversion methods",
+          "The number of generated images differs between methods (e.g., 126 vs 128 for v=7), and the paper acknowledges this creates slight computational advantages/disadvantages that are deemed 'negligible' without thorough sensitivity analysis",
+          "The Re-Birth effect is presented as an empirical observation without deeper theoretical explanation of why continued inversion allows initially unimportant patches to become informative",
+          "The detachment schedule is fixed to uniform intervals; no exploration of adaptive scheduling based on patch importance dynamics",
+          "The paper could benefit from more analysis of failure cases - e.g., when PRI underperforms DMI at high sparsity levels with smaller student models (DeiT-Tiny), the reasons are not deeply investigated",
+          "Limited discussion of limitations and potential negative societal impacts"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 4,
+        "Questions": [
+          "1. The theoretical analysis compares PRI against an idealized SMI* that prunes upfront. How does the efficiency comparison change when compared against the actual SMI implementation with gradual pruning? Could you provide a direct empirical comparison of total wall-clock time for the full inversion process?",
+          "2. In the one-class distillation experiment, what explains PRI's ability to generalize across classes? Is this primarily due to the class-agnostic features captured at early detachment points, or is there another mechanism at play?",
+          "3. Have you explored adaptive detachment scheduling based on the rate of change in patch importance? Would scheduling detachments based on when patches stabilize in importance improve results?",
+          "4. For the v=7 case, you generate 126 images instead of 128. Could this slight difference affect the comparison fairness? Have you tried generating 126 images for all methods or using a batch size that divides evenly?",
+          "5. How sensitive are the results to the choice of K (number of patches detached at each point) relative to the total number of patches? Have you explored non-uniform detachment sizes?",
+          "6. The paper mentions that PRI's advantage diminishes with smaller student models at high sparsity. What causes this, and could the method be adapted to better handle such cases?",
+          "7. Could you provide more details on the computational overhead of the detachment operation itself (computing attention scores and masking patches)? Is this negligible compared to the forward-backward pass costs?",
+          "8. Have you tested PRI on other ViT variants such as Swin Transformer or models with different patch sizes (e.g., patch size 8 or 32)?"
+        ],
+        "Limitations": [
+          "The paper does not explicitly discuss limitations of the proposed method. Key limitations that should be addressed include: (1) The method's performance degradation at high sparsity levels with smaller student models; (2) The fixed uniform detachment schedule may not be optimal for all scenarios; (3) The method's applicability to other architectures (CNNs, hybrid models) is not explored; (4) The theoretical analysis relies on idealized assumptions about SMI that may not hold in practice",
+          "Potential negative societal impacts: Model inversion can be used for privacy attacks to reconstruct training data. While the paper focuses on data-free learning applications, the improved efficiency could make such attacks more feasible. The authors should discuss this potential misuse",
+          "The paper does not discuss the environmental impact of the computational resources used in experiments"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes Patch Rebirth Inversion (PRI) for efficient model inversion of Vision Transformers. The key idea is to challenge SMI's approach of discarding unimportant patches early. Instead, PRI progressively detaches the most important patches at regular intervals during inversion, creating multiple sparse images from a single inversion trajectory. The authors claim this preserves both class-agnostic and class-specific features, leading to better knowledge transfer while being more efficient.\n\nStrengths:\n- The paper makes an interesting empirical observation that randomly selected patches can achieve comparable performance to importance-based selection, challenging SMI's core assumption\n- The Re-Birth effect is a novel and well-visualized phenomenon\n- The proposed method is simple and elegant - generating multiple sparse images sequentially rather than one at a time\n- Theoretical analysis provides formal guarantees on computational efficiency\n- Extensive experiments across quantization and distillation tasks with multiple architectures and datasets\n- The one-class distillation experiment is particularly compelling evidence for the method's ability to capture class-agnostic features\n\nWeaknesses:\n- The paper doesn't compare against other data-free learning methods beyond SMI and DMI\n- The theoretical analysis assumes an idealized SMI (SMI*) that prunes upfront, which isn't how SMI actually works - real SMI has gradual pruning which is more expensive\n- The number of images generated differs between methods (e.g., 126 vs 128 for v=7), which could complicate fair comparison\n- The paper could benefit from more analysis on why the Re-Birth effect occurs - it's presented as an empirical observation without deep theoretical explanation\n- The detachment schedule is uniform (every T/v iterations) - no exploration of adaptive scheduling\n- Limited discussion of limitations and potential failure cases\n\nOriginality: High - the approach of progressive detachment rather than pruning is novel, and the empirical findings about random patch selection are interesting\n\nQuality: Good - solid experiments, but some gaps in comparisons and the idealized SMI assumption weakens the theoretical contribution\n\nClarity: Good - the paper is well-written and the figures help convey the key ideas\n\nSignificance: High - model inversion for ViTs is an important problem, and the efficiency gains are substantial\n\nOverall: This is a solid paper with a novel approach and good experimental validation. The main concerns are the idealized theoretical comparison and limited baseline comparisons. I'd lean toward acceptance given the practical importance and clear improvements over SMI.\n\nDecision: AcceptREVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper proposes Patch Rebirth Inversion (PRI), a novel model inversion method for Vision Transformers (ViTs) that improves both efficiency and effectiveness in data-free learning. The authors challenge the core assumption of Sparse Model Inversion (SMI), which discards unimportant patches early during inversion. Through empirical analysis, they demonstrate that even randomly selected patches can acquire transferable knowledge through continued inversion, a phenomenon they term the 'Re-Birth effect'. PRI alternates between detaching the most important patches at regular intervals (forming multiple sparse images) and allowing the remaining patches to continue evolving. This progressive strategy generates multiple sparse synthetic images from a single inversion trajectory, capturing both class-agnostic and class-specific features. The method achieves up to 10x faster inversion than DMI and 2x faster than SMI, while consistently outperforming SMI in accuracy and matching DMI performance. Extensive experiments on data-free quantization and knowledge distillation tasks validate the approach, with theoretical analysis confirming computational efficiency advantages.\",\n  \"Strengths\": [\n    \"Novel and elegant approach: PRI's progressive patch detachment strategy is conceptually simple yet effective, challenging the existing SMI paradigm with strong empirical evidence\",\n    \"Interesting empirical findings: The observation that random patch selection performs comparably to importance-based selection, and the Re-Birth effect, are valuable insights for the model inversion community\",\n    \"Comprehensive experimental validation: Evaluations across multiple architectures (DeiT-Tiny/Small/Base), datasets (CIFAR-10/100, Tiny-ImageNet, ImageNet), tasks (quantization, distillation), and sparsity levels (50%, 75%, 86%)\",\n    \"Theoretical analysis: Provides formal complexity comparisons showing PRI's efficiency advantages over both DMI and SMI, with practical conditions (N/d<3) satisfied by standard ViT architectures\",\n    \"The one-class distillation experiment is particularly compelling, demonstrating PRI's unique ability to capture class-agnostic knowledge that transfers across classes\",\n    \"Clear and well-structured presentation with helpful visualizations of the Re-Birth effect and progressive detachment process\",\n    \"Reproducibility considerations: Provides pseudocode, detailed experimental settings, and uses standard libraries (timm) and fixed seeds\"\n  ],\n  \"Weaknesses\": [\n    \"Theoretical analysis assumes an idealized SMI* that prunes patches upfront, whereas real SMI uses gradual pruning over iterations. This makes the theoretical comparison more favorable to PRI than a direct comparison with actual SMI would be\",\n    \"Limited comparison to other data-free learning methods beyond SMI and DMI; no comparison to more recent generative approaches or other ViT-specific inversion methods\",\n    \"The number of generated images differs between methods (e.g., 126 vs 128 for v=7), and the paper acknowledges this creates slight computational advantages/disadvantages that are deemed 'negligible' without thorough sensitivity analysis\",\n    \"The Re-Birth effect is presented as an empirical observation without deeper theoretical explanation of why continued inversion allows initially unimportant patches to become informative\",\n    \"The detachment schedule is fixed to uniform intervals; no exploration of adaptive scheduling based on patch importance dynamics\",\n    \"The paper could benefit from more analysis of failure cases - e.g., when PRI underperforms DMI at high sparsity levels with smaller student models (DeiT-Tiny), the reasons are not deeply investigated\",\n    \"Limited discussion of limitations and potential negative societal impacts\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"1. The theoretical analysis compares PRI against an idealized SMI* that prunes upfront. How does the efficiency comparison change when compared against the actual SMI implementation with gradual pruning? Could you provide a direct empirical comparison of total wall-clock time for the full inversion process?\",\n    \"2. In the one-class distillation experiment, what explains PRI's ability to generalize across classes? Is this primarily due to the class-agnostic features captured at early detachment points, or is there another mechanism at play?\",\n    \"3. Have you explored adaptive detachment scheduling based on the rate of change in patch importance? Would scheduling detachments based on when patches stabilize in importance improve results?\",\n    \"4. For the v=7 case, you generate 126 images instead of 128. Could this slight difference affect the comparison fairness? Have you tried generating 126 images for all methods or using a batch size that divides evenly?\",\n    \"5. How sensitive are the results to the choice of K (number of patches detached at each point) relative to the total number of patches? Have you explored non-uniform detachment sizes?\",\n    \"6. The paper mentions that PRI's advantage diminishes with smaller student models at high sparsity. What causes this, and could the method be adapted to better handle such cases?\",\n    \"7. Could you provide more details on the computational overhead of the detachment operation itself (computing attention scores and masking patches)? Is this negligible compared to the forward-backward pass costs?\",\n    \"8. Have you tested PRI on other ViT variants such as Swin Transformer or models with different patch sizes (e.g., patch size 8 or 32)?\"\n  ],\n  \"Limitations\": [\n    \"The paper does not explicitly discuss limitations of the proposed method. Key limitations that should be addressed include: (1) The method's performance degradation at high sparsity levels with smaller student models; (2) The fixed uniform detachment schedule may not be optimal for all scenarios; (3) The method's applicability to other architectures (CNNs, hybrid models) is not explored; (4) The theoretical analysis relies on idealized assumptions about SMI that may not hold in practice\",\n    \"Potential negative societal impacts: Model inversion can be used for privacy attacks to reconstruct training data. While the paper focuses on data-free learning applications, the improved efficiency could make such attacks more feasible. The authors should discuss this potential misuse\",\n    \"The paper does not discuss the environmental impact of the computational resources used in experiments\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 20780,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 18988,
+        "completion_tokens": 1821,
+        "reasoning_tokens": 0,
+        "total_tokens": 22601
+      },
+      "attempts": 1,
+      "response_id": "ca969c7d-662c-42f1-9940-3a83d0357e3d"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper proposes Patch Rebirth Inversion (PRI), a novel method for efficient model inversion of Vision Transformers (ViTs). The key idea is to progressively detach the most important patches during the inversion process to construct multiple sparse synthetic images, rather than discarding unimportant patches as done in Sparse Model Inversion (SMI). The paper provides empirical evidence that even initially unimportant patches can acquire transferable knowledge through continued inversion (the 'Re-Birth effect'), and that this progressive detachment approach balances class-specific and class-agnostic features, leading to improved knowledge transfer. The method achieves up to 10× faster inversion than Dense Model Inversion (DMI) and 2× faster than SMI, while consistently outperforming SMI in accuracy and matching DMI performance. The paper includes theoretical analysis of computational costs, comprehensive experiments on quantization and knowledge distillation tasks, and analyses of the progressive feature shift from class-agnostic to class-specific.",
+        "Strengths": [
+          "The paper challenges the core assumption of SMI with compelling empirical evidence (Table 1) showing that patch selection criteria have limited impact on final performance, providing a valuable insight into the inversion process.",
+          "The proposed PRI method is novel - instead of generating a single sparse image, it generates multiple sparse images at different inversion stages, capturing both class-specific and class-agnostic features.",
+          "The theoretical analysis (Theorem 1) provides a clear computational advantage for PRI over both DMI and SMI, with practical conditions satisfied by standard ViT architectures.",
+          "Comprehensive experimental evaluation covering both efficiency (throughput, FLOPs, memory) and effectiveness (quantization, distillation) across multiple architectures, sparsity levels, and datasets.",
+          "The 'Re-Birth effect' and progressive shift from general to specific features are well-supported by visualizations, t-SNE analyses, and one-class distillation experiments.",
+          "The paper is well-written and clearly organized, with good contextualization of prior work and clear explanation of the methodology."
+        ],
+        "Weaknesses": [
+          "The empirical observation that random patch selection performs as well as importance-based selection is surprising and could benefit from deeper analysis of why this occurs, beyond just the 'Re-Birth effect' description.",
+          "The comparison with SMI may not be entirely fair in some settings due to different pruning/detachment schedules (SMI prunes at iterations 50, 100, 200, 300 while PRI detaches uniformly over T/v iterations).",
+          "The paper claims PRI 'consistently outperforms SMI' but in some cases the margins appear small; statistical significance testing would strengthen the claims.",
+          "The new hyperparameter v (division factor) controls sparsity but the paper doesn't thoroughly explore sensitivity to this parameter or provide clear guidance for choosing it in practice.",
+          "The theoretical analysis assumes an idealized SMI* that prunes all patches upfront, which may not reflect actual gradual pruning behavior, potentially making the comparison less precise.",
+          "The paper doesn't adequately discuss potential limitations of the method or scenarios where PRI might not perform well."
+        ],
+        "Originality": 4,
+        "Quality": 4,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "In Table 1, random selection performs nearly identically to high-attention selection. Could this be because attention scores in early inversion stages are not informative, or because the inversion process is inherently robust to which patches are selected? Have you analyzed the correlation between attention scores at different iterations?",
+          "How does the choice of v affect the quality of individual sparse images? For example, with v=7, the first detachment point occurs early in inversion - are those early images still useful for downstream tasks?",
+          "Could detaching patches based on attention scores from different iterations cause inconsistency? For instance, could a patch that was important at t1 become less important at t2?",
+          "Have you considered using different importance metrics for detachment (e.g., gradient-based or activation-based) rather than just attention scores?",
+          "How does PRI handle very small numbers of remaining patches at the last detachment point? Is there a minimum number needed for effective inversion?",
+          "What is the sensitivity of PRI's performance to the choice of v? Could you provide guidance on how to select v for different applications or model architectures?"
+        ],
+        "Limitations": [
+          "The paper primarily evaluates on CIFAR-10/100 and ImageNet with DeiT models; results on other ViT variants (e.g., Swin, ViT with different patch sizes) and other datasets would strengthen the generalizability claims.",
+          "The method requires specification of the division factor v, but the paper lacks clear guidance on choosing v for different applications or trade-offs between efficiency and accuracy.",
+          "The paper doesn't discuss potential negative societal impacts of model inversion, such as privacy concerns when inverting models trained on sensitive data.",
+          "The claim about 'class-agnostic features' is based on indirect evidence (one-class distillation, confidence distributions); a more direct analysis of what these features represent would strengthen the claim.",
+          "The paper doesn't explore scenarios where PRI might fail or underperform, such as with very different model architectures or datasets with unusual properties."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 4,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes Patch Rebirth Inversion (PRI), a method for efficient model inversion of Vision Transformers. The key idea is to progressively detach the most important patches during inversion to form multiple sparse images, rather than discarding unimportant patches as done in Sparse Model Inversion (SMI). The paper provides empirical evidence that even initially unimportant patches can acquire transferable knowledge through continued inversion (the \"Re-Birth effect\"), and that this progressive detachment approach balances class-specific and class-agnostic features.\n\nStrengths:\n1. The paper challenges the core assumption of SMI with empirical evidence (Table 1) showing that patch selection criteria have limited impact on final performance, which is a valuable insight.\n2. The proposed method is novel - instead of generating a single sparse image, it generates multiple sparse images at different stages of inversion, which captures both class-specific and class-agnostic features.\n3. The theoretical analysis (Theorem 1) provides a clear computational advantage for PRI over both DMI and SMI, with practical conditions that are satisfied by standard ViT architectures.\n4. The experimental evaluation is comprehensive, covering both efficiency (throughput, FLOPs, memory) and effectiveness (quantization, distillation) across multiple architectures, sparsity levels, and datasets.\n5. The analysis of the \"Re-Birth effect\" and the progressive shift from general to specific features is well-supported by visualizations, t-SNE, and one-class distillation experiments.\n6. The paper is well-written and clearly organized, with good contextualization of prior work.\n\nWeaknesses:\n1. The empirical observation that random patch selection performs as well as importance-based selection (Table 1) is interesting but somewhat surprising - the paper could benefit from more analysis of why this happens, beyond just the \"Re-Birth effect\" description.\n2. The comparison with SMI might not be entirely fair in some settings. For example, SMI's gradual pruning schedule (at iterations 50, 100, 200, 300) is different from PRI's detachment schedule (uniformly spaced over T/v iterations). This could affect the comparison.\n3. The paper claims PRI \"consistently outperforming SMI in accuracy\" but in some cases (e.g., DeiT-Tiny at 86% sparsity in Table A3), the margin seems small. More statistical significance testing would strengthen the claims.\n4. The method introduces a new hyperparameter v (division factor) that controls sparsity, but the paper doesn't thoroughly explore the sensitivity to this parameter or provide guidance on how to choose it in practice.\n5. The theoretical analysis assumes an idealized version of SMI (SMI*) that prunes all patches upfront, which may not reflect the actual gradual pruning behavior of SMI. This could make the theoretical comparison less meaningful.\n6. The paper doesn't discuss potential limitations of the method, such as scenarios where PRI might not perform well or where the assumptions might break down.\n\nQuestions:\n1. In Table 1, the performance of random selection is nearly identical to high-attention selection. Could this be because the inversion process itself is robust to which patches are selected, or because the attention scores in the early stages are not informative? Have you analyzed the correlation between attention scores at different iterations?\n2. How does the choice of v affect the quality of individual sparse images? For example, with v=7, the first detachment point occurs quite early in the inversion process - are those early images still useful for downstream tasks?\n3. The paper mentions that PRI \"incrementally detaches the most important patches.\" Could there be a scenario where detaching patches based on attention scores from different iterations causes inconsistency? For instance, could a patch that was important at t1 become less important at t2?\n4. Have you considered using different importance metrics for detachment, such as gradient-based or activation-based scores, rather than just attention scores?\n5. How does PRI handle the case where the number of remaining patches becomes very small (e.g., at the last detachment point)? Is there a minimum number of patches needed for effective inversion?\n\nLimitations:\n1. The paper primarily evaluates on CIFAR-10/100 and ImageNet with DeiT models. It would be interesting to see results on other ViT variants (e.g., Swin, ViT with different patch sizes) and other datasets.\n2. The method requires the user to specify the division factor v, which controls the sparsity. The paper doesn't provide clear guidance on choosing v for different applications.\n3. The paper doesn't discuss the potential negative societal impacts of model inversion, such as privacy concerns when inverting models trained on sensitive data.\n4. The paper's claim about \"class-agnostic features\" is based on indirect evidence (one-class distillation, confidence distributions). A more direct analysis of what these features represent would strengthen the claim.\n\nEthical Concerns: No significant ethical concerns beyond the general privacy implications of model inversion, which are inherent to the field and not specific to this paper.\n\nOverall Assessment:\nThe paper presents a novel and well-motivated approach to efficient model inversion for ViTs. The key insight that discarded patches can still acquire transferable knowledge is valuable and challenges existing assumptions. The method is technically sound with good theoretical backing and comprehensive empirical evaluation. The main concerns are the fairness of comparison with SMI, the lack of sensitivity analysis for the new hyperparameter, and the somewhat limited discussion of limitations. However, these are relatively minor issues that don't undermine the core contributions. I would lean towards accepting this paper as it makes a solid contribution to the field of data-free learning and model inversion.\n\nSoundness: 4 (excellent) - The technical claims are well-supported with both theoretical analysis and empirical evidence. The experiments are comprehensive and the methodology is appropriate.\n\nPresentation: 3 (good) - The paper is well-written and organized, but there are some areas where clarity could be improved, such as the comparison methodology with SMI and the discussion of the v hyperparameter.\n\nContribution: 3 (good) - The paper makes a valuable contribution by challenging existing assumptions and proposing a more efficient and effective approach. The insights about the \"Re-Birth effect\" are interesting and could inspire future work.\n\nOverall: 7 (Accept) - Technically solid paper with high impact on the sub-area of model inversion for ViTs. The method is novel, well-evaluated, and the theoretical analysis is sound. The minor concerns about comparison fairness and hyperparameter sensitivity don't outweigh the contributions.\n\nConfidence: 4 - I am confident in my assessment, having carefully reviewed the technical details and experimental methodology.REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper proposes Patch Rebirth Inversion (PRI), a novel method for efficient model inversion of Vision Transformers (ViTs). The key idea is to progressively detach the most important patches during the inversion process to construct multiple sparse synthetic images, rather than discarding unimportant patches as done in Sparse Model Inversion (SMI). The paper provides empirical evidence that even initially unimportant patches can acquire transferable knowledge through continued inversion (the 'Re-Birth effect'), and that this progressive detachment approach balances class-specific and class-agnostic features, leading to improved knowledge transfer. The method achieves up to 10× faster inversion than Dense Model Inversion (DMI) and 2× faster than SMI, while consistently outperforming SMI in accuracy and matching DMI performance. The paper includes theoretical analysis of computational costs, comprehensive experiments on quantization and knowledge distillation tasks, and analyses of the progressive feature shift from class-agnostic to class-specific.\",\n  \"Strengths\": [\n    \"The paper challenges the core assumption of SMI with compelling empirical evidence (Table 1) showing that patch selection criteria have limited impact on final performance, providing a valuable insight into the inversion process.\",\n    \"The proposed PRI method is novel - instead of generating a single sparse image, it generates multiple sparse images at different inversion stages, capturing both class-specific and class-agnostic features.\",\n    \"The theoretical analysis (Theorem 1) provides a clear computational advantage for PRI over both DMI and SMI, with practical conditions satisfied by standard ViT architectures.\",\n    \"Comprehensive experimental evaluation covering both efficiency (throughput, FLOPs, memory) and effectiveness (quantization, distillation) across multiple architectures, sparsity levels, and datasets.\",\n    \"The 'Re-Birth effect' and progressive shift from general to specific features are well-supported by visualizations, t-SNE analyses, and one-class distillation experiments.\",\n    \"The paper is well-written and clearly organized, with good contextualization of prior work and clear explanation of the methodology.\"\n  ],\n  \"Weaknesses\": [\n    \"The empirical observation that random patch selection performs as well as importance-based selection is surprising and could benefit from deeper analysis of why this occurs, beyond just the 'Re-Birth effect' description.\",\n    \"The comparison with SMI may not be entirely fair in some settings due to different pruning/detachment schedules (SMI prunes at iterations 50, 100, 200, 300 while PRI detaches uniformly over T/v iterations).\",\n    \"The paper claims PRI 'consistently outperforms SMI' but in some cases the margins appear small; statistical significance testing would strengthen the claims.\",\n    \"The new hyperparameter v (division factor) controls sparsity but the paper doesn't thoroughly explore sensitivity to this parameter or provide clear guidance for choosing it in practice.\",\n    \"The theoretical analysis assumes an idealized SMI* that prunes all patches upfront, which may not reflect actual gradual pruning behavior, potentially making the comparison less precise.\",\n    \"The paper doesn't adequately discuss potential limitations of the method or scenarios where PRI might not perform well.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 4,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"In Table 1, random selection performs nearly identically to high-attention selection. Could this be because attention scores in early inversion stages are not informative, or because the inversion process is inherently robust to which patches are selected? Have you analyzed the correlation between attention scores at different iterations?\",\n    \"How does the choice of v affect the quality of individual sparse images? For example, with v=7, the first detachment point occurs early in inversion - are those early images still useful for downstream tasks?\",\n    \"Could detaching patches based on attention scores from different iterations cause inconsistency? For instance, could a patch that was important at t1 become less important at t2?\",\n    \"Have you considered using different importance metrics for detachment (e.g., gradient-based or activation-based) rather than just attention scores?\",\n    \"How does PRI handle very small numbers of remaining patches at the last detachment point? Is there a minimum number needed for effective inversion?\",\n    \"What is the sensitivity of PRI's performance to the choice of v? Could you provide guidance on how to select v for different applications or model architectures?\"\n  ],\n  \"Limitations\": [\n    \"The paper primarily evaluates on CIFAR-10/100 and ImageNet with DeiT models; results on other ViT variants (e.g., Swin, ViT with different patch sizes) and other datasets would strengthen the generalizability claims.\",\n    \"The method requires specification of the division factor v, but the paper lacks clear guidance on choosing v for different applications or trade-offs between efficiency and accuracy.\",\n    \"The paper doesn't discuss potential negative societal impacts of model inversion, such as privacy concerns when inverting models trained on sensitive data.\",\n    \"The claim about 'class-agnostic features' is based on indirect evidence (one-class distillation, confidence distributions); a more direct analysis of what these features represent would strengthen the claim.\",\n    \"The paper doesn't explore scenarios where PRI might fail or underperform, such as with very different model architectures or datasets with unusual properties.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 4,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 20780,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 18988,
+        "completion_tokens": 2520,
+        "reasoning_tokens": 0,
+        "total_tokens": 23300
+      },
+      "attempts": 1,
+      "response_id": "646367ef-49bf-438e-aef0-ed2fc94427e2"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper proposes Patch Rebirth Inversion (PRI), a novel model inversion method for Vision Transformers (ViTs) that improves both efficiency and knowledge transfer quality compared to existing approaches. The authors challenge the core assumption of Sparse Model Inversion (SMI) that pruning unimportant patches early is beneficial, showing empirically that even randomly selected patches can acquire transferable knowledge through continued inversion. PRI progressively detaches the most important patches at regular intervals during inversion to form multiple sparse images, while allowing remaining patches to continue evolving. This yields both class-agnostic and class-specific features across different detachment points. The paper provides theoretical analysis showing PRI's computational advantage over both DMI and SMI, and validates the approach through experiments on data-free quantization and knowledge distillation, achieving up to 10x faster inversion than DMI and 2x faster than SMI while maintaining competitive accuracy.",
+        "Strengths": [
+          "The paper presents a clear and well-motivated challenge to SMI's core assumption, with strong empirical evidence (Table 1) showing that patch selection criteria have limited impact on final inversion quality",
+          "The Re-Birth effect is an interesting and well-visualized phenomenon that provides insight into the inversion dynamics of ViTs",
+          "The proposed PRI method is elegant and simple, with a clean theoretical analysis (Theorem 1) proving computational efficiency under practical conditions",
+          "Comprehensive experimental validation across multiple architectures (DeiT-Tiny/Small/Base), datasets (CIFAR-10/100, Tiny-ImageNet, ImageNet), and tasks (quantization, distillation)",
+          "The analysis of class-agnostic vs class-specific feature trade-offs via one-class distillation and confidence distributions is insightful and well-executed",
+          "The paper is well-written with clear structure and good use of visualizations to support claims"
+        ],
+        "Weaknesses": [
+          "The efficiency comparison may be unfair: PRI generates v sparse images per full inversion trajectory, so the '10x faster' claim needs careful interpretation - it's not directly comparable to DMI producing one dense image",
+          "The detachment scheduling is simplistic (uniform intervals) - no exploration of adaptive or importance-based scheduling strategies",
+          "Limited evaluation on larger-scale datasets beyond CIFAR/Tiny-ImageNet for distillation tasks",
+          "The theoretical analysis assumes an idealized SMI* that prunes before inversion, which may overstate the practical advantage over real SMI",
+          "Missing comparison with other efficient inversion methods beyond SMI (e.g., gradient-based token pruning approaches)",
+          "The practical significance of the speedup is somewhat diluted when accounting for the fact that PRI produces multiple images per trajectory"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "Could you clarify the fairness of the efficiency comparison? PRI generates v sparse images in one inversion trajectory, so how should we interpret the '10x faster than DMI' claim in terms of total useful images produced?",
+          "Have you explored adaptive detachment scheduling based on patch importance dynamics, rather than uniform intervals?",
+          "How does PRI perform compared to DMI when the total number of final images is matched (e.g., generating v sparse images with PRI vs v dense images with DMI)?",
+          "The Re-Birth effect is interesting - can you provide more analysis on why continued inversion causes initially unimportant patches to become informative? Is there a theoretical explanation?",
+          "What happens if the detachment points are chosen at non-uniform intervals? Does the balance between class-agnostic and class-specific features change?",
+          "How sensitive is PRI to the choice of attention-based importance metric? Have you tried other importance measures (e.g., gradient-based)?"
+        ],
+        "Limitations": [
+          "The paper focuses primarily on ViTs with patch-based tokenization - extension to other architectures (e.g., CNNs or hybrid models) is not explored",
+          "The detachment strategy assumes that important patches at each stage form coherent sparse images - this may fail for images with multiple objects or complex scenes",
+          "The efficiency gains diminish at lower sparsity levels (e.g., 50%), where the advantage over SMI is less pronounced",
+          "The paper does not address potential negative societal impacts of improved model inversion, such as enhanced privacy attacks",
+          "The one-class distillation analysis is limited to a single class and dataset - broader validation would strengthen the claims about class-agnostic knowledge transfer"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThe paper proposes Patch Rebirth Inversion (PRI) for efficient model inversion of Vision Transformers. It challenges SMI's assumption that pruning unimportant patches early is beneficial, showing instead that continued inversion of all patches yields better knowledge transfer. PRI progressively detaches important patches to form multiple sparse images, achieving efficiency while maintaining accuracy.\n\nKey strengths:\n- Clear motivation with empirical evidence challenging SMI's core assumption\n- Novel approach with theoretical analysis (Theorem 1) showing computational efficiency\n- Comprehensive experiments across quantization, distillation, and multiple architectures\n- Interesting \"Re-Birth effect\" phenomenon with visualizations\n- Good analysis of class-agnostic vs class-specific feature trade-offs\n\nKey weaknesses:\n- The comparison with SMI may be unfair in efficiency analysis - PRI generates v sparse images during one inversion trajectory, but the effective computational cost per useful image needs careful interpretation\n- The \"10x faster than DMI\" claim seems misleading since PRI produces multiple sparse images per full inversion\n- Limited experiments on larger datasets (only CIFAR-10/100, Tiny-ImageNet, ImageNet for quantization)\n- The confidence analysis and one-class distillation are interesting but somewhat limited in scope\n- The detachment scheduling is simple (uniform intervals) - could there be better strategies?\n- Missing comparisons with other efficient inversion methods beyond SMI\n\nThe paper is technically sound with solid experiments, but I have concerns about the fairness of efficiency comparisons and the practical significance of the speedup claims. The Re-Birth effect is an interesting observation, but its theoretical justification is limited.\n\nI rate this as a borderline accept - the core idea is novel and well-executed, but the efficiency comparisons need more careful treatment. Overall score around 5-6.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper proposes Patch Rebirth Inversion (PRI), a novel model inversion method for Vision Transformers (ViTs) that improves both efficiency and knowledge transfer quality compared to existing approaches. The authors challenge the core assumption of Sparse Model Inversion (SMI) that pruning unimportant patches early is beneficial, showing empirically that even randomly selected patches can acquire transferable knowledge through continued inversion. PRI progressively detaches the most important patches at regular intervals during inversion to form multiple sparse images, while allowing remaining patches to continue evolving. This yields both class-agnostic and class-specific features across different detachment points. The paper provides theoretical analysis showing PRI's computational advantage over both DMI and SMI, and validates the approach through experiments on data-free quantization and knowledge distillation, achieving up to 10x faster inversion than DMI and 2x faster than SMI while maintaining competitive accuracy.\",\n    \"Strengths\": [\n        \"The paper presents a clear and well-motivated challenge to SMI's core assumption, with strong empirical evidence (Table 1) showing that patch selection criteria have limited impact on final inversion quality\",\n        \"The Re-Birth effect is an interesting and well-visualized phenomenon that provides insight into the inversion dynamics of ViTs\",\n        \"The proposed PRI method is elegant and simple, with a clean theoretical analysis (Theorem 1) proving computational efficiency under practical conditions\",\n        \"Comprehensive experimental validation across multiple architectures (DeiT-Tiny/Small/Base), datasets (CIFAR-10/100, Tiny-ImageNet, ImageNet), and tasks (quantization, distillation)\",\n        \"The analysis of class-agnostic vs class-specific feature trade-offs via one-class distillation and confidence distributions is insightful and well-executed\",\n        \"The paper is well-written with clear structure and good use of visualizations to support claims\"\n    ],\n    \"Weaknesses\": [\n        \"The efficiency comparison may be unfair: PRI generates v sparse images per full inversion trajectory, so the '10x faster' claim needs careful interpretation - it's not directly comparable to DMI producing one dense image\",\n        \"The detachment scheduling is simplistic (uniform intervals) - no exploration of adaptive or importance-based scheduling strategies\",\n        \"Limited evaluation on larger-scale datasets beyond CIFAR/Tiny-ImageNet for distillation tasks\",\n        \"The theoretical analysis assumes an idealized SMI* that prunes before inversion, which may overstate the practical advantage over real SMI\",\n        \"Missing comparison with other efficient inversion methods beyond SMI (e.g., gradient-based token pruning approaches)\",\n        \"The practical significance of the speedup is somewhat diluted when accounting for the fact that PRI produces multiple images per trajectory\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 4,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"Could you clarify the fairness of the efficiency comparison? PRI generates v sparse images in one inversion trajectory, so how should we interpret the '10x faster than DMI' claim in terms of total useful images produced?\",\n        \"Have you explored adaptive detachment scheduling based on patch importance dynamics, rather than uniform intervals?\",\n        \"How does PRI perform compared to DMI when the total number of final images is matched (e.g., generating v sparse images with PRI vs v dense images with DMI)?\",\n        \"The Re-Birth effect is interesting - can you provide more analysis on why continued inversion causes initially unimportant patches to become informative? Is there a theoretical explanation?\",\n        \"What happens if the detachment points are chosen at non-uniform intervals? Does the balance between class-agnostic and class-specific features change?\",\n        \"How sensitive is PRI to the choice of attention-based importance metric? Have you tried other importance measures (e.g., gradient-based)?\"\n    ],\n    \"Limitations\": [\n        \"The paper focuses primarily on ViTs with patch-based tokenization - extension to other architectures (e.g., CNNs or hybrid models) is not explored\",\n        \"The detachment strategy assumes that important patches at each stage form coherent sparse images - this may fail for images with multiple objects or complex scenes\",\n        \"The efficiency gains diminish at lower sparsity levels (e.g., 50%), where the advantage over SMI is less pronounced\",\n        \"The paper does not address potential negative societal impacts of improved model inversion, such as enhanced privacy attacks\",\n        \"The one-class distillation analysis is limited to a single class and dataset - broader validation would strengthen the claims about class-agnostic knowledge transfer\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 4,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 20780,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 18988,
+        "completion_tokens": 1356,
+        "reasoning_tokens": 0,
+        "total_tokens": 22136
+      },
+      "attempts": 1,
+      "response_id": "34c87dfa-507c-41b3-abef-b5a36458b18b"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 5,
+      "Reject": 0
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          3,
+          4,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Clarity": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          4
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Significance": {
+        "values": [
+          3,
+          4,
+          4,
+          3,
+          3
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Soundness": {
+        "values": [
+          3,
+          4,
+          3,
+          4,
+          3
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Presentation": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          4
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Contribution": {
+        "values": [
+          3,
+          4,
+          3,
+          3,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Overall": {
+        "values": [
+          6,
+          7,
+          7,
+          7,
+          6
+        ],
+        "mean": 6.6,
+        "rounded_mean": 7,
+        "population_sd": 0.49,
+        "min": 6,
+        "max": 7
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper proposes Patch Rebirth Inversion (PRI), a novel method for efficient model inversion of Vision Transformers (ViTs). The key observation is that Sparse Model Inversion (SMI)'s strategy of discarding unimportant patches is suboptimal, because even initially low-importance patches can acquire transferable knowledge through continued inversion (the 'Re-Birth effect'). PRI instead progressively detaches the most important patches at multiple time points during inversion, generating multiple sparse images from a single inversion trajectory, while allowing remaining patches to continue evolving. This balances class-agnostic and class-specific features, improving both efficiency (up to 10x faster than DMI, 2x faster than SMI) and downstream task performance (consistently better than SMI, competitive with DMI). The paper includes theoretical analysis of computational complexity, extensive experiments on quantization and knowledge distillation across multiple architectures and datasets, and analyses demonstrating the preservation of class-agnostic knowledge.",
+      "Strengths": [
+        "Novel and well-motivated approach: PRI challenges the core assumption of SMI with strong empirical evidence (Table 1 showing selection criterion has little impact on final performance), providing a compelling motivation for the new method.",
+        "The Re-Birth effect is a novel and well-documented phenomenon, with clear visualizations (Figure 2) and quantitative analysis (Figure 4, confidence distributions).",
+        "PRI is a simple yet elegant method that naturally balances class-agnostic and class-specific features by generating multiple sparse images at different inversion stages.",
+        "The theoretical analysis (Theorem 1) provides clear complexity comparisons, showing PRI is more efficient than both DMI and SMI under practical conditions (N/d < 3), with the proof provided in the appendix.",
+        "Comprehensive experimental evaluation across multiple tasks (data-free quantization, knowledge distillation), datasets (CIFAR-10/100, Tiny-ImageNet, ImageNet), and architectures (DeiT-Tiny/Small/Base) demonstrates consistent improvements over SMI and competitive performance with DMI.",
+        "The one-class distillation experiment and confidence analysis provide strong evidence for the claim that PRI preserves class-agnostic knowledge, which is crucial for generalization in data-free settings.",
+        "The paper is well-written and clearly motivated, with a logical flow from empirical observation to method design to evaluation."
+      ],
+      "Weaknesses": [
+        "The claim that PRI 'matches the performance of DMI' is somewhat overstated. At high sparsity (86%), DMI clearly outperforms PRI in several settings (e.g., DeiT-Tiny distillation in Table 3b), and PRI's advantage over DMI is not consistent across all configurations.",
+        "The theoretical analysis assumes an idealized SMI (SMI^*) that prunes patches immediately, which is an optimistic assumption. Real SMI prunes gradually over iterations, so the actual speedup of PRI over SMI may be less than the theoretical bound suggests.",
+        "The efficiency comparison may be somewhat unfair: PRI generates v sparse images per trajectory, so the '10x faster than DMI' claim needs careful interpretation - it's not directly comparable to DMI producing one dense image.",
+        "The paper lacks a detailed ablation study on the detachment schedule. Only the division factor v is varied, but the effect of non-uniform detachment intervals (e.g., earlier vs. later detachment points) is not explored.",
+        "The comparison with SMI uses a fixed pruning schedule (iterations 50, 100, 200, 300) from the original SMI paper. It is unclear whether SMI's performance could be improved with a different schedule, which would make the comparison fairer and more convincing.",
+        "The paper does not discuss the applicability of PRI to other ViT variants (e.g., Swin Transformer, DeiT-III) or to inversion losses beyond the standard cross-entropy + TV regularization. This limits the generalizability of the findings.",
+        "The paper does not thoroughly analyze how the choice of division factor v affects the trade-off between efficiency and accuracy, or how the detachment schedule (fixed vs adaptive) impacts performance."
+      ],
+      "Originality": 4,
+      "Quality": 3,
+      "Clarity": 3,
+      "Significance": 4,
+      "Questions": [
+        "In Table 3b, at 86% sparsity, DMI outperforms PRI in the DeiT-Tiny distillation setting. Can you explain why PRI fails to match DMI in this case? Is it due to the reduced number of effective patches per image, or the specific characteristics of the smaller student model?",
+        "The theoretical analysis compares PRI with an idealized SMI^* that prunes patches immediately. In practice, SMI prunes gradually over iterations. How does the actual speedup of PRI over SMI compare to the theoretical bound? Could you provide an empirical breakdown of the computational cost at different inversion stages?",
+        "The paper claims PRI achieves 'up to 10x faster inversion than DMI'. Could you clarify how this metric is computed? Since PRI generates v sparse images per trajectory, should the comparison be based on total time to generate a fixed number of images (e.g., 128) rather than per-trajectory throughput?",
+        "The detachment points are uniformly spaced (t_k = k * floor(T/v)). Have you explored non-uniform schedules (e.g., more frequent detachments early in the process)? How does the schedule affect the balance between class-agnostic and class-specific features?",
+        "In the one-class distillation experiment, you use 2.5k images per detachment point. How sensitive are the results to the number of images? Would the class-agnostic generalization hold with fewer or more images?",
+        "Have you tested PRI with other ViT architectures (e.g., Swin, DeiT-III) or with different inversion losses (e.g., feature-matching losses)? Do the findings generalize beyond the DeiT family and the standard inversion loss?",
+        "What happens if a patch that was detached early (at t1) would have become important again later? Is there a mechanism to 're-attach' patches, or is detachment permanent?",
+        "How sensitive is PRI to the choice of attention-based importance metric? Have you tried other importance measures (e.g., gradient-based or activation-based)?",
+        "For v=7 (86% sparsity), the batch size is 126 instead of 128. Does this small discrepancy affect the comparison with SMI and DMI, which use 128?"
+      ],
+      "Limitations": [
+        "The paper's evaluation is limited to the DeiT family of ViTs and the standard inversion loss (cross-entropy + TV regularization). The generalizability of PRI to other ViT architectures and inversion objectives is not established.",
+        "The comparison with SMI uses a fixed pruning schedule from the original paper, which may not be optimal for SMI. This could underestimate SMI's performance and overstate PRI's relative advantage.",
+        "The paper does not discuss the computational overhead of the patch selection mechanism (attention score computation) in PRI, which may partially offset the efficiency gains, especially for very small models.",
+        "The method generates sparse images by masking out detached patches (shown as black regions). These masked regions could potentially confuse downstream tasks if not handled properly, and the paper does not discuss this potential issue in detail.",
+        "The paper does not address potential negative societal impacts of model inversion, such as privacy risks. While the method is intended for data-free learning, the underlying technique could be used for model inversion attacks.",
+        "The detachment strategy assumes that important patches at each stage form coherent sparse images - this may fail for images with multiple objects or complex scenes.",
+        "The efficiency gains diminish at lower sparsity levels (e.g., 50%), where the advantage over SMI is less pronounced.",
+        "The one-class distillation analysis is limited to a single class and dataset - broader validation would strengthen the claims about class-agnostic knowledge transfer."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 3,
+      "Contribution": 3,
+      "Overall": 7,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "THOUGHT:\nThe paper proposes PRI, a method for efficient model inversion of ViTs that challenges SMI's approach of discarding unimportant patches early. The key insight is the \"Re-Birth effect\": patches initially deemed unimportant can gain transferable knowledge through continued inversion. PRI progressively detaches important patches at intervals, generating multiple sparse images from a single trajectory, balancing class-agnostic and class-specific features.\n\nAll 5 reviewers recommend Accept, with overall scores of 6, 7, 7, 7, and 6. The consensus is that this is a technically solid paper with a novel idea, good empirical validation, and practical significance. The main concerns are:\n1. Fairness of efficiency comparisons (PRI generates multiple images per trajectory)\n2. The theoretical analysis assumes an idealized SMI* that prunes upfront\n3. Limited exploration of detachment schedules and hyperparameter sensitivity\n4. Generalizability to other architectures beyond DeiT\n5. Some claims of \"consistently outperforming SMI\" may be overstated in certain settings\n\nThe paper has strong empirical evidence for the Re-Birth effect (Table 1 shows selection criterion has little impact), comprehensive experiments across multiple tasks/datasets/architectures, and a clean theoretical analysis. The weaknesses are mostly about scope and fairness of comparisons rather than technical flaws.\n\nGiven the unanimous accept recommendation and the paper's solid technical quality, I will recommend Accept. The paper makes a meaningful contribution to model inversion for ViTs with a novel, well-validated approach. The concerns raised are addressable and don't undermine the core contribution.\n\nFor the ratings, I'll align with the consensus: Originality 4, Quality 3-4, Clarity 3-4, Significance 3-4, Soundness 3-4, Presentation 3-4, Contribution 3-4. Overall around 7 (Accept).\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper proposes Patch Rebirth Inversion (PRI), a novel method for efficient model inversion of Vision Transformers (ViTs). The key observation is that Sparse Model Inversion (SMI)'s strategy of discarding unimportant patches is suboptimal, because even initially low-importance patches can acquire transferable knowledge through continued inversion (the 'Re-Birth effect'). PRI instead progressively detaches the most important patches at multiple time points during inversion, generating multiple sparse images from a single inversion trajectory, while allowing remaining patches to continue evolving. This balances class-agnostic and class-specific features, improving both efficiency (up to 10x faster than DMI, 2x faster than SMI) and downstream task performance (consistently better than SMI, competitive with DMI). The paper includes theoretical analysis of computational complexity, extensive experiments on quantization and knowledge distillation across multiple architectures and datasets, and analyses demonstrating the preservation of class-agnostic knowledge.\",\n  \"Strengths\": [\n    \"Novel and well-motivated approach: PRI challenges the core assumption of SMI with strong empirical evidence (Table 1 showing selection criterion has little impact on final performance), providing a compelling motivation for the new method.\",\n    \"The Re-Birth effect is a novel and well-documented phenomenon, with clear visualizations (Figure 2) and quantitative analysis (Figure 4, confidence distributions).\",\n    \"PRI is a simple yet elegant method that naturally balances class-agnostic and class-specific features by generating multiple sparse images at different inversion stages.\",\n    \"The theoretical analysis (Theorem 1) provides clear complexity comparisons, showing PRI is more efficient than both DMI and SMI under practical conditions (N/d < 3), with the proof provided in the appendix.\",\n    \"Comprehensive experimental evaluation across multiple tasks (data-free quantization, knowledge distillation), datasets (CIFAR-10/100, Tiny-ImageNet, ImageNet), and architectures (DeiT-Tiny/Small/Base) demonstrates consistent improvements over SMI and competitive performance with DMI.\",\n    \"The one-class distillation experiment and confidence analysis provide strong evidence for the claim that PRI preserves class-agnostic knowledge, which is crucial for generalization in data-free settings.\",\n    \"The paper is well-written and clearly motivated, with a logical flow from empirical observation to method design to evaluation.\"\n  ],\n  \"Weaknesses\": [\n    \"The claim that PRI 'matches the performance of DMI' is somewhat overstated. At high sparsity (86%), DMI clearly outperforms PRI in several settings (e.g., DeiT-Tiny distillation in Table 3b), and PRI's advantage over DMI is not consistent across all configurations.\",\n    \"The theoretical analysis assumes an idealized SMI (SMI^*) that prunes patches immediately, which is an optimistic assumption. Real SMI prunes gradually over iterations, so the actual speedup of PRI over SMI may be less than the theoretical bound suggests.\",\n    \"The efficiency comparison may be somewhat unfair: PRI generates v sparse images per trajectory, so the '10x faster than DMI' claim needs careful interpretation - it's not directly comparable to DMI producing one dense image.\",\n    \"The paper lacks a detailed ablation study on the detachment schedule. Only the division factor v is varied, but the effect of non-uniform detachment intervals (e.g., earlier vs. later detachment points) is not explored.\",\n    \"The comparison with SMI uses a fixed pruning schedule (iterations 50, 100, 200, 300) from the original SMI paper. It is unclear whether SMI's performance could be improved with a different schedule, which would make the comparison fairer and more convincing.\",\n    \"The paper does not discuss the applicability of PRI to other ViT variants (e.g., Swin Transformer, DeiT-III) or to inversion losses beyond the standard cross-entropy + TV regularization. This limits the generalizability of the findings.\",\n    \"The paper does not thoroughly analyze how the choice of division factor v affects the trade-off between efficiency and accuracy, or how the detachment schedule (fixed vs adaptive) impacts performance.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 4,\n  \"Questions\": [\n    \"In Table 3b, at 86% sparsity, DMI outperforms PRI in the DeiT-Tiny distillation setting. Can you explain why PRI fails to match DMI in this case? Is it due to the reduced number of effective patches per image, or the specific characteristics of the smaller student model?\",\n    \"The theoretical analysis compares PRI with an idealized SMI^* that prunes patches immediately. In practice, SMI prunes gradually over iterations. How does the actual speedup of PRI over SMI compare to the theoretical bound? Could you provide an empirical breakdown of the computational cost at different inversion stages?\",\n    \"The paper claims PRI achieves 'up to 10x faster inversion than DMI'. Could you clarify how this metric is computed? Since PRI generates v sparse images per trajectory, should the comparison be based on total time to generate a fixed number of images (e.g., 128) rather than per-trajectory throughput?\",\n    \"The detachment points are uniformly spaced (t_k = k * floor(T/v)). Have you explored non-uniform schedules (e.g., more frequent detachments early in the process)? How does the schedule affect the balance between class-agnostic and class-specific features?\",\n    \"In the one-class distillation experiment, you use 2.5k images per detachment point. How sensitive are the results to the number of images? Would the class-agnostic generalization hold with fewer or more images?\",\n    \"Have you tested PRI with other ViT architectures (e.g., Swin, DeiT-III) or with different inversion losses (e.g., feature-matching losses)? Do the findings generalize beyond the DeiT family and the standard inversion loss?\",\n    \"What happens if a patch that was detached early (at t1) would have become important again later? Is there a mechanism to 're-attach' patches, or is detachment permanent?\",\n    \"How sensitive is PRI to the choice of attention-based importance metric? Have you tried other importance measures (e.g., gradient-based or activation-based)?\",\n    \"For v=7 (86% sparsity), the batch size is 126 instead of 128. Does this small discrepancy affect the comparison with SMI and DMI, which use 128?\"\n  ],\n  \"Limitations\": [\n    \"The paper's evaluation is limited to the DeiT family of ViTs and the standard inversion loss (cross-entropy + TV regularization). The generalizability of PRI to other ViT architectures and inversion objectives is not established.\",\n    \"The comparison with SMI uses a fixed pruning schedule from the original paper, which may not be optimal for SMI. This could underestimate SMI's performance and overstate PRI's relative advantage.\",\n    \"The paper does not discuss the computational overhead of the patch selection mechanism (attention score computation) in PRI, which may partially offset the efficiency gains, especially for very small models.\",\n    \"The method generates sparse images by masking out detached patches (shown as black regions). These masked regions could potentially confuse downstream tasks if not handled properly, and the paper does not discuss this potential issue in detail.\",\n    \"The paper does not address potential negative societal impacts of model inversion, such as privacy risks. While the method is intended for data-free learning, the underlying technique could be used for model inversion attacks.\",\n    \"The detachment strategy assumes that important patches at each stage form coherent sparse images - this may fail for images with multiple objects or complex scenes.\",\n    \"The efficiency gains diminish at lower sparsity levels (e.g., 50%), where the advantage over SMI is less pronounced.\",\n    \"The one-class distillation analysis is limited to a single class and dataset - broader validation would strengthen the claims about class-agnostic knowledge transfer.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 8014,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 8014,
+      "completion_tokens": 2110,
+      "reasoning_tokens": 0,
+      "total_tokens": 10124
+    },
+    "attempts": 1,
+    "response_id": "789d89de-9690-450b-bcaf-e5a98e3ae88f"
+  },
+  "final_review": {
+    "Summary": "The paper proposes Patch Rebirth Inversion (PRI), a novel method for efficient model inversion of Vision Transformers (ViTs). The key observation is that Sparse Model Inversion (SMI)'s strategy of discarding unimportant patches is suboptimal, because even initially low-importance patches can acquire transferable knowledge through continued inversion (the 'Re-Birth effect'). PRI instead progressively detaches the most important patches at multiple time points during inversion, generating multiple sparse images from a single inversion trajectory, while allowing remaining patches to continue evolving. This balances class-agnostic and class-specific features, improving both efficiency (up to 10x faster than DMI, 2x faster than SMI) and downstream task performance (consistently better than SMI, competitive with DMI). The paper includes theoretical analysis of computational complexity, extensive experiments on quantization and knowledge distillation across multiple architectures and datasets, and analyses demonstrating the preservation of class-agnostic knowledge.",
+    "Strengths": [
+      "Novel and well-motivated approach: PRI challenges the core assumption of SMI with strong empirical evidence (Table 1 showing selection criterion has little impact on final performance), providing a compelling motivation for the new method.",
+      "The Re-Birth effect is a novel and well-documented phenomenon, with clear visualizations (Figure 2) and quantitative analysis (Figure 4, confidence distributions).",
+      "PRI is a simple yet elegant method that naturally balances class-agnostic and class-specific features by generating multiple sparse images at different inversion stages.",
+      "The theoretical analysis (Theorem 1) provides clear complexity comparisons, showing PRI is more efficient than both DMI and SMI under practical conditions (N/d < 3), with the proof provided in the appendix.",
+      "Comprehensive experimental evaluation across multiple tasks (data-free quantization, knowledge distillation), datasets (CIFAR-10/100, Tiny-ImageNet, ImageNet), and architectures (DeiT-Tiny/Small/Base) demonstrates consistent improvements over SMI and competitive performance with DMI.",
+      "The one-class distillation experiment and confidence analysis provide strong evidence for the claim that PRI preserves class-agnostic knowledge, which is crucial for generalization in data-free settings.",
+      "The paper is well-written and clearly motivated, with a logical flow from empirical observation to method design to evaluation."
+    ],
+    "Weaknesses": [
+      "The claim that PRI 'matches the performance of DMI' is somewhat overstated. At high sparsity (86%), DMI clearly outperforms PRI in several settings (e.g., DeiT-Tiny distillation in Table 3b), and PRI's advantage over DMI is not consistent across all configurations.",
+      "The theoretical analysis assumes an idealized SMI (SMI^*) that prunes patches immediately, which is an optimistic assumption. Real SMI prunes gradually over iterations, so the actual speedup of PRI over SMI may be less than the theoretical bound suggests.",
+      "The efficiency comparison may be somewhat unfair: PRI generates v sparse images per trajectory, so the '10x faster than DMI' claim needs careful interpretation - it's not directly comparable to DMI producing one dense image.",
+      "The paper lacks a detailed ablation study on the detachment schedule. Only the division factor v is varied, but the effect of non-uniform detachment intervals (e.g., earlier vs. later detachment points) is not explored.",
+      "The comparison with SMI uses a fixed pruning schedule (iterations 50, 100, 200, 300) from the original SMI paper. It is unclear whether SMI's performance could be improved with a different schedule, which would make the comparison fairer and more convincing.",
+      "The paper does not discuss the applicability of PRI to other ViT variants (e.g., Swin Transformer, DeiT-III) or to inversion losses beyond the standard cross-entropy + TV regularization. This limits the generalizability of the findings.",
+      "The paper does not thoroughly analyze how the choice of division factor v affects the trade-off between efficiency and accuracy, or how the detachment schedule (fixed vs adaptive) impacts performance."
+    ],
+    "Originality": 4,
+    "Quality": 3,
+    "Clarity": 3,
+    "Significance": 3,
+    "Questions": [
+      "In Table 3b, at 86% sparsity, DMI outperforms PRI in the DeiT-Tiny distillation setting. Can you explain why PRI fails to match DMI in this case? Is it due to the reduced number of effective patches per image, or the specific characteristics of the smaller student model?",
+      "The theoretical analysis compares PRI with an idealized SMI^* that prunes patches immediately. In practice, SMI prunes gradually over iterations. How does the actual speedup of PRI over SMI compare to the theoretical bound? Could you provide an empirical breakdown of the computational cost at different inversion stages?",
+      "The paper claims PRI achieves 'up to 10x faster inversion than DMI'. Could you clarify how this metric is computed? Since PRI generates v sparse images per trajectory, should the comparison be based on total time to generate a fixed number of images (e.g., 128) rather than per-trajectory throughput?",
+      "The detachment points are uniformly spaced (t_k = k * floor(T/v)). Have you explored non-uniform schedules (e.g., more frequent detachments early in the process)? How does the schedule affect the balance between class-agnostic and class-specific features?",
+      "In the one-class distillation experiment, you use 2.5k images per detachment point. How sensitive are the results to the number of images? Would the class-agnostic generalization hold with fewer or more images?",
+      "Have you tested PRI with other ViT architectures (e.g., Swin, DeiT-III) or with different inversion losses (e.g., feature-matching losses)? Do the findings generalize beyond the DeiT family and the standard inversion loss?",
+      "What happens if a patch that was detached early (at t1) would have become important again later? Is there a mechanism to 're-attach' patches, or is detachment permanent?",
+      "How sensitive is PRI to the choice of attention-based importance metric? Have you tried other importance measures (e.g., gradient-based or activation-based)?",
+      "For v=7 (86% sparsity), the batch size is 126 instead of 128. Does this small discrepancy affect the comparison with SMI and DMI, which use 128?"
+    ],
+    "Limitations": [
+      "The paper's evaluation is limited to the DeiT family of ViTs and the standard inversion loss (cross-entropy + TV regularization). The generalizability of PRI to other ViT architectures and inversion objectives is not established.",
+      "The comparison with SMI uses a fixed pruning schedule from the original paper, which may not be optimal for SMI. This could underestimate SMI's performance and overstate PRI's relative advantage.",
+      "The paper does not discuss the computational overhead of the patch selection mechanism (attention score computation) in PRI, which may partially offset the efficiency gains, especially for very small models.",
+      "The method generates sparse images by masking out detached patches (shown as black regions). These masked regions could potentially confuse downstream tasks if not handled properly, and the paper does not discuss this potential issue in detail.",
+      "The paper does not address potential negative societal impacts of model inversion, such as privacy risks. While the method is intended for data-free learning, the underlying technique could be used for model inversion attacks.",
+      "The detachment strategy assumes that important patches at each stage form coherent sparse images - this may fail for images with multiple objects or complex scenes.",
+      "The efficiency gains diminish at lower sparsity levels (e.g., 50%), where the advantage over SMI is less pronounced.",
+      "The one-class distillation analysis is limited to a single class and dataset - broader validation would strengthen the claims about class-agnostic knowledge transfer."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 3,
+    "Contribution": 3,
+    "Overall": 7,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 111914,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 102954,
+    "completion_tokens": 12285,
+    "reasoning_tokens": 0,
+    "total_tokens": 124199,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.01441356,
+    "output_usd": 0.0034398,
+    "total_usd": 0.01787845
+  },
+  "elapsed_seconds": 37.36,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Accept",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B168",
+    "filename": "B168.txt",
+    "blind_text_sha256": "893e480aa7dc39649df907a5eb7d7ccd8403d8fbcbb79ecedd332b5a6c241960",
+    "characters": 76757,
+    "full_text_saved": false
+  }
+}

@@ -1,0 +1,596 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T09:12:49.901495+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "max",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "meta",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper proposes NcPU, a positive-unlabeled (PU) learning framework that aims to learn discriminative representations by combining a noisy-pair robust supervised non-contrastive loss (NoiSNCL) with a phantom label disambiguation (PLD) scheme. NoiSNCL pulls same-class embeddings together while down-weighting unreliable pseudo-label pairs via a square-root transformation of the non-contrastive loss. PLD uses class prototypes and a self-adaptive threshold to update pseudo-targets for unlabeled data, injecting conservative negative supervision to avoid trivial solutions. The authors provide a gradient analysis, an EM-style interpretation, and experiments on CIFAR-10/100, STL-10, and two disaster-damage mapping datasets (ABCD, xBD), reporting strong performance gains over prior PU baselines without requiring auxiliary negatives or class-prior estimates.",
+        "Strengths": [
+          "The paper identifies representation learning as a key bottleneck in PU learning and proposes a non-contrastive alignment objective that is intuitively more robust to noisy pseudo-label pairs than contrastive alternatives.",
+          "The proposed NoiSNCL is simple and effective: the square-root reweighting reduces gradient magnitude for dissimilar (likely noisy) pairs, and ablation results support its advantage over the standard non-contrastive loss.",
+          "PLD with PhantomGate provides a practical way to introduce negative supervision without access to the class prior, and the ablation shows it balances precision and recall better than naive prototype disambiguation or self-adaptive thresholding alone.",
+          "Experimental results are extensive, including benchmark datasets and two real-world remote sensing HADR datasets, with NcPU outperforming most baselines and sometimes matching or exceeding supervised training.",
+          "The EM-style theoretical interpretation is an interesting attempt to connect representation alignment and label disambiguation in PU learning.",
+          "The method does not require auxiliary negative samples or pre-estimated class priors, which is an important practical advantage over methods like LaGAM and WSC."
+        ],
+        "Weaknesses": [
+          "The theoretical analysis is not rigorous. Theorem 1 only shows that L1(theta) <= L2(theta) pointwise; it does not establish that minimizing the proposed tilde{R}_r maximizes a lower bound of the likelihood or that the EM iteration converges. The 'mild assumptions' are not stated precisely, and the vMF assumption is not validated.",
+          "The gradient analysis is limited: it considers only the gradient magnitude with respect to q_i under an identity prediction head, ignores the target network/momentum updates, and does not account for interactions with the cross-entropy loss or the effect of noisy pairs whose similarity is already high.",
+          "The PLD description is confusing. The role of PhantomGate is not clearly formalized; Eq. (11) appears to be a threshold on negative confidence rather than a 'regret-based' update mechanism. The terminology 'phantom' and 'regret' is not defined precisely.",
+          "The self-adaptive threshold is borrowed from FreeMatch, and the ablation shows that SAT alone collapses (50.25% OA). PhantomGate's success is therefore heuristic, with no theoretical or empirical analysis explaining why the combined mechanism avoids the collapse.",
+          "Statistical significance is not assessed. Many baselines have high variance (e.g., HolisticPU on CIFAR-100 has ±15 F1), and some improvements are small (xBD OA +0.78% over the best no-auxiliary baseline), so the claimed advantages may not be robust.",
+          "Some relevant baselines are missing, such as self-PU (Xia et al. 2021) and other recent class-prior-free PU methods used in remote sensing. The comparison with WSC is also incomplete because WSC's 'Additional' requirement is not marked in Table 1.",
+          "The experimental setup is narrow: all benchmarks use 1000 labeled positives and relatively high class priors (0.4-0.6). Low-prior PU scenarios, which are common in practice, are not tested, and sensitivity to the number of positive samples is not analyzed.",
+          "The supervised result for STL-10 is omitted, weakening the claim that NcPU achieves 'performance comparable to its supervised counterpart'.",
+          "Reproducibility is limited: code is not provided in the review version, and some implementation details (e.g., exact augmentation, pair-construction in the main experiments, entropy weighting) are only partially described in the appendix."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 3,
+        "Questions": [
+          "In Eq. (11), why is the threshold applied to f_1 (the probability of the negative class), and how exactly does PhantomGate implement 'regret-based label updating'? Could you provide a step-by-step example of the update rule?",
+          "Theorem 1 claims that minimizing tilde{R}_r is equivalent to maximizing a lower bound of the likelihood. Since L1(theta) <= L2(theta) for every theta, how does this imply a lower bound on the maximum likelihood objective? What are the precise 'mild assumptions' and is the EM convergence guaranteed?",
+          "How does NcPU avoid the trivial solution when the class prior is very small (e.g., pi_p=0.01)? Is PhantomGate's threshold able to recover positives in such low-prior settings?",
+          "What is the computational overhead of NcPU compared to the baselines, especially given 1300 training epochs and two augmented views? Are there any runtime or memory comparisons?",
+          "Why is the supervised STL-10 result omitted? Can you provide it for a complete comparison?",
+          "Are the ABCD and xBD splits representative of real PU settings? How were the class priors for these datasets determined, and why does supervised F1 on xBD remain low (73.32%) compared to NcPU's 64.84%?"
+        ],
+        "Limitations": [
+          "No code is provided in the submission; the reproducibility statement refers to a repository that is not accessible during review.",
+          "The theoretical EM interpretation is not a formal convergence proof and relies on unstated assumptions, limiting its ability to justify the method's success.",
+          "The method is evaluated only with a fixed number of labeled positives (1000 for benchmarks) and moderate-to-high class priors; low-prior and scarce-positive settings are not studied.",
+          "The training procedure is expensive (1300 epochs with two views and a target network), and no computational comparison with existing PU methods is reported.",
+          "The remote sensing experiments, while valuable, do not include fairness, bias, or uncertainty analysis, which is important for deployment in disaster-response contexts.",
+          "The hyperparameter sensitivity analysis covers alpha, beta, gamma, eta, and w_ent, but the learning rate and entropy weight differ across datasets, so the claim of robustness is not fully supported."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes NcPU, a positive-unlabeled (PU) learning framework that aims to learn discriminative representations by combining a noisy-pair robust supervised non-contrastive loss (NoiSNCL) with a phantom label disambiguation (PLD) scheme. NoiSNCL pulls same-class embeddings together while down-weighting unreliable pseudo-label pairs via a square-root transformation of the non-contrastive loss. PLD uses class prototypes and a self-adaptive threshold to update pseudo-targets for unlabeled data, injecting conservative negative supervision to avoid trivial solutions. The authors provide a gradient analysis, an EM-style interpretation, and experiments on CIFAR-10/100, STL-10, and two disaster-damage mapping datasets (ABCD, xBD), reporting strong performance gains over prior PU baselines without requiring auxiliary negatives or class-prior estimates.\",\n  \"Strengths\": [\n    \"The paper identifies representation learning as a key bottleneck in PU learning and proposes a non-contrastive alignment objective that is intuitively more robust to noisy pseudo-label pairs than contrastive alternatives.\",\n    \"The proposed NoiSNCL is simple and effective: the square-root reweighting reduces gradient magnitude for dissimilar (likely noisy) pairs, and ablation results support its advantage over the standard non-contrastive loss.\",\n    \"PLD with PhantomGate provides a practical way to introduce negative supervision without access to the class prior, and the ablation shows it balances precision and recall better than naive prototype disambiguation or self-adaptive thresholding alone.\",\n    \"Experimental results are extensive, including benchmark datasets and two real-world remote sensing HADR datasets, with NcPU outperforming most baselines and sometimes matching or exceeding supervised training.\",\n    \"The EM-style theoretical interpretation is an interesting attempt to connect representation alignment and label disambiguation in PU learning.\",\n    \"The method does not require auxiliary negative samples or pre-estimated class priors, which is an important practical advantage over methods like LaGAM and WSC.\"\n  ],\n  \"Weaknesses\": [\n    \"The theoretical analysis is not rigorous. Theorem 1 only shows that L1(theta) <= L2(theta) pointwise; it does not establish that minimizing the proposed tilde{R}_r maximizes a lower bound of the likelihood or that the EM iteration converges. The 'mild assumptions' are not stated precisely, and the vMF assumption is not validated.\",\n    \"The gradient analysis is limited: it considers only the gradient magnitude with respect to q_i under an identity prediction head, ignores the target network/momentum updates, and does not account for interactions with the cross-entropy loss or the effect of noisy pairs whose similarity is already high.\",\n    \"The PLD description is confusing. The role of PhantomGate is not clearly formalized; Eq. (11) appears to be a threshold on negative confidence rather than a 'regret-based' update mechanism. The terminology 'phantom' and 'regret' is not defined precisely.\",\n    \"The self-adaptive threshold is borrowed from FreeMatch, and the ablation shows that SAT alone collapses (50.25% OA). PhantomGate's success is therefore heuristic, with no theoretical or empirical analysis explaining why the combined mechanism avoids the collapse.\",\n    \"Statistical significance is not assessed. Many baselines have high variance (e.g., HolisticPU on CIFAR-100 has ±15 F1), and some improvements are small (xBD OA +0.78% over the best no-auxiliary baseline), so the claimed advantages may not be robust.\",\n    \"Some relevant baselines are missing, such as self-PU (Xia et al. 2021) and other recent class-prior-free PU methods used in remote sensing. The comparison with WSC is also incomplete because WSC's 'Additional' requirement is not marked in Table 1.\",\n    \"The experimental setup is narrow: all benchmarks use 1000 labeled positives and relatively high class priors (0.4-0.6). Low-prior PU scenarios, which are common in practice, are not tested, and sensitivity to the number of positive samples is not analyzed.\",\n    \"The supervised result for STL-10 is omitted, weakening the claim that NcPU achieves 'performance comparable to its supervised counterpart'.\",\n    \"Reproducibility is limited: code is not provided in the review version, and some implementation details (e.g., exact augmentation, pair-construction in the main experiments, entropy weighting) are only partially described in the appendix.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"In Eq. (11), why is the threshold applied to f_1 (the probability of the negative class), and how exactly does PhantomGate implement 'regret-based label updating'? Could you provide a step-by-step example of the update rule?\",\n    \"Theorem 1 claims that minimizing tilde{R}_r is equivalent to maximizing a lower bound of the likelihood. Since L1(theta) <= L2(theta) for every theta, how does this imply a lower bound on the maximum likelihood objective? What are the precise 'mild assumptions' and is the EM convergence guaranteed?\",\n    \"How does NcPU avoid the trivial solution when the class prior is very small (e.g., pi_p=0.01)? Is PhantomGate's threshold able to recover positives in such low-prior settings?\",\n    \"What is the computational overhead of NcPU compared to the baselines, especially given 1300 training epochs and two augmented views? Are there any runtime or memory comparisons?\",\n    \"Why is the supervised STL-10 result omitted? Can you provide it for a complete comparison?\",\n    \"Are the ABCD and xBD splits representative of real PU settings? How were the class priors for these datasets determined, and why does supervised F1 on xBD remain low (73.32%) compared to NcPU's 64.84%?\"\n  ],\n  \"Limitations\": [\n    \"No code is provided in the submission; the reproducibility statement refers to a repository that is not accessible during review.\",\n    \"The theoretical EM interpretation is not a formal convergence proof and relies on unstated assumptions, limiting its ability to justify the method's success.\",\n    \"The method is evaluated only with a fixed number of labeled positives (1000 for benchmarks) and moderate-to-high class priors; low-prior and scarce-positive settings are not studied.\",\n    \"The training procedure is expensive (1300 epochs with two views and a target network), and no computational comparison with existing PU methods is reported.\",\n    \"The remote sensing experiments, while valuable, do not include fairness, bias, or uncertainty analysis, which is important for deployment in disaster-response contexts.\",\n    \"The hyperparameter sensitivity analysis covers alpha, beta, gamma, eta, and w_ent, but the learning rate and entropy weight differ across datasets, so the claim of robustness is not fully supported.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 26052,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 25284,
+        "completion_tokens": 5045,
+        "reasoning_tokens": 3535,
+        "total_tokens": 31097
+      },
+      "attempts": 1,
+      "response_id": "36621156-ece1-43b4-929c-f90127e560ca"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper proposes NcPU, a positive-unlabeled (PU) learning framework that combines a noisy-pair robust supervised non-contrastive loss (NoiSNCL) with a phantom label disambiguation (PLD) scheme to learn discriminative representations without auxiliary negatives or pre-estimated class priors. NoiSNCL replaces the standard squared cosine distance with a square-root distance so that clean pairs have larger gradient magnitudes than noisy pairs, while PLD uses class prototypes and regret-based thresholding to supply conservative negative supervision. The authors provide an EM-style theoretical interpretation and report strong empirical gains on CIFAR-10/100, STL-10, and two post-disaster building damage mapping datasets, often approaching or exceeding supervised baselines.",
+        "Strengths": [
+          "The paper identifies representation learning as a key bottleneck in PU learning and proposes a novel combination of non-contrastive learning with PU-specific label disambiguation, which is a fresh angle in this area.",
+          "Strong empirical results: NcPU outperforms existing PU methods on all five datasets, with large margins on complex datasets (e.g., +12.89 OA on CIFAR-100 over methods without auxiliary data), and does not require auxiliary negatives or pre-estimated parameters.",
+          "The gradient analysis provides an intuitive explanation for why standard BYOL-style non-contrastive losses can be dominated by noisy pairs, and the proposed NoiSNCL mitigates this in an idealized setting.",
+          "Ablation studies and t-SNE visualizations support the claim that NoiSNCL and PLD benefit each other, and the PhantomGate mechanism is shown to avoid the trivial all-positive pseudo-label solution.",
+          "The inclusion of real-world post-disaster building damage mapping datasets (ABCD, xBD) demonstrates practical applicability beyond standard benchmarks."
+        ],
+        "Weaknesses": [
+          "The EM-style theoretical analysis is not rigorous: minimizing an upper bound (tilde R >= R) is not generally equivalent to maximizing a lower bound of the likelihood; the theorem only establishes L1 <= L2, and the surrogate minimization does not directly imply that the lower bound is maximized.",
+          "NoiSNCL is essentially an L2-distance variant of the BYOL loss, and its robustness is only validated under idealized assumptions (clean pair similarity near 1, noisy pair similarity near 0). It does not explicitly downweight confident noisy pairs, so it may still be misled when pseudo labels are confidently wrong.",
+          "The construction of same-class pairs Q is not described precisely: it is unclear whether all same-class samples in a batch are used, how batch size affects pair count, whether sampling is employed, and what the computational overhead is.",
+          "The PLD rule appears counterintuitive: samples with f1(x) >= tau are fixed to negative, so true positives that the classifier is confidently wrong about cannot be recovered; the 'regret' mechanism is heuristic and lacks formal justification or an explicit recovery mechanism.",
+          "The comparison to fully supervised baselines is under-specified: NcPU exceeds the supervised baseline on CIFAR-10, which is suspicious and suggests possible differences in training epochs, augmentations, or hyperparameters; supervised STL-10 results are omitted.",
+          "Several implementation details are missing, including augmentation choices, pseudo-label update frequency, warm-up details, and computational cost; duplicated theorem numbering and truncated tables/figures further reduce reproducibility."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 3,
+        "Questions": [
+          "How exactly are same-class pairs Q constructed for NoiSNCL? Are all samples sharing a pseudo label paired within each batch, and what is the resulting computational complexity?",
+          "Why does NcPU outperform the fully supervised CIFAR-10 baseline? Was the supervised baseline trained with the same number of epochs, the same augmentations, and the same hyperparameter-tuning effort?",
+          "The theory states that minimizing tilde R is equivalent to maximizing a lower bound of the likelihood. Since tilde R >= R, can you provide a formal statement that the minimizer of the upper bound also improves the lower bound, or is this only an intuitive majorization argument?",
+          "In PLD, high-confidence negative predictions are assigned [0,1]^T. If the classifier is confidently wrong about an unlabeled positive, what mechanism in PhantomGate allows that sample to be reclassified later?",
+          "What is the impact of the initial all-negative pseudo targets on NoiSNCL pair construction in early training, and why does the method not collapse to a trivial solution before PLD takes effect?"
+        ],
+        "Limitations": [
+          "The theoretical framework relies on hard pseudo-label assignment and von Mises-Fisher distributional assumptions that are strong and may not hold in practice.",
+          "NoiSNCL does not explicitly model label noise rates or sample confidence, so its robustness to noisy pairs is limited when noisy pairs are highly confident.",
+          "The method is evaluated only on image classification tasks; its generalization to other modalities is not demonstrated.",
+          "Training for 1300 epochs is likely computationally expensive, but no runtime or convergence cost comparison is provided.",
+          "PLD introduces several hyperparameters (alpha, beta, gamma, tau, warm-up schedule) and the paper only tests a single configuration on most datasets, leaving sensitivity to these settings insufficiently characterized."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes NcPU, a positive-unlabeled (PU) learning framework that combines a noisy-pair robust supervised non-contrastive loss (NoiSNCL) with a phantom label disambiguation (PLD) scheme to learn discriminative representations without auxiliary negatives or pre-estimated class priors. NoiSNCL replaces the standard squared cosine distance with a square-root distance so that clean pairs have larger gradient magnitudes than noisy pairs, while PLD uses class prototypes and regret-based thresholding to supply conservative negative supervision. The authors provide an EM-style theoretical interpretation and report strong empirical gains on CIFAR-10/100, STL-10, and two post-disaster building damage mapping datasets, often approaching or exceeding supervised baselines.\",\n  \"Strengths\": [\n    \"The paper identifies representation learning as a key bottleneck in PU learning and proposes a novel combination of non-contrastive learning with PU-specific label disambiguation, which is a fresh angle in this area.\",\n    \"Strong empirical results: NcPU outperforms existing PU methods on all five datasets, with large margins on complex datasets (e.g., +12.89 OA on CIFAR-100 over methods without auxiliary data), and does not require auxiliary negatives or pre-estimated parameters.\",\n    \"The gradient analysis provides an intuitive explanation for why standard BYOL-style non-contrastive losses can be dominated by noisy pairs, and the proposed NoiSNCL mitigates this in an idealized setting.\",\n    \"Ablation studies and t-SNE visualizations support the claim that NoiSNCL and PLD benefit each other, and the PhantomGate mechanism is shown to avoid the trivial all-positive pseudo-label solution.\",\n    \"The inclusion of real-world post-disaster building damage mapping datasets (ABCD, xBD) demonstrates practical applicability beyond standard benchmarks.\"\n  ],\n  \"Weaknesses\": [\n    \"The EM-style theoretical analysis is not rigorous: minimizing an upper bound (tilde R >= R) is not generally equivalent to maximizing a lower bound of the likelihood; the theorem only establishes L1 <= L2, and the surrogate minimization does not directly imply that the lower bound is maximized.\",\n    \"NoiSNCL is essentially an L2-distance variant of the BYOL loss, and its robustness is only validated under idealized assumptions (clean pair similarity near 1, noisy pair similarity near 0). It does not explicitly downweight confident noisy pairs, so it may still be misled when pseudo labels are confidently wrong.\",\n    \"The construction of same-class pairs Q is not described precisely: it is unclear whether all same-class samples in a batch are used, how batch size affects pair count, whether sampling is employed, and what the computational overhead is.\",\n    \"The PLD rule appears counterintuitive: samples with f1(x) >= tau are fixed to negative, so true positives that the classifier is confidently wrong about cannot be recovered; the 'regret' mechanism is heuristic and lacks formal justification or an explicit recovery mechanism.\",\n    \"The comparison to fully supervised baselines is under-specified: NcPU exceeds the supervised baseline on CIFAR-10, which is suspicious and suggests possible differences in training epochs, augmentations, or hyperparameters; supervised STL-10 results are omitted.\",\n    \"Several implementation details are missing, including augmentation choices, pseudo-label update frequency, warm-up details, and computational cost; duplicated theorem numbering and truncated tables/figures further reduce reproducibility.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How exactly are same-class pairs Q constructed for NoiSNCL? Are all samples sharing a pseudo label paired within each batch, and what is the resulting computational complexity?\",\n    \"Why does NcPU outperform the fully supervised CIFAR-10 baseline? Was the supervised baseline trained with the same number of epochs, the same augmentations, and the same hyperparameter-tuning effort?\",\n    \"The theory states that minimizing tilde R is equivalent to maximizing a lower bound of the likelihood. Since tilde R >= R, can you provide a formal statement that the minimizer of the upper bound also improves the lower bound, or is this only an intuitive majorization argument?\",\n    \"In PLD, high-confidence negative predictions are assigned [0,1]^T. If the classifier is confidently wrong about an unlabeled positive, what mechanism in PhantomGate allows that sample to be reclassified later?\",\n    \"What is the impact of the initial all-negative pseudo targets on NoiSNCL pair construction in early training, and why does the method not collapse to a trivial solution before PLD takes effect?\"\n  ],\n  \"Limitations\": [\n    \"The theoretical framework relies on hard pseudo-label assignment and von Mises-Fisher distributional assumptions that are strong and may not hold in practice.\",\n    \"NoiSNCL does not explicitly model label noise rates or sample confidence, so its robustness to noisy pairs is limited when noisy pairs are highly confident.\",\n    \"The method is evaluated only on image classification tasks; its generalization to other modalities is not demonstrated.\",\n    \"Training for 1300 epochs is likely computationally expensive, but no runtime or convergence cost comparison is provided.\",\n    \"PLD introduces several hyperparameters (alpha, beta, gamma, tau, warm-up schedule) and the paper only tests a single configuration on most datasets, leaving sensitivity to these settings insufficiently characterized.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 26052,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 25284,
+        "completion_tokens": 9644,
+        "reasoning_tokens": 8455,
+        "total_tokens": 35696
+      },
+      "attempts": 1,
+      "response_id": "bdf7ecf6-7c14-46f0-9c8c-46449840eac9"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper proposes NcPU, a non-contrastive positive-unlabeled (PU) learning framework that combines a noisy-pair robust supervised non-contrastive loss (NoiSNCL) with a phantom label disambiguation (PLD) scheme. NoiSNCL aligns intra-class representations while down-weighting gradients from noisy pseudo-label pairs, and PLD updates conservative negative pseudo-targets via prototype-based disambiguation and a PhantomGate threshold. The authors provide an EM-style theoretical analysis and evaluate the method on CIFAR-10/100, STL-10, and two building damage mapping datasets (ABCD, xBD), showing state-of-the-art results without auxiliary negatives or pre-estimated parameters.",
+        "Strengths": [
+          "Identifies representation learning as a key bottleneck in PU learning and proposes an original combination of non-contrastive representation learning with PU pseudo-labeling.",
+          "The NoiSNCL loss is simple and the gradient analysis gives useful intuition for why it mitigates the influence of noisy pairs.",
+          "The framework is practical: it requires no auxiliary negative samples or pre-estimated class priors, and it achieves strong empirical results across several datasets.",
+          "Extensive experiments include comparisons with many baselines, ablations, hyperparameter analyses, and a real-world HADR application, demonstrating broad applicability.",
+          "The promise of open-sourced code supports reproducibility."
+        ],
+        "Weaknesses": [
+          "The theoretical analysis is not rigorous: the claim that minimizing NoiSNCL is equivalent to maximizing a lower bound of the likelihood is derived through loose approximations, and the L1 <= L2 inequality does not directly justify the conclusion. The EM interpretation lacks a formal proof of mutual improvement or convergence.",
+          "The gradient analysis only compares magnitudes in a specific clean/noisy pair scenario, not the harmful direction of noisy gradients, and does not provide training guarantees.",
+          "Key experimental claims are not fully supported by the presented tables: the main text mentions results for uPU/nnPU+NoiSNCL, but these are not visible in the tables; some appendix tables appear missing.",
+          "The method is complex with many interacting components (BYOL-style momentum networks, prototypes, SAT, PhantomGate, entropy regularization), and the contribution of each component is not fully disentangled; sensitivity to key hyperparameters like beta and tau is not deeply explored.",
+          "The non-contrastive approach only pulls same-class pairs together and does not push different classes apart; the paper does not clearly explain why representations do not collapse, nor does it provide a fair comparison with contrastive alternatives.",
+          "Performance gains are modest on some datasets (e.g., xBD), and the result that NcPU slightly exceeds the supervised baseline on CIFAR-10 is not discussed or explained."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 3,
+        "Questions": [
+          "Can you provide a formal statement of convergence for the EM-style iteration? How does the lower bound become tighter over time, and what conditions guarantee that PLD and NoiSNCL mutually improve each other?",
+          "In Eq. (11), the condition f1(x) >= tau assigns a negative pseudo-target. What is the exact role of 'regret-based label updating' in preventing the trivial solution, and how does this differ from standard confidence-threshold pseudo-labeling?",
+          "The ablation table in the main text seems to omit the reported uPU/nnPU+NoiSNCL comparisons. Could you include the full results and clarify whether NoiSNCL alone consistently improves simple PU methods across all datasets?",
+          "How does NcPU behave under varying class priors? The experiments use fixed positive/unlabeled sizes; real-world PU data may have much higher or lower positive proportions. Would PhantomGate and SAT still be effective?",
+          "Since non-contrastive learning only aligns same-class pairs, what prevents all representations from collapsing to a single point? Is the classifier loss solely responsible for class separation?",
+          "What is the computational overhead of the BYOL-style framework and momentum prototypes compared to standard PU methods? Is the method scalable to large-scale datasets?"
+        ],
+        "Limitations": [
+          "The theoretical justification relies on strong assumptions (vMF distribution, uniform prior, hard assignments, and a rough pairwise-to-center approximation) that are not validated in practice.",
+          "The method involves many hyperparameters (alpha, beta, gamma, w_r, w_ent, tau) and architectural components; the paper does not provide a thorough sensitivity analysis for all of them.",
+          "The empirical evaluation is limited to image classification; PU learning is also common in tabular and text domains, where the proposed representation learning may not transfer directly.",
+          "The paper does not discuss potential biases in disaster response applications, such as unequal building-type representation or geographic coverage, which could affect the fairness of the model.",
+          "The code is not available during review, making it difficult to verify the exact implementation and reproducibility."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 3,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes NcPU, a non-contrastive positive-unlabeled (PU) learning framework that combines a noisy-pair robust supervised non-contrastive loss (NoiSNCL) with a phantom label disambiguation (PLD) scheme. NoiSNCL aligns intra-class representations while down-weighting gradients from noisy pseudo-label pairs, and PLD updates conservative negative pseudo-targets via prototype-based disambiguation and a PhantomGate threshold. The authors provide an EM-style theoretical analysis and evaluate the method on CIFAR-10/100, STL-10, and two building damage mapping datasets (ABCD, xBD), showing state-of-the-art results without auxiliary negatives or pre-estimated parameters.\",\n  \"Strengths\": [\n    \"Identifies representation learning as a key bottleneck in PU learning and proposes an original combination of non-contrastive representation learning with PU pseudo-labeling.\",\n    \"The NoiSNCL loss is simple and the gradient analysis gives useful intuition for why it mitigates the influence of noisy pairs.\",\n    \"The framework is practical: it requires no auxiliary negative samples or pre-estimated class priors, and it achieves strong empirical results across several datasets.\",\n    \"Extensive experiments include comparisons with many baselines, ablations, hyperparameter analyses, and a real-world HADR application, demonstrating broad applicability.\",\n    \"The promise of open-sourced code supports reproducibility.\"\n  ],\n  \"Weaknesses\": [\n    \"The theoretical analysis is not rigorous: the claim that minimizing NoiSNCL is equivalent to maximizing a lower bound of the likelihood is derived through loose approximations, and the L1 <= L2 inequality does not directly justify the conclusion. The EM interpretation lacks a formal proof of mutual improvement or convergence.\",\n    \"The gradient analysis only compares magnitudes in a specific clean/noisy pair scenario, not the harmful direction of noisy gradients, and does not provide training guarantees.\",\n    \"Key experimental claims are not fully supported by the presented tables: the main text mentions results for uPU/nnPU+NoiSNCL, but these are not visible in the tables; some appendix tables appear missing.\",\n    \"The method is complex with many interacting components (BYOL-style momentum networks, prototypes, SAT, PhantomGate, entropy regularization), and the contribution of each component is not fully disentangled; sensitivity to key hyperparameters like beta and tau is not deeply explored.\",\n    \"The non-contrastive approach only pulls same-class pairs together and does not push different classes apart; the paper does not clearly explain why representations do not collapse, nor does it provide a fair comparison with contrastive alternatives.\",\n    \"Performance gains are modest on some datasets (e.g., xBD), and the result that NcPU slightly exceeds the supervised baseline on CIFAR-10 is not discussed or explained.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"Can you provide a formal statement of convergence for the EM-style iteration? How does the lower bound become tighter over time, and what conditions guarantee that PLD and NoiSNCL mutually improve each other?\",\n    \"In Eq. (11), the condition f1(x) >= tau assigns a negative pseudo-target. What is the exact role of 'regret-based label updating' in preventing the trivial solution, and how does this differ from standard confidence-threshold pseudo-labeling?\",\n    \"The ablation table in the main text seems to omit the reported uPU/nnPU+NoiSNCL comparisons. Could you include the full results and clarify whether NoiSNCL alone consistently improves simple PU methods across all datasets?\",\n    \"How does NcPU behave under varying class priors? The experiments use fixed positive/unlabeled sizes; real-world PU data may have much higher or lower positive proportions. Would PhantomGate and SAT still be effective?\",\n    \"Since non-contrastive learning only aligns same-class pairs, what prevents all representations from collapsing to a single point? Is the classifier loss solely responsible for class separation?\",\n    \"What is the computational overhead of the BYOL-style framework and momentum prototypes compared to standard PU methods? Is the method scalable to large-scale datasets?\"\n  ],\n  \"Limitations\": [\n    \"The theoretical justification relies on strong assumptions (vMF distribution, uniform prior, hard assignments, and a rough pairwise-to-center approximation) that are not validated in practice.\",\n    \"The method involves many hyperparameters (alpha, beta, gamma, w_r, w_ent, tau) and architectural components; the paper does not provide a thorough sensitivity analysis for all of them.\",\n    \"The empirical evaluation is limited to image classification; PU learning is also common in tabular and text domains, where the proposed representation learning may not transfer directly.\",\n    \"The paper does not discuss potential biases in disaster response applications, such as unequal building-type representation or geographic coverage, which could affect the fairness of the model.\",\n    \"The code is not available during review, making it difficult to verify the exact implementation and reproducibility.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 3,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 26052,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 25284,
+        "completion_tokens": 8552,
+        "reasoning_tokens": 7441,
+        "total_tokens": 34604
+      },
+      "attempts": 1,
+      "response_id": "3ece350d-0780-4a11-a99e-61d0b0025fc3"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper addresses Positive-Unlabeled (PU) learning, focusing on the difficulty of learning discriminative representations with unreliable supervision. It proposes NcPU, a non-contrastive PU learning framework consisting of a noisy-pair robust supervised non-contrastive loss (NoiSNCL) and a phantom label disambiguation (PLD) scheme with a PhantomGate threshold for conservative negative supervision. Theoretical analysis casts the interaction as an EM-like process. Experiments show SOTA results on CIFAR-10, CIFAR-100, STL-10, and two remote sensing building damage datasets, often close to or exceeding supervised baselines.",
+        "Strengths": [
+          "Identifies a key bottleneck in PU learning – learning discriminative representations – and provides a simple yet effective non-contrastive solution that does not require auxiliary negatives or pre-estimated class priors.",
+          "The proposed NoiSNCL loss with a square-root transformation is well-motivated: gradient analysis shows it reduces the dominance of noisy pairs, and ablation confirms it improves over standard non-contrastive loss under unreliable pseudo labels.",
+          "Phantom label disambiguation with PhantomGate and SAT effectively prevents trivial all-positive solutions and balances precision/recall, especially on CIFAR-100.",
+          "The EM-based interpretation provides a useful framework to understand why representation alignment and label disambiguation can mutually reinforce each other.",
+          "Extensive experiments on multiple benchmarks and two real-world HADR datasets demonstrate consistent improvements over eleven baselines, and the method achieves performance comparable to or better than supervised learning on several datasets."
+        ],
+        "Weaknesses": [
+          "The theoretical analysis is not fully rigorous: the EM equivalence relies on simplifying assumptions (vMF distribution, uniform prior, approximations) and the claim that minimizing NoiSNCL maximizes a lower bound is derived under loose conditions; the proof in the appendix omits several derivations and the repeated Theorem 1 indicates a formatting error.",
+          "The comparison with the supervised baseline appears unfair: supervised training uses full labels while NcPU only has a small positive set; NcPU's superior OA on CIFAR-10 (97.36 vs 96.96) is counterintuitive and not sufficiently discussed in terms of augmentation, training epochs, or optimization.",
+          "The claim that NoiSNCL enables simple PU methods (e.g., uPU) to achieve competitive results is not shown in the main paper; the supporting experiments in Appendix H use a different similarity-threshold pair construction and are not clearly integrated into the original framework.",
+          "The PhantomGate relies on self-adaptive thresholding (from FreeMatch) which is heuristic; no principled theoretical grounding for the threshold update is provided, and the method seems sensitive to initialization of pseudo-targets as negative.",
+          "The framework requires 1300 training epochs and multiple hyperparameters (alpha, beta, gamma, w_r, w_ent) tuned per dataset, which may hinder practical adoption; the reported insensitivity analysis is limited."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 2,
+        "Significance": 3,
+        "Questions": [
+          "NcPU outperforms the supervised baseline on CIFAR-10; can you explain why a PU method with only 1000 labeled positives exceeds full supervision, and what experimental conditions (e.g., augmentation, training epochs, regularization) contribute to this?",
+          "How are the same-class pairs selected in Eq. (14) when labels are pseudo-labels? Is the pair sampling done within a batch and does it consider all possible pairs? What is the computational overhead compared to standard non-contrastive learning?",
+          "In the EM analysis, what is the exact role of the classifier predictions in the E-step? Could you clarify how the pseudo-label assignment is differentiated from the prototype-based label updates in PLD, and why PLD is not directly the E-step?",
+          "The paper claims NoiSNCL outperforms standard supervised contrastive loss in noisy conditions; does this hold for varying noise rates and across different pair-selection thresholds? Are there any conditions where standard NCL would be preferred?",
+          "How sensitive is NcPU to the choice of class prior or the ratio of positives to unlabeled data? The paper says it requires no pre-estimated parameters, but does it still need prior knowledge for performance?"
+        ],
+        "Limitations": [
+          "The method is evaluated only on image classification; extension to other modalities is not addressed.",
+          "The theoretical results rely on assumptions that may not hold on real-world complex distributions, and the 'lower bound' claim is not directly verified empirically.",
+          "The code is not available at review time, which limits reproducibility.",
+          "No analysis of computational costs, memory usage, or sensitivity to batch size is provided.",
+          "The potential negative social impact of using PU learning in disaster response (e.g., if model errors affect resource allocation) is not thoroughly discussed beyond a blanket statement."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 2,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper addresses Positive-Unlabeled (PU) learning, focusing on the difficulty of learning discriminative representations with unreliable supervision. It proposes NcPU, a non-contrastive PU learning framework consisting of a noisy-pair robust supervised non-contrastive loss (NoiSNCL) and a phantom label disambiguation (PLD) scheme with a PhantomGate threshold for conservative negative supervision. Theoretical analysis casts the interaction as an EM-like process. Experiments show SOTA results on CIFAR-10, CIFAR-100, STL-10, and two remote sensing building damage datasets, often close to or exceeding supervised baselines.\",\n  \"Strengths\": [\n    \"Identifies a key bottleneck in PU learning – learning discriminative representations – and provides a simple yet effective non-contrastive solution that does not require auxiliary negatives or pre-estimated class priors.\",\n    \"The proposed NoiSNCL loss with a square-root transformation is well-motivated: gradient analysis shows it reduces the dominance of noisy pairs, and ablation confirms it improves over standard non-contrastive loss under unreliable pseudo labels.\",\n    \"Phantom label disambiguation with PhantomGate and SAT effectively prevents trivial all-positive solutions and balances precision/recall, especially on CIFAR-100.\",\n    \"The EM-based interpretation provides a useful framework to understand why representation alignment and label disambiguation can mutually reinforce each other.\",\n    \"Extensive experiments on multiple benchmarks and two real-world HADR datasets demonstrate consistent improvements over eleven baselines, and the method achieves performance comparable to or better than supervised learning on several datasets.\"\n  ],\n  \"Weaknesses\": [\n    \"The theoretical analysis is not fully rigorous: the EM equivalence relies on simplifying assumptions (vMF distribution, uniform prior, approximations) and the claim that minimizing NoiSNCL maximizes a lower bound is derived under loose conditions; the proof in the appendix omits several derivations and the repeated Theorem 1 indicates a formatting error.\",\n    \"The comparison with the supervised baseline appears unfair: supervised training uses full labels while NcPU only has a small positive set; NcPU's superior OA on CIFAR-10 (97.36 vs 96.96) is counterintuitive and not sufficiently discussed in terms of augmentation, training epochs, or optimization.\",\n    \"The claim that NoiSNCL enables simple PU methods (e.g., uPU) to achieve competitive results is not shown in the main paper; the supporting experiments in Appendix H use a different similarity-threshold pair construction and are not clearly integrated into the original framework.\",\n    \"The PhantomGate relies on self-adaptive thresholding (from FreeMatch) which is heuristic; no principled theoretical grounding for the threshold update is provided, and the method seems sensitive to initialization of pseudo-targets as negative.\",\n    \"The framework requires 1300 training epochs and multiple hyperparameters (alpha, beta, gamma, w_r, w_ent) tuned per dataset, which may hinder practical adoption; the reported insensitivity analysis is limited.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"NcPU outperforms the supervised baseline on CIFAR-10; can you explain why a PU method with only 1000 labeled positives exceeds full supervision, and what experimental conditions (e.g., augmentation, training epochs, regularization) contribute to this?\",\n    \"How are the same-class pairs selected in Eq. (14) when labels are pseudo-labels? Is the pair sampling done within a batch and does it consider all possible pairs? What is the computational overhead compared to standard non-contrastive learning?\",\n    \"In the EM analysis, what is the exact role of the classifier predictions in the E-step? Could you clarify how the pseudo-label assignment is differentiated from the prototype-based label updates in PLD, and why PLD is not directly the E-step?\",\n    \"The paper claims NoiSNCL outperforms standard supervised contrastive loss in noisy conditions; does this hold for varying noise rates and across different pair-selection thresholds? Are there any conditions where standard NCL would be preferred?\",\n    \"How sensitive is NcPU to the choice of class prior or the ratio of positives to unlabeled data? The paper says it requires no pre-estimated parameters, but does it still need prior knowledge for performance?\"\n  ],\n  \"Limitations\": [\n    \"The method is evaluated only on image classification; extension to other modalities is not addressed.\",\n    \"The theoretical results rely on assumptions that may not hold on real-world complex distributions, and the 'lower bound' claim is not directly verified empirically.\",\n    \"The code is not available at review time, which limits reproducibility.\",\n    \"No analysis of computational costs, memory usage, or sensitivity to batch size is provided.\",\n    \"The potential negative social impact of using PU learning in disaster response (e.g., if model errors affect resource allocation) is not thoroughly discussed beyond a blanket statement.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 2,\n  \"Contribution\": 3,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 26052,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 25284,
+        "completion_tokens": 3983,
+        "reasoning_tokens": 2884,
+        "total_tokens": 30035
+      },
+      "attempts": 1,
+      "response_id": "dd7ae3dc-2efc-471e-86dc-8baefd2bd2e8"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper proposes NcPU, a positive-unlabeled (PU) learning framework that combines a noisy-pair robust supervised non-contrastive loss (NoiSNCL) with a phantom label disambiguation (PLD) scheme to learn discriminative representations without auxiliary negative samples or pre-estimated class priors. The authors provide gradient analysis showing that their modified loss up-weights clean pairs relative to noisy pairs, and present an EM-based interpretation where NoiSNCL serves as the M-step and PLD as the E-step. Experiments on CIFAR-10, CIFAR-100, STL-10, and two disaster damage mapping datasets show consistent improvements over existing PU methods, often approaching supervised learning performance.",
+        "Strengths": [
+          "The paper identifies a key bottleneck in PU learning—learning discriminative representations under unreliable supervision—and proposes a novel non-contrastive approach to address it, which is a fresh perspective compared to existing contrastive-based PU methods.",
+          "NcPU requires no auxiliary negative samples or pre-estimated class prior, making it more practically applicable than several state-of-the-art baselines like LaGAM and WSC.",
+          "The gradient analysis of the proposed NoiSNCL provides a clear and intuitive explanation of why it is robust to noisy pairs, and the EM framing offers a principled justification for iterating between representation learning and pseudo-label disambiguation.",
+          "The empirical evaluation is extensive, covering five datasets including two real-world post-disaster building damage mapping datasets (ABCD and xBD). NcPU achieves the best performance on all datasets, often substantially outperforming strong baselines and even surpassing supervised counterparts on CIFAR-10.",
+          "Ablation studies validate the contributions of each component, and the paper shows that NoiSNCL can be plugged into simple PU methods (uPU, nnPU) to boost their performance, suggesting broad applicability."
+        ],
+        "Weaknesses": [
+          "The presentation is sloppy: there are inconsistent table references (e.g., 'Table 3' is referenced but only 'Table 2' appears), malformed equations (e.g., 'tilde{k}=k∥k∥2'), duplicated headings ('Theorem 1' appears twice), and undefined notation (e.g., the entropy regularization term is mentioned but not defined in the main text).",
+          "The theoretical analysis relies on strong assumptions (vMF distributions, uniform class prior, approximations like |S|≈|Q|) and the derivation of the lower bound is loose; the paper does not empirically verify how tight the bound is or whether the EM interpretation holds in practice.",
+          "The PLD scheme, especially PhantomGate, appears somewhat ad hoc. The mechanism for assigning pseudo targets via Eq. (11) combines multiple heuristics (prototype similarity, SAT threshold, regret-based updating) without clear theoretical motivation, and its sensitivity to hyperparameters is not fully explored.",
+          "The claim that 'NoiSNCL enables simple PU methods to achieve competitive performance' is only demonstrated on uPU and nnPU in the appendix; a more systematic integration with other risk-estimation methods would be needed to support this strong claim.",
+          "The computational cost of NcPU is not reported. The BYOL-style non-contrastive module requires two augmented views, a momentum encoder, and an additional projection head, which could be prohibitively expensive for large-scale or real-time HADR applications."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 2,
+        "Significance": 3,
+        "Questions": [
+          "How does the pair-construction threshold τ in the generalized version (Eq. 37) affect performance across datasets? Is the fixed threshold (equivalent to pseudo-label pairing) always optimal, and how sensitive is NcPU to this hyperparameter?",
+          "What is the computational overhead (training time, memory usage) of NcPU compared to the baselines, especially given the BYOL-style architecture with momentum encoder and two augmented views?",
+          "Can the theoretical analysis be extended to non-uniform class priors or more realistic distributions beyond vMF? How tight is the lower bound in practice, and does the EM interpretation hold when the PLD pseudo-label updates are included?",
+          "The paper initializes pseudo targets for unlabeled data as [0,1]^T and applies a 30-epoch warm-up. How does this initialization bias early training, and what happens if the warm-up duration is changed or the pseudo targets are initialized differently?",
+          "In the ablation tables, the 'LD' column with '$s$' presumably refers to the full PLD with PhantomGate, but the exact pseudo-target update rule used in the ablation is not clearly stated. Could the authors clarify the difference between '$s$', '$s'$', and '$s'$+SAT' in Table 2?"
+        ],
+        "Limitations": [
+          "The method inherits the limitations of BYOL, including sensitivity to augmentation strategies and momentum hyperparameters; the paper does not analyze these factors for PU settings.",
+          "The theoretical analysis is based on idealized assumptions (vMF distribution, uniform class prior) that are unlikely to hold exactly on complex, high-dimensional data, leaving a gap between theory and practice.",
+          "The evaluation is limited to image classification tasks; the applicability of NcPU to other data modalities (e.g., tabular, graph, text) is not demonstrated.",
+          "For HADR applications, classification errors can have serious real-world consequences, yet the paper only provides a generic ethics statement without a detailed risk assessment or discussion of failure modes."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 2,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes NcPU, a positive-unlabeled (PU) learning framework that combines a noisy-pair robust supervised non-contrastive loss (NoiSNCL) with a phantom label disambiguation (PLD) scheme to learn discriminative representations without auxiliary negative samples or pre-estimated class priors. The authors provide gradient analysis showing that their modified loss up-weights clean pairs relative to noisy pairs, and present an EM-based interpretation where NoiSNCL serves as the M-step and PLD as the E-step. Experiments on CIFAR-10, CIFAR-100, STL-10, and two disaster damage mapping datasets show consistent improvements over existing PU methods, often approaching supervised learning performance.\",\n  \"Strengths\": [\n    \"The paper identifies a key bottleneck in PU learning—learning discriminative representations under unreliable supervision—and proposes a novel non-contrastive approach to address it, which is a fresh perspective compared to existing contrastive-based PU methods.\",\n    \"NcPU requires no auxiliary negative samples or pre-estimated class prior, making it more practically applicable than several state-of-the-art baselines like LaGAM and WSC.\",\n    \"The gradient analysis of the proposed NoiSNCL provides a clear and intuitive explanation of why it is robust to noisy pairs, and the EM framing offers a principled justification for iterating between representation learning and pseudo-label disambiguation.\",\n    \"The empirical evaluation is extensive, covering five datasets including two real-world post-disaster building damage mapping datasets (ABCD and xBD). NcPU achieves the best performance on all datasets, often substantially outperforming strong baselines and even surpassing supervised counterparts on CIFAR-10.\",\n    \"Ablation studies validate the contributions of each component, and the paper shows that NoiSNCL can be plugged into simple PU methods (uPU, nnPU) to boost their performance, suggesting broad applicability.\"\n  ],\n  \"Weaknesses\": [\n    \"The presentation is sloppy: there are inconsistent table references (e.g., 'Table 3' is referenced but only 'Table 2' appears), malformed equations (e.g., 'tilde{k}=k∥k∥2'), duplicated headings ('Theorem 1' appears twice), and undefined notation (e.g., the entropy regularization term is mentioned but not defined in the main text).\",\n    \"The theoretical analysis relies on strong assumptions (vMF distributions, uniform class prior, approximations like |S|≈|Q|) and the derivation of the lower bound is loose; the paper does not empirically verify how tight the bound is or whether the EM interpretation holds in practice.\",\n    \"The PLD scheme, especially PhantomGate, appears somewhat ad hoc. The mechanism for assigning pseudo targets via Eq. (11) combines multiple heuristics (prototype similarity, SAT threshold, regret-based updating) without clear theoretical motivation, and its sensitivity to hyperparameters is not fully explored.\",\n    \"The claim that 'NoiSNCL enables simple PU methods to achieve competitive performance' is only demonstrated on uPU and nnPU in the appendix; a more systematic integration with other risk-estimation methods would be needed to support this strong claim.\",\n    \"The computational cost of NcPU is not reported. The BYOL-style non-contrastive module requires two augmented views, a momentum encoder, and an additional projection head, which could be prohibitively expensive for large-scale or real-time HADR applications.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does the pair-construction threshold τ in the generalized version (Eq. 37) affect performance across datasets? Is the fixed threshold (equivalent to pseudo-label pairing) always optimal, and how sensitive is NcPU to this hyperparameter?\",\n    \"What is the computational overhead (training time, memory usage) of NcPU compared to the baselines, especially given the BYOL-style architecture with momentum encoder and two augmented views?\",\n    \"Can the theoretical analysis be extended to non-uniform class priors or more realistic distributions beyond vMF? How tight is the lower bound in practice, and does the EM interpretation hold when the PLD pseudo-label updates are included?\",\n    \"The paper initializes pseudo targets for unlabeled data as [0,1]^T and applies a 30-epoch warm-up. How does this initialization bias early training, and what happens if the warm-up duration is changed or the pseudo targets are initialized differently?\",\n    \"In the ablation tables, the 'LD' column with '$s$' presumably refers to the full PLD with PhantomGate, but the exact pseudo-target update rule used in the ablation is not clearly stated. Could the authors clarify the difference between '$s$', '$s'$', and '$s'$+SAT' in Table 2?\"\n  ],\n  \"Limitations\": [\n    \"The method inherits the limitations of BYOL, including sensitivity to augmentation strategies and momentum hyperparameters; the paper does not analyze these factors for PU settings.\",\n    \"The theoretical analysis is based on idealized assumptions (vMF distribution, uniform class prior) that are unlikely to hold exactly on complex, high-dimensional data, leaving a gap between theory and practice.\",\n    \"The evaluation is limited to image classification tasks; the applicability of NcPU to other data modalities (e.g., tabular, graph, text) is not demonstrated.\",\n    \"For HADR applications, classification errors can have serious real-world consequences, yet the paper only provides a generic ethics statement without a detailed risk assessment or discussion of failure modes.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 2,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 26052,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 25284,
+        "completion_tokens": 5005,
+        "reasoning_tokens": 3777,
+        "total_tokens": 31057
+      },
+      "attempts": 1,
+      "response_id": "596c4289-1cf1-44c9-99f8-3d481584e7d3"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 3,
+      "Reject": 2
+    },
+    "unanimous_decision": false,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Quality": {
+        "values": [
+          2,
+          2,
+          2,
+          3,
+          3
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "mean": 2,
+        "rounded_mean": 2,
+        "population_sd": 0.0,
+        "min": 2,
+        "max": 2
+      },
+      "Significance": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Soundness": {
+        "values": [
+          2,
+          2,
+          2,
+          3,
+          3
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "mean": 2,
+        "rounded_mean": 2,
+        "population_sd": 0.0,
+        "min": 2,
+        "max": 2
+      },
+      "Contribution": {
+        "values": [
+          2,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          4,
+          6,
+          4,
+          7,
+          6
+        ],
+        "mean": 5.4,
+        "rounded_mean": 5,
+        "population_sd": 1.2,
+        "min": 4,
+        "max": 7
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper proposes NcPU, a positive-unlabeled (PU) learning framework that combines a noisy-pair robust supervised non-contrastive loss (NoiSNCL) with a phantom label disambiguation (PLD) scheme to learn discriminative representations without auxiliary negative samples or pre-estimated class priors. NoiSNCL modifies the standard non-contrastive loss by using a square-root transformation to down-weight noisy pseudo-label pairs, while PLD uses class prototypes and a self-adaptive threshold (PhantomGate) to provide conservative negative supervision. The authors provide gradient analysis, an EM-style theoretical interpretation, and report strong empirical results on CIFAR-10, CIFAR-100, STL-10, and two post-disaster building damage mapping datasets (ABCD and xBD), often approaching or exceeding supervised baselines.",
+      "Strengths": [
+        "Identifies representation learning as a key bottleneck in PU learning and proposes a novel non-contrastive approach that avoids auxiliary negatives and pre-estimated class priors.",
+        "The NoiSNCL loss is simple and well-motivated: gradient analysis explains how it reduces the dominance of noisy pairs, and ablations confirm its advantage over standard non-contrastive loss.",
+        "The PLD scheme with PhantomGate effectively prevents trivial all-positive solutions and balances precision/recall, with ablations supporting its design.",
+        "NcPU achieves state-of-the-art results on five datasets, including two real-world HADR datasets, consistently outperforming existing PU methods and sometimes surpassing supervised training.",
+        "The EM-style interpretation provides a useful conceptual framework for understanding the interaction between representation learning and label disambiguation.",
+        "The method is practical and does not require auxiliary negatives or class-prior estimates, a significant advantage over several baselines.",
+        "Extensive experiments include comparisons with many baselines, ablations, hyperparameter analyses, and real-world applications, strengthening the empirical evidence."
+      ],
+      "Weaknesses": [
+        "The theoretical analysis is not rigorous: the claim that minimizing the proposed loss maximizes a lower bound of the likelihood is based on loose approximations and an inequality (L1 <= L2) that does not directly justify the conclusion; assumptions such as vMF distributions and uniform priors are strong and unvalidated, and the EM interpretation lacks a formal convergence proof.",
+        "The gradient analysis is limited to an idealized clean/noisy pair scenario and does not account for confident noisy pairs or interactions with the classifier loss and momentum updates.",
+        "The PLD/PhantomGate mechanism is heuristic: the role of PhantomGate and the 'regret-based' update rule are not clearly formalized, and the self-adaptive threshold is borrowed without deep theoretical grounding.",
+        "Several key implementation details are missing, including precise same-class pair construction, augmentation choices, pseudo-label update frequency, warm-up details, and computational overhead; the code was not provided during review.",
+        "The comparison with supervised baselines is under-specified and suspicious: NcPU outperforms the supervised CIFAR-10 baseline, which is counterintuitive and not explained; the supervised STL-10 result is omitted.",
+        "Relevant baselines are missing (e.g., self-PU), and statistical significance of improvements is not assessed; some gains are modest (e.g., xBD +0.78%).",
+        "The experimental evaluation is narrow: it uses 1000 labeled positives and moderate-to-high class priors, and does not explore low-prior or scarce-positive settings, which are common in practice.",
+        "The paper has clarity and presentation issues: inconsistent table references, duplicated theorem numbering, malformed equations, and undefined notation reduce reproducibility."
+      ],
+      "Originality": 3,
+      "Quality": 2,
+      "Clarity": 2,
+      "Significance": 3,
+      "Questions": [
+        "How exactly are same-class pairs constructed for NoiSNCL? Are all samples sharing a pseudo label paired within a batch, and what is the computational complexity?",
+        "Why does NcPU outperform the fully supervised CIFAR-10 baseline? Was the supervised baseline trained with the same training budget, augmentations, and hyperparameter tuning?",
+        "Can you provide a formal statement of convergence for the EM-style iteration? How do the lower bound and PLD updates guarantee mutual improvement?",
+        "In Eq. (11), what is the precise role of PhantomGate in implementing 'regret-based label updating', and how does it differ from standard confidence-threshold pseudo-labeling?",
+        "How sensitive is NcPU to the class prior or the ratio of positives to unlabeled data? Could the method maintain performance in low-prior settings (e.g., pi_p=0.01)?",
+        "What is the computational overhead (training time, memory) of NcPU compared to baselines, especially given the BYOL-style architecture and 1300 epochs?",
+        "The paper claims NoiSNCL helps simple PU methods like uPU and nnPU; why are these results only in the appendix and not the main tables?",
+        "What is the impact of the initial all-negative pseudo targets on early training, and how does NcPU avoid collapse before PLD takes effect?"
+      ],
+      "Limitations": [
+        "The theoretical framework relies on strong and likely unverified assumptions (vMF distributions, uniform prior, hard assignments), and the expected improvement of the likelihood lower bound is not robustly demonstrated.",
+        "Key implementation details are missing, and the code is not available, limiting reproducibility.",
+        "The training procedure is computationally expensive (1300 epochs, two augmented views, momentum target network), and no runtime or memory comparison is provided.",
+        "The evaluation is limited to image classification; applicability to other modalities is not shown.",
+        "The method introduces several hyperparameters (alpha, beta, gamma, tau, entropy weight) and component interactions; sensitivity to these is only partially explored.",
+        "For HADR applications, model errors can have serious consequences; the paper does not analyze failure modes, fairness across building types, or uncertainty of predictions."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 2,
+      "Presentation": 2,
+      "Contribution": 3,
+      "Overall": 6,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "{\n  \"Summary\": \"The paper proposes NcPU, a positive-unlabeled (PU) learning framework that combines a noisy-pair robust supervised non-contrastive loss (NoiSNCL) with a phantom label disambiguation (PLD) scheme to learn discriminative representations without auxiliary negative samples or pre-estimated class priors. NoiSNCL modifies the standard non-contrastive loss by using a square-root transformation to down-weight noisy pseudo-label pairs, while PLD uses class prototypes and a self-adaptive threshold (PhantomGate) to provide conservative negative supervision. The authors provide gradient analysis, an EM-style theoretical interpretation, and report strong empirical results on CIFAR-10, CIFAR-100, STL-10, and two post-disaster building damage mapping datasets (ABCD and xBD), often approaching or exceeding supervised baselines.\",\n  \"Strengths\": [\n    \"Identifies representation learning as a key bottleneck in PU learning and proposes a novel non-contrastive approach that avoids auxiliary negatives and pre-estimated class priors.\",\n    \"The NoiSNCL loss is simple and well-motivated: gradient analysis explains how it reduces the dominance of noisy pairs, and ablations confirm its advantage over standard non-contrastive loss.\",\n    \"The PLD scheme with PhantomGate effectively prevents trivial all-positive solutions and balances precision/recall, with ablations supporting its design.\",\n    \"NcPU achieves state-of-the-art results on five datasets, including two real-world HADR datasets, consistently outperforming existing PU methods and sometimes surpassing supervised training.\",\n    \"The EM-style interpretation provides a useful conceptual framework for understanding the interaction between representation learning and label disambiguation.\",\n    \"The method is practical and does not require auxiliary negatives or class-prior estimates, a significant advantage over several baselines.\",\n    \"Extensive experiments include comparisons with many baselines, ablations, hyperparameter analyses, and real-world applications, strengthening the empirical evidence.\"\n  ],\n  \"Weaknesses\": [\n    \"The theoretical analysis is not rigorous: the claim that minimizing the proposed loss maximizes a lower bound of the likelihood is based on loose approximations and an inequality (L1 <= L2) that does not directly justify the conclusion; assumptions such as vMF distributions and uniform priors are strong and unvalidated, and the EM interpretation lacks a formal convergence proof.\",\n    \"The gradient analysis is limited to an idealized clean/noisy pair scenario and does not account for confident noisy pairs or interactions with the classifier loss and momentum updates.\",\n    \"The PLD/PhantomGate mechanism is heuristic: the role of PhantomGate and the 'regret-based' update rule are not clearly formalized, and the self-adaptive threshold is borrowed without deep theoretical grounding.\",\n    \"Several key implementation details are missing, including precise same-class pair construction, augmentation choices, pseudo-label update frequency, warm-up details, and computational overhead; the code was not provided during review.\",\n    \"The comparison with supervised baselines is under-specified and suspicious: NcPU outperforms the supervised CIFAR-10 baseline, which is counterintuitive and not explained; the supervised STL-10 result is omitted.\",\n    \"Relevant baselines are missing (e.g., self-PU), and statistical significance of improvements is not assessed; some gains are modest (e.g., xBD +0.78%).\",\n    \"The experimental evaluation is narrow: it uses 1000 labeled positives and moderate-to-high class priors, and does not explore low-prior or scarce-positive settings, which are common in practice.\",\n    \"The paper has clarity and presentation issues: inconsistent table references, duplicated theorem numbering, malformed equations, and undefined notation reduce reproducibility.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How exactly are same-class pairs constructed for NoiSNCL? Are all samples sharing a pseudo label paired within a batch, and what is the computational complexity?\",\n    \"Why does NcPU outperform the fully supervised CIFAR-10 baseline? Was the supervised baseline trained with the same training budget, augmentations, and hyperparameter tuning?\",\n    \"Can you provide a formal statement of convergence for the EM-style iteration? How do the lower bound and PLD updates guarantee mutual improvement?\",\n    \"In Eq. (11), what is the precise role of PhantomGate in implementing 'regret-based label updating', and how does it differ from standard confidence-threshold pseudo-labeling?\",\n    \"How sensitive is NcPU to the class prior or the ratio of positives to unlabeled data? Could the method maintain performance in low-prior settings (e.g., pi_p=0.01)?\",\n    \"What is the computational overhead (training time, memory) of NcPU compared to baselines, especially given the BYOL-style architecture and 1300 epochs?\",\n    \"The paper claims NoiSNCL helps simple PU methods like uPU and nnPU; why are these results only in the appendix and not the main tables?\",\n    \"What is the impact of the initial all-negative pseudo targets on early training, and how does NcPU avoid collapse before PLD takes effect?\"\n  ],\n  \"Limitations\": [\n    \"The theoretical framework relies on strong and likely unverified assumptions (vMF distributions, uniform prior, hard assignments), and the expected improvement of the likelihood lower bound is not robustly demonstrated.\",\n    \"Key implementation details are missing, and the code is not available, limiting reproducibility.\",\n    \"The training procedure is computationally expensive (1300 epochs, two augmented views, momentum target network), and no runtime or memory comparison is provided.\",\n    \"The evaluation is limited to image classification; applicability to other modalities is not shown.\",\n    \"The method introduces several hyperparameters (alpha, beta, gamma, tau, entropy weight) and component interactions; sensitivity to these is only partially explored.\",\n    \"For HADR applications, model errors can have serious consequences; the paper does not analyze failure modes, fairness across building types, or uncertainty of predictions.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+    "usage": {
+      "prompt_tokens": 6952,
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 6696,
+      "completion_tokens": 2516,
+      "reasoning_tokens": 1193,
+      "total_tokens": 9468
+    },
+    "attempts": 1,
+    "response_id": "a95a43c1-c437-4ede-93ff-b94d9297d99f"
+  },
+  "final_review": {
+    "Summary": "The paper proposes NcPU, a positive-unlabeled (PU) learning framework that combines a noisy-pair robust supervised non-contrastive loss (NoiSNCL) with a phantom label disambiguation (PLD) scheme to learn discriminative representations without auxiliary negative samples or pre-estimated class priors. NoiSNCL modifies the standard non-contrastive loss by using a square-root transformation to down-weight noisy pseudo-label pairs, while PLD uses class prototypes and a self-adaptive threshold (PhantomGate) to provide conservative negative supervision. The authors provide gradient analysis, an EM-style theoretical interpretation, and report strong empirical results on CIFAR-10, CIFAR-100, STL-10, and two post-disaster building damage mapping datasets (ABCD and xBD), often approaching or exceeding supervised baselines.",
+    "Strengths": [
+      "Identifies representation learning as a key bottleneck in PU learning and proposes a novel non-contrastive approach that avoids auxiliary negatives and pre-estimated class priors.",
+      "The NoiSNCL loss is simple and well-motivated: gradient analysis explains how it reduces the dominance of noisy pairs, and ablations confirm its advantage over standard non-contrastive loss.",
+      "The PLD scheme with PhantomGate effectively prevents trivial all-positive solutions and balances precision/recall, with ablations supporting its design.",
+      "NcPU achieves state-of-the-art results on five datasets, including two real-world HADR datasets, consistently outperforming existing PU methods and sometimes surpassing supervised training.",
+      "The EM-style interpretation provides a useful conceptual framework for understanding the interaction between representation learning and label disambiguation.",
+      "The method is practical and does not require auxiliary negatives or class-prior estimates, a significant advantage over several baselines.",
+      "Extensive experiments include comparisons with many baselines, ablations, hyperparameter analyses, and real-world applications, strengthening the empirical evidence."
+    ],
+    "Weaknesses": [
+      "The theoretical analysis is not rigorous: the claim that minimizing the proposed loss maximizes a lower bound of the likelihood is based on loose approximations and an inequality (L1 <= L2) that does not directly justify the conclusion; assumptions such as vMF distributions and uniform priors are strong and unvalidated, and the EM interpretation lacks a formal convergence proof.",
+      "The gradient analysis is limited to an idealized clean/noisy pair scenario and does not account for confident noisy pairs or interactions with the classifier loss and momentum updates.",
+      "The PLD/PhantomGate mechanism is heuristic: the role of PhantomGate and the 'regret-based' update rule are not clearly formalized, and the self-adaptive threshold is borrowed without deep theoretical grounding.",
+      "Several key implementation details are missing, including precise same-class pair construction, augmentation choices, pseudo-label update frequency, warm-up details, and computational overhead; the code was not provided during review.",
+      "The comparison with supervised baselines is under-specified and suspicious: NcPU outperforms the supervised CIFAR-10 baseline, which is counterintuitive and not explained; the supervised STL-10 result is omitted.",
+      "Relevant baselines are missing (e.g., self-PU), and statistical significance of improvements is not assessed; some gains are modest (e.g., xBD +0.78%).",
+      "The experimental evaluation is narrow: it uses 1000 labeled positives and moderate-to-high class priors, and does not explore low-prior or scarce-positive settings, which are common in practice.",
+      "The paper has clarity and presentation issues: inconsistent table references, duplicated theorem numbering, malformed equations, and undefined notation reduce reproducibility."
+    ],
+    "Originality": 3,
+    "Quality": 2,
+    "Clarity": 2,
+    "Significance": 3,
+    "Questions": [
+      "How exactly are same-class pairs constructed for NoiSNCL? Are all samples sharing a pseudo label paired within a batch, and what is the computational complexity?",
+      "Why does NcPU outperform the fully supervised CIFAR-10 baseline? Was the supervised baseline trained with the same training budget, augmentations, and hyperparameter tuning?",
+      "Can you provide a formal statement of convergence for the EM-style iteration? How do the lower bound and PLD updates guarantee mutual improvement?",
+      "In Eq. (11), what is the precise role of PhantomGate in implementing 'regret-based label updating', and how does it differ from standard confidence-threshold pseudo-labeling?",
+      "How sensitive is NcPU to the class prior or the ratio of positives to unlabeled data? Could the method maintain performance in low-prior settings (e.g., pi_p=0.01)?",
+      "What is the computational overhead (training time, memory) of NcPU compared to baselines, especially given the BYOL-style architecture and 1300 epochs?",
+      "The paper claims NoiSNCL helps simple PU methods like uPU and nnPU; why are these results only in the appendix and not the main tables?",
+      "What is the impact of the initial all-negative pseudo targets on early training, and how does NcPU avoid collapse before PLD takes effect?"
+    ],
+    "Limitations": [
+      "The theoretical framework relies on strong and likely unverified assumptions (vMF distributions, uniform prior, hard assignments), and the expected improvement of the likelihood lower bound is not robustly demonstrated.",
+      "Key implementation details are missing, and the code is not available, limiting reproducibility.",
+      "The training procedure is computationally expensive (1300 epochs, two augmented views, momentum target network), and no runtime or memory comparison is provided.",
+      "The evaluation is limited to image classification; applicability to other modalities is not shown.",
+      "The method introduces several hyperparameters (alpha, beta, gamma, tau, entropy weight) and component interactions; sensitivity to these is only partially explored.",
+      "For HADR applications, model errors can have serious consequences; the paper does not analyze failure modes, fairness across building types, or uncertainty of predictions."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 2,
+    "Presentation": 2,
+    "Contribution": 3,
+    "Overall": 6,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair model output",
+  "usage": {
+    "prompt_tokens": 137212,
+    "prompt_cache_hit_tokens": 4096,
+    "prompt_cache_miss_tokens": 133116,
+    "completion_tokens": 34745,
+    "reasoning_tokens": 27285,
+    "total_tokens": 171957,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 1.147e-05,
+    "cache_miss_input_usd": 0.01863624,
+    "output_usd": 0.0097286,
+    "total_usd": 0.02837631
+  },
+  "elapsed_seconds": 110.056,
+  "input": {
+    "blind_id": "B075",
+    "filename": "B075.txt",
+    "blind_text_sha256": "94612205f29a6fe6c072a59a2c0c9eb277b49c17eef32a21178dce78186ded84",
+    "characters": 82123,
+    "full_text_saved": false
+  }
+}

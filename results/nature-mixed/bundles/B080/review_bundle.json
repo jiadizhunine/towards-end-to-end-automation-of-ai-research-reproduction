@@ -1,0 +1,707 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:45:32.255803+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "This paper proposes SiNGER, a knowledge distillation framework for Vision Transformers that addresses the problem of high-norm artifacts in teacher features. The key insight is that these artifacts dominate the distillation objective, causing students to overfit to outliers and underweight informative signals. SiNGER refines teacher features by adding a perturbation that lies in the left-nullspace of the next transformer block, thereby suppressing artifacts while preserving information. The perturbation is implemented via a LoRA-based adapter initialized with the nullspace basis of a linearized FFN. The framework uses three losses: a standard KD loss on refined features, an outlier suppression loss, and an information preservation loss based on Gram matrix matching. Experiments across multiple teacher-student configurations (ViT, DeiT-III) and downstream tasks (classification, segmentation, depth estimation, long-tail, domain shift, fine-grained) show consistent improvements over FitNet and ViTKD baselines, with particularly strong gains on dense prediction tasks. The paper includes extensive ablations on initialization, loss components, hyperparameters, and distillation layer selection, as well as analysis of the adapter's operation and representation quality.",
+        "Strengths": [
+          "Clear problem motivation: The paper identifies a real and well-documented issue (high-norm artifacts in ViT features) and connects it to a specific failure mode in knowledge distillation (gradient bias toward outlier tokens).",
+          "Novel and principled approach: The nullspace-guided perturbation is a mathematically grounded solution that directly addresses the trade-off between artifact suppression and information preservation, rather than relying on ad-hoc masking or thresholding.",
+          "Comprehensive evaluation: The paper evaluates across 10 benchmarks, multiple teacher-student configurations spanning different architectures (ViT, DeiT-III) and scales, providing strong evidence of the method's generalizability.",
+          "Thorough analysis: The paper includes detailed analysis of adapter operation (patch-norm distributions, cosine similarities, subspace alignment metrics), representation quality (Gram matrices, CKA), and approximation validity (comparison with full Jacobian).",
+          "Good ablation study: The ablations isolate the contribution of each component (nullspace initialization, outlier suppression loss, information preservation loss) and provide hyperparameter sensitivity analysis.",
+          "Honest discussion: The authors acknowledge limitations (e.g., suppression rather than elimination of artifacts, performance drops on long-tail and with cleaner teachers) and provide diagnostic analysis for these cases."
+        ],
+        "Weaknesses": [
+          "Surprisingly poor ViTKD baseline results: The reported ViTKD performance (e.g., 5.07% top-1 on ImageNet-1K for ViT-L to ViT-T) is dramatically lower than what would be expected from the original ViTKD paper, raising questions about whether the baseline implementation is faithful and the comparison is fair.",
+          "Modest gains in some settings: While the method shows strong improvements on dense prediction tasks and ImageNet-1K, the gains are marginal for fine-grained classification (+0.5%) and negative for long-tail classification (-3.9%), suggesting the method's benefits are task-dependent.",
+          "Informal theoretical treatment: The claim that nullspace perturbation preserves information relies on linearization of the non-linear transformer block. While the paper provides empirical validation, the theoretical justification is not rigorous and the connection to information-theoretic measures is not formally established.",
+          "Limited hyperparameter interaction analysis: The paper sweeps α and r independently but does not explore their interaction with each other or with the loss weighting hyperparameters (λ_outlier, λ_info), which could be important for practical adoption.",
+          "Computational overhead not fully discussed: The 10% training time increase is mentioned but the practical implications (e.g., for large-scale distillation) are not thoroughly analyzed.",
+          "Limited exploration of alternative linearization strategies: The paper justifies FFN-only linearization with empirical analysis but does not compare against other possible linearization approaches (e.g., full block Jacobian) in a systematic way."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "Why does ViTKD perform so poorly (5.07% top-1 on ImageNet-1K for ViT-L to ViT-T) compared to its reported performance in the original paper? Is the implementation faithful to the original ViTKD, and were all hyperparameters tuned appropriately for a fair comparison?",
+          "How sensitive is the method to the choice of linearization (FFN-only vs. full block Jacobian)? The paper shows one comparison in Table 8, but could you provide a more systematic analysis of different linearization strategies and their impact on downstream performance?",
+          "The information preservation loss uses Gram matrix matching. Why was this chosen over other similarity measures such as CKA or centered kernel alignment? Are there theoretical or empirical reasons for this choice?",
+          "For the 'cleaner teachers' experiments (DINOv2-reg, DINOv3), SiNGER sometimes underperforms relative to baselines. Does this suggest the method is only beneficial when artifacts are severe? How should practitioners decide when to apply SiNGER versus standard distillation?",
+          "How does the optimal rank r vary across different layers and teacher architectures? Is a fixed r across all layers always optimal, or would adaptive rank selection improve performance?",
+          "The paper reports a 10% increase in training time per epoch. Could you provide a more detailed breakdown of where this overhead comes from and discuss potential optimizations?",
+          "In the ablation study (Table 4), the nullspace initialization alone does not provide measurable performance improvements over random initialization. What is the mechanism by which the initialization helps, given that the losses appear to be the primary driver of performance?"
+        ],
+        "Limitations": [
+          "The method suppresses artifacts rather than eliminating their root causes, as acknowledged by the authors. This means the benefits may be limited to the distillation setting and may not generalize to other uses of the teacher model.",
+          "The method is specifically designed for ViT architectures and may not transfer directly to other architectures (e.g., convolutional networks or hybrid models) without significant adaptation.",
+          "The performance degradation on long-tail classification (iNaturalist-2019) is not fully resolved; the authors attribute this to teacher uncertainty, but this suggests the method does not address all forms of representation degradation.",
+          "The method requires additional computational overhead during training (10% increase) and introduces extra hyperparameters (α, r, λ_outlier, λ_info) that need tuning.",
+          "The paper does not discuss potential negative societal impacts, though this is generally acceptable for a methodology paper with no direct application to sensitive domains.",
+          "The method's effectiveness on very large-scale distillation (e.g., from billion-parameter models) is not evaluated, and the computational cost of SVD for very large matrices is not discussed."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 3,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces SiNGER, a knowledge distillation framework for Vision Transformers that addresses the problem of high-norm artifacts in teacher features. The key idea is to refine teacher features by adding a perturbation that lies in the left-nullspace of the next block, thereby suppressing artifacts while preserving information. The perturbation is implemented via a LoRA-based adapter initialized with the nullspace basis.\n\nStrengths:\n1. Clear problem motivation: The paper identifies a real issue (high-norm artifacts in ViT features) and connects it to a specific failure mode in KD (gradient bias toward outliers).\n2. Novel approach: The nullspace-guided perturbation is a principled and mathematically grounded solution that directly addresses the trade-off between artifact suppression and information preservation.\n3. Comprehensive evaluation: Multi-task evaluation across 10 benchmarks, multiple teacher-student configurations, and extensive ablations demonstrate the effectiveness of the method.\n4. Good analysis: The paper provides detailed analysis of adapter operation, including patch-norm distributions, cosine similarities, and subspace alignment metrics.\n5. Thoughtful discussion of limitations: The authors acknowledge the approximation gap in linearizing the non-linear block and provide empirical validation of their approximation.\n\nWeaknesses:\n1. Marginal gains in some settings: The improvements over baselines are not always substantial, particularly for fine-grained classification (+0.5% in the radar chart) and long-tail classification (actually negative).\n2. ViTKD baseline failure: The ViTKD results are surprisingly poor (e.g., 5.07% top-1 on ImageNet-1K), which seems inconsistent with published ViTKD results. This raises questions about whether the comparison is fair.\n3. Limited theoretical depth: The theoretical justification is somewhat informal. The claim that nullspace perturbation preserves information relies on linearization, and the connection to information theory is not rigorously established.\n4. Computational overhead: The 10% training time increase is noted but not thoroughly discussed in terms of practical implications.\n5. Limited exploration of hyperparameters: While α and r are swept, the interaction between them and other hyperparameters (λ_outlier, λ_info) is not explored.\n\nQuestions for authors:\n1. Why does ViTKD perform so poorly (5.07% top-1) compared to its reported performance in the original paper? Is the implementation faithful to the original?\n2. How sensitive is the method to the choice of linearization (FFN-only vs. full block Jacobian)? The paper shows one comparison but doesn't explore alternatives systematically.\n3. The information preservation loss uses Gram matrices - why not use other similarity measures like CKA or centered kernel alignment?\n4. For the \"cleaner teachers\" experiments (DINOv2-reg, DINOv3), SiNGER sometimes underperforms. Does this suggest the method is only beneficial when artifacts are severe? How should practitioners decide when to apply SiNGER?\n5. How does the choice of rank r interact with the singular value spectrum of different layers? Is a fixed r across all layers optimal?\n\nLimitations:\nThe authors acknowledge that SiNGER suppresses artifacts rather than eliminating their sources. However, they don't discuss potential negative societal impacts, which is generally acceptable for this type of method paper. The paper also doesn't explore the method's applicability to other modalities or architectures beyond ViTs.\n\nEthical concerns: None identified. This is a standard ML methodology paper with no direct societal impact concerns.\n\nSoundness: The paper is technically sound overall. The experimental methodology is appropriate, and the claims are supported by evidence. However, the surprising ViTKD results and the informal theoretical treatment slightly reduce confidence. Rating: 3 (good)\n\nPresentation: The paper is well-organized and clearly written. The figures are informative and the ablations are thorough. The appendix provides useful additional analysis. Rating: 3 (good)\n\nContribution: The paper makes a meaningful contribution to the KD literature by introducing a principled approach to handling artifacts in teacher features. The nullspace-guided perturbation is novel and well-motivated. However, the practical gains are somewhat modest in certain settings, and the method's applicability may be limited to scenarios with severe artifacts. Rating: 3 (good)\n\nOverall: The paper presents a solid, well-executed idea with comprehensive evaluation. The main concerns are the questionable ViTKD baseline results and the modest gains in some settings. I would lean toward acceptance given the novelty and thoroughness, but with reservations about the baseline fairness. Rating: 6 (Weak Accept)\n\nConfidence: I'm fairly confident in my assessment, but I haven't checked the math in detail and I'm not deeply familiar with all related work on ViT artifacts. Rating: 3\n\nDecision: Accept (leaning toward weak accept, but given the binary choice, I'll go with Accept)```json\n{\n  \"Summary\": \"This paper proposes SiNGER, a knowledge distillation framework for Vision Transformers that addresses the problem of high-norm artifacts in teacher features. The key insight is that these artifacts dominate the distillation objective, causing students to overfit to outliers and underweight informative signals. SiNGER refines teacher features by adding a perturbation that lies in the left-nullspace of the next transformer block, thereby suppressing artifacts while preserving information. The perturbation is implemented via a LoRA-based adapter initialized with the nullspace basis of a linearized FFN. The framework uses three losses: a standard KD loss on refined features, an outlier suppression loss, and an information preservation loss based on Gram matrix matching. Experiments across multiple teacher-student configurations (ViT, DeiT-III) and downstream tasks (classification, segmentation, depth estimation, long-tail, domain shift, fine-grained) show consistent improvements over FitNet and ViTKD baselines, with particularly strong gains on dense prediction tasks. The paper includes extensive ablations on initialization, loss components, hyperparameters, and distillation layer selection, as well as analysis of the adapter's operation and representation quality.\",\n  \"Strengths\": [\n    \"Clear problem motivation: The paper identifies a real and well-documented issue (high-norm artifacts in ViT features) and connects it to a specific failure mode in knowledge distillation (gradient bias toward outlier tokens).\",\n    \"Novel and principled approach: The nullspace-guided perturbation is a mathematically grounded solution that directly addresses the trade-off between artifact suppression and information preservation, rather than relying on ad-hoc masking or thresholding.\",\n    \"Comprehensive evaluation: The paper evaluates across 10 benchmarks, multiple teacher-student configurations spanning different architectures (ViT, DeiT-III) and scales, providing strong evidence of the method's generalizability.\",\n    \"Thorough analysis: The paper includes detailed analysis of adapter operation (patch-norm distributions, cosine similarities, subspace alignment metrics), representation quality (Gram matrices, CKA), and approximation validity (comparison with full Jacobian).\",\n    \"Good ablation study: The ablations isolate the contribution of each component (nullspace initialization, outlier suppression loss, information preservation loss) and provide hyperparameter sensitivity analysis.\",\n    \"Honest discussion: The authors acknowledge limitations (e.g., suppression rather than elimination of artifacts, performance drops on long-tail and with cleaner teachers) and provide diagnostic analysis for these cases.\"\n  ],\n  \"Weaknesses\": [\n    \"Surprisingly poor ViTKD baseline results: The reported ViTKD performance (e.g., 5.07% top-1 on ImageNet-1K for ViT-L to ViT-T) is dramatically lower than what would be expected from the original ViTKD paper, raising questions about whether the baseline implementation is faithful and the comparison is fair.\",\n    \"Modest gains in some settings: While the method shows strong improvements on dense prediction tasks and ImageNet-1K, the gains are marginal for fine-grained classification (+0.5%) and negative for long-tail classification (-3.9%), suggesting the method's benefits are task-dependent.\",\n    \"Informal theoretical treatment: The claim that nullspace perturbation preserves information relies on linearization of the non-linear transformer block. While the paper provides empirical validation, the theoretical justification is not rigorous and the connection to information-theoretic measures is not formally established.\",\n    \"Limited hyperparameter interaction analysis: The paper sweeps α and r independently but does not explore their interaction with each other or with the loss weighting hyperparameters (λ_outlier, λ_info), which could be important for practical adoption.\",\n    \"Computational overhead not fully discussed: The 10% training time increase is mentioned but the practical implications (e.g., for large-scale distillation) are not thoroughly analyzed.\",\n    \"Limited exploration of alternative linearization strategies: The paper justifies FFN-only linearization with empirical analysis but does not compare against other possible linearization approaches (e.g., full block Jacobian) in a systematic way.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"Why does ViTKD perform so poorly (5.07% top-1 on ImageNet-1K for ViT-L to ViT-T) compared to its reported performance in the original paper? Is the implementation faithful to the original ViTKD, and were all hyperparameters tuned appropriately for a fair comparison?\",\n    \"How sensitive is the method to the choice of linearization (FFN-only vs. full block Jacobian)? The paper shows one comparison in Table 8, but could you provide a more systematic analysis of different linearization strategies and their impact on downstream performance?\",\n    \"The information preservation loss uses Gram matrix matching. Why was this chosen over other similarity measures such as CKA or centered kernel alignment? Are there theoretical or empirical reasons for this choice?\",\n    \"For the 'cleaner teachers' experiments (DINOv2-reg, DINOv3), SiNGER sometimes underperforms relative to baselines. Does this suggest the method is only beneficial when artifacts are severe? How should practitioners decide when to apply SiNGER versus standard distillation?\",\n    \"How does the optimal rank r vary across different layers and teacher architectures? Is a fixed r across all layers always optimal, or would adaptive rank selection improve performance?\",\n    \"The paper reports a 10% increase in training time per epoch. Could you provide a more detailed breakdown of where this overhead comes from and discuss potential optimizations?\",\n    \"In the ablation study (Table 4), the nullspace initialization alone does not provide measurable performance improvements over random initialization. What is the mechanism by which the initialization helps, given that the losses appear to be the primary driver of performance?\"\n  ],\n  \"Limitations\": [\n    \"The method suppresses artifacts rather than eliminating their root causes, as acknowledged by the authors. This means the benefits may be limited to the distillation setting and may not generalize to other uses of the teacher model.\",\n    \"The method is specifically designed for ViT architectures and may not transfer directly to other architectures (e.g., convolutional networks or hybrid models) without significant adaptation.\",\n    \"The performance degradation on long-tail classification (iNaturalist-2019) is not fully resolved; the authors attribute this to teacher uncertainty, but this suggests the method does not address all forms of representation degradation.\",\n    \"The method requires additional computational overhead during training (10% increase) and introduces extra hyperparameters (α, r, λ_outlier, λ_info) that need tuning.\",\n    \"The paper does not discuss potential negative societal impacts, though this is generally acceptable for a methodology paper with no direct application to sensitive domains.\",\n    \"The method's effectiveness on very large-scale distillation (e.g., from billion-parameter models) is not evaluated, and the computational cost of SVD for very large matrices is not discussed.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 3,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 20779,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 18987,
+        "completion_tokens": 2473,
+        "reasoning_tokens": 0,
+        "total_tokens": 23252
+      },
+      "attempts": 1,
+      "response_id": "9172c3bc-9708-4f62-80e9-026496e6f849"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper introduces SiNGER (Singular Nullspace-Guided Energy Reallocation), a knowledge distillation framework for Vision Transformers that addresses the problem of high-norm artifacts in teacher features. The key insight is that standard feature-level KD objectives are biased by outlier tokens with high norms, causing students to overfit to artifacts rather than learn informative representations. SiNGER refines teacher features by adding a low-rank perturbation (via a LoRA-based adapter) that is constrained to the left-nullspace of the next block's linearized weights, thereby suppressing outlier norms while preserving the information flow through the network. The method is evaluated across multiple downstream tasks including ImageNet classification, semantic segmentation, depth estimation, fine-grained classification, and domain shift benchmarks, showing consistent improvements over FitNet and ViTKD baselines. The paper also provides extensive analysis of the adapter's behavior, including subspace alignment metrics, patch-norm distributions, and information preservation measurements.",
+        "Strengths": [
+          "Novel and theoretically motivated approach: The nullspace-guided perturbation is an elegant solution to the artifact-suppression vs. information-preservation trade-off in KD for ViTs.",
+          "Comprehensive evaluation across diverse downstream tasks (10 benchmarks) demonstrating consistent improvements over baselines.",
+          "Good analysis of the method's internal workings, including subspace alignment metrics, patch-norm distributions, and information preservation measurements.",
+          "The paper honestly discusses limitations, including the iNaturalist performance drop and the approximation gap in nullspace computation.",
+          "The method introduces minimal architectural changes (lightweight LoRA adapters) and has modest computational overhead.",
+          "Clear writing with helpful visualizations (feature maps, Gram matrices, similarity maps) that support the claims."
+        ],
+        "Weaknesses": [
+          "The ablation study (Table 4) is conducted on a subset of ImageNet-1K, making it difficult to compare with the main results in Table 1. The contribution of each component may differ under full training.",
+          "The ViTKD baseline performs catastrophically poorly (5.07% top-1 on ImageNet-1K, far below chance), raising questions about the fairness of the comparison. The paper's explanation in Appendix D is not fully convincing.",
+          "The CKA results (Table 2) are counterintuitive: SiNGER has lower teacher-student CKA than baselines yet performs better. The explanation that baselines replicate artifacts needs more empirical support.",
+          "The theoretical justification for using the FFN linearization to compute the nullspace is somewhat hand-wavy. While Appendix A provides empirical motivation, a more rigorous analysis would strengthen the paper.",
+          "The method introduces several hyperparameters (α, r, λ_outlier, λ_info) and a distillation layer selection criterion that appear somewhat ad hoc. Clear guidelines for choosing these in new settings are missing.",
+          "The information preservation claim is only validated through cosine similarity and Gram matrix distances, which may not fully capture semantic information preservation.",
+          "The long-tail performance degradation on iNaturalist is acknowledged but not fully resolved; the entropy analysis in Appendix J provides some insight but not a solution."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "Why does ViTKD perform so poorly (5.07% top-1 on ImageNet-1K, well below random chance)? Could this be due to implementation issues or hyperparameter choices? How was the ViTKD baseline tuned?",
+          "The ablation study in Table 4 uses a subset of ImageNet-1K. Can you provide the full-scale ablation results to verify that the component contributions hold under full training?",
+          "The CKA being lower for SiNGER compared to baselines is concerning. Can you provide more analysis on why lower teacher-student CKA leads to better downstream performance? Is there a threshold effect?",
+          "How sensitive is the method to the choice of distillation layers? The paper selects l=17 based on artifact analysis - what happens if a different intermediate layer is chosen that also exhibits artifacts?",
+          "Table 4 shows that nullspace initialization provides only marginal improvement over random initialization in terms of final accuracy. Does this mean the initialization is not critical, or is the subset too small to show the difference?",
+          "How would the method perform with teachers of different architectures (e.g., Swin, ConvNeXt) where the 'next block' structure differs significantly from ViT?",
+          "The paper uses a linearized FFN for nullspace computation. How sensitive is the method to the choice of linearization (e.g., including biases, using different parts of the block)?",
+          "What is the effect of the Gram matrix-based information preservation loss on the final feature geometry? Could simpler losses (e.g., cosine similarity) achieve similar results?"
+        ],
+        "Limitations": [
+          "The method is validated only on ViT-family architectures. Its applicability to other transformer variants or convolutional teachers is unclear and needs investigation.",
+          "The paper does not address potential negative societal impacts, though this seems minor for a model compression method.",
+          "The computational overhead (~10% training time increase) is acknowledged but not thoroughly analyzed for large-scale training scenarios or when multiple teachers are involved.",
+          "The long-tail performance degradation is acknowledged but not fully resolved; the entropy analysis provides insight but no solution.",
+          "The method suppresses artifacts rather than eliminating their root causes, which the paper acknowledges as a limitation.",
+          "The dependence on the next block's weights for nullspace computation means the method needs to be adapted for each teacher architecture, potentially limiting generality."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces SiNGER, a knowledge distillation framework for Vision Transformers that addresses the problem of high-norm artifacts in teacher features. The key idea is to refine teacher features using a nullspace-guided perturbation that suppresses artifacts while preserving informative signals. The method uses a LoRA-based adapter initialized with the left-nullspace of the next block's linearized weights.\n\nStrengths:\n1. The problem is well-motivated and important - high-norm artifacts in ViTs are a known issue, and the paper correctly identifies how they bias KD objectives.\n2. The nullspace-guided approach is novel and theoretically grounded - the idea of perturbing features only along directions that don't affect the next block's output is elegant.\n3. Comprehensive experiments across multiple downstream tasks (classification, segmentation, depth estimation, fine-grained, domain shift, long-tail) show consistent improvements.\n4. Good analysis of the adapter's behavior (patch norm distributions, cosine similarities, subspace alignment metrics).\n5. The paper honestly discusses limitations, including the performance drop on iNaturalist and the approximation gap in nullspace computation.\n\nWeaknesses:\n1. The ablation study (Table 4) uses a subset of ImageNet-1K, making results not directly comparable to the main results in Table 1. This is a significant concern for evaluating the contribution of each component.\n2. The comparison with ViTKD seems unfair - ViTKD performs catastrophically (e.g., 5.07% top-1 on ImageNet-1K), which is suspiciously low. The paper claims ViTKD \"fails\" but doesn't thoroughly investigate whether this is due to implementation issues or the method itself.\n3. The theoretical justification for using the FFN linearization is somewhat hand-wavy. While Appendix A provides some empirical motivation, the connection between the linearized nullspace and the actual nonlinear block's behavior could be stronger.\n4. The CKA results in Table 2 are counterintuitive - SiNGER has lower CKA than baselines, yet performs better. The paper's explanation (that baselines replicate artifacts) needs more support.\n5. The method introduces several hyperparameters (α, r, λ_outlier, λ_info) and distillation layer selection criteria that seem somewhat ad hoc. The paper doesn't provide clear guidelines for choosing these in new settings.\n6. The \"information preservation\" claim is only validated through cosine similarity and Gram matrix distances, which may not fully capture semantic information preservation.\n\nQuestions:\n1. Why does ViTKD perform so poorly? The reported 5.07% top-1 accuracy is far below random chance for ImageNet-1K. Is this a fair implementation of ViTKD?\n2. The ablation study uses a subset of ImageNet-1K. Can you provide the full ablation results? The relative gains might differ.\n3. How sensitive is the method to the choice of distillation layers? The paper selects l=17 based on artifact analysis - is this selection robust?\n4. The CKA being lower for SiNGER is concerning. Can you provide more analysis on why lower CKA leads to better downstream performance?\n5. Does the nullspace initialization actually matter for final performance? Table 4 shows little difference between random and nullspace initialization in terms of final accuracy.\n6. How does the method handle teachers with different architectures (e.g., Swin, ConvNeXt) where the \"next block\" structure is different?\n\nLimitations:\n- The method is validated only on ViT-family architectures. Its applicability to other transformer variants or CNN teachers is unclear.\n- The paper doesn't address potential negative societal impacts, though this seems minor for a model compression method.\n- The computational overhead (~10% training time increase) is acknowledged but not thoroughly analyzed for large-scale training scenarios.\n- The long-tail performance degradation is acknowledged but not fully resolved.\n\nEthical concerns: None identified. This is a standard model compression paper with no direct societal impact.\n\nOverall assessment: This is a solid paper with a novel idea and good experimental validation. The main concerns are the fairness of the ViTKD comparison, the use of subset data for ablations, and some theoretical gaps. The paper makes a meaningful contribution to KD for ViTs by addressing a real problem (artifact transfer) with an elegant solution. However, the evaluation has some weaknesses that prevent it from being a top-tier paper.\n\nDecision: I'm leaning toward Accept, as the core idea is novel and the results are promising, but the issues with ViTKD comparison and ablation methodology need to be addressed in the rebuttal.\n\nRatings:\n- Originality: 4 (very high) - The nullspace-guided perturbation is a novel concept\n- Quality: 3 (good) - Solid but with some evaluation concerns\n- Clarity: 3 (good) - Well-written but some technical details could be clearer\n- Significance: 3 (good) - Addresses an important problem with a promising solution\n- Soundness: 3 (good)\n- Presentation: 3 (good)\n- Contribution: 3 (good)\n- Overall: 6 (Weak Accept)\n- Confidence: 4\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper introduces SiNGER (Singular Nullspace-Guided Energy Reallocation), a knowledge distillation framework for Vision Transformers that addresses the problem of high-norm artifacts in teacher features. The key insight is that standard feature-level KD objectives are biased by outlier tokens with high norms, causing students to overfit to artifacts rather than learn informative representations. SiNGER refines teacher features by adding a low-rank perturbation (via a LoRA-based adapter) that is constrained to the left-nullspace of the next block's linearized weights, thereby suppressing outlier norms while preserving the information flow through the network. The method is evaluated across multiple downstream tasks including ImageNet classification, semantic segmentation, depth estimation, fine-grained classification, and domain shift benchmarks, showing consistent improvements over FitNet and ViTKD baselines. The paper also provides extensive analysis of the adapter's behavior, including subspace alignment metrics, patch-norm distributions, and information preservation measurements.\",\n    \"Strengths\": [\n        \"Novel and theoretically motivated approach: The nullspace-guided perturbation is an elegant solution to the artifact-suppression vs. information-preservation trade-off in KD for ViTs.\",\n        \"Comprehensive evaluation across diverse downstream tasks (10 benchmarks) demonstrating consistent improvements over baselines.\",\n        \"Good analysis of the method's internal workings, including subspace alignment metrics, patch-norm distributions, and information preservation measurements.\",\n        \"The paper honestly discusses limitations, including the iNaturalist performance drop and the approximation gap in nullspace computation.\",\n        \"The method introduces minimal architectural changes (lightweight LoRA adapters) and has modest computational overhead.\",\n        \"Clear writing with helpful visualizations (feature maps, Gram matrices, similarity maps) that support the claims.\"\n    ],\n    \"Weaknesses\": [\n        \"The ablation study (Table 4) is conducted on a subset of ImageNet-1K, making it difficult to compare with the main results in Table 1. The contribution of each component may differ under full training.\",\n        \"The ViTKD baseline performs catastrophically poorly (5.07% top-1 on ImageNet-1K, far below chance), raising questions about the fairness of the comparison. The paper's explanation in Appendix D is not fully convincing.\",\n        \"The CKA results (Table 2) are counterintuitive: SiNGER has lower teacher-student CKA than baselines yet performs better. The explanation that baselines replicate artifacts needs more empirical support.\",\n        \"The theoretical justification for using the FFN linearization to compute the nullspace is somewhat hand-wavy. While Appendix A provides empirical motivation, a more rigorous analysis would strengthen the paper.\",\n        \"The method introduces several hyperparameters (α, r, λ_outlier, λ_info) and a distillation layer selection criterion that appear somewhat ad hoc. Clear guidelines for choosing these in new settings are missing.\",\n        \"The information preservation claim is only validated through cosine similarity and Gram matrix distances, which may not fully capture semantic information preservation.\",\n        \"The long-tail performance degradation on iNaturalist is acknowledged but not fully resolved; the entropy analysis in Appendix J provides some insight but not a solution.\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"Why does ViTKD perform so poorly (5.07% top-1 on ImageNet-1K, well below random chance)? Could this be due to implementation issues or hyperparameter choices? How was the ViTKD baseline tuned?\",\n        \"The ablation study in Table 4 uses a subset of ImageNet-1K. Can you provide the full-scale ablation results to verify that the component contributions hold under full training?\",\n        \"The CKA being lower for SiNGER compared to baselines is concerning. Can you provide more analysis on why lower teacher-student CKA leads to better downstream performance? Is there a threshold effect?\",\n        \"How sensitive is the method to the choice of distillation layers? The paper selects l=17 based on artifact analysis - what happens if a different intermediate layer is chosen that also exhibits artifacts?\",\n        \"Table 4 shows that nullspace initialization provides only marginal improvement over random initialization in terms of final accuracy. Does this mean the initialization is not critical, or is the subset too small to show the difference?\",\n        \"How would the method perform with teachers of different architectures (e.g., Swin, ConvNeXt) where the 'next block' structure differs significantly from ViT?\",\n        \"The paper uses a linearized FFN for nullspace computation. How sensitive is the method to the choice of linearization (e.g., including biases, using different parts of the block)?\",\n        \"What is the effect of the Gram matrix-based information preservation loss on the final feature geometry? Could simpler losses (e.g., cosine similarity) achieve similar results?\"\n    ],\n    \"Limitations\": [\n        \"The method is validated only on ViT-family architectures. Its applicability to other transformer variants or convolutional teachers is unclear and needs investigation.\",\n        \"The paper does not address potential negative societal impacts, though this seems minor for a model compression method.\",\n        \"The computational overhead (~10% training time increase) is acknowledged but not thoroughly analyzed for large-scale training scenarios or when multiple teachers are involved.\",\n        \"The long-tail performance degradation is acknowledged but not fully resolved; the entropy analysis provides insight but no solution.\",\n        \"The method suppresses artifacts rather than eliminating their root causes, which the paper acknowledges as a limitation.\",\n        \"The dependence on the next block's weights for nullspace computation means the method needs to be adapted for each teacher architecture, potentially limiting generality.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 20779,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 18987,
+        "completion_tokens": 2298,
+        "reasoning_tokens": 0,
+        "total_tokens": 23077
+      },
+      "attempts": 1,
+      "response_id": "45552122-a600-4ba0-8e18-996413f3e46c"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper proposes SiNGER (Singular Nullspace-Guided Energy Reallocation), a knowledge distillation framework for Vision Transformers (ViTs) that addresses the problem of high-norm artifacts in teacher features. These artifacts, which are outliers in the feature space, dominate the standard feature-matching distillation objective and cause students to overfit to them while underweighting informative signals. SiNGER refines teacher features before distillation by adding a low-rank perturbation produced by a LoRA-based adapter. The adapter is initialized with the left-nullspace of the next block (approximated via linearization of the FFN sub-layer), so that perturbations suppress outlier norms while minimally altering the information passed to subsequent layers. The method is evaluated on multiple downstream tasks (ImageNet classification, semantic segmentation, depth estimation, long-tail classification, domain shift, and fine-grained classification) across various teacher-student configurations (ViT, DeiT-III). Results show consistent improvements over FitNet and ViTKD baselines, with additional qualitative evidence of clearer and more interpretable feature representations.",
+        "Strengths": [
+          "The paper identifies a clear and well-motivated problem: high-norm artifacts in ViT teacher features bias the standard feature-matching distillation objective, and prior work (e.g., random masking in ViTKD) does not adequately address the trade-off between artifact suppression and information preservation.",
+          "The proposed nullspace-guided perturbation is theoretically principled. By restricting the perturbation to the left-nullspace of the next block, the method guarantees (in the linear case) that information is preserved while allowing outlier suppression. The use of a LoRA-based adapter is a practical and efficient implementation.",
+          "The experimental evaluation is extensive, covering multiple downstream tasks and teacher-student configurations. The ablation studies (initialization, loss terms, hyperparameters, distillation layers) provide useful insights into the contribution of each component.",
+          "The paper includes useful qualitative analyses (feature visualizations, Gram matrices) that support the claim of clearer and more interpretable representations. The analysis of the adapter's operation (patch-norm distributions, cosine similarities) provides empirical evidence for the two objectives.",
+          "The paper is generally well-written and clearly organized. The figures and tables are informative and support the narrative."
+        ],
+        "Weaknesses": [
+          "The experimental setup is non-standard: the distillation excludes task-specific losses (e.g., cross-entropy for classification), focusing only on feature matching. This is explicitly stated in Section 4.1 ('we exclude task-specific losses'). However, the baselines (FitNet, ViTKD) are typically used with task-specific losses in their original formulations. This makes the comparison potentially unfair or at least not representative of how these methods are usually applied, and it may understate the baselines' performance.",
+          "The failure of ViTKD is extreme (e.g., 5.07% top-1 on ImageNet-1K for ViT-L→ViT-T), which is far below even random chance. The paper attributes this to 'blurry representations' but the explanation seems insufficient. This raises questions about whether the implementation of ViTKD is correct or whether the comparison is fair. The authors should provide more analysis or evidence that this is not an artifact of their setup or implementation.",
+          "The 'information preservation' claim is partly circular. The Linfo loss directly optimizes for Gram matrix matching between F_T and F_hat_T. So the fact that adding Linfo improves Gram distance is expected and doesn't fully validate the nullspace-guided approach. The more interesting claim would be that the nullspace initialization alone (without Linfo) preserves information, but the ablation shows that nullspace initialization alone doesn't improve performance over random initialization (Table 4).",
+          "The nullspace approximation relies on linearizing the FFN sub-layer. While the paper provides some validation (Appendix A, Table 8), this is a heuristic. The method's theoretical guarantees are for the linear case, and the extension to the full non-linear block is empirical. The paper could benefit from a more rigorous analysis or a clearer discussion of the limitations of this approximation.",
+          "The performance on long-tail classification (iNat2019) is consistently worse than the non-distilled ViT-T baseline (e.g., 41.11 vs 43.95 for ViT-L→ViT-T). While the paper provides an entropy analysis in Appendix J, the fact that a proposed distillation method degrades performance on a standard benchmark is a significant weakness that deserves more attention.",
+          "The paper claims to be about 'VFM distillation' and mentions DINOv2, but the main experiments only use supervised models (ViT, DeiT-III). The experiments with DINOv2 are in the appendix and show that SiNGER does not consistently outperform baselines when the teacher has fewer artifacts. This limits the generality of the claims."
+        ],
+        "Originality": 4,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "The distillation setup excludes task-specific losses (e.g., cross-entropy). How does this affect the comparison with FitNet and ViTKD, which are typically used with such losses? Have you considered evaluating with the standard setup that includes task-specific losses? If so, how do the results change?",
+          "ViTKD's performance is catastrophically low (e.g., 5.07% top-1 on ImageNet). This is far below chance. Can you provide more details on your implementation of ViTKD? Is it possible that there is a bug or a misconfiguration? Have you verified that your ViTKD implementation matches the original paper's setup?",
+          "The ablation in Table 4 shows that nullspace initialization alone (without Loutlier and Linfo) does not improve over random initialization. This suggests that the initialization is not the key factor. What is the evidence that the nullspace initialization is crucial, beyond the alignment metrics in Table 5a? Would the method work as well with random initialization if Loutlier and Linfo are used?",
+          "The nullspace approximation is based on linearizing the FFN. How sensitive is the method to this approximation? Have you tried other linearizations (e.g., including the attention sub-layer) or using a different rank for the nullspace approximation?",
+          "The method degrades performance on iNat2019. Could you discuss potential remedies or whether this is an inherent limitation of the approach? Is there a way to adapt the method to handle long-tail distributions better?",
+          "In the experiments with DINOv2-reg and DINOv3 (cleaner teachers), SiNGER does not consistently outperform baselines. Does this mean the method is only applicable to teachers with high-norm artifacts? How should practitioners decide when to use SiNGER?",
+          "The information preservation loss Linfo directly optimizes for Gram matrix similarity. Is this the best metric for information preservation? Have you considered other metrics (e.g., CKA, mutual information)?",
+          "The paper mentions that the adapter introduces only 1.2% additional parameters and a 10% training time increase. Could you provide a more detailed breakdown of the computational overhead, especially for the extra forward pass through the teacher block for Linfo?"
+        ],
+        "Limitations": [
+          "The paper acknowledges that it suppresses artifacts rather than eliminating their source, and that the root cause remains. This is an honest limitation, but it also means that the method may not be as effective for teachers with different artifact properties.",
+          "The evaluation is primarily on supervised ViTs (ViT, DeiT-III). The experiments with self-supervised models (DINOv2) show mixed results, indicating that the method's applicability to VFMs with fewer artifacts is limited.",
+          "The performance degradation on long-tail classification (iNat2019) is a notable limitation that is not fully addressed.",
+          "The nullspace approximation is a heuristic, and the paper does not provide a rigorous theoretical bound on the information loss for the non-linear case.",
+          "The paper does not discuss potential negative societal impacts. While this is a general distillation method, it could be used to compress models that have biases, and the distillation process might amplify or preserve these biases."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 4,
+        "Confidence": 3,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces SiNGER, a knowledge distillation framework for Vision Transformers that addresses the problem of high-norm artifacts in teacher features. The key idea is to refine teacher features via a LoRA-based adapter initialized with the nullspace of the next block, suppressing outliers while preserving information. The method is evaluated across multiple tasks and teacher-student configurations.\n\nThe paper has several notable strengths:\n1. The problem is well-motivated with clear analysis of how high-norm artifacts dominate the distillation objective\n2. The nullspace-guided approach is theoretically principled\n3. Extensive experimental evaluation across multiple tasks and model configurations\n4. Good ablation studies validating the design choices\n\nHowever, there are significant weaknesses:\n1. The experimental setup is unusual - the distillation excludes task-specific losses (like cross-entropy for classification), which is not standard practice. This makes the comparison with baselines potentially unfair, as FitNet and ViTKD typically include task losses.\n2. ViTKD fails catastrophically (5.07% top-1 on ImageNet), which is suspicious. The paper acknowledges this but the explanation (blurry representations) seems insufficient given the large performance gap.\n3. The \"information preservation\" analysis is somewhat circular - the Gram matching loss directly optimizes for this, so the improvements are expected.\n4. The nullspace approximation via FFN linearization is heuristic, and while there's some validation, the justification is limited.\n5. The performance on long-tail (iNat2019) actually decreases, which is a notable limitation.\n6. The paper claims to be for \"VFM distillation\" but only evaluates on supervised ViTs (ViT, DeiT-III), not self-supervised models like DINOv2 in the main experiments.\n\nThe paper is generally well-written and the method is novel. The theoretical motivation is sound, and the empirical results are mostly positive. However, the unusual experimental setup and the ViTKD failure raise concerns about the fairness of comparisons.\n\nOriginality: The idea of using nullspace-guided perturbations for distillation is novel and interesting. The combination of LoRA adapters with nullspace initialization is creative.\n\nQuality: The paper is technically sound overall, but there are concerns about the experimental setup and the fairness of comparisons. The ablation studies are thorough.\n\nClarity: The paper is well-written and organized. The figures are helpful, though some could be clearer.\n\nSignificance: The method shows consistent improvements and could be valuable for ViT distillation. The theoretical insight about nullspace-guided refinement is potentially impactful.\n\nOverall, I think this is a borderline paper. The core idea is interesting and mostly well-executed, but the experimental concerns need to be addressed. I'll rate it as a borderline reject, mainly due to the experimental setup concerns.\n\nConfidence: I'm fairly confident in my assessment, though I may have missed some details in the appendices. I'll rate my confidence as 3.REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper proposes SiNGER (Singular Nullspace-Guided Energy Reallocation), a knowledge distillation framework for Vision Transformers (ViTs) that addresses the problem of high-norm artifacts in teacher features. These artifacts, which are outliers in the feature space, dominate the standard feature-matching distillation objective and cause students to overfit to them while underweighting informative signals. SiNGER refines teacher features before distillation by adding a low-rank perturbation produced by a LoRA-based adapter. The adapter is initialized with the left-nullspace of the next block (approximated via linearization of the FFN sub-layer), so that perturbations suppress outlier norms while minimally altering the information passed to subsequent layers. The method is evaluated on multiple downstream tasks (ImageNet classification, semantic segmentation, depth estimation, long-tail classification, domain shift, and fine-grained classification) across various teacher-student configurations (ViT, DeiT-III). Results show consistent improvements over FitNet and ViTKD baselines, with additional qualitative evidence of clearer and more interpretable feature representations.\",\n  \"Strengths\": [\n    \"The paper identifies a clear and well-motivated problem: high-norm artifacts in ViT teacher features bias the standard feature-matching distillation objective, and prior work (e.g., random masking in ViTKD) does not adequately address the trade-off between artifact suppression and information preservation.\",\n    \"The proposed nullspace-guided perturbation is theoretically principled. By restricting the perturbation to the left-nullspace of the next block, the method guarantees (in the linear case) that information is preserved while allowing outlier suppression. The use of a LoRA-based adapter is a practical and efficient implementation.\",\n    \"The experimental evaluation is extensive, covering multiple downstream tasks and teacher-student configurations. The ablation studies (initialization, loss terms, hyperparameters, distillation layers) provide useful insights into the contribution of each component.\",\n    \"The paper includes useful qualitative analyses (feature visualizations, Gram matrices) that support the claim of clearer and more interpretable representations. The analysis of the adapter's operation (patch-norm distributions, cosine similarities) provides empirical evidence for the two objectives.\",\n    \"The paper is generally well-written and clearly organized. The figures and tables are informative and support the narrative.\"\n  ],\n  \"Weaknesses\": [\n    \"The experimental setup is non-standard: the distillation excludes task-specific losses (e.g., cross-entropy for classification), focusing only on feature matching. This is explicitly stated in Section 4.1 ('we exclude task-specific losses'). However, the baselines (FitNet, ViTKD) are typically used with task-specific losses in their original formulations. This makes the comparison potentially unfair or at least not representative of how these methods are usually applied, and it may understate the baselines' performance.\",\n    \"The failure of ViTKD is extreme (e.g., 5.07% top-1 on ImageNet-1K for ViT-L→ViT-T), which is far below even random chance. The paper attributes this to 'blurry representations' but the explanation seems insufficient. This raises questions about whether the implementation of ViTKD is correct or whether the comparison is fair. The authors should provide more analysis or evidence that this is not an artifact of their setup or implementation.\",\n    \"The 'information preservation' claim is partly circular. The Linfo loss directly optimizes for Gram matrix matching between F_T and F_hat_T. So the fact that adding Linfo improves Gram distance is expected and doesn't fully validate the nullspace-guided approach. The more interesting claim would be that the nullspace initialization alone (without Linfo) preserves information, but the ablation shows that nullspace initialization alone doesn't improve performance over random initialization (Table 4).\",\n    \"The nullspace approximation relies on linearizing the FFN sub-layer. While the paper provides some validation (Appendix A, Table 8), this is a heuristic. The method's theoretical guarantees are for the linear case, and the extension to the full non-linear block is empirical. The paper could benefit from a more rigorous analysis or a clearer discussion of the limitations of this approximation.\",\n    \"The performance on long-tail classification (iNat2019) is consistently worse than the non-distilled ViT-T baseline (e.g., 41.11 vs 43.95 for ViT-L→ViT-T). While the paper provides an entropy analysis in Appendix J, the fact that a proposed distillation method degrades performance on a standard benchmark is a significant weakness that deserves more attention.\",\n    \"The paper claims to be about 'VFM distillation' and mentions DINOv2, but the main experiments only use supervised models (ViT, DeiT-III). The experiments with DINOv2 are in the appendix and show that SiNGER does not consistently outperform baselines when the teacher has fewer artifacts. This limits the generality of the claims.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"The distillation setup excludes task-specific losses (e.g., cross-entropy). How does this affect the comparison with FitNet and ViTKD, which are typically used with such losses? Have you considered evaluating with the standard setup that includes task-specific losses? If so, how do the results change?\",\n    \"ViTKD's performance is catastrophically low (e.g., 5.07% top-1 on ImageNet). This is far below chance. Can you provide more details on your implementation of ViTKD? Is it possible that there is a bug or a misconfiguration? Have you verified that your ViTKD implementation matches the original paper's setup?\",\n    \"The ablation in Table 4 shows that nullspace initialization alone (without Loutlier and Linfo) does not improve over random initialization. This suggests that the initialization is not the key factor. What is the evidence that the nullspace initialization is crucial, beyond the alignment metrics in Table 5a? Would the method work as well with random initialization if Loutlier and Linfo are used?\",\n    \"The nullspace approximation is based on linearizing the FFN. How sensitive is the method to this approximation? Have you tried other linearizations (e.g., including the attention sub-layer) or using a different rank for the nullspace approximation?\",\n    \"The method degrades performance on iNat2019. Could you discuss potential remedies or whether this is an inherent limitation of the approach? Is there a way to adapt the method to handle long-tail distributions better?\",\n    \"In the experiments with DINOv2-reg and DINOv3 (cleaner teachers), SiNGER does not consistently outperform baselines. Does this mean the method is only applicable to teachers with high-norm artifacts? How should practitioners decide when to use SiNGER?\",\n    \"The information preservation loss Linfo directly optimizes for Gram matrix similarity. Is this the best metric for information preservation? Have you considered other metrics (e.g., CKA, mutual information)?\",\n    \"The paper mentions that the adapter introduces only 1.2% additional parameters and a 10% training time increase. Could you provide a more detailed breakdown of the computational overhead, especially for the extra forward pass through the teacher block for Linfo?\"\n  ],\n  \"Limitations\": [\n    \"The paper acknowledges that it suppresses artifacts rather than eliminating their source, and that the root cause remains. This is an honest limitation, but it also means that the method may not be as effective for teachers with different artifact properties.\",\n    \"The evaluation is primarily on supervised ViTs (ViT, DeiT-III). The experiments with self-supervised models (DINOv2) show mixed results, indicating that the method's applicability to VFMs with fewer artifacts is limited.\",\n    \"The performance degradation on long-tail classification (iNat2019) is a notable limitation that is not fully addressed.\",\n    \"The nullspace approximation is a heuristic, and the paper does not provide a rigorous theoretical bound on the information loss for the non-linear case.\",\n    \"The paper does not discuss potential negative societal impacts. While this is a general distillation method, it could be used to compress models that have biases, and the distillation process might amplify or preserve these biases.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 4,\n  \"Confidence\": 3,\n  \"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 20779,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 18987,
+        "completion_tokens": 2387,
+        "reasoning_tokens": 0,
+        "total_tokens": 23166
+      },
+      "attempts": 1,
+      "response_id": "882d6ede-c75c-41a9-811d-be1051d28bc3"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper proposes SiNGER (Singular Nullspace-Guided Energy Reallocation), a knowledge distillation framework for Vision Transformers that addresses the problem of high-norm artifacts in teacher features. These artifacts, which are known to degrade representation quality, dominate the standard feature-level KD objective and bias student learning toward outliers. SiNGER refines teacher features by adding a low-rank perturbation (via a LoRA-based adapter) that is constrained to the left-nullspace of the next block, thereby suppressing artifacts while preserving informative signals. The nullspace is computed via SVD of a linearized FFN approximation of the next block. The method is evaluated across multiple teacher-student configurations (ViT-L→ViT-S/T, DeiT-III-L→B/S→T) on diverse downstream tasks including classification, segmentation, depth estimation, long-tail learning, domain shift, and fine-grained recognition. Results show consistent improvements over FitNet and ViTKD baselines, with additional qualitative analysis demonstrating cleaner and more interpretable feature maps.",
+        "Strengths": [
+          "The problem is well-motivated: the paper correctly identifies that high-norm artifacts in ViT features (documented in prior work) can dominate KD objectives and bias student learning, and this is a real issue in practice.",
+          "The nullspace-guided perturbation is a principled and elegant solution to the artifact-suppression/information-preservation trade-off. The mathematical formulation (Eq. 4) is clear, and the practical linearization approach is a reasonable engineering choice.",
+          "The experimental evaluation is comprehensive, covering multiple teacher-student pairs (ViT and DeiT-III families), multiple downstream tasks (classification, segmentation, depth, long-tail, domain shift, fine-grained), and includes extensive ablations.",
+          "The paper is generally well-written and organized, with clear figures (especially Figure 3) and tables. The appendices provide valuable additional analysis (e.g., sub-layer change analysis, nullspace diagnostics, entropy analysis for long-tail).",
+          "The authors are honest about limitations (e.g., iNat2019 performance drop, cleaner teacher scenarios) and provide detailed discussion of failure cases (Appendix D for ViTKD, Appendix J for long-tail)."
+        ],
+        "Weaknesses": [
+          "The theoretical justification for using the nullspace of a linearized FFN is somewhat ad hoc. The paper acknowledges the nonlinearity of transformer blocks but relies on empirical evidence (Appendix A) rather than rigorous analysis. The claim that 'the same approximate-null relation holds for the nonlinear block' is supported only by measurements, not theory.",
+          "The performance gains, while consistent, are not uniformly large. On iNat2019, SiNGER underperforms the non-distilled student (Table 1). The paper attributes this to teacher uncertainty, but it remains a limitation.",
+          "The comparison with ViTKD may be unfair. ViTKD is designed for classification distillation with task-specific losses, while SiNGER is evaluated in a VFM distillation setting without task-specific losses. The paper acknowledges this but the comparison could still be misleading to readers.",
+          "The ablation study (Table 4) uses a subset of ImageNet-1K, and the absolute performance numbers are very low (e.g., 11.57% top-1 on IN-val). This makes it difficult to judge the practical significance of the improvements, though the relative trends are informative.",
+          "The paper does not compare against other feature refinement methods or more recent KD approaches beyond FitNet and ViTKD. A comparison with methods like relational KD or attention-transfer might strengthen the claims.",
+          "The computational overhead analysis is brief. The 10% training time increase is mentioned but not thoroughly discussed, and the additional forward pass through the teacher's next block for Linfo could be a bottleneck in practice."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "1. The paper claims that the nullspace initialization guides the adapter to produce perturbations that remain in the nullspace. However, the training objective (Eq. 12) does not explicitly enforce this constraint during optimization. How do you ensure that the adapter weights do not drift away from the nullspace during training? Have you measured the nullspace alignment (Esafe) after training, and does it remain high?",
+          "2. For the linearization in Appendix A, you linearize only the FFN sub-layer. Could you comment on the sensitivity of this choice? What would happen if you also linearized the attention sub-layer or used a different linearization point?",
+          "3. In Table 10a, SiNGER does not consistently outperform baselines when distilling from cleaner teachers (DINOv2-reg, DINOv3). This suggests the method is specifically beneficial when artifacts are present. Could you discuss the boundary of applicability: how much artifact presence is needed for SiNGER to be beneficial?",
+          "4. The ablation in Table 4 uses a small subset of ImageNet-1K with very low absolute accuracy (11.57% top-1). What is the size of this subset, and how do the relative improvements translate to full-scale training?",
+          "5. You mention that ViTKD's random masking strategy can blur representations. Could you provide a quantitative analysis of this blurring effect (e.g., feature entropy or variance) to support this claim beyond the qualitative visualization in Figure 2?",
+          "6. The paper uses a linear evaluation protocol for downstream tasks. Would the conclusions hold under fine-tuning protocols, which are more common for VFM evaluation?",
+          "7. For the hyperparameter sensitivity (Table 6), the optimal r=16 and α=0.95 are selected. How sensitive is the method to these choices across different teacher-student pairs and tasks? Have you observed cases where the default configuration is suboptimal?"
+        ],
+        "Limitations": [
+          "The paper acknowledges that SiNGER suppresses artifacts rather than eliminating their root causes, which is a reasonable limitation.",
+          "The method's applicability is limited to scenarios where teachers exhibit high-norm artifacts. For cleaner teachers (e.g., with register tokens), the gains are minimal or negative, as shown in Appendix C.",
+          "The theoretical justification relies on an empirical linearization rather than a formal analysis, which limits the generality of the claims.",
+          "The evaluation is conducted in a VFM distillation setting without task-specific losses. The method's interaction with task-specific distillation objectives (e.g., classification cross-entropy) is not explored.",
+          "The computational overhead (10% training time increase) is non-trivial, and the additional forward pass through the teacher's next block for Linfo may be a concern for very large teachers."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces SiNGER, a knowledge distillation framework for Vision Transformers that addresses the problem of high-norm artifacts in teacher features. The key idea is to refine teacher features by adding a perturbation constrained to the left-nullspace of the next block, thereby suppressing artifacts while preserving information. The method uses a LoRA-based adapter initialized with nullspace basis vectors.\n\nStrengths:\n1. The problem is well-motivated and timely. The paper correctly identifies that high-norm artifacts in ViT features (as documented in prior work) can dominate KD objectives and bias student learning.\n2. The nullspace-guided perturbation is a principled and elegant solution to the artifact-suppression/information-preservation trade-off. The mathematical formulation (Equation 4) is clear and the practical linearization approach is reasonable.\n3. The experimental evaluation is comprehensive, covering multiple teacher-student pairs (ViT and DeiT-III families), multiple downstream tasks (classification, segmentation, depth, long-tail, domain shift, fine-grained), and includes extensive ablations.\n4. The paper is generally well-written and organized, with clear figures and tables.\n5. The authors are honest about limitations (e.g., iNat2019 performance drop, cleaner teacher scenarios) and provide detailed appendices with additional analysis.\n\nWeaknesses:\n1. The theoretical justification for using the nullspace of a linearized FFN is somewhat ad hoc. The paper acknowledges the nonlinearity of transformer blocks but relies on empirical evidence (Appendix A) rather than rigorous theory. The claim that \"the same approximate-null relation holds for the nonlinear block\" is supported only by empirical measurements, not analysis.\n2. The performance gains, while consistent, are not uniformly large. On some tasks (e.g., iNat2019), SiNGER actually underperforms the non-distilled student. The paper attributes this to teacher uncertainty but this is a limitation.\n3. The comparison with ViTKD is somewhat unfair. ViTKD is designed for classification distillation with task-specific losses, while SiNGER is evaluated in a VFM distillation setting without task-specific losses. The paper acknowledges this but the comparison may still be misleading.\n4. The ablation study uses a subset of ImageNet-1K, and the absolute performance numbers in Table 4 are very low (e.g., 11.57% top-1 on IN-val). This makes it difficult to judge the practical significance of the improvements.\n5. The paper does not compare against other feature refinement methods or more recent KD approaches beyond FitNet and ViTKD.\n6. The computational overhead analysis is brief. The 10% training time increase is mentioned but not thoroughly discussed.\n\nOriginality: The nullspace-guided approach to artifact suppression in KD is novel. While prior work (Darcet et al., Wang et al.) identified artifacts and proposed mitigations (register tokens, masking), the idea of using the nullspace of the next block to guide perturbations is a fresh contribution. The LoRA-based adapter implementation is also a nice practical touch.\n\nQuality: The paper is technically sound in its core claims. The experiments are extensive and the ablations are thorough. However, the theoretical foundations are somewhat weak (the linearization argument is empirical rather than formal), and some experimental choices (small subset training, unfair baselines) raise questions about the generalizability of the results.\n\nClarity: The paper is well-written and easy to follow. The problem formulation is clear, the method is explained with good figures (Figure 3 is particularly helpful), and the experimental setup is described in sufficient detail. The appendices provide additional useful context.\n\nSignificance: The paper addresses an important problem in ViT distillation. The finding that artifacts can be suppressed via nullspace-guided perturbations without losing information is valuable and could be adopted by other researchers. The consistent improvements across multiple tasks suggest practical utility. However, the gains are modest in some cases, and the method's applicability to cleaner teachers (e.g., DINOv2-reg) is limited.\n\nOverall assessment: This is a solid paper with a novel idea, good experimental validation, and clear presentation. The main weaknesses are the somewhat informal theoretical justification and the limited comparison with other modern KD methods. I would lean toward accepting this paper as it makes a meaningful contribution to the field, though I have some reservations about the strength of the claims.\n\nDecision: Accept (borderline). The paper has a novel, well-motivated approach with consistent empirical gains. The limitations are acknowledged and discussed. The theoretical gaps and comparison issues are not fatal but should be addressed in the rebuttal.\n\nConfidence: 4 (I am confident in my assessment, but I did not check all mathematical details carefully, and I am not deeply familiar with all related work in ViT KD).\n\nNow let me construct the JSON response.REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper proposes SiNGER (Singular Nullspace-Guided Energy Reallocation), a knowledge distillation framework for Vision Transformers that addresses the problem of high-norm artifacts in teacher features. These artifacts, which are known to degrade representation quality, dominate the standard feature-level KD objective and bias student learning toward outliers. SiNGER refines teacher features by adding a low-rank perturbation (via a LoRA-based adapter) that is constrained to the left-nullspace of the next block, thereby suppressing artifacts while preserving informative signals. The nullspace is computed via SVD of a linearized FFN approximation of the next block. The method is evaluated across multiple teacher-student configurations (ViT-L→ViT-S/T, DeiT-III-L→B/S→T) on diverse downstream tasks including classification, segmentation, depth estimation, long-tail learning, domain shift, and fine-grained recognition. Results show consistent improvements over FitNet and ViTKD baselines, with additional qualitative analysis demonstrating cleaner and more interpretable feature maps.\",\n  \"Strengths\": [\n    \"The problem is well-motivated: the paper correctly identifies that high-norm artifacts in ViT features (documented in prior work) can dominate KD objectives and bias student learning, and this is a real issue in practice.\",\n    \"The nullspace-guided perturbation is a principled and elegant solution to the artifact-suppression/information-preservation trade-off. The mathematical formulation (Eq. 4) is clear, and the practical linearization approach is a reasonable engineering choice.\",\n    \"The experimental evaluation is comprehensive, covering multiple teacher-student pairs (ViT and DeiT-III families), multiple downstream tasks (classification, segmentation, depth, long-tail, domain shift, fine-grained), and includes extensive ablations.\",\n    \"The paper is generally well-written and organized, with clear figures (especially Figure 3) and tables. The appendices provide valuable additional analysis (e.g., sub-layer change analysis, nullspace diagnostics, entropy analysis for long-tail).\",\n    \"The authors are honest about limitations (e.g., iNat2019 performance drop, cleaner teacher scenarios) and provide detailed discussion of failure cases (Appendix D for ViTKD, Appendix J for long-tail).\"\n  ],\n  \"Weaknesses\": [\n    \"The theoretical justification for using the nullspace of a linearized FFN is somewhat ad hoc. The paper acknowledges the nonlinearity of transformer blocks but relies on empirical evidence (Appendix A) rather than rigorous analysis. The claim that 'the same approximate-null relation holds for the nonlinear block' is supported only by measurements, not theory.\",\n    \"The performance gains, while consistent, are not uniformly large. On iNat2019, SiNGER underperforms the non-distilled student (Table 1). The paper attributes this to teacher uncertainty, but it remains a limitation.\",\n    \"The comparison with ViTKD may be unfair. ViTKD is designed for classification distillation with task-specific losses, while SiNGER is evaluated in a VFM distillation setting without task-specific losses. The paper acknowledges this but the comparison could still be misleading to readers.\",\n    \"The ablation study (Table 4) uses a subset of ImageNet-1K, and the absolute performance numbers are very low (e.g., 11.57% top-1 on IN-val). This makes it difficult to judge the practical significance of the improvements, though the relative trends are informative.\",\n    \"The paper does not compare against other feature refinement methods or more recent KD approaches beyond FitNet and ViTKD. A comparison with methods like relational KD or attention-transfer might strengthen the claims.\",\n    \"The computational overhead analysis is brief. The 10% training time increase is mentioned but not thoroughly discussed, and the additional forward pass through the teacher's next block for Linfo could be a bottleneck in practice.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 4,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"1. The paper claims that the nullspace initialization guides the adapter to produce perturbations that remain in the nullspace. However, the training objective (Eq. 12) does not explicitly enforce this constraint during optimization. How do you ensure that the adapter weights do not drift away from the nullspace during training? Have you measured the nullspace alignment (Esafe) after training, and does it remain high?\",\n    \"2. For the linearization in Appendix A, you linearize only the FFN sub-layer. Could you comment on the sensitivity of this choice? What would happen if you also linearized the attention sub-layer or used a different linearization point?\",\n    \"3. In Table 10a, SiNGER does not consistently outperform baselines when distilling from cleaner teachers (DINOv2-reg, DINOv3). This suggests the method is specifically beneficial when artifacts are present. Could you discuss the boundary of applicability: how much artifact presence is needed for SiNGER to be beneficial?\",\n    \"4. The ablation in Table 4 uses a small subset of ImageNet-1K with very low absolute accuracy (11.57% top-1). What is the size of this subset, and how do the relative improvements translate to full-scale training?\",\n    \"5. You mention that ViTKD's random masking strategy can blur representations. Could you provide a quantitative analysis of this blurring effect (e.g., feature entropy or variance) to support this claim beyond the qualitative visualization in Figure 2?\",\n    \"6. The paper uses a linear evaluation protocol for downstream tasks. Would the conclusions hold under fine-tuning protocols, which are more common for VFM evaluation?\",\n    \"7. For the hyperparameter sensitivity (Table 6), the optimal r=16 and α=0.95 are selected. How sensitive is the method to these choices across different teacher-student pairs and tasks? Have you observed cases where the default configuration is suboptimal?\"\n  ],\n  \"Limitations\": [\n    \"The paper acknowledges that SiNGER suppresses artifacts rather than eliminating their root causes, which is a reasonable limitation.\",\n    \"The method's applicability is limited to scenarios where teachers exhibit high-norm artifacts. For cleaner teachers (e.g., with register tokens), the gains are minimal or negative, as shown in Appendix C.\",\n    \"The theoretical justification relies on an empirical linearization rather than a formal analysis, which limits the generality of the claims.\",\n    \"The evaluation is conducted in a VFM distillation setting without task-specific losses. The method's interaction with task-specific distillation objectives (e.g., classification cross-entropy) is not explored.\",\n    \"The computational overhead (10% training time increase) is non-trivial, and the additional forward pass through the teacher's next block for Linfo may be a concern for very large teachers.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 4,\n  \"Contribution\": 3,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 20779,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 18987,
+        "completion_tokens": 2462,
+        "reasoning_tokens": 0,
+        "total_tokens": 23241
+      },
+      "attempts": 1,
+      "response_id": "b3efa36c-2a81-4cf1-8a24-65672153a4bc"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper proposes SiNGER, a knowledge distillation framework for Vision Transformers that addresses the problem of high-norm artifacts in teacher features. The key insight is that when distilling from large ViTs to smaller students, high-norm outlier tokens dominate the distillation objective and obscure informative signals. The authors propose a nullspace-guided perturbation approach using a LoRA-based adapter that suppresses outlier norms while preserving information by modifying only the components in the left-nullspace of the next transformer block. The method is evaluated across multiple downstream tasks including ImageNet classification, semantic segmentation, depth estimation, long-tail classification, domain shift robustness, and fine-grained classification, showing consistent improvements over FitNet and ViTKD baselines. The paper includes extensive ablations validating the nullspace initialization, loss components, hyperparameter sensitivity, and distillation layer selection.",
+        "Strengths": [
+          "Clear problem identification with theoretical motivation for why high-norm artifacts degrade distillation quality",
+          "Novel approach combining nullspace theory with knowledge distillation, providing a principled way to suppress artifacts while preserving information",
+          "Comprehensive evaluation across multiple downstream tasks showing consistent improvements",
+          "Good ablation studies that validate each component of the method and provide insights into the mechanism",
+          "Well-written paper with clear figures and visualizations that help understand the method",
+          "The method is computationally efficient with minimal additional parameters (1.2%) and reasonable training overhead"
+        ],
+        "Weaknesses": [
+          "The theoretical justification for nullspace preservation relies on linearization of a nonlinear transformer block, which is an approximation that needs more rigorous analysis",
+          "The evaluation uses only linear probing, which may not fully capture the quality of representations for transfer learning",
+          "The comparison with ViTKD appears unfair - ViTKD's extremely poor performance (5% on ImageNet) suggests possible implementation issues or unfair evaluation setup",
+          "Limited comparison with other recent KD methods beyond FitNet and ViTKD",
+          "The paper does not adequately discuss potential failure modes or when the method might not work well",
+          "The claim of 'state-of-the-art' performance is not fully supported without comparisons to more recent distillation methods",
+          "The information preservation loss uses Gram matrix matching, but the justification for this specific choice is not deeply analyzed"
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "The paper uses a linearized FFN matrix for nullspace computation. How sensitive is the method to the accuracy of this linearization? Have you tested with different linearization strategies?",
+          "ViTKD performs extremely poorly in your experiments (5% on ImageNet). Could you clarify the implementation details and ensure it's a fair comparison?",
+          "Why is linear probing used instead of fine-tuning for downstream task evaluation? Would the conclusions hold with full fine-tuning?",
+          "The information preservation loss uses Gram matrix matching. Have you considered other similarity measures and how they affect performance?",
+          "How does the method perform when the teacher has very few artifacts (e.g., with register tokens)? The paper shows some results but doesn't deeply discuss this scenario.",
+          "What happens when the student is much smaller or the architecture differs significantly from the teacher? The paper shows one cross-family result but doesn't explore this thoroughly."
+        ],
+        "Limitations": [
+          "The method suppresses artifacts rather than eliminating their root cause, so the underlying issues in teacher representations remain",
+          "The nullspace approximation relies on linearization of a nonlinear block, which may not hold in all cases",
+          "The method adds computational overhead during training (approximately 10% increase in time per epoch)",
+          "Performance on long-tail classification (iNaturalist) shows degradation, which the authors attribute to the teacher's inherent uncertainty but doesn't fully address",
+          "The method is evaluated primarily on ViT architectures and may not generalize to other architectures (e.g., CNNs or hybrid models)",
+          "The paper doesn't address potential negative societal impacts of improved model compression, such as enabling deployment of models with biases in resource-constrained settings"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper introduces SiNGER, a knowledge distillation framework for Vision Transformers that addresses the problem of high-norm artifacts in teacher features. The key idea is to use a nullspace-guided perturbation via a LoRA-based adapter to suppress outlier norms while preserving informative signals. The method is evaluated across multiple downstream tasks and shows consistent improvements over baselines like FitNet and ViTKD.\n\nStrengths of the paper include:\n1. Clear problem identification with theoretical motivation for why high-norm artifacts degrade distillation\n2. Novel approach using nullspace-guided perturbations, which is mathematically principled\n3. Comprehensive evaluation across multiple tasks (ImageNet, segmentation, depth, long-tail, domain shift, fine-grained)\n4. Good ablation studies that validate each component of the method\n5. Strong experimental results showing consistent improvements over baselines\n6. Well-written with clear figures and visualizations\n\nWeaknesses include:\n1. The mathematical formulation has some issues - the paper claims nullspace preservation but the linearization of the nonlinear transformer block is approximate, and the \"information preservation\" claim needs more rigorous justification\n2. The evaluation uses linear probing only, which may not fully reflect the quality of learned representations\n3. The comparison with ViTKD seems unfair - ViTKD performs very poorly (5% accuracy on ImageNet), suggesting possible implementation issues or unfair evaluation\n4. The paper lacks comparison with other recent KD methods beyond FitNet and ViTKD\n5. The computational overhead analysis is somewhat superficial - 10% training time increase is mentioned but not deeply analyzed\n6. Some claims about \"state-of-the-art\" performance are not fully supported without comparisons to more recent methods\n7. The paper doesn't adequately discuss when the method might fail or its limitations in different scenarios\n\nThe paper has good originality in combining nullspace theory with KD, and the experimental validation is thorough. However, there are concerns about the theoretical soundness of the nullspace approximation and the fairness of baseline comparisons.\n\nOverall, this is a solid paper with interesting ideas and good experimental validation, but there are some concerns about theoretical rigor and experimental fairness that prevent it from being a top-tier contribution.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper proposes SiNGER, a knowledge distillation framework for Vision Transformers that addresses the problem of high-norm artifacts in teacher features. The key insight is that when distilling from large ViTs to smaller students, high-norm outlier tokens dominate the distillation objective and obscure informative signals. The authors propose a nullspace-guided perturbation approach using a LoRA-based adapter that suppresses outlier norms while preserving information by modifying only the components in the left-nullspace of the next transformer block. The method is evaluated across multiple downstream tasks including ImageNet classification, semantic segmentation, depth estimation, long-tail classification, domain shift robustness, and fine-grained classification, showing consistent improvements over FitNet and ViTKD baselines. The paper includes extensive ablations validating the nullspace initialization, loss components, hyperparameter sensitivity, and distillation layer selection.\",\n    \"Strengths\": [\n        \"Clear problem identification with theoretical motivation for why high-norm artifacts degrade distillation quality\",\n        \"Novel approach combining nullspace theory with knowledge distillation, providing a principled way to suppress artifacts while preserving information\",\n        \"Comprehensive evaluation across multiple downstream tasks showing consistent improvements\",\n        \"Good ablation studies that validate each component of the method and provide insights into the mechanism\",\n        \"Well-written paper with clear figures and visualizations that help understand the method\",\n        \"The method is computationally efficient with minimal additional parameters (1.2%) and reasonable training overhead\"\n    ],\n    \"Weaknesses\": [\n        \"The theoretical justification for nullspace preservation relies on linearization of a nonlinear transformer block, which is an approximation that needs more rigorous analysis\",\n        \"The evaluation uses only linear probing, which may not fully capture the quality of representations for transfer learning\",\n        \"The comparison with ViTKD appears unfair - ViTKD's extremely poor performance (5% on ImageNet) suggests possible implementation issues or unfair evaluation setup\",\n        \"Limited comparison with other recent KD methods beyond FitNet and ViTKD\",\n        \"The paper does not adequately discuss potential failure modes or when the method might not work well\",\n        \"The claim of 'state-of-the-art' performance is not fully supported without comparisons to more recent distillation methods\",\n        \"The information preservation loss uses Gram matrix matching, but the justification for this specific choice is not deeply analyzed\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 3,\n    \"Clarity\": 4,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"The paper uses a linearized FFN matrix for nullspace computation. How sensitive is the method to the accuracy of this linearization? Have you tested with different linearization strategies?\",\n        \"ViTKD performs extremely poorly in your experiments (5% on ImageNet). Could you clarify the implementation details and ensure it's a fair comparison?\",\n        \"Why is linear probing used instead of fine-tuning for downstream task evaluation? Would the conclusions hold with full fine-tuning?\",\n        \"The information preservation loss uses Gram matrix matching. Have you considered other similarity measures and how they affect performance?\",\n        \"How does the method perform when the teacher has very few artifacts (e.g., with register tokens)? The paper shows some results but doesn't deeply discuss this scenario.\",\n        \"What happens when the student is much smaller or the architecture differs significantly from the teacher? The paper shows one cross-family result but doesn't explore this thoroughly.\"\n    ],\n    \"Limitations\": [\n        \"The method suppresses artifacts rather than eliminating their root cause, so the underlying issues in teacher representations remain\",\n        \"The nullspace approximation relies on linearization of a nonlinear block, which may not hold in all cases\",\n        \"The method adds computational overhead during training (approximately 10% increase in time per epoch)\",\n        \"Performance on long-tail classification (iNaturalist) shows degradation, which the authors attribute to the teacher's inherent uncertainty but doesn't fully address\",\n        \"The method is evaluated primarily on ViT architectures and may not generalize to other architectures (e.g., CNNs or hybrid models)\",\n        \"The paper doesn't address potential negative societal impacts of improved model compression, such as enabling deployment of models with biases in resource-constrained settings\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 4,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 20779,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 18987,
+        "completion_tokens": 1365,
+        "reasoning_tokens": 0,
+        "total_tokens": 22144
+      },
+      "attempts": 1,
+      "response_id": "cf591aa4-2224-44cb-9fd8-964a60f84c01"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 4,
+      "Reject": 1
+    },
+    "unanimous_decision": false,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          2,
+          3,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          3,
+          3,
+          4,
+          4
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Significance": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          2,
+          3,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          3,
+          3,
+          4,
+          4
+        ],
+        "mean": 3.4,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      },
+      "Contribution": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          6,
+          6,
+          4,
+          7,
+          6
+        ],
+        "mean": 5.8,
+        "rounded_mean": 6,
+        "population_sd": 0.98,
+        "min": 4,
+        "max": 7
+      },
+      "Confidence": {
+        "values": [
+          3,
+          4,
+          3,
+          4,
+          4
+        ],
+        "mean": 3.6,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 3,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper proposes SiNGER, a knowledge distillation framework for Vision Transformers that addresses the problem of high-norm artifacts in teacher features. These artifacts dominate standard feature-matching distillation objectives, causing students to overfit to outliers. SiNGER refines teacher features by adding a low-rank perturbation (via a LoRA-based adapter) constrained to the left-nullspace of the next transformer block, thereby suppressing artifacts while preserving information. The nullspace is computed via SVD of a linearized FFN approximation. The method is evaluated across multiple teacher-student configurations (ViT, DeiT-III) and downstream tasks (classification, segmentation, depth estimation, long-tail, domain shift, fine-grained classification), showing consistent improvements over FitNet and ViTKD baselines. The paper includes extensive ablations on initialization, loss components, hyperparameters, and distillation layer selection, as well as analyses of the adapter's operation and representation quality.",
+      "Strengths": [
+        "Clear and well-motivated problem: the paper identifies a real issue (high-norm artifacts in ViT features) that biases distillation objectives.",
+        "Novel and principled approach: the nullspace-guided perturbation provides a mathematically grounded solution to the artifact-suppression vs. information-preservation trade-off.",
+        "Comprehensive evaluation across multiple tasks and teacher-student configurations, with detailed ablations and analyses.",
+        "Honest discussion of limitations, including performance drops on long-tail classification and with cleaner teachers.",
+        "Well-written and clearly organized paper with informative figures and tables."
+      ],
+      "Weaknesses": [
+        "The ViTKD baseline performs catastrophically poorly (e.g., 5.07% top-1 on ImageNet-1K, far below random chance), raising serious concerns about implementation fidelity and fairness of comparison.",
+        "The ablation study uses a small subset of ImageNet-1K with very low absolute accuracy, making it difficult to assess the practical significance of improvements.",
+        "The theoretical justification relies on linearization of a nonlinear transformer block, which is an approximation that is not rigorously analyzed.",
+        "The method's benefits are task-dependent: gains are marginal for fine-grained classification and negative for long-tail classification.",
+        "The evaluation uses only linear probing without task-specific losses, which may not reflect standard usage of baseline methods (FitNet, ViTKD) and could understate their performance.",
+        "Limited comparison with other recent KD methods beyond FitNet and ViTKD.",
+        "The CKA results are counterintuitive: SiNGER has lower teacher-student CKA but performs better, and this is not fully explained."
+      ],
+      "Originality": 4,
+      "Quality": 2,
+      "Clarity": 3,
+      "Significance": 3,
+      "Questions": [
+        "Why does ViTKD perform so poorly (5.07% top-1 on ImageNet-1K, well below chance)? Could this be due to implementation issues or hyperparameter choices? How was the ViTKD baseline tuned, and was it verified against the original paper's reported results?",
+        "The distillation setup excludes task-specific losses (e.g., cross-entropy). How does this affect the comparison with FitNet and ViTKD, which are typically used with such losses? Have you considered evaluating with the standard setup that includes task-specific losses?",
+        "The ablation in Table 4 uses a small subset of ImageNet-1K. Can you provide full-scale ablation results to verify that the component contributions hold under full training?",
+        "The CKA being lower for SiNGER compared to baselines is concerning. Can you provide more analysis on why lower teacher-student CKA leads to better downstream performance? Is there a threshold effect?",
+        "How sensitive is the method to the choice of linearization (e.g., including attention sub-layer, different linearization points)? Have you tested other linearization strategies beyond FFN-only?",
+        "The method degrades performance on iNaturalist-2019. Can you discuss potential remedies or whether this is an inherent limitation? Is there a way to adapt the method to handle long-tail distributions better?",
+        "In experiments with cleaner teachers (DINOv2-reg, DINOv3), SiNGER does not consistently outperform baselines. How should practitioners decide when to use SiNGER versus standard distillation?",
+        "The information preservation loss uses Gram matrix matching. Why was this chosen over other similarity measures (e.g., CKA, cosine similarity)? Are there theoretical or empirical reasons for this choice?",
+        "How does the method perform when the student architecture differs significantly from the teacher (e.g., cross-family distillation)? The paper shows one result but does not explore this thoroughly."
+      ],
+      "Limitations": [
+        "The method suppresses artifacts rather than eliminating their root causes, which limits its generalizability to other uses of the teacher model.",
+        "The nullspace approximation relies on linearization of a nonlinear block, which may not hold in all cases and lacks rigorous theoretical bounds.",
+        "The method is validated only on ViT-family architectures; its applicability to other transformer variants or convolutional teachers is unclear.",
+        "The performance degradation on long-tail classification (iNaturalist-2019) is a notable limitation that is not fully resolved.",
+        "The computational overhead (~10% training time increase) is mentioned but not thoroughly analyzed for large-scale training or when multiple teachers are involved.",
+        "The paper does not discuss potential negative societal impacts, though this is a general model compression method and may be acceptable."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 2,
+      "Presentation": 3,
+      "Contribution": 3,
+      "Overall": 4,
+      "Confidence": 4,
+      "Decision": "Reject"
+    },
+    "raw_response": "THOUGHT:\nThe paper presents a novel and well-motivated approach to knowledge distillation for Vision Transformers, addressing the issue of high-norm artifacts in teacher features. The core idea—using a nullspace-guided perturbation to suppress artifacts while preserving information—is theoretically principled and practically implemented via LoRA adapters. The evaluation is extensive across multiple tasks and teacher-student configurations, with consistent improvements over FitNet and ViTKD baselines.\n\nHowever, there are significant concerns raised by multiple reviewers. The most critical issue is the extremely poor ViTKD baseline performance (5.07% top-1 on ImageNet-1K, far below chance), which strongly suggests an unfair or flawed baseline implementation. This undermines the credibility of the comparison. Additionally, the ablation study uses a small subset of ImageNet with very low absolute accuracies, making it hard to assess practical significance. The method also shows performance degradation on long-tail classification (iNaturalist) and mixed results with cleaner teachers (DINOv2-reg, DINOv3), limiting its generality.\n\nOther weaknesses include the informal theoretical treatment (reliance on linearization of a nonlinear block), limited comparison with other recent KD methods, and the absence of task-specific losses in the evaluation setup, which may not reflect standard usage of baseline methods. While the method is original and well-presented, the baseline fairness issue and the task-dependent benefits are substantial concerns.\n\nGiven these issues, the paper is not ready for acceptance. The reviewers' scores range from 4 to 7, with three accepts and one reject. The consensus leans toward rejection due to the baseline fairness problem and the limited practical impact demonstrated. I will recommend rejection, as the core comparison is questionable and the method's benefits are not consistently demonstrated across all settings.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper proposes SiNGER, a knowledge distillation framework for Vision Transformers that addresses the problem of high-norm artifacts in teacher features. These artifacts dominate standard feature-matching distillation objectives, causing students to overfit to outliers. SiNGER refines teacher features by adding a low-rank perturbation (via a LoRA-based adapter) constrained to the left-nullspace of the next transformer block, thereby suppressing artifacts while preserving information. The nullspace is computed via SVD of a linearized FFN approximation. The method is evaluated across multiple teacher-student configurations (ViT, DeiT-III) and downstream tasks (classification, segmentation, depth estimation, long-tail, domain shift, fine-grained classification), showing consistent improvements over FitNet and ViTKD baselines. The paper includes extensive ablations on initialization, loss components, hyperparameters, and distillation layer selection, as well as analyses of the adapter's operation and representation quality.\",\n    \"Strengths\": [\n        \"Clear and well-motivated problem: the paper identifies a real issue (high-norm artifacts in ViT features) that biases distillation objectives.\",\n        \"Novel and principled approach: the nullspace-guided perturbation provides a mathematically grounded solution to the artifact-suppression vs. information-preservation trade-off.\",\n        \"Comprehensive evaluation across multiple tasks and teacher-student configurations, with detailed ablations and analyses.\",\n        \"Honest discussion of limitations, including performance drops on long-tail classification and with cleaner teachers.\",\n        \"Well-written and clearly organized paper with informative figures and tables.\"\n    ],\n    \"Weaknesses\": [\n        \"The ViTKD baseline performs catastrophically poorly (e.g., 5.07% top-1 on ImageNet-1K, far below random chance), raising serious concerns about implementation fidelity and fairness of comparison.\",\n        \"The ablation study uses a small subset of ImageNet-1K with very low absolute accuracy, making it difficult to assess the practical significance of improvements.\",\n        \"The theoretical justification relies on linearization of a nonlinear transformer block, which is an approximation that is not rigorously analyzed.\",\n        \"The method's benefits are task-dependent: gains are marginal for fine-grained classification and negative for long-tail classification.\",\n        \"The evaluation uses only linear probing without task-specific losses, which may not reflect standard usage of baseline methods (FitNet, ViTKD) and could understate their performance.\",\n        \"Limited comparison with other recent KD methods beyond FitNet and ViTKD.\",\n        \"The CKA results are counterintuitive: SiNGER has lower teacher-student CKA but performs better, and this is not fully explained.\"\n    ],\n    \"Originality\": 4,\n    \"Quality\": 2,\n    \"Clarity\": 3,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"Why does ViTKD perform so poorly (5.07% top-1 on ImageNet-1K, well below chance)? Could this be due to implementation issues or hyperparameter choices? How was the ViTKD baseline tuned, and was it verified against the original paper's reported results?\",\n        \"The distillation setup excludes task-specific losses (e.g., cross-entropy). How does this affect the comparison with FitNet and ViTKD, which are typically used with such losses? Have you considered evaluating with the standard setup that includes task-specific losses?\",\n        \"The ablation in Table 4 uses a small subset of ImageNet-1K. Can you provide full-scale ablation results to verify that the component contributions hold under full training?\",\n        \"The CKA being lower for SiNGER compared to baselines is concerning. Can you provide more analysis on why lower teacher-student CKA leads to better downstream performance? Is there a threshold effect?\",\n        \"How sensitive is the method to the choice of linearization (e.g., including attention sub-layer, different linearization points)? Have you tested other linearization strategies beyond FFN-only?\",\n        \"The method degrades performance on iNaturalist-2019. Can you discuss potential remedies or whether this is an inherent limitation? Is there a way to adapt the method to handle long-tail distributions better?\",\n        \"In experiments with cleaner teachers (DINOv2-reg, DINOv3), SiNGER does not consistently outperform baselines. How should practitioners decide when to use SiNGER versus standard distillation?\",\n        \"The information preservation loss uses Gram matrix matching. Why was this chosen over other similarity measures (e.g., CKA, cosine similarity)? Are there theoretical or empirical reasons for this choice?\",\n        \"How does the method perform when the student architecture differs significantly from the teacher (e.g., cross-family distillation)? The paper shows one result but does not explore this thoroughly.\"\n    ],\n    \"Limitations\": [\n        \"The method suppresses artifacts rather than eliminating their root causes, which limits its generalizability to other uses of the teacher model.\",\n        \"The nullspace approximation relies on linearization of a nonlinear block, which may not hold in all cases and lacks rigorous theoretical bounds.\",\n        \"The method is validated only on ViT-family architectures; its applicability to other transformer variants or convolutional teachers is unclear.\",\n        \"The performance degradation on long-tail classification (iNaturalist-2019) is a notable limitation that is not fully resolved.\",\n        \"The computational overhead (~10% training time increase) is mentioned but not thoroughly analyzed for large-scale training or when multiple teachers are involved.\",\n        \"The paper does not discuss potential negative societal impacts, though this is a general model compression method and may be acceptable.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 2,\n    \"Presentation\": 3,\n    \"Contribution\": 3,\n    \"Overall\": 4,\n    \"Confidence\": 4,\n    \"Decision\": \"Reject\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 8572,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 8572,
+      "completion_tokens": 1575,
+      "reasoning_tokens": 0,
+      "total_tokens": 10147
+    },
+    "attempts": 1,
+    "response_id": "95e8107a-e972-4c49-b5d0-c2df5b1018e5"
+  },
+  "final_review": {
+    "Summary": "The paper proposes SiNGER, a knowledge distillation framework for Vision Transformers that addresses the problem of high-norm artifacts in teacher features. These artifacts dominate standard feature-matching distillation objectives, causing students to overfit to outliers. SiNGER refines teacher features by adding a low-rank perturbation (via a LoRA-based adapter) constrained to the left-nullspace of the next transformer block, thereby suppressing artifacts while preserving information. The nullspace is computed via SVD of a linearized FFN approximation. The method is evaluated across multiple teacher-student configurations (ViT, DeiT-III) and downstream tasks (classification, segmentation, depth estimation, long-tail, domain shift, fine-grained classification), showing consistent improvements over FitNet and ViTKD baselines. The paper includes extensive ablations on initialization, loss components, hyperparameters, and distillation layer selection, as well as analyses of the adapter's operation and representation quality.",
+    "Strengths": [
+      "Clear and well-motivated problem: the paper identifies a real issue (high-norm artifacts in ViT features) that biases distillation objectives.",
+      "Novel and principled approach: the nullspace-guided perturbation provides a mathematically grounded solution to the artifact-suppression vs. information-preservation trade-off.",
+      "Comprehensive evaluation across multiple tasks and teacher-student configurations, with detailed ablations and analyses.",
+      "Honest discussion of limitations, including performance drops on long-tail classification and with cleaner teachers.",
+      "Well-written and clearly organized paper with informative figures and tables."
+    ],
+    "Weaknesses": [
+      "The ViTKD baseline performs catastrophically poorly (e.g., 5.07% top-1 on ImageNet-1K, far below random chance), raising serious concerns about implementation fidelity and fairness of comparison.",
+      "The ablation study uses a small subset of ImageNet-1K with very low absolute accuracy, making it difficult to assess the practical significance of improvements.",
+      "The theoretical justification relies on linearization of a nonlinear transformer block, which is an approximation that is not rigorously analyzed.",
+      "The method's benefits are task-dependent: gains are marginal for fine-grained classification and negative for long-tail classification.",
+      "The evaluation uses only linear probing without task-specific losses, which may not reflect standard usage of baseline methods (FitNet, ViTKD) and could understate their performance.",
+      "Limited comparison with other recent KD methods beyond FitNet and ViTKD.",
+      "The CKA results are counterintuitive: SiNGER has lower teacher-student CKA but performs better, and this is not fully explained."
+    ],
+    "Originality": 4,
+    "Quality": 3,
+    "Clarity": 3,
+    "Significance": 3,
+    "Questions": [
+      "Why does ViTKD perform so poorly (5.07% top-1 on ImageNet-1K, well below chance)? Could this be due to implementation issues or hyperparameter choices? How was the ViTKD baseline tuned, and was it verified against the original paper's reported results?",
+      "The distillation setup excludes task-specific losses (e.g., cross-entropy). How does this affect the comparison with FitNet and ViTKD, which are typically used with such losses? Have you considered evaluating with the standard setup that includes task-specific losses?",
+      "The ablation in Table 4 uses a small subset of ImageNet-1K. Can you provide full-scale ablation results to verify that the component contributions hold under full training?",
+      "The CKA being lower for SiNGER compared to baselines is concerning. Can you provide more analysis on why lower teacher-student CKA leads to better downstream performance? Is there a threshold effect?",
+      "How sensitive is the method to the choice of linearization (e.g., including attention sub-layer, different linearization points)? Have you tested other linearization strategies beyond FFN-only?",
+      "The method degrades performance on iNaturalist-2019. Can you discuss potential remedies or whether this is an inherent limitation? Is there a way to adapt the method to handle long-tail distributions better?",
+      "In experiments with cleaner teachers (DINOv2-reg, DINOv3), SiNGER does not consistently outperform baselines. How should practitioners decide when to use SiNGER versus standard distillation?",
+      "The information preservation loss uses Gram matrix matching. Why was this chosen over other similarity measures (e.g., CKA, cosine similarity)? Are there theoretical or empirical reasons for this choice?",
+      "How does the method perform when the student architecture differs significantly from the teacher (e.g., cross-family distillation)? The paper shows one result but does not explore this thoroughly."
+    ],
+    "Limitations": [
+      "The method suppresses artifacts rather than eliminating their root causes, which limits its generalizability to other uses of the teacher model.",
+      "The nullspace approximation relies on linearization of a nonlinear block, which may not hold in all cases and lacks rigorous theoretical bounds.",
+      "The method is validated only on ViT-family architectures; its applicability to other transformer variants or convolutional teachers is unclear.",
+      "The performance degradation on long-tail classification (iNaturalist-2019) is a notable limitation that is not fully resolved.",
+      "The computational overhead (~10% training time increase) is mentioned but not thoroughly analyzed for large-scale training or when multiple teachers are involved.",
+      "The paper does not discuss potential negative societal impacts, though this is a general model compression method and may be acceptable."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 3,
+    "Contribution": 3,
+    "Overall": 6,
+    "Confidence": 4,
+    "Decision": "Reject"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 112467,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 103507,
+    "completion_tokens": 12560,
+    "reasoning_tokens": 0,
+    "total_tokens": 125027,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.01449098,
+    "output_usd": 0.0035168,
+    "total_usd": 0.01803287
+  },
+  "elapsed_seconds": 38.364,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Reject",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B080",
+    "filename": "B080.txt",
+    "blind_text_sha256": "ba9ed59f6eff6c7133b4431abd0c1d1b1a68a15c48b7213c7132ceec8090770d",
+    "characters": 66613,
+    "full_text_saved": false
+  }
+}

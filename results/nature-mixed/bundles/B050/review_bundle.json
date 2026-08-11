@@ -1,0 +1,703 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:43:37.131870+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "This paper addresses the training-inference mismatch in discrete diffusion language models. Classical SFT randomly masks tokens across the entire response, while inference generates fixed-size blocks sequentially with clean prefixes and hidden futures. The authors propose Blockwise SFT, which partitions responses into blocks, selects one active block per step for stochastic masking, freezes preceding tokens, and hides future ones. Loss is computed only on the active block, directly mirroring blockwise decoding. The paper provides theoretical analysis including a gradient bias bound for classical SFT, a variational bound for the blockwise objective, and unbiased gradient estimation. Experiments on GSM8K and MATH using MetaMathQA fine-tuning show consistent gains over classical SFT and other baselines under matched compute and token budgets. Ablations confirm that improvements stem from training-inference alignment rather than incidental masking effects.",
+        "Strengths": [
+          "Clear and well-motivated problem: The training-inference mismatch between full-sequence random masking and blockwise semi-autoregressive decoding is a genuine issue in diffusion LMs.",
+          "Elegant and simple solution: Blockwise SFT is architecture-agnostic, requires no inference changes, and is a drop-in replacement for classical SFT.",
+          "Solid theoretical grounding: Provides formal results including gradient bias characterization (Theorem 3.1), variational bound (Theorem 3.2), and unbiased gradient estimation (Theorem 3.3).",
+          "Thorough empirical evaluation: Includes matched compute/token budgets, block size consistency studies, and ablations on prefix noise and suffix leakage.",
+          "Compelling evidence for alignment: The diagonal dominance in the block size consistency study and degradation with prefix noise/suffix leakage strongly support the central claim.",
+          "Good reproducibility: Detailed hyperparameters, inference settings, and implementation details are provided in the appendix."
+        ],
+        "Weaknesses": [
+          "Limited evaluation breadth: Experiments use only a single model (LLaDA-8B-Instruct) with LoRA on a single training dataset (MetaMathQA) and two math benchmarks.",
+          "Baseline comparability: Some baselines (MDLM, RDM) are primarily pretraining objectives rather than SFT methods, making the comparison less direct.",
+          "Theoretical depth: The variational bound is standard for diffusion models, and the gradient bias bound relies on Lipschitz assumptions that are not empirically validated.",
+          "Unexplained degradation: Classical SFT underperforms the base model on MATH, but the paper does not provide a detailed explanation for this surprising result.",
+          "Compute efficiency analysis: While Equal-FLOPS and Equal-Tokens protocols are careful, the paper does not fully explore the compute-performance trade-off curve for different training durations."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "How does Blockwise SFT perform with larger models (e.g., LLaDA-33B or LLaDA-70B) or with full fine-tuning instead of LoRA?",
+          "Can you provide a more detailed analysis of why Classical SFT degrades below the base model on MATH? Is this due to overfitting, catastrophic forgetting, or the misalignment itself?",
+          "How sensitive is Blockwise SFT to the choice of block sampling distribution rho(a)? Have you tried non-uniform sampling (e.g., difficulty-aware reweighting)?",
+          "In the Equal-Tokens protocol, how does Blockwise SFT's performance compare to Classical SFT when both are trained for the same wall-clock time rather than the same number of supervised tokens?",
+          "What is the effect of the diffusion step schedule T on the performance of Blockwise SFT? Does the optimal schedule differ from classical SFT?",
+          "Have you considered applying Blockwise SFT to other tasks beyond math reasoning, such as general instruction following or code generation?"
+        ],
+        "Limitations": [
+          "The empirical evaluation is limited to mathematical reasoning tasks and a single model family, which may not generalize to other domains.",
+          "The theoretical results rely on assumptions (Lipschitz continuity, appropriate weights) that may not hold in practice, and the bounds may be loose.",
+          "The paper does not explore adaptive block sizing or dynamic block selection during inference, which could further improve performance.",
+          "Potential negative societal impact: The approach could be used to fine-tune models for generating misleading or harmful content more efficiently, though this is a general concern for language model fine-tuning methods."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes Blockwise SFT, a training objective for discrete diffusion language models that aligns supervision with semi-autoregressive blockwise decoding. The core idea is to train on one active block at a time, keeping the prefix clean and hiding the suffix, rather than masking tokens randomly across the entire response. The paper provides theoretical analysis (gradient bias bounds, variational bounds, unbiased gradient estimation) and empirical results on GSM8K and MATH showing consistent gains over classical SFT.\n\nStrengths:\n1. Clear problem diagnosis: The paper identifies a genuine and important mismatch between classical SFT training and blockwise inference in diffusion LMs. This is a well-motivated problem that is likely to be of interest to the community.\n2. Simple and elegant solution: Blockwise SFT is conceptually simple, architecture-agnostic, and requires no changes to the inference procedure. This makes it easy to adopt.\n3. Solid theoretical grounding: The paper provides formal results (Theorems 3.1-3.3) that connect the training objective to the inference objective. The variational bound and unbiased gradient estimation are useful contributions.\n4. Thorough empirical evaluation: The experiments are well-designed with matched compute and token budgets, block size consistency studies, and ablations on prefix noise and suffix leakage. The diagonal dominance in the block size study is a compelling piece of evidence.\n5. Reproducibility: Hyperparameters and implementation details are provided in the appendix.\n\nWeaknesses:\n1. Limited model scale and evaluation breadth: The experiments are limited to a single model (LLaDA-8B-Instruct) with LoRA fine-tuning on a single dataset (MetaMathQA). The paper would be stronger with multiple model sizes, base models, and tasks beyond math reasoning.\n2. Comparison to baselines: While several baselines are included, some are not directly comparable (e.g., MDLM, RDM are primarily pretraining objectives, not SFT methods). The comparison could be clearer about what is being compared.\n3. Theoretical claims: The gradient bias bound (Theorem 3.1) relies on Lipschitz assumptions that are not verified empirically. The variational bound (Theorem 3.2) is somewhat standard and may not add much beyond what is known for diffusion models.\n4. Missing analysis of compute trade-offs: The Equal-FLOPS protocol is careful, but it's unclear how much compute is actually needed for Blockwise SFT to reach a given performance level compared to Classical SFT. The Equal-Tokens results are useful but not fully explored.\n5. Lack of analysis on why Classical SFT degrades on MATH: The paper shows that Classical SFT underperforms the base model on MATH, which is surprising. An explanation of why this happens (e.g., catastrophic forgetting, overfitting) would strengthen the analysis.\n\nOverall, this is a solid paper with a clear contribution. The problem is well-motivated, the solution is elegant, and the empirical results support the claims. The main limitations are the narrow evaluation scope and some questions about the theoretical contributions' depth. I would lean toward acceptance, but with some reservations about the breadth of evaluation.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper addresses the training-inference mismatch in discrete diffusion language models. Classical SFT randomly masks tokens across the entire response, while inference generates fixed-size blocks sequentially with clean prefixes and hidden futures. The authors propose Blockwise SFT, which partitions responses into blocks, selects one active block per step for stochastic masking, freezes preceding tokens, and hides future ones. Loss is computed only on the active block, directly mirroring blockwise decoding. The paper provides theoretical analysis including a gradient bias bound for classical SFT, a variational bound for the blockwise objective, and unbiased gradient estimation. Experiments on GSM8K and MATH using MetaMathQA fine-tuning show consistent gains over classical SFT and other baselines under matched compute and token budgets. Ablations confirm that improvements stem from training-inference alignment rather than incidental masking effects.\",\n    \"Strengths\": [\n        \"Clear and well-motivated problem: The training-inference mismatch between full-sequence random masking and blockwise semi-autoregressive decoding is a genuine issue in diffusion LMs.\",\n        \"Elegant and simple solution: Blockwise SFT is architecture-agnostic, requires no inference changes, and is a drop-in replacement for classical SFT.\",\n        \"Solid theoretical grounding: Provides formal results including gradient bias characterization (Theorem 3.1), variational bound (Theorem 3.2), and unbiased gradient estimation (Theorem 3.3).\",\n        \"Thorough empirical evaluation: Includes matched compute/token budgets, block size consistency studies, and ablations on prefix noise and suffix leakage.\",\n        \"Compelling evidence for alignment: The diagonal dominance in the block size consistency study and degradation with prefix noise/suffix leakage strongly support the central claim.\",\n        \"Good reproducibility: Detailed hyperparameters, inference settings, and implementation details are provided in the appendix.\"\n    ],\n    \"Weaknesses\": [\n        \"Limited evaluation breadth: Experiments use only a single model (LLaDA-8B-Instruct) with LoRA on a single training dataset (MetaMathQA) and two math benchmarks.\",\n        \"Baseline comparability: Some baselines (MDLM, RDM) are primarily pretraining objectives rather than SFT methods, making the comparison less direct.\",\n        \"Theoretical depth: The variational bound is standard for diffusion models, and the gradient bias bound relies on Lipschitz assumptions that are not empirically validated.\",\n        \"Unexplained degradation: Classical SFT underperforms the base model on MATH, but the paper does not provide a detailed explanation for this surprising result.\",\n        \"Compute efficiency analysis: While Equal-FLOPS and Equal-Tokens protocols are careful, the paper does not fully explore the compute-performance trade-off curve for different training durations.\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 3,\n    \"Clarity\": 4,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"How does Blockwise SFT perform with larger models (e.g., LLaDA-33B or LLaDA-70B) or with full fine-tuning instead of LoRA?\",\n        \"Can you provide a more detailed analysis of why Classical SFT degrades below the base model on MATH? Is this due to overfitting, catastrophic forgetting, or the misalignment itself?\",\n        \"How sensitive is Blockwise SFT to the choice of block sampling distribution rho(a)? Have you tried non-uniform sampling (e.g., difficulty-aware reweighting)?\",\n        \"In the Equal-Tokens protocol, how does Blockwise SFT's performance compare to Classical SFT when both are trained for the same wall-clock time rather than the same number of supervised tokens?\",\n        \"What is the effect of the diffusion step schedule T on the performance of Blockwise SFT? Does the optimal schedule differ from classical SFT?\",\n        \"Have you considered applying Blockwise SFT to other tasks beyond math reasoning, such as general instruction following or code generation?\"\n    ],\n    \"Limitations\": [\n        \"The empirical evaluation is limited to mathematical reasoning tasks and a single model family, which may not generalize to other domains.\",\n        \"The theoretical results rely on assumptions (Lipschitz continuity, appropriate weights) that may not hold in practice, and the bounds may be loose.\",\n        \"The paper does not explore adaptive block sizing or dynamic block selection during inference, which could further improve performance.\",\n        \"Potential negative societal impact: The approach could be used to fine-tune models for generating misleading or harmful content more efficiently, though this is a general concern for language model fine-tuning methods.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 4,\n    \"Contribution\": 3,\n    \"Overall\": 7,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 14835,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 13043,
+        "completion_tokens": 1648,
+        "reasoning_tokens": 0,
+        "total_tokens": 16483
+      },
+      "attempts": 1,
+      "response_id": "87befd40-535c-46ca-8791-827c4c629a0b"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "This paper identifies and addresses a fundamental mismatch in discrete diffusion language models: supervised fine-tuning (SFT) typically uses full-sequence random masking with bidirectional attention, while inference uses semi-autoregressive blockwise decoding with clean prefixes and hidden future tokens. The authors propose Blockwise SFT, which partitions responses into fixed-size blocks, selects one active block per training step, freezes the clean prefix, and fully hides the suffix, computing loss only on the active block. This aligns training supervision with the blockwise decoding procedure. The paper provides theoretical grounding (variational bounds on blockwise likelihoods, unbiased gradient estimation, and gradient bias analysis), and demonstrates consistent empirical gains on GSM8K and MATH benchmarks using LLaDA-8B-Instruct with LoRA fine-tuning. Experiments include matched-compute and matched-token comparisons, a block size consistency study showing optimal performance when training and inference block sizes match, and ablations confirming that clean prefixes and hidden suffixes are the key mechanisms driving improvement.",
+        "Strengths": [
+          "Clearly identifies and articulates a significant practical problem: the training-inference mismatch in diffusion LMs",
+          "Proposes a simple, elegant, and architecture-agnostic solution that requires no changes to model architecture or inference procedure",
+          "Provides theoretical grounding with variational bounds, unbiased gradient estimation, and gradient bias analysis",
+          "Comprehensive experimental evaluation with careful matched-compute and matched-token protocols",
+          "Well-designed ablation studies isolating the effects of prefix corruption and suffix leakage",
+          "Block size consistency study provides strong causal evidence for the alignment hypothesis",
+          "Consistent and substantial gains across both GSM8K and MATH benchmarks",
+          "Clear and well-organized writing with helpful figures"
+        ],
+        "Weaknesses": [
+          "Evaluation is limited to a single model (LLaDA-8B-Instruct) and a single domain (mathematical reasoning); generalizability to other domains and model sizes is unclear",
+          "The theoretical contributions, while correct, are somewhat standard (variational bounds and unbiased gradient estimation are well-known in diffusion literature)",
+          "The gradient bias theorem (Theorem 3.1) is relatively straightforward and provides limited novel insight",
+          "No comparison with RLHF/DPO-style fine-tuning or other alignment methods beyond SFT variants",
+          "The claim of 'state-of-the-art' results is only within the limited set of baselines compared; broader comparison to autoregressive models fine-tuned on the same data would strengthen the case",
+          "Equal-FLOPS comparison may not perfectly isolate the effect since Blockwise SFT supervises fewer tokens per step, which could introduce other confounding factors"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "How does Blockwise SFT perform on general text generation tasks (e.g., open-domain dialogue, summarization) beyond mathematical reasoning? Does the alignment benefit generalize to domains where causal structure is less strict?",
+          "Would the gains persist with larger models (e.g., LLaDA-33B or larger) or with full fine-tuning instead of LoRA?",
+          "How sensitive is the method to the choice of diffusion steps during inference? Does the training objective need adjustment if inference uses fewer/more denoising steps?",
+          "The paper mentions difficulty-aware block reweighting as a potential improvement. Have you explored this, and if so, what were the results?",
+          "How does Blockwise SFT compare to simply using a higher masking probability in classical SFT, which would also concentrate supervision on fewer tokens?",
+          "What happens when the response length is not a multiple of the block size? How is the final partial block handled during training and inference?",
+          "Have you considered evaluating on tasks where future context might be legitimately useful (e.g., cloze-style tasks) to understand when the strict causal masking might be suboptimal?"
+        ],
+        "Limitations": [
+          "Evaluation is restricted to mathematical reasoning tasks and a single model size; broader validation is needed",
+          "The method assumes a fixed block size during inference, but adaptive block sizing (as in APD) is becoming more common; the interaction between Blockwise SFT and adaptive decoding is unexplored",
+          "The theoretical analysis assumes Lipschitz continuity of gradients, which may not hold in practice for deep networks",
+          "Potential negative societal impact: improved mathematical reasoning capabilities in diffusion LMs could be used to automate problem-solving in educational settings, potentially affecting academic integrity if not properly governed",
+          "The paper does not discuss computational cost of the method relative to classical SFT beyond the matched protocols; wall-clock time differences are not reported"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 7,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper addresses a clear and important problem: the mismatch between how discrete diffusion language models are trained (full-sequence random masking) versus how they are deployed (semi-autoregressive blockwise decoding). The proposed Blockwise SFT is conceptually simple, well-motivated, and empirically validated. The paper provides both theoretical grounding (variational bounds, unbiased gradient estimation, and gradient bias analysis) and thorough experimental evaluation (main results, block size consistency study, and ablations).\n\nStrengths:\n- Clear problem identification with concrete examples of training-inference mismatch\n- Simple, architecture-agnostic solution that requires no changes to model or inference\n- Solid theoretical framework (Theorems 3.1-3.3) with proofs in appendix\n- Comprehensive empirical evaluation with multiple comparison protocols (Equal-FLOPS, Equal-Tokens)\n- Good ablation studies isolating the effect of prefix noise and suffix leakage\n- Block size consistency study provides strong evidence for the alignment hypothesis\n- Consistent gains across GSM8K and MATH benchmarks\n\nWeaknesses:\n- Limited to single model (LLaDA-8B-Instruct) and single domain (mathematical reasoning)\n- No evaluation on general text generation tasks or other model sizes\n- Theoretical results are somewhat standard (variational bounds, unbiased gradient estimation)\n- The gradient bias theorem (3.1) is relatively straightforward and may be considered somewhat trivial\n- No comparison with RLHF/DPO-style fine-tuning or other alignment methods beyond SFT variants\n- The \"state-of-the-art\" claim is only within the limited set of baselines compared\n- Equal-FLOPS comparison may not perfectly isolate the effect since Blockwise SFT uses fewer loss-bearing tokens per step\n\nOriginality: The core idea of aligning training masking strategy with blockwise decoding is novel and well-motivated. While the individual components (masking, blockwise processing) exist, the specific combination and the systematic analysis of training-inference mismatch is a valuable contribution.\n\nQuality: The paper is technically sound. The theoretical results are correct (though somewhat standard), and the experimental methodology is careful with matched compute/token budgets. The ablations are well-designed to isolate causal factors.\n\nClarity: The paper is well-written and organized. The problem is clearly motivated, the method is clearly described, and the experimental results are presented in a logical manner. The figures and tables are helpful.\n\nSignificance: The work addresses an important practical issue in diffusion language models, which are gaining popularity. The method is simple enough to be widely adopted and the gains are substantial. This could have meaningful impact on how diffusion LMs are fine-tuned.\n\nOverall: This is a solid paper with a clear contribution. The main limitations are the narrow evaluation scope and the somewhat incremental theoretical contributions. However, the practical impact and clarity of the approach are strong. I would lean toward acceptance.\n\nDecision: Accept\n\nConfidence: 4 - I'm confident in my assessment, though I haven't checked all the mathematical details carefully.\n\nRatings:\n- Originality: 3 (good) - Novel combination of ideas, clear contribution\n- Quality: 3 (good) - Technically sound, careful experiments\n- Clarity: 4 (excellent) - Well-written and organized\n- Significance: 3 (good) - Important for diffusion LM community\n- Soundness: 3 (good)\n- Presentation: 4 (excellent)\n- Contribution: 3 (good)\n- Overall: 7 (Accept)\n- Confidence: 4 (confident)\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"This paper identifies and addresses a fundamental mismatch in discrete diffusion language models: supervised fine-tuning (SFT) typically uses full-sequence random masking with bidirectional attention, while inference uses semi-autoregressive blockwise decoding with clean prefixes and hidden future tokens. The authors propose Blockwise SFT, which partitions responses into fixed-size blocks, selects one active block per training step, freezes the clean prefix, and fully hides the suffix, computing loss only on the active block. This aligns training supervision with the blockwise decoding procedure. The paper provides theoretical grounding (variational bounds on blockwise likelihoods, unbiased gradient estimation, and gradient bias analysis), and demonstrates consistent empirical gains on GSM8K and MATH benchmarks using LLaDA-8B-Instruct with LoRA fine-tuning. Experiments include matched-compute and matched-token comparisons, a block size consistency study showing optimal performance when training and inference block sizes match, and ablations confirming that clean prefixes and hidden suffixes are the key mechanisms driving improvement.\",\n    \"Strengths\": [\n        \"Clearly identifies and articulates a significant practical problem: the training-inference mismatch in diffusion LMs\",\n        \"Proposes a simple, elegant, and architecture-agnostic solution that requires no changes to model architecture or inference procedure\",\n        \"Provides theoretical grounding with variational bounds, unbiased gradient estimation, and gradient bias analysis\",\n        \"Comprehensive experimental evaluation with careful matched-compute and matched-token protocols\",\n        \"Well-designed ablation studies isolating the effects of prefix corruption and suffix leakage\",\n        \"Block size consistency study provides strong causal evidence for the alignment hypothesis\",\n        \"Consistent and substantial gains across both GSM8K and MATH benchmarks\",\n        \"Clear and well-organized writing with helpful figures\"\n    ],\n    \"Weaknesses\": [\n        \"Evaluation is limited to a single model (LLaDA-8B-Instruct) and a single domain (mathematical reasoning); generalizability to other domains and model sizes is unclear\",\n        \"The theoretical contributions, while correct, are somewhat standard (variational bounds and unbiased gradient estimation are well-known in diffusion literature)\",\n        \"The gradient bias theorem (Theorem 3.1) is relatively straightforward and provides limited novel insight\",\n        \"No comparison with RLHF/DPO-style fine-tuning or other alignment methods beyond SFT variants\",\n        \"The claim of 'state-of-the-art' results is only within the limited set of baselines compared; broader comparison to autoregressive models fine-tuned on the same data would strengthen the case\",\n        \"Equal-FLOPS comparison may not perfectly isolate the effect since Blockwise SFT supervises fewer tokens per step, which could introduce other confounding factors\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 3,\n    \"Clarity\": 4,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"How does Blockwise SFT perform on general text generation tasks (e.g., open-domain dialogue, summarization) beyond mathematical reasoning? Does the alignment benefit generalize to domains where causal structure is less strict?\",\n        \"Would the gains persist with larger models (e.g., LLaDA-33B or larger) or with full fine-tuning instead of LoRA?\",\n        \"How sensitive is the method to the choice of diffusion steps during inference? Does the training objective need adjustment if inference uses fewer/more denoising steps?\",\n        \"The paper mentions difficulty-aware block reweighting as a potential improvement. Have you explored this, and if so, what were the results?\",\n        \"How does Blockwise SFT compare to simply using a higher masking probability in classical SFT, which would also concentrate supervision on fewer tokens?\",\n        \"What happens when the response length is not a multiple of the block size? How is the final partial block handled during training and inference?\",\n        \"Have you considered evaluating on tasks where future context might be legitimately useful (e.g., cloze-style tasks) to understand when the strict causal masking might be suboptimal?\"\n    ],\n    \"Limitations\": [\n        \"Evaluation is restricted to mathematical reasoning tasks and a single model size; broader validation is needed\",\n        \"The method assumes a fixed block size during inference, but adaptive block sizing (as in APD) is becoming more common; the interaction between Blockwise SFT and adaptive decoding is unexplored\",\n        \"The theoretical analysis assumes Lipschitz continuity of gradients, which may not hold in practice for deep networks\",\n        \"Potential negative societal impact: improved mathematical reasoning capabilities in diffusion LMs could be used to automate problem-solving in educational settings, potentially affecting academic integrity if not properly governed\",\n        \"The paper does not discuss computational cost of the method relative to classical SFT beyond the matched protocols; wall-clock time differences are not reported\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 4,\n    \"Contribution\": 3,\n    \"Overall\": 7,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 14835,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 13043,
+        "completion_tokens": 1766,
+        "reasoning_tokens": 0,
+        "total_tokens": 16601
+      },
+      "attempts": 1,
+      "response_id": "ef8cf2ad-d904-4c39-baa6-77d6f3f940fc"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper addresses the training-inference mismatch in discrete diffusion language models that use semi-autoregressive blockwise decoding. Classical SFT randomly masks tokens across the entire response, which introduces noisy prefixes and leaky suffixes during training, whereas inference generates fixed-size blocks sequentially conditioned on a clean prefix with future tokens hidden. The authors propose Blockwise SFT, which partitions responses into fixed-size blocks, selects one active block per step for stochastic masking, freezes all preceding tokens, and fully hides future ones. Loss is computed only over the active block, directly mirroring the blockwise decoding process. The paper provides theoretical analysis including a gradient bias bound for classical SFT, a variational upper bound on blockwise likelihoods, and unbiased gradient estimation. Experiments on GSM8K, MATH, and MetaMathQA show consistent gains over classical SFT and other baselines under equal compute or token budgets. Block size consistency studies and ablations confirm that improvements stem from faithful training-inference alignment rather than incidental masking effects.",
+        "Strengths": [
+          "Clear identification and articulation of a real problem: the training-inference mismatch in diffusion LMs with blockwise decoding",
+          "Simple, practical solution that is a drop-in replacement requiring no architectural changes",
+          "Solid theoretical grounding with variational bounds and unbiased gradient estimation",
+          "Thorough empirical evaluation with matched-compute and matched-token comparisons, block size consistency studies, and ablations",
+          "Consistent and substantial gains over baselines on GSM8K and MATH",
+          "Good experimental design to isolate the effect of training-inference alignment"
+        ],
+        "Weaknesses": [
+          "Limited evaluation scope: only two math reasoning datasets (GSM8K, MATH) and a single base model (LLaDA-8B-Instruct)",
+          "Theoretical contributions are somewhat standard: the variational bound is a direct application of the diffusion ELBO, and the unbiased gradient result is a standard importance-sampling argument",
+          "The gradient bias theorem relies on Lipschitz assumptions that are not empirically verified",
+          "Baseline comparisons may be unfair if baselines were not tuned to the same extent as Blockwise SFT",
+          "The Equal-FLOPS comparison is somewhat misleading since the effective number of supervised tokens differs",
+          "Paper does not report inference speed or efficiency gains, which is a key motivation for blockwise decoding",
+          "Ablation at fully visible suffix (pi_suffix=0) degenerates to classical SFT performance, raising the question of whether the gains are primarily from hiding the future rather than the blockwise structure per se"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How were the baseline methods (MDLM, Soft-Masked, RDM, Two-Step) tuned? Were their hyperparameters optimized to the same extent as Blockwise SFT?",
+          "Why was MATH-500 used instead of the full MATH test set? This limits comparability with other work.",
+          "The learning rate is quite low (1e-5). Was this tuned separately for each method?",
+          "In the Equal-Tokens comparison, does Blockwise SFT require more wall-clock time due to 3x more epochs?",
+          "Could the gains be partly attributed to the lower effective masking rate per step (since only the active block is masked with the same pi distribution)?",
+          "Have the authors tested Blockwise SFT on non-mathematical tasks (e.g., general instruction following, summarization)?",
+          "Have the authors measured inference speed or efficiency gains from blockwise decoding, and how does Blockwise SFT affect these?",
+          "The gradient bias theorem relies on Lipschitz assumptions. Are these assumptions verified empirically or theoretically for the models used?"
+        ],
+        "Limitations": [
+          "The evaluation is limited to mathematical reasoning tasks; generalizability to other text generation tasks is untested",
+          "The paper only uses a single base model (LLaDA-8B-Instruct) and does not explore different model scales",
+          "The theoretical results, while sound, are somewhat standard and do not provide deep new insights into diffusion model training",
+          "The paper does not discuss potential negative societal impacts, though the method itself is unlikely to introduce novel harms",
+          "The paper does not address the computational overhead of blockwise training, though it claims similar FLOPs"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes Blockwise SFT, a training objective for discrete diffusion language models that aligns supervision with semi-autoregressive blockwise inference. The key idea is to train on one active block at a time with a clean prefix and hidden future, rather than randomly masking across the full response as in classical SFT. The authors provide theoretical analysis (gradient bias bound, variational bound, unbiased gradient estimation) and empirical results on GSM8K and MATH showing consistent gains over classical SFT and other baselines.\n\nStrengths:\n1. Clear problem identification: The training-inference mismatch in diffusion LMs is a real and important issue that has received limited attention. The diagnosis of prefix corruption, suffix leakage, and diluted supervision is well-articulated.\n2. Simple, practical solution: Blockwise SFT is a drop-in replacement requiring no architectural changes, which increases its potential adoption.\n3. Solid theoretical grounding: The variational bound and unbiased gradient estimation results provide formal justification for the approach.\n4. Thorough empirical evaluation: The authors include matched-compute and matched-token comparisons, block size consistency studies, and ablations on prefix noise and suffix leakage. These experiments are well-designed to isolate the effect of training-inference alignment.\n5. Consistent improvements: The gains over classical SFT and other baselines are substantial, particularly on GSM8K (+5.2 over the strongest baseline).\n\nWeaknesses:\n1. Limited scope of evaluation: Only two datasets (GSM8K, MATH) and a single base model (LLaDA-8B-Instruct) are used. The generalizability to other domains, tasks, and model sizes is unclear.\n2. The theoretical results, while useful, are somewhat standard. The variational bound is a straightforward application of the diffusion ELBO restricted to a block, and the unbiased gradient result is a standard importance-sampling argument. The gradient bias theorem relies on Lipschitz assumptions that are not verified empirically.\n3. The comparison to \"contemporary diffusion-SFT variants\" (MDLM, Soft-Masked, RDM, Two-Step) may be unfair since these methods were not designed for the same purpose and may require different hyperparameter tuning. The paper does not report how these baselines were tuned.\n4. The Equal-FLOPS comparison is somewhat misleading: while FLOPs are matched, the effective number of supervised tokens differs (Blockwise supervises fewer tokens per step). The Equal-Tokens comparison addresses this but shows different dynamics.\n5. The paper does not report inference speed or efficiency gains, which is a key motivation for blockwise decoding in the first place.\n6. The ablation on suffix leakage shows that at $\\pi_{suffix}=0$ (fully visible suffix), performance degrades to classical SFT levels. This is expected but raises the question of whether the gains are primarily from hiding the future rather than the blockwise structure per se.\n\nQuestions for authors:\n1. How were the baseline methods (MDLM, Soft-Masked, RDM, Two-Step) tuned? Were their hyperparameters optimized to the same extent as Blockwise SFT?\n2. Why was MATH-500 used instead of the full MATH test set? This limits comparability with other work.\n3. The learning rate is quite low (1e-5). Was this tuned separately for each method?\n4. In the Equal-Tokens comparison, does Blockwise SFT require more wall-clock time due to 3x more epochs?\n5. Could the gains be partly attributed to the lower effective masking rate per step (since only the active block is masked with the same $\\pi$ distribution)?\n6. Have the authors tested Blockwise SFT on non-mathematical tasks (e.g., general instruction following, summarization)?\n\nLimitations not addressed:\n- The paper does not discuss potential negative societal impacts, though this is a fine-tuning method unlikely to introduce novel harms.\n- The evaluation is limited to math reasoning; the generalizability to other text generation tasks is untested.\n- The paper does not address the computational overhead of blockwise training (though it claims similar FLOPs).\n\nEthical concerns: None apparent. This is a standard fine-tuning method with no novel ethical implications.\n\nOverall assessment: This is a solid paper with a clear, well-motivated contribution. The training-inference alignment insight is valuable and the empirical results are convincing within the tested scope. However, the limited evaluation (two math datasets, one model) and somewhat standard theoretical contributions prevent it from being a standout submission. The paper is technically sound and clearly written. I would rate it as a borderline accept, leaning toward accept given the practical importance of the problem and the clean, well-executed solution.\n\nDecision: Accept (with reservations about the limited evaluation scope).\n\nSoundness: 3 (good) - The technical claims are supported, but the theoretical results are somewhat standard and the empirical scope is narrow.\nPresentation: 3 (good) - Clear writing, well-organized, but some notation is dense and the paper would benefit from more intuition in the theory section.\nContribution: 3 (good) - The alignment principle is valuable and likely to be adopted, but the novelty is moderate given the existing work on training-inference mismatch in diffusion.\n\nConfidence: 4 - I am confident in my assessment, though I am not deeply familiar with all the related work in discrete diffusion fine-tuning.\n\nREVIEW JSON:\n```json\n{\n\"Summary\": \"The paper addresses the training-inference mismatch in discrete diffusion language models that use semi-autoregressive blockwise decoding. Classical SFT randomly masks tokens across the entire response, which introduces noisy prefixes and leaky suffixes during training, whereas inference generates fixed-size blocks sequentially conditioned on a clean prefix with future tokens hidden. The authors propose Blockwise SFT, which partitions responses into fixed-size blocks, selects one active block per step for stochastic masking, freezes all preceding tokens, and fully hides future ones. Loss is computed only over the active block, directly mirroring the blockwise decoding process. The paper provides theoretical analysis including a gradient bias bound for classical SFT, a variational upper bound on blockwise likelihoods, and unbiased gradient estimation. Experiments on GSM8K, MATH, and MetaMathQA show consistent gains over classical SFT and other baselines under equal compute or token budgets. Block size consistency studies and ablations confirm that improvements stem from faithful training-inference alignment rather than incidental masking effects.\",\n\"Strengths\": [\n\"Clear identification and articulation of a real problem: the training-inference mismatch in diffusion LMs with blockwise decoding\",\n\"Simple, practical solution that is a drop-in replacement requiring no architectural changes\",\n\"Solid theoretical grounding with variational bounds and unbiased gradient estimation\",\n\"Thorough empirical evaluation with matched-compute and matched-token comparisons, block size consistency studies, and ablations\",\n\"Consistent and substantial gains over baselines on GSM8K and MATH\",\n\"Good experimental design to isolate the effect of training-inference alignment\"\n],\n\"Weaknesses\": [\n\"Limited evaluation scope: only two math reasoning datasets (GSM8K, MATH) and a single base model (LLaDA-8B-Instruct)\",\n\"Theoretical contributions are somewhat standard: the variational bound is a direct application of the diffusion ELBO, and the unbiased gradient result is a standard importance-sampling argument\",\n\"The gradient bias theorem relies on Lipschitz assumptions that are not empirically verified\",\n\"Baseline comparisons may be unfair if baselines were not tuned to the same extent as Blockwise SFT\",\n\"The Equal-FLOPS comparison is somewhat misleading since the effective number of supervised tokens differs\",\n\"Paper does not report inference speed or efficiency gains, which is a key motivation for blockwise decoding\",\n\"Ablation at fully visible suffix (pi_suffix=0) degenerates to classical SFT performance, raising the question of whether the gains are primarily from hiding the future rather than the blockwise structure per se\"\n],\n\"Originality\": 3,\n\"Quality\": 3,\n\"Clarity\": 3,\n\"Significance\": 3,\n\"Questions\": [\n\"How were the baseline methods (MDLM, Soft-Masked, RDM, Two-Step) tuned? Were their hyperparameters optimized to the same extent as Blockwise SFT?\",\n\"Why was MATH-500 used instead of the full MATH test set? This limits comparability with other work.\",\n\"The learning rate is quite low (1e-5). Was this tuned separately for each method?\",\n\"In the Equal-Tokens comparison, does Blockwise SFT require more wall-clock time due to 3x more epochs?\",\n\"Could the gains be partly attributed to the lower effective masking rate per step (since only the active block is masked with the same pi distribution)?\",\n\"Have the authors tested Blockwise SFT on non-mathematical tasks (e.g., general instruction following, summarization)?\",\n\"Have the authors measured inference speed or efficiency gains from blockwise decoding, and how does Blockwise SFT affect these?\",\n\"The gradient bias theorem relies on Lipschitz assumptions. Are these assumptions verified empirically or theoretically for the models used?\"\n],\n\"Limitations\": [\n\"The evaluation is limited to mathematical reasoning tasks; generalizability to other text generation tasks is untested\",\n\"The paper only uses a single base model (LLaDA-8B-Instruct) and does not explore different model scales\",\n\"The theoretical results, while sound, are somewhat standard and do not provide deep new insights into diffusion model training\",\n\"The paper does not discuss potential negative societal impacts, though the method itself is unlikely to introduce novel harms\",\n\"The paper does not address the computational overhead of blockwise training, though it claims similar FLOPs\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 3,\n\"Contribution\": 3,\n\"Overall\": 6,\n\"Confidence\": 4,\n\"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 14835,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 13043,
+        "completion_tokens": 2021,
+        "reasoning_tokens": 0,
+        "total_tokens": 16856
+      },
+      "attempts": 1,
+      "response_id": "c5113c98-ff17-49a8-a2a7-a5c2b687685e"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper addresses a training-inference mismatch in discrete diffusion language models. Classical SFT randomly masks tokens across the entire response, while blockwise semi-autoregressive decoding generates fixed-size blocks sequentially with clean prefixes and hidden futures. The authors propose Blockwise SFT, which partitions responses into blocks, selects one active block per training step, freezes the prefix, hides the suffix, and computes loss only on the active block. They provide theoretical analysis including a gradient bias bound for classical SFT, a variational upper bound for the blockwise objective, and unbiased gradient estimation guarantees. Experiments on GSM8K and MATH with LLaDA-8B show consistent improvements over classical SFT and several baselines under matched compute and token budgets. Ablations confirm that gains stem from training-inference alignment rather than incidental masking effects.",
+        "Strengths": [
+          "Identifies a genuine and important training-inference mismatch in diffusion LMs that is relevant to the community",
+          "Proposes a simple, practical, and elegant solution that requires no architectural changes - a drop-in replacement for classical SFT",
+          "Provides theoretical grounding with gradient bias bounds, variational bounds, and unbiased gradient estimation guarantees",
+          "Careful experimental design with matched-compute and matched-token protocols to isolate supervision granularity from compute",
+          "Strong diagnostic experiments (block-size consistency, prefix noise, suffix leakage) that convincingly attribute gains to alignment",
+          "Clear and well-organized writing with good contextualization of related work"
+        ],
+        "Weaknesses": [
+          "Theoretical contributions are somewhat incremental - the gradient bias bound is a standard Lipschitz argument, and the variational bound follows standard diffusion ELBO derivations",
+          "Empirical evaluation is limited to two math benchmarks (GSM8K, MATH-500) with a single base model (LLaDA-8B), raising questions about generalizability to other domains, model sizes, and diffusion architectures",
+          "Baseline comparisons are limited to older or weaker methods; comparison with more recent and stronger diffusion LM fine-tuning approaches would strengthen the claims",
+          "Implementation details for the Equal-FLOPS protocol are not fully transparent, making reproducibility slightly harder",
+          "No inference efficiency or speed comparisons, which is relevant given the motivation of aligning with blockwise decoding",
+          "The prefix noise ablation has a somewhat confusing explanation involving block selection frequency that seems like an artifact"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "How does Blockwise SFT perform on non-math domains such as general instruction following, summarization, or open-ended generation? The current evaluation is limited to mathematical reasoning.",
+          "How does the method scale to smaller or larger model sizes? Would the benefits persist with a smaller diffusion LM (e.g., 1-2B parameters) or a larger one (e.g., 30B+)?",
+          "What is the exact compute budget (total FLOPs, number of steps) for the Equal-FLOPS experiments? How was equality precisely enforced?",
+          "How does Blockwise SFT compare against more recent strong baselines such as Block Diffusion with KV-caching or APD with adaptive block sizing under the same fine-tuning setup?",
+          "Could you report inference time and throughput to show the practical benefit of training-inference alignment?",
+          "How sensitive is the method to the choice of block sampling distribution? Would difficulty-aware or length-aware sampling improve results further?",
+          "In the prefix noise ablation, could you clarify the explanation about block selection frequency? Why would larger block sizes make noisy prefixes less impactful?"
+        ],
+        "Limitations": [
+          "The empirical evaluation is confined to mathematical reasoning tasks with a single model architecture, limiting claims of general applicability",
+          "The theoretical analysis, while sound, does not provide tight or surprising bounds beyond standard diffusion theory",
+          "The paper does not address potential negative societal impacts of improved diffusion LMs, though this is a general concern for LLM research",
+          "The method introduces an additional hyperparameter (block size for training) that must be aligned with inference, adding complexity",
+          "Training with Blockwise SFT may require more epochs to cover all blocks, potentially increasing wall-clock time even if compute is matched"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes Blockwise SFT, a training objective for discrete diffusion language models that aligns supervision with semi-autoregressive blockwise decoding. The key idea is to train on one active block at a time with a clean prefix and hidden future tokens, rather than randomly masking across the full response as in classical SFT. The authors provide theoretical analysis (gradient bias bounds, variational bounds, unbiased gradient estimation) and empirical results on GSM8K and MATH showing consistent improvements.\n\nStrengths:\n1. The paper identifies a genuine and important training-inference mismatch in diffusion LMs - this is a real problem that practitioners face.\n2. The proposed solution is simple, elegant, and practical - a drop-in replacement requiring no architectural changes.\n3. The theoretical analysis is thoughtful, providing formal justification for the approach (variational bounds, unbiased gradients, bias characterization).\n4. The experimental setup is careful with matched-compute and matched-token protocols, which strengthens the claims.\n5. The block-size consistency study and ablations (prefix noise, suffix leakage) provide strong diagnostic evidence that the gains come from alignment rather than incidental effects.\n6. The paper is well-written and clearly organized.\n\nWeaknesses:\n1. The theoretical results (Theorems 3.1-3.3) are somewhat straightforward and may not be particularly novel. The gradient bias bound is essentially a Lipschitz argument, and the variational bound follows standard diffusion ELBO derivations. The unbiased gradient estimation is a standard importance-sampling result.\n2. The empirical evaluation is limited to two math benchmarks (GSM8K, MATH-500) with a single base model (LLaDA-8B). This raises questions about generalizability to other domains, model sizes, and diffusion architectures.\n3. The comparison to \"state-of-the-art\" baselines is somewhat limited - only 5 baselines are compared, and some are relatively weak (e.g., MDLM, Soft-Masked Diffusion LM may be outdated). A comparison to more recent and stronger methods would strengthen the claims.\n4. The paper claims \"state-of-the-art head-to-head results\" but only compares against older methods. The performance gap over the best baseline (Two-Step Loss & Scheduling) is notable (+5.2 on GSM8K), but it's unclear if these baselines were tuned fairly.\n5. The implementation details are somewhat vague - e.g., the exact number of training steps, total compute, and how the \"Equal-FLOPS\" protocol is precisely enforced are not fully specified.\n6. The paper does not report inference efficiency or speed comparisons, which is relevant given the motivation of aligning with blockwise decoding for efficiency.\n7. The suffix leakage ablation shows that when suffix is fully visible, performance degrades to Classical SFT levels, which makes sense. However, the prefix noise ablation is less clean - the explanation about block selection frequency seems like an artifact rather than a principled finding.\n\nOverall, this is a solid paper with a clear contribution. The core idea is simple and effective, the experiments are reasonably thorough, and the theoretical framing adds credibility. However, the novelty is somewhat incremental (aligning training with decoding is a well-known principle), and the empirical evaluation could be broader. I would rate this as a borderline accept - the technical soundness is good, but the significance is moderate.\n\nFor the review, I'll give:\n- Originality: 3 (good - novel combination of existing ideas, clear contribution)\n- Quality: 3 (good - sound methodology, but limited evaluation)\n- Clarity: 4 (excellent - well-written and organized)\n- Significance: 3 (good - useful for diffusion LM community, but not groundbreaking)\n- Soundness: 3 (good)\n- Presentation: 4 (excellent)\n- Contribution: 3 (good)\n- Overall: 6 (Weak Accept - solid paper with moderate impact)\n- Confidence: 4 (confident in assessment)\n\nI'll recommend Accept since the paper makes a reasonable contribution, but with reservations about the breadth of evaluation and novelty of theory.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper addresses a training-inference mismatch in discrete diffusion language models. Classical SFT randomly masks tokens across the entire response, while blockwise semi-autoregressive decoding generates fixed-size blocks sequentially with clean prefixes and hidden futures. The authors propose Blockwise SFT, which partitions responses into blocks, selects one active block per training step, freezes the prefix, hides the suffix, and computes loss only on the active block. They provide theoretical analysis including a gradient bias bound for classical SFT, a variational upper bound for the blockwise objective, and unbiased gradient estimation guarantees. Experiments on GSM8K and MATH with LLaDA-8B show consistent improvements over classical SFT and several baselines under matched compute and token budgets. Ablations confirm that gains stem from training-inference alignment rather than incidental masking effects.\",\n  \"Strengths\": [\n    \"Identifies a genuine and important training-inference mismatch in diffusion LMs that is relevant to the community\",\n    \"Proposes a simple, practical, and elegant solution that requires no architectural changes - a drop-in replacement for classical SFT\",\n    \"Provides theoretical grounding with gradient bias bounds, variational bounds, and unbiased gradient estimation guarantees\",\n    \"Careful experimental design with matched-compute and matched-token protocols to isolate supervision granularity from compute\",\n    \"Strong diagnostic experiments (block-size consistency, prefix noise, suffix leakage) that convincingly attribute gains to alignment\",\n    \"Clear and well-organized writing with good contextualization of related work\"\n  ],\n  \"Weaknesses\": [\n    \"Theoretical contributions are somewhat incremental - the gradient bias bound is a standard Lipschitz argument, and the variational bound follows standard diffusion ELBO derivations\",\n    \"Empirical evaluation is limited to two math benchmarks (GSM8K, MATH-500) with a single base model (LLaDA-8B), raising questions about generalizability to other domains, model sizes, and diffusion architectures\",\n    \"Baseline comparisons are limited to older or weaker methods; comparison with more recent and stronger diffusion LM fine-tuning approaches would strengthen the claims\",\n    \"Implementation details for the Equal-FLOPS protocol are not fully transparent, making reproducibility slightly harder\",\n    \"No inference efficiency or speed comparisons, which is relevant given the motivation of aligning with blockwise decoding\",\n    \"The prefix noise ablation has a somewhat confusing explanation involving block selection frequency that seems like an artifact\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 4,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does Blockwise SFT perform on non-math domains such as general instruction following, summarization, or open-ended generation? The current evaluation is limited to mathematical reasoning.\",\n    \"How does the method scale to smaller or larger model sizes? Would the benefits persist with a smaller diffusion LM (e.g., 1-2B parameters) or a larger one (e.g., 30B+)?\",\n    \"What is the exact compute budget (total FLOPs, number of steps) for the Equal-FLOPS experiments? How was equality precisely enforced?\",\n    \"How does Blockwise SFT compare against more recent strong baselines such as Block Diffusion with KV-caching or APD with adaptive block sizing under the same fine-tuning setup?\",\n    \"Could you report inference time and throughput to show the practical benefit of training-inference alignment?\",\n    \"How sensitive is the method to the choice of block sampling distribution? Would difficulty-aware or length-aware sampling improve results further?\",\n    \"In the prefix noise ablation, could you clarify the explanation about block selection frequency? Why would larger block sizes make noisy prefixes less impactful?\"\n  ],\n  \"Limitations\": [\n    \"The empirical evaluation is confined to mathematical reasoning tasks with a single model architecture, limiting claims of general applicability\",\n    \"The theoretical analysis, while sound, does not provide tight or surprising bounds beyond standard diffusion theory\",\n    \"The paper does not address potential negative societal impacts of improved diffusion LMs, though this is a general concern for LLM research\",\n    \"The method introduces an additional hyperparameter (block size for training) that must be aligned with inference, adding complexity\",\n    \"Training with Blockwise SFT may require more epochs to cover all blocks, potentially increasing wall-clock time even if compute is matched\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 4,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 14835,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 13043,
+        "completion_tokens": 1795,
+        "reasoning_tokens": 0,
+        "total_tokens": 16630
+      },
+      "attempts": 1,
+      "response_id": "56743a03-0843-4b02-900f-daddd5ee7e14"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper identifies a fundamental mismatch between classical SFT for discrete diffusion language models and their blockwise semi-autoregressive inference procedure. Classical SFT randomly masks tokens across the entire response with bidirectional context, while inference generates fixed-size blocks sequentially with clean prefixes and hidden futures. This creates three problems: noisy prefixes, suffix leakage, and granularity mismatch. The authors propose Blockwise SFT, which partitions responses into fixed-size blocks, selects one active block per training step for stochastic masking, freezes all preceding tokens, and hides future tokens. Loss is computed only over the active block, directly mirroring the blockwise decoding process. The paper provides theoretical analysis (variational bounds, unbiased gradient estimation, gradient bias characterization) and empirical evaluation on GSM8K, MATH, and MetaMathQA showing consistent gains over classical SFT under matched compute and token budgets. Ablations confirm that improvements stem from training-inference alignment rather than incidental masking effects.",
+        "Strengths": [
+          "Clear and well-motivated problem diagnosis: the training-inference mismatch in diffusion LMs is a real and important issue that has been underappreciated",
+          "Simple and practical solution: Blockwise SFT is a drop-in replacement requiring no architectural changes, making it easily adoptable",
+          "Thoughtful experimental design: matched compute (Equal-FLOPS) and token (Equal-Tokens) budgets isolate the effect of supervision granularity from raw compute",
+          "Comprehensive ablations: block size consistency study, prefix noise analysis, and suffix leakage analysis directly support the alignment hypothesis",
+          "Theoretical grounding: variational bound on blockwise likelihoods and unbiased gradient estimation provide formal guarantees for the proposed objective",
+          "Consistent empirical gains: +5.2 points over strongest baseline on GSM8K and +1.6 on MATH demonstrate practical value"
+        ],
+        "Weaknesses": [
+          "Limited evaluation scope: experiments are restricted to math reasoning tasks (GSM8K, MATH) with a single base model (LLaDA-8B-Instruct); no evaluation on general text generation, code, or other domains that would test broader applicability",
+          "Theoretical contributions are somewhat incremental: the variational bound and unbiased gradient estimation are standard results in diffusion literature applied to a specific masking scheme; the gradient bias bound (Theorem 3.1) is a Lipschitz argument that provides limited practical insight",
+          "No comparison across model scales or architectures: the method's robustness to different model sizes, parameter counts, or diffusion formulations is not tested",
+          "The 'state-of-the-art' claim is overstated given the narrow evaluation; a more honest framing would acknowledge the limited benchmark coverage",
+          "The paper does not analyze computational overhead of the blockwise approach in detail - while compute is matched, the wall-clock time and memory implications of the different masking strategies are not thoroughly discussed",
+          "Uniform block sampling may not be optimal; the paper mentions difficulty-aware reweighting as future work but does not explore this direction"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 3,
+        "Questions": [
+          "How does Blockwise SFT perform on non-mathematical reasoning tasks such as general instruction following, summarization, or code generation? The paper's claims of general applicability would be stronger with evidence from diverse domains.",
+          "The gradient bias bound in Theorem 3.1 depends on Lipschitz constants L_pre and L_suf. Can you provide estimates of these constants for your model? Without such estimates, the bound is difficult to interpret quantitatively.",
+          "In the Equal-Tokens protocol, Blockwise SFT runs approximately L_r/B times more epochs than Classical SFT. How does this affect overfitting risk for longer training runs or smaller datasets?",
+          "The paper uses block sizes of 8, 16, 32, 64. How does the optimal block size relate to sequence length or task complexity? Is there a principled way to choose block size for new tasks?",
+          "What is the sensitivity of the results to the masking rate distribution (Uniform(10^-3, 1))? Would a different distribution improve or degrade performance?",
+          "The paper reports results with LoRA fine-tuning. Would the observed gains persist with full fine-tuning? LoRA constrains the hypothesis space, which might interact with the alignment effect."
+        ],
+        "Limitations": [
+          "Evaluation is limited to mathematical reasoning tasks with a single model size and architecture; broader validation across domains and model families is needed",
+          "The theoretical analysis provides bounds but does not quantify the practical magnitude of the bias for realistic models and data distributions",
+          "The method assumes fixed-size blocks; adaptive block sizing (as in APD) might interact differently with the training objective",
+          "Potential negative societal impact is not discussed, though the paper's methods are unlikely to introduce new risks beyond those inherent in language model fine-tuning",
+          "The paper does not discuss potential failure modes when responses have variable lengths or when the last block is smaller than the block size"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes Blockwise SFT, a training objective that aligns supervised fine-tuning with the blockwise semi-autoregressive decoding used in discrete diffusion language models. The key insight is that classical SFT randomly masks tokens across the entire response, while inference generates fixed-size blocks sequentially with clean prefixes and hidden futures. The authors identify three mismatches: noisy prefixes, suffix leakage, and granularity mismatch. They propose a simple fix: mask only the active block while keeping the prefix clean and hiding the suffix.\n\nThe paper has several strengths:\n1. The problem diagnosis is clear and well-motivated - the training-inference mismatch is a real issue in diffusion LMs\n2. The proposed method is simple and practical - a drop-in replacement that requires no architectural changes\n3. The theoretical analysis provides variational bounds and unbiased gradient estimation\n4. The experimental evaluation is thorough with matched compute/token budgets\n5. The ablations (block size consistency, prefix noise, suffix leakage) directly support the alignment hypothesis\n\nWeaknesses:\n1. The theoretical results are somewhat incremental - the variational bound and unbiased gradient estimation are standard results in diffusion model literature, applied here to a specific masking scheme\n2. The experimental evaluation is limited to math reasoning tasks (GSM8K, MATH) - no evaluation on general text generation or other domains\n3. Only one base model (LLaDA-8B-Instruct) is used - no evaluation across different model sizes or architectures\n4. The comparison to \"State-of-the-art\" is somewhat misleading given the limited scope of evaluation\n5. The gradient bias bound (Theorem 3.1) is relatively weak - it's essentially a Lipschitz argument that doesn't provide much insight into the actual magnitude of bias in practice\n6. The paper doesn't address potential issues with the \"active block\" selection - uniform sampling may not be optimal for all sequences\n\nThe paper is clearly written and well-organized. The experimental design is careful with matched compute and token budgets. The main contributions are the diagnosis of the mismatch and the simple fix, which is valuable for practitioners working with diffusion LMs.\n\nI would rate this as a borderline accept - the core idea is sound and practically useful, but the evaluation is narrow and the theoretical contributions are modest. The paper would be stronger with more diverse evaluation and a deeper analysis of when blockwise alignment matters most.\n\nOverall assessment: The paper addresses a real and important problem in diffusion LM training. The proposed solution is simple, effective, and well-motivated. However, the limited evaluation scope (only math reasoning, one model) and somewhat incremental theory prevent it from being a strong accept. I'll rate it as borderline accept.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper identifies a fundamental mismatch between classical SFT for discrete diffusion language models and their blockwise semi-autoregressive inference procedure. Classical SFT randomly masks tokens across the entire response with bidirectional context, while inference generates fixed-size blocks sequentially with clean prefixes and hidden futures. This creates three problems: noisy prefixes, suffix leakage, and granularity mismatch. The authors propose Blockwise SFT, which partitions responses into fixed-size blocks, selects one active block per training step for stochastic masking, freezes all preceding tokens, and hides future tokens. Loss is computed only over the active block, directly mirroring the blockwise decoding process. The paper provides theoretical analysis (variational bounds, unbiased gradient estimation, gradient bias characterization) and empirical evaluation on GSM8K, MATH, and MetaMathQA showing consistent gains over classical SFT under matched compute and token budgets. Ablations confirm that improvements stem from training-inference alignment rather than incidental masking effects.\",\n    \"Strengths\": [\n        \"Clear and well-motivated problem diagnosis: the training-inference mismatch in diffusion LMs is a real and important issue that has been underappreciated\",\n        \"Simple and practical solution: Blockwise SFT is a drop-in replacement requiring no architectural changes, making it easily adoptable\",\n        \"Thoughtful experimental design: matched compute (Equal-FLOPS) and token (Equal-Tokens) budgets isolate the effect of supervision granularity from raw compute\",\n        \"Comprehensive ablations: block size consistency study, prefix noise analysis, and suffix leakage analysis directly support the alignment hypothesis\",\n        \"Theoretical grounding: variational bound on blockwise likelihoods and unbiased gradient estimation provide formal guarantees for the proposed objective\",\n        \"Consistent empirical gains: +5.2 points over strongest baseline on GSM8K and +1.6 on MATH demonstrate practical value\"\n    ],\n    \"Weaknesses\": [\n        \"Limited evaluation scope: experiments are restricted to math reasoning tasks (GSM8K, MATH) with a single base model (LLaDA-8B-Instruct); no evaluation on general text generation, code, or other domains that would test broader applicability\",\n        \"Theoretical contributions are somewhat incremental: the variational bound and unbiased gradient estimation are standard results in diffusion literature applied to a specific masking scheme; the gradient bias bound (Theorem 3.1) is a Lipschitz argument that provides limited practical insight\",\n        \"No comparison across model scales or architectures: the method's robustness to different model sizes, parameter counts, or diffusion formulations is not tested\",\n        \"The 'state-of-the-art' claim is overstated given the narrow evaluation; a more honest framing would acknowledge the limited benchmark coverage\",\n        \"The paper does not analyze computational overhead of the blockwise approach in detail - while compute is matched, the wall-clock time and memory implications of the different masking strategies are not thoroughly discussed\",\n        \"Uniform block sampling may not be optimal; the paper mentions difficulty-aware reweighting as future work but does not explore this direction\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 3,\n    \"Clarity\": 4,\n    \"Significance\": 3,\n    \"Questions\": [\n        \"How does Blockwise SFT perform on non-mathematical reasoning tasks such as general instruction following, summarization, or code generation? The paper's claims of general applicability would be stronger with evidence from diverse domains.\",\n        \"The gradient bias bound in Theorem 3.1 depends on Lipschitz constants L_pre and L_suf. Can you provide estimates of these constants for your model? Without such estimates, the bound is difficult to interpret quantitatively.\",\n        \"In the Equal-Tokens protocol, Blockwise SFT runs approximately L_r/B times more epochs than Classical SFT. How does this affect overfitting risk for longer training runs or smaller datasets?\",\n        \"The paper uses block sizes of 8, 16, 32, 64. How does the optimal block size relate to sequence length or task complexity? Is there a principled way to choose block size for new tasks?\",\n        \"What is the sensitivity of the results to the masking rate distribution (Uniform(10^-3, 1))? Would a different distribution improve or degrade performance?\",\n        \"The paper reports results with LoRA fine-tuning. Would the observed gains persist with full fine-tuning? LoRA constrains the hypothesis space, which might interact with the alignment effect.\"\n    ],\n    \"Limitations\": [\n        \"Evaluation is limited to mathematical reasoning tasks with a single model size and architecture; broader validation across domains and model families is needed\",\n        \"The theoretical analysis provides bounds but does not quantify the practical magnitude of the bias for realistic models and data distributions\",\n        \"The method assumes fixed-size blocks; adaptive block sizing (as in APD) might interact differently with the training objective\",\n        \"Potential negative societal impact is not discussed, though the paper's methods are unlikely to introduce new risks beyond those inherent in language model fine-tuning\",\n        \"The paper does not discuss potential failure modes when responses have variable lengths or when the last block is smaller than the block size\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 4,\n    \"Contribution\": 3,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 14835,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 13043,
+        "completion_tokens": 1664,
+        "reasoning_tokens": 0,
+        "total_tokens": 16499
+      },
+      "attempts": 1,
+      "response_id": "10c2622f-0ce7-41e7-8f00-d2d55059c43c"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 5,
+      "Reject": 0
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          4,
+          4,
+          3,
+          4,
+          4
+        ],
+        "mean": 3.8,
+        "rounded_mean": 4,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Significance": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          4,
+          4,
+          3,
+          4,
+          4
+        ],
+        "mean": 3.8,
+        "rounded_mean": 4,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Contribution": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          7,
+          7,
+          6,
+          6,
+          6
+        ],
+        "mean": 6.4,
+        "rounded_mean": 6,
+        "population_sd": 0.49,
+        "min": 6,
+        "max": 7
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "This paper identifies and addresses a training-inference mismatch in discrete diffusion language models. Classical SFT randomly masks tokens across the entire response, while inference uses blockwise semi-autoregressive decoding with clean prefixes and hidden future tokens. The authors propose Blockwise SFT, which partitions responses into fixed-size blocks, selects one active block per training step for stochastic masking, freezes preceding tokens, and hides future ones, computing loss only on the active block. This directly mirrors the blockwise decoding procedure. The paper provides theoretical grounding (gradient bias bound, variational bound, unbiased gradient estimation) and empirical evaluation on GSM8K and MATH using LLaDA-8B-Instruct with LoRA fine-tuning. Experiments show consistent gains over classical SFT and other baselines under matched compute and token budgets. Ablations confirm that improvements stem from training-inference alignment rather than incidental masking effects.",
+      "Strengths": [
+        "Clearly identifies a genuine and important training-inference mismatch in diffusion LMs",
+        "Proposes a simple, elegant, and architecture-agnostic solution that is a drop-in replacement for classical SFT",
+        "Provides solid theoretical grounding including variational bounds, unbiased gradient estimation, and gradient bias analysis",
+        "Careful experimental design with matched-compute and matched-token protocols",
+        "Well-designed ablations and block-size consistency studies that convincingly attribute gains to alignment",
+        "Consistent and substantial empirical gains on GSM8K and MATH",
+        "Clear and well-organized writing"
+      ],
+      "Weaknesses": [
+        "Limited evaluation scope: only mathematical reasoning tasks, a single base model (LLaDA-8B-Instruct), and LoRA fine-tuning; generalizability to other domains and model scales is untested",
+        "Theoretical contributions are somewhat standard (variational bounds and unbiased gradient estimation are well-known in diffusion literature)",
+        "Gradient bias bound relies on Lipschitz assumptions that are not empirically verified",
+        "Baseline comparisons may not be fully tuned to the same extent, and some baselines are primarily pretraining objectives rather than SFT methods",
+        "No inference efficiency/speed comparisons, despite the motivation of aligning with blockwise decoding",
+        "The paper does not explore adaptive block sizing or non-uniform block sampling, which could further improve results"
+      ],
+      "Originality": 3,
+      "Quality": 3,
+      "Clarity": 4,
+      "Significance": 3,
+      "Questions": [
+        "How does Blockwise SFT perform on non-math domains such as general instruction following, summarization, or code generation?",
+        "Would the gains persist with larger models (e.g., LLaDA-33B) or with full fine-tuning instead of LoRA?",
+        "How sensitive is the method to the block sampling distribution? Has difficulty-aware or length-aware reweighting been explored?",
+        "In the Equal-Tokens protocol, does Blockwise SFT require more wall-clock time due to more epochs, and how does this affect overfitting risk?",
+        "What is the effect of the diffusion step schedule T on performance, and does the optimal schedule differ from classical SFT?",
+        "How does Blockwise SFT compare to simply using a higher masking probability in classical SFT?",
+        "How are partial blocks handled when response length is not a multiple of the block size?",
+        "Can you provide estimates of the Lipschitz constants in Theorem 3.1 for the model used?",
+        "Have you measured inference speed or throughput gains from blockwise decoding, and how does Blockwise SFT affect these?"
+      ],
+      "Limitations": [
+        "Empirical evaluation is confined to mathematical reasoning tasks and a single model family; broader validation across domains and model sizes is needed",
+        "Theoretical analysis provides bounds but does not quantify their practical tightness for realistic models",
+        "The method assumes fixed block sizes; interaction with adaptive block sizing (e.g., APD) is unexplored",
+        "Training with Blockwise SFT may require more epochs to cover all blocks, potentially increasing wall-clock time",
+        "Potential negative societal impact is not discussed in detail, though the method itself is unlikely to introduce novel harms beyond general LLM fine-tuning concerns"
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 4,
+      "Contribution": 3,
+      "Overall": 7,
+      "Confidence": 4,
+      "Decision": "Accept"
+    },
+    "raw_response": "THOUGHT:\nThe paper addresses a real and relevant problem in discrete diffusion language models: the mismatch between classical SFT (which masks tokens across the entire response with bidirectional context) and blockwise semi-autoregressive decoding (which uses clean prefixes and hidden futures). The proposed Blockwise SFT is simple, elegant, and architecture-agnostic. All five reviewers agree on the core strengths: clear problem identification, a practical solution, careful experimental design with matched compute/token budgets, and convincing ablations.\n\nThe main weaknesses, also consistently noted across reviews, are: (1) limited evaluation scope (single model, single domain—math reasoning only), (2) somewhat standard theoretical contributions (variational bounds, unbiased gradient estimation), and (3) questions about baseline tuning and generalizability. None of the reviewers raised serious technical flaws or ethical concerns.\n\nThe reviewer scores are: 7, 7, 6, 6, 6 (all Accept). The consensus is clearly in favor of acceptance. The paper is technically solid, well-presented, and makes a useful contribution. The limitations are real but do not outweigh the strengths. The scores for originality, quality, clarity, and significance are all around 3 (good), which is consistent with a solid but not groundbreaking paper.\n\nI will aggregate this into a meta-review that highlights the consensus strengths and weaknesses, and ultimately recommend Accept. My overall score will be 7 (Accept), reflecting the solid technical quality and moderate significance, while noting the need for broader evaluation in future work.\n\nREVIEW JSON:\n```json\n{\n  \"Summary\": \"This paper identifies and addresses a training-inference mismatch in discrete diffusion language models. Classical SFT randomly masks tokens across the entire response, while inference uses blockwise semi-autoregressive decoding with clean prefixes and hidden future tokens. The authors propose Blockwise SFT, which partitions responses into fixed-size blocks, selects one active block per training step for stochastic masking, freezes preceding tokens, and hides future ones, computing loss only on the active block. This directly mirrors the blockwise decoding procedure. The paper provides theoretical grounding (gradient bias bound, variational bound, unbiased gradient estimation) and empirical evaluation on GSM8K and MATH using LLaDA-8B-Instruct with LoRA fine-tuning. Experiments show consistent gains over classical SFT and other baselines under matched compute and token budgets. Ablations confirm that improvements stem from training-inference alignment rather than incidental masking effects.\",\n  \"Strengths\": [\n    \"Clearly identifies a genuine and important training-inference mismatch in diffusion LMs\",\n    \"Proposes a simple, elegant, and architecture-agnostic solution that is a drop-in replacement for classical SFT\",\n    \"Provides solid theoretical grounding including variational bounds, unbiased gradient estimation, and gradient bias analysis\",\n    \"Careful experimental design with matched-compute and matched-token protocols\",\n    \"Well-designed ablations and block-size consistency studies that convincingly attribute gains to alignment\",\n    \"Consistent and substantial empirical gains on GSM8K and MATH\",\n    \"Clear and well-organized writing\"\n  ],\n  \"Weaknesses\": [\n    \"Limited evaluation scope: only mathematical reasoning tasks, a single base model (LLaDA-8B-Instruct), and LoRA fine-tuning; generalizability to other domains and model scales is untested\",\n    \"Theoretical contributions are somewhat standard (variational bounds and unbiased gradient estimation are well-known in diffusion literature)\",\n    \"Gradient bias bound relies on Lipschitz assumptions that are not empirically verified\",\n    \"Baseline comparisons may not be fully tuned to the same extent, and some baselines are primarily pretraining objectives rather than SFT methods\",\n    \"No inference efficiency/speed comparisons, despite the motivation of aligning with blockwise decoding\",\n    \"The paper does not explore adaptive block sizing or non-uniform block sampling, which could further improve results\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 4,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does Blockwise SFT perform on non-math domains such as general instruction following, summarization, or code generation?\",\n    \"Would the gains persist with larger models (e.g., LLaDA-33B) or with full fine-tuning instead of LoRA?\",\n    \"How sensitive is the method to the block sampling distribution? Has difficulty-aware or length-aware reweighting been explored?\",\n    \"In the Equal-Tokens protocol, does Blockwise SFT require more wall-clock time due to more epochs, and how does this affect overfitting risk?\",\n    \"What is the effect of the diffusion step schedule T on performance, and does the optimal schedule differ from classical SFT?\",\n    \"How does Blockwise SFT compare to simply using a higher masking probability in classical SFT?\",\n    \"How are partial blocks handled when response length is not a multiple of the block size?\",\n    \"Can you provide estimates of the Lipschitz constants in Theorem 3.1 for the model used?\",\n    \"Have you measured inference speed or throughput gains from blockwise decoding, and how does Blockwise SFT affect these?\"\n  ],\n  \"Limitations\": [\n    \"Empirical evaluation is confined to mathematical reasoning tasks and a single model family; broader validation across domains and model sizes is needed\",\n    \"Theoretical analysis provides bounds but does not quantify their practical tightness for realistic models\",\n    \"The method assumes fixed block sizes; interaction with adaptive block sizing (e.g., APD) is unexplored\",\n    \"Training with Blockwise SFT may require more epochs to cover all blocks, potentially increasing wall-clock time\",\n    \"Potential negative societal impact is not discussed in detail, though the method itself is unlikely to introduce novel harms beyond general LLM fine-tuning concerns\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 4,\n  \"Contribution\": 3,\n  \"Overall\": 7,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 6757,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 6757,
+      "completion_tokens": 1257,
+      "reasoning_tokens": 0,
+      "total_tokens": 8014
+    },
+    "attempts": 1,
+    "response_id": "e6e686ff-eee1-4f02-935e-74b3d9a4489d"
+  },
+  "final_review": {
+    "Summary": "This paper identifies and addresses a training-inference mismatch in discrete diffusion language models. Classical SFT randomly masks tokens across the entire response, while inference uses blockwise semi-autoregressive decoding with clean prefixes and hidden future tokens. The authors propose Blockwise SFT, which partitions responses into fixed-size blocks, selects one active block per training step for stochastic masking, freezes preceding tokens, and hides future ones, computing loss only on the active block. This directly mirrors the blockwise decoding procedure. The paper provides theoretical grounding (gradient bias bound, variational bound, unbiased gradient estimation) and empirical evaluation on GSM8K and MATH using LLaDA-8B-Instruct with LoRA fine-tuning. Experiments show consistent gains over classical SFT and other baselines under matched compute and token budgets. Ablations confirm that improvements stem from training-inference alignment rather than incidental masking effects.",
+    "Strengths": [
+      "Clearly identifies a genuine and important training-inference mismatch in diffusion LMs",
+      "Proposes a simple, elegant, and architecture-agnostic solution that is a drop-in replacement for classical SFT",
+      "Provides solid theoretical grounding including variational bounds, unbiased gradient estimation, and gradient bias analysis",
+      "Careful experimental design with matched-compute and matched-token protocols",
+      "Well-designed ablations and block-size consistency studies that convincingly attribute gains to alignment",
+      "Consistent and substantial empirical gains on GSM8K and MATH",
+      "Clear and well-organized writing"
+    ],
+    "Weaknesses": [
+      "Limited evaluation scope: only mathematical reasoning tasks, a single base model (LLaDA-8B-Instruct), and LoRA fine-tuning; generalizability to other domains and model scales is untested",
+      "Theoretical contributions are somewhat standard (variational bounds and unbiased gradient estimation are well-known in diffusion literature)",
+      "Gradient bias bound relies on Lipschitz assumptions that are not empirically verified",
+      "Baseline comparisons may not be fully tuned to the same extent, and some baselines are primarily pretraining objectives rather than SFT methods",
+      "No inference efficiency/speed comparisons, despite the motivation of aligning with blockwise decoding",
+      "The paper does not explore adaptive block sizing or non-uniform block sampling, which could further improve results"
+    ],
+    "Originality": 3,
+    "Quality": 3,
+    "Clarity": 4,
+    "Significance": 3,
+    "Questions": [
+      "How does Blockwise SFT perform on non-math domains such as general instruction following, summarization, or code generation?",
+      "Would the gains persist with larger models (e.g., LLaDA-33B) or with full fine-tuning instead of LoRA?",
+      "How sensitive is the method to the block sampling distribution? Has difficulty-aware or length-aware reweighting been explored?",
+      "In the Equal-Tokens protocol, does Blockwise SFT require more wall-clock time due to more epochs, and how does this affect overfitting risk?",
+      "What is the effect of the diffusion step schedule T on performance, and does the optimal schedule differ from classical SFT?",
+      "How does Blockwise SFT compare to simply using a higher masking probability in classical SFT?",
+      "How are partial blocks handled when response length is not a multiple of the block size?",
+      "Can you provide estimates of the Lipschitz constants in Theorem 3.1 for the model used?",
+      "Have you measured inference speed or throughput gains from blockwise decoding, and how does Blockwise SFT affect these?"
+    ],
+    "Limitations": [
+      "Empirical evaluation is confined to mathematical reasoning tasks and a single model family; broader validation across domains and model sizes is needed",
+      "Theoretical analysis provides bounds but does not quantify their practical tightness for realistic models",
+      "The method assumes fixed block sizes; interaction with adaptive block sizing (e.g., APD) is unexplored",
+      "Training with Blockwise SFT may require more epochs to cover all blocks, potentially increasing wall-clock time",
+      "Potential negative societal impact is not discussed in detail, though the method itself is unlikely to introduce novel harms beyond general LLM fine-tuning concerns"
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 4,
+    "Contribution": 3,
+    "Overall": 6,
+    "Confidence": 4,
+    "Decision": "Accept"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 80932,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 71972,
+    "completion_tokens": 10151,
+    "reasoning_tokens": 0,
+    "total_tokens": 91083,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.01007608,
+    "output_usd": 0.00284228,
+    "total_usd": 0.01294345
+  },
+  "elapsed_seconds": 29.106,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Accept",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B050",
+    "filename": "B050.txt",
+    "blind_text_sha256": "48eb82685568f9ffec0a2b0b52fa56aad8c51b0a44065b4b4ed2ac2043b6f945",
+    "characters": 49379,
+    "full_text_saved": false
+  }
+}

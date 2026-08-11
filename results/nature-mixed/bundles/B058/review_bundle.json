@@ -1,0 +1,700 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T18:44:18.195328+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false,
+    "visible_thought_scaffold_saved": true
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "none",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "mean",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28,
+    "protocol": "nature-si-a3-base-v1"
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper proposes ImitSAT, a branching policy for CDCL SAT solvers trained via imitation learning. The key idea is to extract 'KeyTraces' from full solver runs by collapsing backtracks and keeping only surviving decisions, providing dense, decision-level supervision. Branching is formulated as autoregressive sequence prediction: given the CNF formula and the current KeyTrace prefix, a Perceiver AR Transformer predicts the next signed variable. The policy is integrated into a Python MiniSAT reimplementation and queried with a small budget (3-5 calls), falling back to VSIDS otherwise. Experiments on random 3-SAT (5-100 variables) and structured SAT families (AIM, JNH, PARITY, PHOLE, PRET) show reduced propagation counts and favorable wall-clock time compared to SATformer and Graph-Q-SAT, with generalization to unsatisfiable and non-k-SAT instances.",
+        "Strengths": [
+          "Novel and clean idea: collapsing solver runs into KeyTraces (surviving decisions) provides a natural expert signal for imitation learning in CDCL branching, avoiding the instability of RL.",
+          "The autoregressive sequence modeling formulation is well-motivated and aligns naturally with the prefix-conditioned nature of branching.",
+          "Extensive experimental evaluation: multiple random 3-SAT size ranges, structured SAT/UNSAT and non-k-SAT families, comparisons with two strong baselines (including retrained variants), and wall-clock timing.",
+          "Honest assessment of limitations: the paper includes ablations (query budget, GNN combination, Top-K masking) and reports cases where ImitSAT does not help (e.g., JNH with CaDiCaL).",
+          "Clear writing with helpful figures (KeyTrace illustration, propagation dominance) and thorough appendices."
+        ],
+        "Weaknesses": [
+          "Evaluation is limited to very small instances (≤100 variables). This severely limits practical relevance, as real-world SAT instances are typically much larger. The SATCOMP subset is filtered to ≤100 variables, which is not representative of industrial benchmarks.",
+          "The gap between the KeyTrace expert (MRPP as low as 0.03) and ImitSAT (MRPP ~0.75-0.83) is large, indicating the learned policy captures only a fraction of the expert's benefit.",
+          "Wall-clock improvements over pure MiniSAT are only demonstrated on the hardest 61-100 variable range; on smaller instances, MiniSAT is faster. This raises questions about when the overhead is justified.",
+          "The use of a Python MiniSAT reimplementation, while validated, may not reflect the performance characteristics of optimized C++ solvers, limiting the generality of the wall-clock claims.",
+          "The query budget is very small (3-5 calls). While the paper shows diminishing returns, a more detailed analysis of adaptive or larger budgets would strengthen the practical claims.",
+          "The retrained baselines (GQSAT*, SATformer*) perform notably worse than their original versions, which is not fully explained and may indicate training data or hyperparameter sensitivity."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 2,
+        "Questions": [
+          "1. How does ImitSAT scale to instances with more than 100 variables? The current context budget limits the DIMACS encoding, but could the model be extended (e.g., with a GNN encoder) to handle larger formulas?",
+          "2. The gap between KeyTrace (MRPP 0.03-0.57) and ImitSAT (MRPP 0.73-0.83) is substantial. What are the main sources of this gap? Is it model capacity, training data size, or the difficulty of the imitation task?",
+          "3. In Table 12, ImitSAT is slower than MiniSAT on 16-30 and 31-60 ranges. What is the per-query inference latency, and how does it compare to the propagation savings? Could a faster model (e.g., a smaller Transformer) shift the trade-off?",
+          "4. The retrained baselines (GQSAT*, SATformer*) perform much worse than the originals. Why? Is this due to training data distribution, hyperparameters, or something else?",
+          "5. For the CaDiCaL integration, ImitSAT degrades performance on JNH (MRPP 1.15-1.46). What is the explanation? Does the preprocessing in CaDiCaL interact poorly with the learned policy?",
+          "6. The paper uses a fixed query budget at the start of the search. Have you considered adaptive budgets based on instance difficulty or model confidence?",
+          "7. How sensitive are the results to the choice of the clause-variable ratio [4.1, 4.4] in the training data? Would training on a wider range improve generalization?"
+        ],
+        "Limitations": [
+          "The primary limitation is the small instance size (≤100 variables), which limits practical relevance to real-world SAT problems.",
+          "Wall-clock gains over MiniSAT are only shown for the hardest instances; overhead dominates on easier problems.",
+          "The Python solver environment may not reflect production solver performance.",
+          "The learned policy captures only a fraction of the expert KeyTrace's benefit, suggesting room for improvement in the imitation approach.",
+          "The paper acknowledges computational resource constraints (4 V100 GPUs) limiting model size and training duration.",
+          "Potential negative societal impact is minimal, as the work is on a foundational algorithmic problem with no direct harmful applications."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes ImitSAT, a branching policy for CDCL SAT solvers based on imitation learning. The key idea is to extract \"KeyTraces\" from solver runs by collapsing backtracks, keeping only surviving decisions, and then train an autoregressive Transformer (Perceiver AR) to predict the next decision given the formula and the current KeyTrace prefix. The policy is integrated into a CDCL solver (Python MiniSAT reimplementation) with a small query budget (3-5 calls), falling back to VSIDS otherwise.\n\nLet me assess this paper across the required dimensions:\n\n**Originality**: The idea of using imitation learning for SAT branching is relatively novel. Previous work (Graph-Q-SAT) used RL, and SATformer used instance-level predictions. The KeyTrace concept—collapsing solver traces to only surviving decisions—is an interesting and clean idea. The formulation of branching as autoregressive sequence prediction is a natural extension of recent sequence modeling approaches (e.g., Decision Transformer). The paper is clear about how it differs from prior work, particularly MIP branching IL approaches.\n\n**Quality**: The technical approach is sound. The KeyTrace extraction (Equation 7) is well-defined. The autoregressive formulation is appropriate. The experiments are extensive: multiple random 3-SAT ranges, structured families (SAT/UNSAT, k-SAT/non-k-SAT), comparisons with SATformer and Graph-Q-SAT (including retrained versions), wall-clock timing, ablations (query budget, GNN augmentation, Top-K masking), and integration with CaDiCaL and Kissat. However, there are concerns:\n- The evaluation is on very small instances (5-100 variables). This is a significant limitation for practical relevance.\n- The Python MiniSAT reimplementation may not reflect real solver performance; the paper does validate it against C++ MiniSAT, but the wall-clock comparisons are within this Python environment.\n- The improvements, while consistent, are modest (MRPP around 0.75-0.83 on in-distribution sets). The KeyTrace itself achieves much lower MRPP (0.03-0.57), indicating a large gap between the expert and the learned policy.\n- The paper is honest about limitations (e.g., overfitting, GNN combination not helping).\n\n**Clarity**: The paper is generally well-written and organized. The KeyTrace concept is explained clearly with a figure and appendix example. The serialization and training objective are clearly specified. However, some details are only in appendices (query budget analysis, wall-clock comparisons with MiniSAT), which makes the main text feel incomplete. The metrics (MRPP, W1%) are clearly defined.\n\n**Significance**: The paper addresses an important problem (improving CDCL branching). The KeyTrace idea is potentially useful for the community. However, the scale of experiments (≤100 variables) and the modest gains (and lack of wall-clock improvement over MiniSAT on smaller instances) limit the immediate practical impact. The generalization to structured families is interesting but again on small instances.\n\n**Weaknesses**:\n1. Very small instance sizes (≤100 variables) limit practical relevance. SATCOMP experiments are filtered to ≤100 variables.\n2. The gap between KeyTrace expert performance and ImitSAT is large, suggesting the imitation is not very effective.\n3. Wall-clock improvements over MiniSAT are only shown for 61-100 range; on smaller instances MiniSAT is faster.\n4. The Python MiniSAT reimplementation may not represent real solver performance.\n5. The query budget is very small (3-5 calls); the paper could explore more calls or adaptive budgeting more thoroughly.\n6. The comparison with SATformer and Graph-Q-SAT is on their original training data; the retrained versions (SATformer*, GQSAT*) perform worse, which is interesting but raises questions about training data comparability.\n\n**Ethical concerns**: None apparent. The paper includes an ethics statement and uses public/procedurally generated data.\n\n**Overall assessment**: This is a solid paper with a novel idea (KeyTrace imitation for SAT branching) and thorough experimentation, but the practical significance is limited by the small instance sizes and modest gains. The approach is well-motivated and clearly presented. I would rate this as a borderline accept—the idea is interesting and the experiments are careful, but the impact is limited. I'll give it an overall score of 6 (Weak Accept) and a decision of Accept (since the technical soundness is good and the idea is novel, even if the scale is limited).\n\nRatings:\n- Originality: 3 (high) - novel combination of imitation learning + KeyTrace for SAT\n- Quality: 3 (good) - sound methodology, extensive experiments, but scale limitations\n- Clarity: 3 (good) - clear writing, but some important details in appendices\n- Significance: 2 (medium) - interesting but limited practical impact at this scale\n- Soundness: 3 (good)\n- Presentation: 3 (good)\n- Contribution: 3 (good)\n- Overall: 6 (Weak Accept)\n- Confidence: 4 (confident, but not an expert in all SAT solver details)\n\nI'll write the review now.REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper proposes ImitSAT, a branching policy for CDCL SAT solvers trained via imitation learning. The key idea is to extract 'KeyTraces' from full solver runs by collapsing backtracks and keeping only surviving decisions, providing dense, decision-level supervision. Branching is formulated as autoregressive sequence prediction: given the CNF formula and the current KeyTrace prefix, a Perceiver AR Transformer predicts the next signed variable. The policy is integrated into a Python MiniSAT reimplementation and queried with a small budget (3-5 calls), falling back to VSIDS otherwise. Experiments on random 3-SAT (5-100 variables) and structured SAT families (AIM, JNH, PARITY, PHOLE, PRET) show reduced propagation counts and favorable wall-clock time compared to SATformer and Graph-Q-SAT, with generalization to unsatisfiable and non-k-SAT instances.\",\n  \"Strengths\": [\n    \"Novel and clean idea: collapsing solver runs into KeyTraces (surviving decisions) provides a natural expert signal for imitation learning in CDCL branching, avoiding the instability of RL.\",\n    \"The autoregressive sequence modeling formulation is well-motivated and aligns naturally with the prefix-conditioned nature of branching.\",\n    \"Extensive experimental evaluation: multiple random 3-SAT size ranges, structured SAT/UNSAT and non-k-SAT families, comparisons with two strong baselines (including retrained variants), and wall-clock timing.\",\n    \"Honest assessment of limitations: the paper includes ablations (query budget, GNN combination, Top-K masking) and reports cases where ImitSAT does not help (e.g., JNH with CaDiCaL).\",\n    \"Clear writing with helpful figures (KeyTrace illustration, propagation dominance) and thorough appendices.\"\n  ],\n  \"Weaknesses\": [\n    \"Evaluation is limited to very small instances (≤100 variables). This severely limits practical relevance, as real-world SAT instances are typically much larger. The SATCOMP subset is filtered to ≤100 variables, which is not representative of industrial benchmarks.\",\n    \"The gap between the KeyTrace expert (MRPP as low as 0.03) and ImitSAT (MRPP ~0.75-0.83) is large, indicating the learned policy captures only a fraction of the expert's benefit.\",\n    \"Wall-clock improvements over pure MiniSAT are only demonstrated on the hardest 61-100 variable range; on smaller instances, MiniSAT is faster. This raises questions about when the overhead is justified.\",\n    \"The use of a Python MiniSAT reimplementation, while validated, may not reflect the performance characteristics of optimized C++ solvers, limiting the generality of the wall-clock claims.\",\n    \"The query budget is very small (3-5 calls). While the paper shows diminishing returns, a more detailed analysis of adaptive or larger budgets would strengthen the practical claims.\",\n    \"The retrained baselines (GQSAT*, SATformer*) perform notably worse than their original versions, which is not fully explained and may indicate training data or hyperparameter sensitivity.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"1. How does ImitSAT scale to instances with more than 100 variables? The current context budget limits the DIMACS encoding, but could the model be extended (e.g., with a GNN encoder) to handle larger formulas?\",\n    \"2. The gap between KeyTrace (MRPP 0.03-0.57) and ImitSAT (MRPP 0.73-0.83) is substantial. What are the main sources of this gap? Is it model capacity, training data size, or the difficulty of the imitation task?\",\n    \"3. In Table 12, ImitSAT is slower than MiniSAT on 16-30 and 31-60 ranges. What is the per-query inference latency, and how does it compare to the propagation savings? Could a faster model (e.g., a smaller Transformer) shift the trade-off?\",\n    \"4. The retrained baselines (GQSAT*, SATformer*) perform much worse than the originals. Why? Is this due to training data distribution, hyperparameters, or something else?\",\n    \"5. For the CaDiCaL integration, ImitSAT degrades performance on JNH (MRPP 1.15-1.46). What is the explanation? Does the preprocessing in CaDiCaL interact poorly with the learned policy?\",\n    \"6. The paper uses a fixed query budget at the start of the search. Have you considered adaptive budgets based on instance difficulty or model confidence?\",\n    \"7. How sensitive are the results to the choice of the clause-variable ratio [4.1, 4.4] in the training data? Would training on a wider range improve generalization?\"\n  ],\n  \"Limitations\": [\n    \"The primary limitation is the small instance size (≤100 variables), which limits practical relevance to real-world SAT problems.\",\n    \"Wall-clock gains over MiniSAT are only shown for the hardest instances; overhead dominates on easier problems.\",\n    \"The Python solver environment may not reflect production solver performance.\",\n    \"The learned policy captures only a fraction of the expert KeyTrace's benefit, suggesting room for improvement in the imitation approach.\",\n    \"The paper acknowledges computational resource constraints (4 V100 GPUs) limiting model size and training duration.\",\n    \"Potential negative societal impact is minimal, as the work is on a foundational algorithmic problem with no direct harmful applications.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 21814,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 20022,
+        "completion_tokens": 2304,
+        "reasoning_tokens": 0,
+        "total_tokens": 24118
+      },
+      "attempts": 1,
+      "response_id": "f18c01ea-8773-499d-bdfd-5f8395add603"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper introduces ImitSAT, a branching policy for CDCL SAT solvers trained via imitation learning. The key contribution is the concept of a 'KeyTrace'—a compact sequence of surviving decisions extracted from full solver runs by collapsing backtracks and restarts. These KeyTraces provide dense, nearly conflict-free supervision at every decision point. The authors formulate branching as an autoregressive sequence prediction problem and train a Perceiver AR Transformer to predict the next decision given the CNF formula and a KeyTrace prefix. During inference, the model is queried under a small budget (3-5 calls per instance), with fallback to VSIDS when predictions are illegal or budget is exhausted. Experiments on random 3-SAT (5-100 variables) and structured families (AIM, JNH, PARITY, PHOLE, PRET) show that ImitSAT reduces propagation counts and wall-clock time compared to SATformer and Graph-Q-SAT, and generalizes to UNSAT and non-k-SAT benchmarks without retraining. The paper also includes ablations on query budgets, variable permutation augmentation, curriculum learning, and integration with advanced solvers (CaDiCaL, Kissat).",
+        "Strengths": [
+          "Novel application of imitation learning to CDCL branching, with the KeyTrace concept providing clean, dense supervision signals that avoid the instability of RL-based approaches.",
+          "Comprehensive empirical evaluation with multiple baselines (including retrained versions), query budget analysis, and ablations on training techniques.",
+          "Demonstrated generalization to structured SAT families (including UNSAT and non-k-SAT) despite training only on random 3-SAT, showing the learned policy captures transferable structure.",
+          "Clear and well-organized presentation with precise algorithmic descriptions and useful figures illustrating the KeyTrace construction and runtime breakdown.",
+          "Integration with advanced solvers (CaDiCaL, Kissat) shows the approach is not tied to a specific CDCL implementation."
+        ],
+        "Weaknesses": [
+          "Limited scale: all experiments are constrained to instances with ≤100 variables, which is far from practical SAT solving where industrial instances have millions of variables. This significantly limits the practical significance of the claimed improvements.",
+          "Main evaluation uses a Python reimplementation of MiniSAT, which is considerably slower than production C++ solvers. While validated against the official version, wall-clock comparisons may not reflect real-world performance characteristics.",
+          "The query budget is extremely small (3-5 calls per instance), all front-loaded at the start of search. This limits the model's influence on harder instances where later decisions become critical.",
+          "The expert traces are generated from MiniSAT itself, meaning the model learns to imitate MiniSAT's behavior rather than an optimal or stronger expert. The near-conflict-free KeyTrace replay is demonstrated only on the training instances, not on new ones.",
+          "The SATCOMP evaluation is restricted to a filtered subset (≤100 variables) that fits the model's context, which may not represent the difficulty distribution of real industrial benchmarks.",
+          "The paper does not report the per-query inference time of the model, making it difficult to assess the overhead-vs-benefit tradeoff in wall-clock terms."
+        ],
+        "Originality": 4,
+        "Quality": 3,
+        "Clarity": 4,
+        "Significance": 2,
+        "Questions": [
+          "How does ImitSAT scale to instances with more than 100 variables? The model's context length and training data are limited to this range—what architectural or data changes would be needed for larger instances?",
+          "What is the actual inference time per model query? The paper reports total wall-clock time but not the breakdown between model inference and solving, which is crucial for understanding the overhead.",
+          "Why does GQSAT* (retrained on the authors' data) perform so much worse than the original GQSAT? This suggests the training data distribution significantly impacts performance—can you comment on the interaction between training data and learned policy quality?",
+          "The KeyTrace includes propagation events. How does the model handle the fact that propagations depend on the current clause database, which changes as learned clauses are added during search? Is the model robust to this dynamic environment?",
+          "In the 'all-calls' configuration for the query budget analysis, what was the actual wall-clock impact? Was the model queried at every decision, and if so, how did the overhead affect runtime?",
+          "How were the CaDiCaL and Kissat integrations implemented? Were the branching callbacks used directly, and did the preprocessing/probing in these solvers interfere with the model's decisions?"
+        ],
+        "Limitations": [
+          "The paper acknowledges computational resource constraints but could more explicitly discuss the limitation of ≤100 variables and its implications for practical deployment.",
+          "The reliance on MiniSAT's own behavior as the expert raises questions about whether the learned policy can surpass the teacher's quality or is inherently bounded by it.",
+          "The use of a Python MiniSAT reimplementation for main experiments, while validated, may not accurately represent the performance characteristics of optimized C++ solvers.",
+          "The potential negative societal impact is minimal, and the paper appropriately notes the use of procedurally generated and public benchmarks with no human subjects."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 4,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes ImitSAT, a branching policy for CDCL SAT solvers based on imitation learning. The key idea is to extract \"KeyTraces\" from solver runs by collapsing backtracks and restarts, keeping only surviving decisions and propagations. These KeyTraces serve as expert demonstrations for training an autoregressive Transformer (Perceiver AR) to predict the next branching decision given a prefix of the KeyTrace and the CNF formula.\n\n**Strengths:**\n1. **Novel approach**: Using imitation learning for CDCL branching is a fresh perspective compared to prior RL-based (Graph-Q-SAT) or instance-level prediction (SATformer) methods. The KeyTrace concept is elegant—collapsing detours provides clean, dense supervision.\n2. **Strong empirical results**: The paper shows consistent MRPP improvements over baselines across random 3-SAT and structured families, with meaningful wall-clock gains on harder instances. The transfer to UNSAT and non-k-SAT benchmarks is impressive.\n3. **Thorough evaluation**: Multiple baselines (including retrained versions), query budget analysis, integration with CaDiCaL/Kissat, and ablation studies (augmentation, curriculum, Top-K) demonstrate rigor.\n4. **Good presentation**: The paper is well-organized, with clear figures and explanations. The KeyTrace extraction algorithm is clearly specified.\n\n**Weaknesses:**\n1. **Limited problem scale**: All experiments are on instances with ≤100 variables. This is far from practical SAT solving, where industrial instances have millions of variables. The authors acknowledge this in limitations but it significantly limits the significance claim.\n2. **Python MiniSAT reimplementation**: The evaluation uses a Python reimplementation of MiniSAT, which is much slower than the C++ version. While validated against the official version, the wall-clock comparisons may not reflect real-world performance. The integration with CaDiCaL/Kissat partially addresses this, but the main results are on the Python solver.\n3. **Query budget is very small (3-5 calls)**: While the budget analysis shows diminishing returns, it's unclear how this scales. The model is queried only at the start of search, which may limit its impact on harder instances where later decisions matter.\n4. **Training data generation**: The expert traces are generated from MiniSAT runs on the same instances used for training. This creates a potential distribution shift—the model learns to imitate MiniSAT's behavior, which may not be optimal. The KeyTrace replay shows near-conflict-free behavior, but this is on the same instance, not on new ones.\n5. **Generalization to industrial benchmarks is limited**: The SATCOMP subset is filtered to ≤100 variables, which is a tiny fraction of real industrial instances. The claim of \"transferring to industrial benchmarks\" is overstated.\n\n**Questions for authors:**\n1. How does ImitSAT perform on instances with more than 100 variables? The model's context length and training data are limited to this range.\n2. What is the actual wall-clock overhead per model query? The paper reports total time but not the breakdown between inference and solving.\n3. Why does GQSAT* (retrained on their data) perform so much worse than the original GQSAT? This suggests the training data distribution matters significantly.\n4. How was the \"all-calls\" configuration in the budget analysis handled for larger instances? The model's inference cost would be prohibitive.\n5. The KeyTrace extraction includes propagation events. How does the model handle the fact that propagations depend on the current clause database (which changes as learned clauses are added)?\n\n**Limitations:**\nThe paper adequately discusses computational resource constraints but could be more explicit about:\n- The scale limitation (≤100 variables) and its implications for practical use\n- The reliance on MiniSAT's behavior as the expert (potential suboptimality)\n- The Python solver's performance characteristics vs. production C++ solvers\n\n**Ethical concerns:** None identified. The paper uses procedurally generated and public benchmarks.\n\n**Overall assessment:**\nThis is a solid paper with a novel idea and good execution within its scope. The KeyTrace concept is interesting and the results are convincing within the small-instance regime. However, the limited scale (≤100 variables) and the use of a Python MiniSAT reimplementation for main results temper the significance. The integration with CaDiCaL/Kissat is a good step but only shows propagation improvements, not wall-clock gains on those solvers. I'd rate this as a borderline accept—the idea is valuable and the execution is careful, but the practical impact is currently limited.\n\nSoundness: 3 (good) - Claims are well-supported within the tested regime\nPresentation: 4 (excellent) - Clear writing, good organization\nContribution: 3 (good) - Novel approach with demonstrated value, but limited scale\nOverall: 6 (Weak Accept) - Solid work with moderate impact\n\nDecision: Accept (leaning towards weak accept, but the novelty and thoroughness justify acceptance)REVIEW JSON:\n```json\n{\n  \"Summary\": \"The paper introduces ImitSAT, a branching policy for CDCL SAT solvers trained via imitation learning. The key contribution is the concept of a 'KeyTrace'—a compact sequence of surviving decisions extracted from full solver runs by collapsing backtracks and restarts. These KeyTraces provide dense, nearly conflict-free supervision at every decision point. The authors formulate branching as an autoregressive sequence prediction problem and train a Perceiver AR Transformer to predict the next decision given the CNF formula and a KeyTrace prefix. During inference, the model is queried under a small budget (3-5 calls per instance), with fallback to VSIDS when predictions are illegal or budget is exhausted. Experiments on random 3-SAT (5-100 variables) and structured families (AIM, JNH, PARITY, PHOLE, PRET) show that ImitSAT reduces propagation counts and wall-clock time compared to SATformer and Graph-Q-SAT, and generalizes to UNSAT and non-k-SAT benchmarks without retraining. The paper also includes ablations on query budgets, variable permutation augmentation, curriculum learning, and integration with advanced solvers (CaDiCaL, Kissat).\",\n  \"Strengths\": [\n    \"Novel application of imitation learning to CDCL branching, with the KeyTrace concept providing clean, dense supervision signals that avoid the instability of RL-based approaches.\",\n    \"Comprehensive empirical evaluation with multiple baselines (including retrained versions), query budget analysis, and ablations on training techniques.\",\n    \"Demonstrated generalization to structured SAT families (including UNSAT and non-k-SAT) despite training only on random 3-SAT, showing the learned policy captures transferable structure.\",\n    \"Clear and well-organized presentation with precise algorithmic descriptions and useful figures illustrating the KeyTrace construction and runtime breakdown.\",\n    \"Integration with advanced solvers (CaDiCaL, Kissat) shows the approach is not tied to a specific CDCL implementation.\"\n  ],\n  \"Weaknesses\": [\n    \"Limited scale: all experiments are constrained to instances with ≤100 variables, which is far from practical SAT solving where industrial instances have millions of variables. This significantly limits the practical significance of the claimed improvements.\",\n    \"Main evaluation uses a Python reimplementation of MiniSAT, which is considerably slower than production C++ solvers. While validated against the official version, wall-clock comparisons may not reflect real-world performance characteristics.\",\n    \"The query budget is extremely small (3-5 calls per instance), all front-loaded at the start of search. This limits the model's influence on harder instances where later decisions become critical.\",\n    \"The expert traces are generated from MiniSAT itself, meaning the model learns to imitate MiniSAT's behavior rather than an optimal or stronger expert. The near-conflict-free KeyTrace replay is demonstrated only on the training instances, not on new ones.\",\n    \"The SATCOMP evaluation is restricted to a filtered subset (≤100 variables) that fits the model's context, which may not represent the difficulty distribution of real industrial benchmarks.\",\n    \"The paper does not report the per-query inference time of the model, making it difficult to assess the overhead-vs-benefit tradeoff in wall-clock terms.\"\n  ],\n  \"Originality\": 4,\n  \"Quality\": 3,\n  \"Clarity\": 4,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"How does ImitSAT scale to instances with more than 100 variables? The model's context length and training data are limited to this range—what architectural or data changes would be needed for larger instances?\",\n    \"What is the actual inference time per model query? The paper reports total wall-clock time but not the breakdown between model inference and solving, which is crucial for understanding the overhead.\",\n    \"Why does GQSAT* (retrained on the authors' data) perform so much worse than the original GQSAT? This suggests the training data distribution significantly impacts performance—can you comment on the interaction between training data and learned policy quality?\",\n    \"The KeyTrace includes propagation events. How does the model handle the fact that propagations depend on the current clause database, which changes as learned clauses are added during search? Is the model robust to this dynamic environment?\",\n    \"In the 'all-calls' configuration for the query budget analysis, what was the actual wall-clock impact? Was the model queried at every decision, and if so, how did the overhead affect runtime?\",\n    \"How were the CaDiCaL and Kissat integrations implemented? Were the branching callbacks used directly, and did the preprocessing/probing in these solvers interfere with the model's decisions?\"\n  ],\n  \"Limitations\": [\n    \"The paper acknowledges computational resource constraints but could more explicitly discuss the limitation of ≤100 variables and its implications for practical deployment.\",\n    \"The reliance on MiniSAT's own behavior as the expert raises questions about whether the learned policy can surpass the teacher's quality or is inherently bounded by it.\",\n    \"The use of a Python MiniSAT reimplementation for main experiments, while validated, may not accurately represent the performance characteristics of optimized C++ solvers.\",\n    \"The potential negative societal impact is minimal, and the paper appropriately notes the use of procedurally generated and public benchmarks with no human subjects.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 4,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 21814,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 20022,
+        "completion_tokens": 2190,
+        "reasoning_tokens": 0,
+        "total_tokens": 24004
+      },
+      "attempts": 1,
+      "response_id": "9b9e1fb3-e3e7-4f93-90cb-4af3b2952e47"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper proposes ImitSAT, a branching policy for CDCL SAT solvers based on imitation learning. The key idea is to extract 'KeyTraces' from solver runs by collapsing away backtracked decisions, retaining only the surviving root-to-current decisions. These KeyTraces serve as dense, decision-level supervision for training an autoregressive Transformer (Perceiver-AR) to predict the next branching decision given the CNF and the current KeyTrace prefix. The model is integrated into CDCL by querying it for the first few decisions and falling back to VSIDS otherwise. Experiments on random 3-SAT (5–100 variables) and structured SAT families (AIM, JNH, PARITY, PHOLE, PRET) show that ImitSAT reduces propagation counts compared to MiniSAT and outperforms prior learned methods (SATformer, Graph-Q-SAT) in most settings, with competitive wall-clock performance on larger instances. The paper also includes ablations on query budgets, curriculum learning, permutation augmentation, and integration with CaDiCaL and Kissat.",
+        "Strengths": [
+          "The KeyTrace extraction is a novel and clean idea: collapsing solver runs into surviving decisions provides dense, conflict-free supervision that directly targets the dominant cost (propagation) in CDCL.",
+          "The autoregressive formulation with Perceiver-AR is well-motivated and keeps inference cost linear in input length, making online integration practical.",
+          "The evaluation is fairly comprehensive for the claimed scope: multiple random 3-SAT size ranges, structured SAT/UNSAT families, non-k-SAT benchmarks, wall-clock measurements, and integration with advanced solvers (CaDiCaL, Kissat) in appendices.",
+          "The paper is honest about limitations, including the failure of Top-K masking on OOD data, the ineffectiveness of a naive GNN combination, and the trade-offs of curriculum learning.",
+          "The paper includes useful ablations (query budget, early decisions, permutation augmentation, curriculum) that provide insight into the method's behavior."
+        ],
+        "Weaknesses": [
+          "The evaluation is limited to instances with at most 100 variables, which is far below the scale of practical SAT solving (industrial benchmarks often have thousands to millions of variables). This significantly limits the demonstrated practical impact.",
+          "Wall-clock gains over pure MiniSAT are only achieved on the 61–100 variable range; on smaller instances, the model inference overhead dominates and MiniSAT is faster. The practical advantage is therefore narrow.",
+          "The gap between ImitSAT's MRPP (~0.75) and the KeyTrace expert upper bound (~0.03–0.57) is large, suggesting the learned policy captures only a small fraction of the potential improvement.",
+          "The comparison with baselines is somewhat weakened by the fact that GQSAT* (retrained on the ImitSAT dataset) performs much worse than the original GQSAT, raising questions about whether the training data distribution is appropriate for fair comparison.",
+          "No statistical significance tests or variance across training seeds are reported, making it hard to assess the robustness of the results.",
+          "The claim of being the 'first' imitation learning branching policy for CDCL is slightly overstated given prior imitation learning work in MIP branching, though the paper does acknowledge this distinction."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 2,
+        "Questions": [
+          "Why does GQSAT* perform so much worse than the original GQSAT when retrained on your dataset? Does this indicate a distribution mismatch that makes the comparison unfair?",
+          "How well does ImitSAT scale to instances beyond 100 variables? Do you have any preliminary evidence on larger instances (e.g., 200, 500, or 1000 variables)?",
+          "The gap between ImitSAT's MRPP (~0.75) and the KeyTrace upper bound (~0.03–0.57) is large. What are the main sources of this gap—is it a model capacity issue, insufficient queries, or something else?",
+          "Are the reported MRPP and W1% values averaged over multiple training seeds? If so, what is the variance? If not, how sensitive is the model to random initialization?",
+          "How does the expert KeyTrace quality vary with different instance generators (e.g., uniform random 3-SAT without planted assignments, or harder distributions)? Would the method still work if the expert traces are noisier?",
+          "What is the exact inference time overhead per model call? Could you provide a breakdown of model inference time versus solver time for a typical instance?"
+        ],
+        "Limitations": [
+          "The evaluation is restricted to instances with ≤100 variables, far below the scale of practical SAT solving, limiting the demonstrated practical impact.",
+          "Wall-clock gains over MiniSAT are only shown on the 61–100 variable range; on smaller instances, model overhead dominates.",
+          "The model is trained only on random 3-SAT with planted assignments, which limits the diversity of training data and potentially the generalizability to more varied industrial formulas.",
+          "No statistical significance testing or multi-seed variance analysis is reported.",
+          "The learned policy captures only a fraction of the expert KeyTrace's potential improvement (MRPP ~0.75 vs. KeyTrace ~0.03–0.57), indicating room for improvement in imitation quality.",
+          "The comparison with baselines may be affected by the fact that GQSAT* and SATformer* perform worse when retrained on the ImitSAT dataset."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 2,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes ImitSAT, a branching policy for CDCL SAT solvers based on imitation learning. The key idea is to extract \"KeyTraces\" from solver runs by collapsing away backtracked decisions, then train a Perceiver-AR transformer to autoregressively predict the next surviving decision given the CNF and the prefix of the KeyTrace. This provides dense, decision-level supervision. Experiments show reduced propagation counts and competitive wall-clock time compared to SATformer and Graph-Q-SAT.\n\nLet me think about the strengths and weaknesses carefully.\n\n**Strengths:**\n1. The KeyTrace concept is novel and clean—collapsing solver runs to surviving decisions provides a natural, dense supervision signal that avoids the noise of backtracked detours. This is a genuinely good idea for imitation learning in SAT.\n2. The paper addresses a real weakness of prior work: Graph-Q-SAT uses RL with sparse rewards, and SATformer only provides instance-level initialization. ImitSAT provides step-level supervision directly in the branching loop.\n3. The autoregressive formulation is natural and well-motivated, and using Perceiver-AR to keep inference O(N) is a sensible engineering choice.\n4. The evaluation is fairly comprehensive: random 3-SAT across multiple size ranges, structured families (SAT/UNSAT, k-SAT/non-k-SAT), wall-clock measurements, and integration with CaDiCaL and Kissat in the appendix.\n5. The paper is honest about limitations (e.g., Top-K masking degrading on OOD, GNN combination not helping, curriculum trade-offs).\n\n**Weaknesses:**\n1. The most significant concern is the scale of the evaluation. The largest instances are only 100 variables. This is quite small compared to what modern CDCL solvers handle (industrial benchmarks with thousands/millions of variables). The SATCOMP experiments are filtered to ≤100 variables, which is a very narrow regime. The practical impact claim is therefore limited.\n2. The wall-clock results are mixed. The paper admits that on easier ranges (16–30, 31–60), pure MiniSAT is faster. Only on 61–100 does ImitSAT beat MiniSAT. Given the small instance sizes, this is a narrow advantage. The overhead of model inference is significant.\n3. The comparison with baselines is somewhat problematic. GQSAT* and SATformer* are retrained on the ImitSAT dataset, but GQSAT* performs much worse than the original GQSAT, which suggests the training data distribution or protocol may not be ideal for these baselines. This could be seen as an unfair comparison, though the paper does include the original baselines too.\n4. The improvements over MiniSAT are modest in absolute terms. The MRPP values are around 0.75–0.83 for ImitSAT, which means only ~20-25% propagation reduction. The KeyTrace upper bound is much better (0.03–0.57), so the model is only capturing a small fraction of the potential improvement. This raises questions about the quality of the learned policy.\n5. The paper trains on random 3-SAT with planted assignments only. Generalization to structured families is shown, but the transfer is to relatively small instances. The industrial impact claim is weak given the 100-variable limit.\n6. The \"first\" claim in the contributions (\"first branching policy based on imitation learning\") is somewhat overstated—there is related work in MIP branching (Gasse et al., 2019) that uses imitation learning, and the paper acknowledges this but still claims \"first\" for SAT CDCL specifically. This is defensible but should be more carefully worded.\n7. The evaluation metrics (MRPP, W1%) are reasonable, but the paper doesn't report statistical significance or variance across seeds. This is a weakness.\n\n**Originality:** The KeyTrace extraction is a novel contribution. Casting branching as sequence modeling with dense supervision is new for SAT CDCL. Combining with Perceiver-AR is a sensible choice. I'd rate this as high (3).\n\n**Quality:** The experiments are reasonably thorough but limited in scale. The paper is honest about limitations. Technical soundness is good, but the practical impact is limited to small instances. I'd rate this as good (3).\n\n**Clarity:** The paper is well-written and organized. The KeyTrace extraction procedure is clearly explained. Figures help illustrate the concept. I'd rate this as good (3).\n\n**Significance:** This is a moderate contribution. It advances the state of the art in learned branching for small instances, but the practical impact on real-world SAT solving is limited. The approach could inspire future work on larger-scale imitation learning for SAT. I'd rate this as medium (2) or high (3). I'll go with medium (2) because the scale limitation is significant.\n\n**Overall Assessment:** This is a solid paper with a novel idea (KeyTrace) and reasonable experiments. However, the limited scale (≤100 variables) and mixed wall-clock results prevent it from being a strong accept. The paper is technically sound but the practical impact is narrow. I'd lean towards a borderline accept, but given the instructions to use only Accept or Reject, I'll go with Accept since the core idea is novel and the evaluation is honest and reasonably thorough for the claimed scope. Actually, let me reconsider—the scale limitation is quite severe. Most learned SAT solving papers aim for larger instances. The fact that ImitSAT only beats MiniSAT on 61–100 variables (which is still tiny) is concerning. But the paper does demonstrate clear gains over prior learned methods. I think this is a borderline case, but I'll lean Accept because the KeyTrace idea is genuinely novel and the paper is well-executed within its scope.\n\nLet me set the ratings:\n- Originality: 3 (high)\n- Quality: 3 (good)\n- Clarity: 3 (good)\n- Significance: 2 (medium) — limited by instance size\n- Soundness: 3 (good)\n- Presentation: 3 (good)\n- Contribution: 2 (fair to good) — I'll go with 2\n- Overall: 6 (Weak Accept) — but since only Accept/Reject, I'll use Accept with overall 6.\n- Confidence: 4 (confident)\n\nActually, let me reconsider the overall score. The paper has a novel idea, good execution, but limited scale. A score of 6 (Weak Accept) seems right. The decision should be Accept.\n\nFor ethical concerns: No significant ethical issues. The paper uses synthetic data and public benchmarks. No human subjects. I'll set Ethical Concerns to false.\n\nLet me formulate the questions and limitations.\n\nQuestions:\n1. Why did GQSAT* perform so much worse than the original GQSAT when retrained on your dataset? Does this indicate a distribution mismatch that makes the comparison unfair?\n2. How well does ImitSAT scale to instances beyond 100 variables? The largest experiments are at 100 variables, which is far below practical SAT solving. Do you have any evidence on larger instances (e.g., 200, 500, 1000 variables)?\n3. The gap between ImitSAT's MRPP (~0.75) and the KeyTrace upper bound (~0.03–0.57) is large. What are the main sources of this gap? Is the model failing to learn the expert policy, or is the policy not being queried enough?\n4. How sensitive are the results to the random seed for training? Are the reported MRPP/W1% values averaged over multiple seeds?\n5. The paper uses a planted assignment generator. How does the expert KeyTrace quality vary with different instance generators (e.g., uniform random 3-SAT, harder distributions)?\n6. What is the exact inference time overhead per model call? The wall-clock results suggest overhead is significant on small instances—can you provide a breakdown of model inference time vs. solver time?\n\nLimitations:\n1. The evaluation is limited to instances with ≤100 variables. This is far below the scale of practical SAT solving, limiting the demonstrated practical impact.\n2. Wall-clock gains over MiniSAT are only shown on the 61–100 variable range; on smaller instances, the model overhead dominates.\n3. The model is trained only on random 3-SAT with planted assignments. While generalization to structured families is shown, the diversity of training data is limited.\n4. The paper doesn't report statistical significance or variance across training runs.\n5. The gap between the learned policy and the expert KeyTrace is large, suggesting the model does not fully capture the expert behavior.\n6. The comparison with baselines may be affected by the fact that GQSAT* and SATformer* perform worse when retrained on the ImitSAT dataset.\n\nLet me finalize the review JSON.REVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper proposes ImitSAT, a branching policy for CDCL SAT solvers based on imitation learning. The key idea is to extract 'KeyTraces' from solver runs by collapsing away backtracked decisions, retaining only the surviving root-to-current decisions. These KeyTraces serve as dense, decision-level supervision for training an autoregressive Transformer (Perceiver-AR) to predict the next branching decision given the CNF and the current KeyTrace prefix. The model is integrated into CDCL by querying it for the first few decisions and falling back to VSIDS otherwise. Experiments on random 3-SAT (5–100 variables) and structured SAT families (AIM, JNH, PARITY, PHOLE, PRET) show that ImitSAT reduces propagation counts compared to MiniSAT and outperforms prior learned methods (SATformer, Graph-Q-SAT) in most settings, with competitive wall-clock performance on larger instances. The paper also includes ablations on query budgets, curriculum learning, permutation augmentation, and integration with CaDiCaL and Kissat.\",\n    \"Strengths\": [\n        \"The KeyTrace extraction is a novel and clean idea: collapsing solver runs into surviving decisions provides dense, conflict-free supervision that directly targets the dominant cost (propagation) in CDCL.\",\n        \"The autoregressive formulation with Perceiver-AR is well-motivated and keeps inference cost linear in input length, making online integration practical.\",\n        \"The evaluation is fairly comprehensive for the claimed scope: multiple random 3-SAT size ranges, structured SAT/UNSAT families, non-k-SAT benchmarks, wall-clock measurements, and integration with advanced solvers (CaDiCaL, Kissat) in appendices.\",\n        \"The paper is honest about limitations, including the failure of Top-K masking on OOD data, the ineffectiveness of a naive GNN combination, and the trade-offs of curriculum learning.\",\n        \"The paper includes useful ablations (query budget, early decisions, permutation augmentation, curriculum) that provide insight into the method's behavior.\"\n    ],\n    \"Weaknesses\": [\n        \"The evaluation is limited to instances with at most 100 variables, which is far below the scale of practical SAT solving (industrial benchmarks often have thousands to millions of variables). This significantly limits the demonstrated practical impact.\",\n        \"Wall-clock gains over pure MiniSAT are only achieved on the 61–100 variable range; on smaller instances, the model inference overhead dominates and MiniSAT is faster. The practical advantage is therefore narrow.\",\n        \"The gap between ImitSAT's MRPP (~0.75) and the KeyTrace expert upper bound (~0.03–0.57) is large, suggesting the learned policy captures only a small fraction of the potential improvement.\",\n        \"The comparison with baselines is somewhat weakened by the fact that GQSAT* (retrained on the ImitSAT dataset) performs much worse than the original GQSAT, raising questions about whether the training data distribution is appropriate for fair comparison.\",\n        \"No statistical significance tests or variance across training seeds are reported, making it hard to assess the robustness of the results.\",\n        \"The claim of being the 'first' imitation learning branching policy for CDCL is slightly overstated given prior imitation learning work in MIP branching, though the paper does acknowledge this distinction.\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 2,\n    \"Questions\": [\n        \"Why does GQSAT* perform so much worse than the original GQSAT when retrained on your dataset? Does this indicate a distribution mismatch that makes the comparison unfair?\",\n        \"How well does ImitSAT scale to instances beyond 100 variables? Do you have any preliminary evidence on larger instances (e.g., 200, 500, or 1000 variables)?\",\n        \"The gap between ImitSAT's MRPP (~0.75) and the KeyTrace upper bound (~0.03–0.57) is large. What are the main sources of this gap—is it a model capacity issue, insufficient queries, or something else?\",\n        \"Are the reported MRPP and W1% values averaged over multiple training seeds? If so, what is the variance? If not, how sensitive is the model to random initialization?\",\n        \"How does the expert KeyTrace quality vary with different instance generators (e.g., uniform random 3-SAT without planted assignments, or harder distributions)? Would the method still work if the expert traces are noisier?\",\n        \"What is the exact inference time overhead per model call? Could you provide a breakdown of model inference time versus solver time for a typical instance?\"\n    ],\n    \"Limitations\": [\n        \"The evaluation is restricted to instances with ≤100 variables, far below the scale of practical SAT solving, limiting the demonstrated practical impact.\",\n        \"Wall-clock gains over MiniSAT are only shown on the 61–100 variable range; on smaller instances, model overhead dominates.\",\n        \"The model is trained only on random 3-SAT with planted assignments, which limits the diversity of training data and potentially the generalizability to more varied industrial formulas.\",\n        \"No statistical significance testing or multi-seed variance analysis is reported.\",\n        \"The learned policy captures only a fraction of the expert KeyTrace's potential improvement (MRPP ~0.75 vs. KeyTrace ~0.03–0.57), indicating room for improvement in imitation quality.\",\n        \"The comparison with baselines may be affected by the fact that GQSAT* and SATformer* perform worse when retrained on the ImitSAT dataset.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 2,\n    \"Overall\": 6,\n    \"Confidence\": 4,\n    \"Decision\": \"Accept\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 21814,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 20022,
+        "completion_tokens": 3058,
+        "reasoning_tokens": 0,
+        "total_tokens": 24872
+      },
+      "attempts": 1,
+      "response_id": "c22a3d87-69c9-4138-bead-6e5da9c7bf9e"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper proposes ImitSAT, a branching policy for CDCL SAT solvers trained via imitation learning. The key contribution is the KeyTrace construction, which collapses full solver runs into compact sequences of surviving decisions by removing backtracked detours. This provides dense, conflict-free supervision for training an autoregressive Transformer (Perceiver AR) to predict the next branching decision given the CNF formula and the current KeyTrace prefix. The policy is integrated into CDCL with a limited query budget, falling back to VSIDS when uncertain. Experiments on random 3-SAT (5-100 variables) and structured SAT families (AIM, JNH, PARITY, PHOLE, PRET) show that ImitSAT reduces propagation counts and improves wall-clock time compared to prior learned methods (SATformer, Graph-Q-SAT) and often approaches or beats pure MiniSAT on harder instances.",
+        "Strengths": [
+          "The KeyTrace concept is elegant and well-motivated, providing clean, dense supervision that directly targets the propagation bottleneck in CDCL.",
+          "The autoregressive sequence modeling formulation aligns naturally with the prefix-conditioned nature of CDCL branching decisions.",
+          "Extensive experiments across multiple benchmark families with careful attention to fair comparisons, including retrained baselines.",
+          "Honest evaluation of limitations, including query overhead and lack of improvement on small instances.",
+          "Thorough ablation studies covering query budget, data augmentation, curriculum learning, and fallback strategies."
+        ],
+        "Weaknesses": [
+          "Evaluation is limited to instances with at most 100 variables, which is far from the scale of practical SAT applications (industrial instances often have millions of variables).",
+          "Wall-clock improvements are modest and only materialize on the hardest instances (61-100 variables); on smaller instances, ImitSAT is slower than pure MiniSAT.",
+          "The main experiments use a Python reimplementation of MiniSAT, which may not reflect performance in optimized C++ solvers; the CaDiCaL/Kissat integrations are relegated to appendices.",
+          "The claim of being the 'first' imitation learning branching policy for CDCL is somewhat overstated given prior IL work in MIP branching, though the paper does acknowledge this distinction.",
+          "The mechanism of generalization to structured families is not deeply analyzed; it's unclear why a policy trained on random 3-SAT transfers well to non-k-SAT and UNSAT instances."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 2,
+        "Questions": [
+          "How does the model scale to instances with thousands or millions of variables? The context length of the serialized CNF would be prohibitive. Is there a plan for hierarchical or graph-based representations?",
+          "What is the total training compute (GPU hours) and dataset size? The paper mentions instance counts but not the total training time.",
+          "How sensitive is ImitSAT to the quality of the original solver's traces? Would using a stronger solver (e.g., Kissat) to generate KeyTraces yield better policies?",
+          "In the SATCOMP evaluation, what fraction of instances have ≤100 variables? This seems like a very small and potentially unrepresentative subset.",
+          "During KeyTrace replay, what is the exact conflict rate? Is it always zero, or can it be non-zero due to learned clauses or other solver state?",
+          "Could you provide more analysis on why the policy transfers to structured families? For example, are there specific patterns in the KeyTraces that the model learns that are distribution-agnostic?"
+        ],
+        "Limitations": [
+          "The paper acknowledges computational constraints but does not adequately address the fundamental limitation of small instance sizes, which limits practical applicability to real-world SAT problems.",
+          "The potential negative societal impact of improved SAT solvers (e.g., in cryptanalysis) is not discussed, though this is a minor concern given the incremental nature of the improvement.",
+          "The paper does not discuss the failure modes of the learned policy, such as cases where it performs significantly worse than VSIDS and the fallback mechanism is triggered."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 2,
+        "Overall": 5,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes ImitSAT, a branching policy for CDCL SAT solvers based on imitation learning. The key idea is to extract \"KeyTraces\" from solver runs by collapsing backtracks, then train an autoregressive Transformer (Perceiver AR) to predict the next branching decision given the CNF and the KeyTrace prefix. The approach is evaluated on random 3-SAT and structured SAT families, comparing against SATformer and Graph-Q-SAT.\n\nStrengths:\n- The KeyTrace concept is elegant and well-motivated. Collapsing solver runs into surviving decisions provides clean, dense supervision that directly targets the propagation bottleneck.\n- The framing of branching as autoregressive sequence prediction is natural and aligns well with the prefix-conditioned nature of CDCL decisions.\n- The paper includes extensive experiments across multiple benchmark families, with careful attention to fair comparisons (e.g., retrained baselines GQSAT* and SATformer*).\n- The paper is honest about limitations, including the overhead of model queries and the fact that ImitSAT doesn't beat MiniSAT on small instances.\n- The ablation studies (query budget, permutation augmentation, curriculum learning, Top-K vs fallback) are thorough and informative.\n\nWeaknesses:\n- The evaluation is limited to small instances (≤100 variables). This is a significant limitation given that the motivation is practical SAT solving, where industrial instances have millions of variables. The SATCOMP evaluation only includes instances with ≤100 variables, which is a very narrow slice of industrial benchmarks.\n- The wall-clock improvements are modest and only materialize on the hardest instances (61-100 variables). On smaller instances, ImitSAT is slower than pure MiniSAT. This raises questions about practical utility.\n- The comparison with Graph-Q-SAT uses a Python reimplementation of MiniSAT, which may not be representative of how these methods perform in optimized C++ solvers. The paper does include CaDiCaL and Kissat integrations in appendices, but the main results are on the Python solver.\n- The claim of \"first branching policy based on imitation learning for CDCL\" seems slightly overstated, as imitation learning for branching has been explored in MIP (though the paper acknowledges this difference). The novelty is more in the specific application to CDCL and the KeyTrace construction.\n- The paper doesn't deeply analyze why the learned policy generalizes to structured families. The mechanism of transfer is not well understood.\n\nQuestions:\n1. How does the model handle large instances (e.g., >1000 variables) in terms of context length and inference time? The Perceiver AR has O(N) complexity, but the CNF serialization could still be very long.\n2. What is the exact training data size and compute budget? The paper mentions 2M instances for 5-15 variables, but the total training time and GPU hours are not specified.\n3. The KeyTrace extraction uses only decisions and propagations that survive backtracking. How sensitive is the method to the quality of the original solver's trace? Would a better solver (e.g., Kissat) produce better KeyTraces?\n4. For the SATCOMP evaluation, what fraction of instances have ≤100 variables? This seems like a very small subset of typical competition benchmarks.\n5. The paper mentions \"nearly conflict-free\" replaying. What is the exact conflict rate during KeyTrace replay? Is it always zero, or can it be non-zero in some cases?\n\nLimitations:\n- The paper acknowledges computational resource constraints (4 V100 GPUs) but doesn't discuss the broader limitation of small instance sizes. This is a significant gap for practical applicability.\n- The societal impact is minimal, but the paper could discuss potential negative uses of improved SAT solvers (e.g., in cryptanalysis). However, this is a standard concern for any SAT solver improvement.\n\nEthical concerns: None apparent. The work is on algorithmic improvements to SAT solving, which has broad positive applications in verification and optimization.\n\nOverall assessment:\nThis is a solid paper with a novel and well-executed idea. The KeyTrace concept is clean and the imitation learning formulation is appropriate. The experimental evaluation is thorough within the small-instance regime. However, the practical significance is limited by the small instance sizes and the modest wall-clock improvements. The paper would be stronger with some evidence on larger instances or a clearer path to scalability. I would rate this as a borderline accept, leaning towards reject due to limited practical impact.\n\nDecision: I'll go with Reject, as the limitations in instance size and practical speedup are significant, and the claimed novelty (\"first IL for CDCL branching\") is somewhat overstated given prior work in MIP.\n\nREVIEW JSON:\n```json\n{\n\"Summary\": \"The paper proposes ImitSAT, a branching policy for CDCL SAT solvers trained via imitation learning. The key contribution is the KeyTrace construction, which collapses full solver runs into compact sequences of surviving decisions by removing backtracked detours. This provides dense, conflict-free supervision for training an autoregressive Transformer (Perceiver AR) to predict the next branching decision given the CNF formula and the current KeyTrace prefix. The policy is integrated into CDCL with a limited query budget, falling back to VSIDS when uncertain. Experiments on random 3-SAT (5-100 variables) and structured SAT families (AIM, JNH, PARITY, PHOLE, PRET) show that ImitSAT reduces propagation counts and improves wall-clock time compared to prior learned methods (SATformer, Graph-Q-SAT) and often approaches or beats pure MiniSAT on harder instances.\",\n\"Strengths\": [\n\"The KeyTrace concept is elegant and well-motivated, providing clean, dense supervision that directly targets the propagation bottleneck in CDCL.\",\n\"The autoregressive sequence modeling formulation aligns naturally with the prefix-conditioned nature of CDCL branching decisions.\",\n\"Extensive experiments across multiple benchmark families with careful attention to fair comparisons, including retrained baselines.\",\n\"Honest evaluation of limitations, including query overhead and lack of improvement on small instances.\",\n\"Thorough ablation studies covering query budget, data augmentation, curriculum learning, and fallback strategies.\"\n],\n\"Weaknesses\": [\n\"Evaluation is limited to instances with at most 100 variables, which is far from the scale of practical SAT applications (industrial instances often have millions of variables).\",\n\"Wall-clock improvements are modest and only materialize on the hardest instances (61-100 variables); on smaller instances, ImitSAT is slower than pure MiniSAT.\",\n\"The main experiments use a Python reimplementation of MiniSAT, which may not reflect performance in optimized C++ solvers; the CaDiCaL/Kissat integrations are relegated to appendices.\",\n\"The claim of being the 'first' imitation learning branching policy for CDCL is somewhat overstated given prior IL work in MIP branching, though the paper does acknowledge this distinction.\",\n\"The mechanism of generalization to structured families is not deeply analyzed; it's unclear why a policy trained on random 3-SAT transfers well to non-k-SAT and UNSAT instances.\"\n],\n\"Originality\": 3,\n\"Quality\": 3,\n\"Clarity\": 3,\n\"Significance\": 2,\n\"Questions\": [\n\"How does the model scale to instances with thousands or millions of variables? The context length of the serialized CNF would be prohibitive. Is there a plan for hierarchical or graph-based representations?\",\n\"What is the total training compute (GPU hours) and dataset size? The paper mentions instance counts but not the total training time.\",\n\"How sensitive is ImitSAT to the quality of the original solver's traces? Would using a stronger solver (e.g., Kissat) to generate KeyTraces yield better policies?\",\n\"In the SATCOMP evaluation, what fraction of instances have ≤100 variables? This seems like a very small and potentially unrepresentative subset.\",\n\"During KeyTrace replay, what is the exact conflict rate? Is it always zero, or can it be non-zero due to learned clauses or other solver state?\",\n\"Could you provide more analysis on why the policy transfers to structured families? For example, are there specific patterns in the KeyTraces that the model learns that are distribution-agnostic?\"\n],\n\"Limitations\": [\n\"The paper acknowledges computational constraints but does not adequately address the fundamental limitation of small instance sizes, which limits practical applicability to real-world SAT problems.\",\n\"The potential negative societal impact of improved SAT solvers (e.g., in cryptanalysis) is not discussed, though this is a minor concern given the incremental nature of the improvement.\",\n\"The paper does not discuss the failure modes of the learned policy, such as cases where it performs significantly worse than VSIDS and the fallback mechanism is triggered.\"\n],\n\"Ethical Concerns\": false,\n\"Soundness\": 3,\n\"Presentation\": 3,\n\"Contribution\": 2,\n\"Overall\": 5,\n\"Confidence\": 4,\n\"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 21814,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 20022,
+        "completion_tokens": 1822,
+        "reasoning_tokens": 0,
+        "total_tokens": 23636
+      },
+      "attempts": 1,
+      "response_id": "24fce297-2c6d-4bb6-b0cc-d8db11058342"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper proposes ImitSAT, a branching policy for CDCL SAT solvers based on imitation learning. The key idea is to collapse full CDCL solver runs into compact 'KeyTraces' containing only surviving decisions (after removing backtracked detours), and train an autoregressive Transformer model to predict the next branching decision given the formula and the current KeyTrace prefix. The model is integrated into CDCL with a small query budget (3-5 calls), falling back to the VSIDS heuristic when predictions are uncertain or illegal. Experiments on random 3-SAT (5-100 variables) and structured SAT families show that ImitSAT reduces propagation counts compared to MiniSAT and outperforms prior learned approaches (SATformer, Graph-Q-SAT) on most benchmarks. The paper also demonstrates transfer to UNSAT and non-k-SAT instances without fine-tuning, and shows wall-clock improvements on harder instances.",
+        "Strengths": [
+          "Novel application of imitation learning to CDCL branching, which differs from prior RL-based approaches like Graph-Q-SAT and instance-level prediction methods like SATformer",
+          "The KeyTrace construction is a clever and clean way to extract dense, decision-level supervision from solver runs by collapsing backtracks into surviving decision sequences",
+          "Framing branching as prefix-conditioned autoregressive sequence prediction aligns naturally with the sequential nature of CDCL search",
+          "Comprehensive experimental evaluation including multiple baselines (with retrained variants for fairness), multiple metrics (MRPP, W1%, wall-clock), and generalization to structured families",
+          "Good analysis of training techniques (permutation augmentation, curriculum learning) to address overfitting",
+          "Integration with advanced solvers (CaDiCaL, Kissat) demonstrates broader applicability",
+          "Code and models are released for reproducibility"
+        ],
+        "Weaknesses": [
+          "Limited experimental scale: all instances have ≤100 variables, which is very small compared to practical SAT benchmarks. Real-world SAT instances often have thousands or millions of variables, and it's unclear if the approach would scale",
+          "Wall-clock improvements are marginal and only appear on the hardest instances (61-100 range). On easier instances, pure MiniSAT is faster, and the learned methods add overhead",
+          "The use of a Python reimplementation of MiniSAT rather than the actual C++ solver may not accurately reflect real solver performance, especially for wall-clock time comparisons",
+          "The SATCOMP evaluation is restricted to instances with ≤100 variables that fit in the model context, which is not representative of industrial SAT problems",
+          "The query budget of 3-5 calls is very small and shows diminishing returns; it's unclear if the approach would be competitive with more queries given the increased overhead",
+          "Training is only on random 3-SAT with planted assignments, which is a narrow distribution; generalization claims to other families are based on small test sets",
+          "The KeyTrace extraction uses the solver's own trajectories as expert demonstrations, which may encode the biases of the solver rather than optimal branching behavior"
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 2,
+        "Questions": [
+          "How does the approach scale to instances with thousands or millions of variables? The context length for the Transformer would grow significantly, and the inference cost per query would increase. Have you considered hierarchical or graph-based representations to handle larger instances?",
+          "Why was a Python reimplementation of MiniSAT used instead of the actual C++ version? Could the wall-clock comparisons be affected by the Python implementation's overhead?",
+          "What is the exact inference time per model query? The paper mentions overhead but doesn't quantify it precisely. How does this overhead scale with instance size?",
+          "How sensitive are the results to the training data distribution? Would training on a more diverse set of instances (e.g., including UNSAT, non-3-SAT, larger variables) improve generalization?",
+          "The KeyTrace is extracted from the solver's own decisions. Since the expert is the solver itself, doesn't this limit the quality of supervision to what the solver can already achieve? How does this compare to using an oracle or stronger solver as the expert?",
+          "The paper shows that the model is queried only 3-5 times per instance. What happens with larger budgets? Is there a point where the model's decisions diverge from useful trajectories and hurt performance?",
+          "Could you provide more details on how the model handles variable renaming (symmetry) across instances? The permutation augmentation helps during training, but how does the model generalize to variable orderings it hasn't seen?"
+        ],
+        "Limitations": [
+          "The experimental evaluation is limited to small instances (≤100 variables), making it unclear whether the approach would provide practical benefits for real-world SAT solving at scale",
+          "The wall-clock improvements over MiniSAT are marginal and only appear on harder instances; on easier instances, the model overhead makes the approach slower than the baseline",
+          "The model is trained only on random 3-SAT with planted assignments, which is a narrow distribution; broader training data might be needed for robust generalization",
+          "The paper acknowledges computational resource constraints (four V100 GPUs) that limited model size and training duration",
+          "Potential negative societal impact is minimal since SAT solving is a foundational algorithmic problem, and the authors appropriately note this"
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "THOUGHT:\nThis paper proposes ImitSAT, a branching policy for CDCL SAT solvers based on imitation learning. The key idea is to collapse full CDCL solver runs into \"KeyTraces\" — sequences of surviving decisions after removing backtracked detours — and train a Transformer-based autoregressive model to predict the next decision given the formula and the current KeyTrace prefix. The model is integrated into CDCL with a small query budget, falling back to VSIDS when uncertain.\n\nLet me evaluate this paper across the requested dimensions:\n\n**Originality**: The idea of using imitation learning for SAT branching is relatively novel. Prior work like Graph-Q-SAT uses RL, and SATformer uses instance-level prediction. The KeyTrace construction (collapsing solver runs to surviving decisions) is a clever contribution. The framing of branching as sequence modeling with prefix conditioning is also interesting. However, the approach is somewhat similar to learning-to-branch in MIP (Gasse et al., 2019), which the authors acknowledge. The novelty is mainly in applying IL to CDCL specifically, which has different dynamics than MIP B&B.\n\n**Quality**: The paper is technically sound overall. The KeyTrace extraction procedure is well-defined, and the experimental setup is reasonable. However, there are some concerns:\n- The experiments are limited to small instances (5-100 variables), which is quite small for SAT benchmarks. The generalization to SATCOMP is filtered to instances with ≤100 variables, which is a very restricted subset.\n- The wall-clock improvements are modest and only appear on harder instances (61-100 range). On easier instances, MiniSAT remains faster.\n- The Python reimplementation of MiniSAT is used, which could be significantly slower than the optimized C++ version, potentially affecting the wall-clock comparisons.\n- The comparison with baselines seems fair (retraining baselines on their dataset), but the baselines may not be optimized for this setting.\n\n**Clarity**: The paper is generally well-written and organized. The KeyTrace concept is explained clearly with a helpful figure. The experimental sections are detailed. Some parts, like the serialization details, could be clearer. The appendices provide useful additional analysis.\n\n**Significance**: The paper addresses an important problem (improving SAT solver efficiency) and shows promising results on small instances. However, the scalability to larger, industrial-scale problems is unclear. The results on small random 3-SAT and small structured families are encouraging but limited. The claim of being \"the first branching policy based on imitation learning\" for CDCL seems accurate based on the related work discussed.\n\n**Weaknesses**:\n1. Limited scale: Experiments only on instances with ≤100 variables. Real-world SAT instances are typically much larger. The model's context length and inference cost may not scale well.\n2. The wall-clock gains are marginal and only appear on harder instances. On easier instances, the model overhead makes it slower than MiniSAT.\n3. The Python MiniSAT reimplementation may not reflect real solver performance accurately.\n4. The generalization to SATCOMP is on a very restricted subset (≤100 variables), which is not representative of industrial SAT problems.\n5. The query budget of 3-5 calls is very small; it's unclear if the approach would scale with more queries given the diminishing returns shown.\n6. The model is trained only on random 3-SAT with planted assignments, which is a narrow training distribution.\n\n**Questions**:\n1. How does the approach scale to instances with thousands of variables? The context length would grow significantly.\n2. Why use a Python MiniSAT reimplementation instead of the actual C++ MiniSAT?\n3. What is the actual inference time per query? The paper mentions overhead but doesn't quantify it precisely.\n4. How sensitive are the results to the choice of training data distribution?\n5. The KeyTrace extraction uses the solver's own decisions as supervision - could this lead to learning the biases of the solver rather than optimal behavior?\n\n**Limitations**: The paper acknowledges computational resource constraints and the small instance sizes. However, it doesn't fully address the scalability concern for practical SAT solving. The ethical concerns are minimal and adequately addressed.\n\n**Ratings**:\n- Originality: 3 (good) - Novel application of IL to CDCL branching, but similar in spirit to MIP branching learning.\n- Quality: 3 (good) - Technically sound with reasonable experiments, but limited scale and marginal wall-clock gains.\n- Clarity: 3 (good) - Well-written with clear explanations, though some implementation details could be expanded.\n- Significance: 2 (fair) - Results are promising but limited to small instances; unclear practical impact for real SAT solving.\n\nOverall, this is a solid paper with an interesting idea, but the limited experimental scale and marginal practical gains make me lean toward rejection. The contributions are novel and the paper is well-executed, but the significance is questionable given the small instance sizes. I would rate this as a borderline reject, leaning toward reject given the limited impact demonstrated.\n\nLet me finalize my ratings:\n- Soundness: 3 (good)\n- Presentation: 3 (good)\n- Contribution: 2 (fair)\n- Overall: 4 (Borderline reject) → Since I can only choose Accept/Reject, I'll say Reject.\n- Confidence: 4 (confident)\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper proposes ImitSAT, a branching policy for CDCL SAT solvers based on imitation learning. The key idea is to collapse full CDCL solver runs into compact 'KeyTraces' containing only surviving decisions (after removing backtracked detours), and train an autoregressive Transformer model to predict the next branching decision given the formula and the current KeyTrace prefix. The model is integrated into CDCL with a small query budget (3-5 calls), falling back to the VSIDS heuristic when predictions are uncertain or illegal. Experiments on random 3-SAT (5-100 variables) and structured SAT families show that ImitSAT reduces propagation counts compared to MiniSAT and outperforms prior learned approaches (SATformer, Graph-Q-SAT) on most benchmarks. The paper also demonstrates transfer to UNSAT and non-k-SAT instances without fine-tuning, and shows wall-clock improvements on harder instances.\",\n    \"Strengths\": [\n        \"Novel application of imitation learning to CDCL branching, which differs from prior RL-based approaches like Graph-Q-SAT and instance-level prediction methods like SATformer\",\n        \"The KeyTrace construction is a clever and clean way to extract dense, decision-level supervision from solver runs by collapsing backtracks into surviving decision sequences\",\n        \"Framing branching as prefix-conditioned autoregressive sequence prediction aligns naturally with the sequential nature of CDCL search\",\n        \"Comprehensive experimental evaluation including multiple baselines (with retrained variants for fairness), multiple metrics (MRPP, W1%, wall-clock), and generalization to structured families\",\n        \"Good analysis of training techniques (permutation augmentation, curriculum learning) to address overfitting\",\n        \"Integration with advanced solvers (CaDiCaL, Kissat) demonstrates broader applicability\",\n        \"Code and models are released for reproducibility\"\n    ],\n    \"Weaknesses\": [\n        \"Limited experimental scale: all instances have ≤100 variables, which is very small compared to practical SAT benchmarks. Real-world SAT instances often have thousands or millions of variables, and it's unclear if the approach would scale\",\n        \"Wall-clock improvements are marginal and only appear on the hardest instances (61-100 range). On easier instances, pure MiniSAT is faster, and the learned methods add overhead\",\n        \"The use of a Python reimplementation of MiniSAT rather than the actual C++ solver may not accurately reflect real solver performance, especially for wall-clock time comparisons\",\n        \"The SATCOMP evaluation is restricted to instances with ≤100 variables that fit in the model context, which is not representative of industrial SAT problems\",\n        \"The query budget of 3-5 calls is very small and shows diminishing returns; it's unclear if the approach would be competitive with more queries given the increased overhead\",\n        \"Training is only on random 3-SAT with planted assignments, which is a narrow distribution; generalization claims to other families are based on small test sets\",\n        \"The KeyTrace extraction uses the solver's own trajectories as expert demonstrations, which may encode the biases of the solver rather than optimal branching behavior\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 2,\n    \"Questions\": [\n        \"How does the approach scale to instances with thousands or millions of variables? The context length for the Transformer would grow significantly, and the inference cost per query would increase. Have you considered hierarchical or graph-based representations to handle larger instances?\",\n        \"Why was a Python reimplementation of MiniSAT used instead of the actual C++ version? Could the wall-clock comparisons be affected by the Python implementation's overhead?\",\n        \"What is the exact inference time per model query? The paper mentions overhead but doesn't quantify it precisely. How does this overhead scale with instance size?\",\n        \"How sensitive are the results to the training data distribution? Would training on a more diverse set of instances (e.g., including UNSAT, non-3-SAT, larger variables) improve generalization?\",\n        \"The KeyTrace is extracted from the solver's own decisions. Since the expert is the solver itself, doesn't this limit the quality of supervision to what the solver can already achieve? How does this compare to using an oracle or stronger solver as the expert?\",\n        \"The paper shows that the model is queried only 3-5 times per instance. What happens with larger budgets? Is there a point where the model's decisions diverge from useful trajectories and hurt performance?\",\n        \"Could you provide more details on how the model handles variable renaming (symmetry) across instances? The permutation augmentation helps during training, but how does the model generalize to variable orderings it hasn't seen?\"\n    ],\n    \"Limitations\": [\n        \"The experimental evaluation is limited to small instances (≤100 variables), making it unclear whether the approach would provide practical benefits for real-world SAT solving at scale\",\n        \"The wall-clock improvements over MiniSAT are marginal and only appear on harder instances; on easier instances, the model overhead makes the approach slower than the baseline\",\n        \"The model is trained only on random 3-SAT with planted assignments, which is a narrow distribution; broader training data might be needed for robust generalization\",\n        \"The paper acknowledges computational resource constraints (four V100 GPUs) that limited model size and training duration\",\n        \"Potential negative societal impact is minimal since SAT solving is a foundational algorithmic problem, and the authors appropriately note this\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 2,\n    \"Overall\": 4,\n    \"Confidence\": 4,\n    \"Decision\": \"Reject\"\n}\n```",
+      "usage": {
+        "prompt_tokens": 21814,
+        "prompt_cache_hit_tokens": 1792,
+        "prompt_cache_miss_tokens": 20022,
+        "completion_tokens": 2276,
+        "reasoning_tokens": 0,
+        "total_tokens": 24090
+      },
+      "attempts": 1,
+      "response_id": "72d6cc54-a854-42a4-9457-42c5cb08a397"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 3,
+      "Reject": 2
+    },
+    "unanimous_decision": false,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          3,
+          4,
+          3,
+          3,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          4,
+          3,
+          3,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Significance": {
+        "values": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "mean": 2,
+        "rounded_mean": 2,
+        "population_sd": 0.0,
+        "min": 2,
+        "max": 2
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          4,
+          3,
+          3,
+          3
+        ],
+        "mean": 3.2,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      },
+      "Contribution": {
+        "values": [
+          3,
+          3,
+          2,
+          2,
+          2
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          6,
+          6,
+          6,
+          5,
+          4
+        ],
+        "mean": 5.4,
+        "rounded_mean": 5,
+        "population_sd": 0.8,
+        "min": 4,
+        "max": 6
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper proposes ImitSAT, a branching policy for CDCL SAT solvers trained via imitation learning. The key contribution is the KeyTrace construction, which collapses full solver runs into compact sequences of surviving decisions by removing backtracked detours, providing dense, decision-level supervision. Branching is formulated as autoregressive sequence prediction: given the CNF formula and the current KeyTrace prefix, a Perceiver AR Transformer predicts the next signed variable. The policy is integrated into a Python MiniSAT reimplementation and queried with a small budget (3-5 calls), with fallback to VSIDS. Experiments on random 3-SAT (5-100 variables) and structured SAT families (AIM, JNH, PARITY, PHOLE, PRET) show reduced propagation counts and favorable wall-clock time on harder instances compared to SATformer and Graph-Q-SAT, with generalization to unsatisfiable and non-k-SAT instances.",
+      "Strengths": [
+        "The KeyTrace concept is novel and elegant, providing clean, dense supervision that directly targets the propagation bottleneck in CDCL solving.",
+        "The autoregressive sequence modeling formulation is well-motivated and aligns naturally with the prefix-conditioned nature of CDCL branching decisions.",
+        "Comprehensive empirical evaluation across multiple benchmark families, including retrained baselines for fairness, ablations on query budget, data augmentation, and curriculum learning.",
+        "Honest assessment of limitations, including query overhead, lack of improvement on small instances, and cases where the method does not help.",
+        "Integration with advanced solvers (CaDiCaL, Kissat) demonstrates the approach is not tied to a specific CDCL implementation.",
+        "Code and models are released for reproducibility."
+      ],
+      "Weaknesses": [
+        "Evaluation is limited to instances with at most 100 variables, far below the scale of practical SAT solving where industrial instances have thousands to millions of variables. This severely limits the demonstrated practical relevance.",
+        "Wall-clock improvements over pure MiniSAT are only shown on the hardest 61-100 variable range; on smaller instances, model inference overhead dominates and MiniSAT is faster.",
+        "The gap between the KeyTrace expert (MRPP as low as 0.03) and ImitSAT (MRPP ~0.75-0.83) is large, indicating the learned policy captures only a fraction of the expert's potential benefit.",
+        "The main experiments use a Python reimplementation of MiniSAT, which may not accurately reflect performance characteristics of optimized C++ solvers, particularly for wall-clock comparisons.",
+        "The retrained baselines (GQSAT*, SATformer*) perform notably worse than their original versions, which is not fully explained and raises questions about fair comparison.",
+        "The query budget is very small (3-5 calls), all front-loaded at the start of search, limiting influence on harder instances where later decisions become critical.",
+        "Training is only on random 3-SAT with planted assignments, a narrow distribution; generalization claims to other families are based on small test sets and the transfer mechanism is not deeply analyzed."
+      ],
+      "Originality": 3,
+      "Quality": 3,
+      "Clarity": 3,
+      "Significance": 2,
+      "Questions": [
+        "1. How does ImitSAT scale to instances with more than 100 variables? What architectural or data changes would be needed to handle larger formulas, and do you have any preliminary evidence on 200, 500, or 1000 variable instances?",
+        "2. What is the exact per-query inference time of the model? The paper reports total wall-clock time but not a breakdown between model inference and solver time, which is crucial for understanding the overhead-vs-benefit tradeoff.",
+        "3. The gap between KeyTrace (MRPP 0.03-0.57) and ImitSAT (MRPP 0.73-0.83) is substantial. What are the main sources of this gap—model capacity, training data size, or the difficulty of the imitation task?",
+        "4. Why do the retrained baselines (GQSAT*, SATformer*) perform so much worse than their original versions? Does this indicate a training data distribution mismatch that makes the comparison unfair?",
+        "5. Since the expert traces are generated from MiniSAT itself, doesn't this limit the quality of supervision to what the solver can already achieve? Would using a stronger solver (e.g., Kissat) as the expert yield better policies?",
+        "6. How sensitive are the results to the choice of clause-variable ratio [4.1, 4.4] in the training data? Would training on a wider range improve generalization?",
+        "7. Are the reported MRPP and W1% values averaged over multiple training seeds? If so, what is the variance? If not, how sensitive is the model to random initialization?",
+        "8. In the SATCOMP evaluation, what fraction of instances have ≤100 variables, and is this subset representative of the difficulty distribution of real industrial benchmarks?"
+      ],
+      "Limitations": [
+        "The evaluation is restricted to instances with ≤100 variables, which is far below the scale of practical SAT solving, limiting the demonstrated practical impact.",
+        "Wall-clock gains over MiniSAT are only shown on the hardest instance range; on easier instances, model overhead dominates.",
+        "The main experiments use a Python reimplementation of MiniSAT, which may not reflect production solver performance.",
+        "The learned policy captures only a fraction of the expert KeyTrace's potential improvement, indicating room for improvement in imitation quality.",
+        "Training is only on random 3-SAT with planted assignments, limiting the diversity of training data and potentially the generalizability to more varied industrial formulas.",
+        "No statistical significance testing or multi-seed variance analysis is reported.",
+        "The paper acknowledges computational resource constraints (4 V100 GPUs) that limited model size and training duration.",
+        "Potential negative societal impact is minimal, as the work is on a foundational algorithmic problem with no direct harmful applications; the paper appropriately notes this."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 3,
+      "Presentation": 3,
+      "Contribution": 2,
+      "Overall": 5,
+      "Confidence": 4,
+      "Decision": "Reject"
+    },
+    "raw_response": "THOUGHT:\nThe paper presents a novel imitation learning approach for CDCL branching with the KeyTrace concept, which is genuinely interesting and well-motivated. The reviewers are split: three recommend Accept (overall 6) and two recommend Reject (overall 5 and 4). The consensus concerns are: (1) evaluation limited to ≤100 variables, (2) wall-clock gains only on hardest instances, (3) large gap between expert KeyTrace and learned policy, (4) use of Python MiniSAT reimplementation, and (5) questionable baseline retraining fairness.\n\nThe main disagreement is whether the novelty and clean formulation outweigh the limited scale and marginal practical gains. Given that all reviewers acknowledge the technical soundness and originality, but the significance is consistently rated low (2/4) by all, and the practical impact is narrow, I lean toward Reject. The paper is a solid proof-of-concept but does not demonstrate enough practical value or scaling evidence to justify acceptance at a top venue. The lack of larger instance evaluation and the marginal wall-clock improvements are critical gaps.\n\nI will write a balanced meta-review that acknowledges the strengths but emphasizes the scale limitation as the decisive factor, aligning with the two rejecting reviewers' concerns while respecting the accepting reviewers' positive assessment of technical merit. The decision will be Reject.\n\nREVIEW JSON:\n```json\n{\n    \"Summary\": \"The paper proposes ImitSAT, a branching policy for CDCL SAT solvers trained via imitation learning. The key contribution is the KeyTrace construction, which collapses full solver runs into compact sequences of surviving decisions by removing backtracked detours, providing dense, decision-level supervision. Branching is formulated as autoregressive sequence prediction: given the CNF formula and the current KeyTrace prefix, a Perceiver AR Transformer predicts the next signed variable. The policy is integrated into a Python MiniSAT reimplementation and queried with a small budget (3-5 calls), with fallback to VSIDS. Experiments on random 3-SAT (5-100 variables) and structured SAT families (AIM, JNH, PARITY, PHOLE, PRET) show reduced propagation counts and favorable wall-clock time on harder instances compared to SATformer and Graph-Q-SAT, with generalization to unsatisfiable and non-k-SAT instances.\",\n    \"Strengths\": [\n        \"The KeyTrace concept is novel and elegant, providing clean, dense supervision that directly targets the propagation bottleneck in CDCL solving.\",\n        \"The autoregressive sequence modeling formulation is well-motivated and aligns naturally with the prefix-conditioned nature of CDCL branching decisions.\",\n        \"Comprehensive empirical evaluation across multiple benchmark families, including retrained baselines for fairness, ablations on query budget, data augmentation, and curriculum learning.\",\n        \"Honest assessment of limitations, including query overhead, lack of improvement on small instances, and cases where the method does not help.\",\n        \"Integration with advanced solvers (CaDiCaL, Kissat) demonstrates the approach is not tied to a specific CDCL implementation.\",\n        \"Code and models are released for reproducibility.\"\n    ],\n    \"Weaknesses\": [\n        \"Evaluation is limited to instances with at most 100 variables, far below the scale of practical SAT solving where industrial instances have thousands to millions of variables. This severely limits the demonstrated practical relevance.\",\n        \"Wall-clock improvements over pure MiniSAT are only shown on the hardest 61-100 variable range; on smaller instances, model inference overhead dominates and MiniSAT is faster.\",\n        \"The gap between the KeyTrace expert (MRPP as low as 0.03) and ImitSAT (MRPP ~0.75-0.83) is large, indicating the learned policy captures only a fraction of the expert's potential benefit.\",\n        \"The main experiments use a Python reimplementation of MiniSAT, which may not accurately reflect performance characteristics of optimized C++ solvers, particularly for wall-clock comparisons.\",\n        \"The retrained baselines (GQSAT*, SATformer*) perform notably worse than their original versions, which is not fully explained and raises questions about fair comparison.\",\n        \"The query budget is very small (3-5 calls), all front-loaded at the start of search, limiting influence on harder instances where later decisions become critical.\",\n        \"Training is only on random 3-SAT with planted assignments, a narrow distribution; generalization claims to other families are based on small test sets and the transfer mechanism is not deeply analyzed.\"\n    ],\n    \"Originality\": 3,\n    \"Quality\": 3,\n    \"Clarity\": 3,\n    \"Significance\": 2,\n    \"Questions\": [\n        \"1. How does ImitSAT scale to instances with more than 100 variables? What architectural or data changes would be needed to handle larger formulas, and do you have any preliminary evidence on 200, 500, or 1000 variable instances?\",\n        \"2. What is the exact per-query inference time of the model? The paper reports total wall-clock time but not a breakdown between model inference and solver time, which is crucial for understanding the overhead-vs-benefit tradeoff.\",\n        \"3. The gap between KeyTrace (MRPP 0.03-0.57) and ImitSAT (MRPP 0.73-0.83) is substantial. What are the main sources of this gap—model capacity, training data size, or the difficulty of the imitation task?\",\n        \"4. Why do the retrained baselines (GQSAT*, SATformer*) perform so much worse than their original versions? Does this indicate a training data distribution mismatch that makes the comparison unfair?\",\n        \"5. Since the expert traces are generated from MiniSAT itself, doesn't this limit the quality of supervision to what the solver can already achieve? Would using a stronger solver (e.g., Kissat) as the expert yield better policies?\",\n        \"6. How sensitive are the results to the choice of clause-variable ratio [4.1, 4.4] in the training data? Would training on a wider range improve generalization?\",\n        \"7. Are the reported MRPP and W1% values averaged over multiple training seeds? If so, what is the variance? If not, how sensitive is the model to random initialization?\",\n        \"8. In the SATCOMP evaluation, what fraction of instances have ≤100 variables, and is this subset representative of the difficulty distribution of real industrial benchmarks?\"\n    ],\n    \"Limitations\": [\n        \"The evaluation is restricted to instances with ≤100 variables, which is far below the scale of practical SAT solving, limiting the demonstrated practical impact.\",\n        \"Wall-clock gains over MiniSAT are only shown on the hardest instance range; on easier instances, model overhead dominates.\",\n        \"The main experiments use a Python reimplementation of MiniSAT, which may not reflect production solver performance.\",\n        \"The learned policy captures only a fraction of the expert KeyTrace's potential improvement, indicating room for improvement in imitation quality.\",\n        \"Training is only on random 3-SAT with planted assignments, limiting the diversity of training data and potentially the generalizability to more varied industrial formulas.\",\n        \"No statistical significance testing or multi-seed variance analysis is reported.\",\n        \"The paper acknowledges computational resource constraints (4 V100 GPUs) that limited model size and training duration.\",\n        \"Potential negative societal impact is minimal, as the work is on a foundational algorithmic problem with no direct harmful applications; the paper appropriately notes this.\"\n    ],\n    \"Ethical Concerns\": false,\n    \"Soundness\": 3,\n    \"Presentation\": 3,\n    \"Contribution\": 2,\n    \"Overall\": 5,\n    \"Confidence\": 4,\n    \"Decision\": \"Reject\"\n}\n```",
+    "usage": {
+      "prompt_tokens": 7392,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 7392,
+      "completion_tokens": 1594,
+      "reasoning_tokens": 0,
+      "total_tokens": 8986
+    },
+    "attempts": 1,
+    "response_id": "19ff0ff2-2930-488c-b643-08fec5533d20"
+  },
+  "final_review": {
+    "Summary": "The paper proposes ImitSAT, a branching policy for CDCL SAT solvers trained via imitation learning. The key contribution is the KeyTrace construction, which collapses full solver runs into compact sequences of surviving decisions by removing backtracked detours, providing dense, decision-level supervision. Branching is formulated as autoregressive sequence prediction: given the CNF formula and the current KeyTrace prefix, a Perceiver AR Transformer predicts the next signed variable. The policy is integrated into a Python MiniSAT reimplementation and queried with a small budget (3-5 calls), with fallback to VSIDS. Experiments on random 3-SAT (5-100 variables) and structured SAT families (AIM, JNH, PARITY, PHOLE, PRET) show reduced propagation counts and favorable wall-clock time on harder instances compared to SATformer and Graph-Q-SAT, with generalization to unsatisfiable and non-k-SAT instances.",
+    "Strengths": [
+      "The KeyTrace concept is novel and elegant, providing clean, dense supervision that directly targets the propagation bottleneck in CDCL solving.",
+      "The autoregressive sequence modeling formulation is well-motivated and aligns naturally with the prefix-conditioned nature of CDCL branching decisions.",
+      "Comprehensive empirical evaluation across multiple benchmark families, including retrained baselines for fairness, ablations on query budget, data augmentation, and curriculum learning.",
+      "Honest assessment of limitations, including query overhead, lack of improvement on small instances, and cases where the method does not help.",
+      "Integration with advanced solvers (CaDiCaL, Kissat) demonstrates the approach is not tied to a specific CDCL implementation.",
+      "Code and models are released for reproducibility."
+    ],
+    "Weaknesses": [
+      "Evaluation is limited to instances with at most 100 variables, far below the scale of practical SAT solving where industrial instances have thousands to millions of variables. This severely limits the demonstrated practical relevance.",
+      "Wall-clock improvements over pure MiniSAT are only shown on the hardest 61-100 variable range; on smaller instances, model inference overhead dominates and MiniSAT is faster.",
+      "The gap between the KeyTrace expert (MRPP as low as 0.03) and ImitSAT (MRPP ~0.75-0.83) is large, indicating the learned policy captures only a fraction of the expert's potential benefit.",
+      "The main experiments use a Python reimplementation of MiniSAT, which may not accurately reflect performance characteristics of optimized C++ solvers, particularly for wall-clock comparisons.",
+      "The retrained baselines (GQSAT*, SATformer*) perform notably worse than their original versions, which is not fully explained and raises questions about fair comparison.",
+      "The query budget is very small (3-5 calls), all front-loaded at the start of search, limiting influence on harder instances where later decisions become critical.",
+      "Training is only on random 3-SAT with planted assignments, a narrow distribution; generalization claims to other families are based on small test sets and the transfer mechanism is not deeply analyzed."
+    ],
+    "Originality": 3,
+    "Quality": 3,
+    "Clarity": 3,
+    "Significance": 2,
+    "Questions": [
+      "1. How does ImitSAT scale to instances with more than 100 variables? What architectural or data changes would be needed to handle larger formulas, and do you have any preliminary evidence on 200, 500, or 1000 variable instances?",
+      "2. What is the exact per-query inference time of the model? The paper reports total wall-clock time but not a breakdown between model inference and solver time, which is crucial for understanding the overhead-vs-benefit tradeoff.",
+      "3. The gap between KeyTrace (MRPP 0.03-0.57) and ImitSAT (MRPP 0.73-0.83) is substantial. What are the main sources of this gap—model capacity, training data size, or the difficulty of the imitation task?",
+      "4. Why do the retrained baselines (GQSAT*, SATformer*) perform so much worse than their original versions? Does this indicate a training data distribution mismatch that makes the comparison unfair?",
+      "5. Since the expert traces are generated from MiniSAT itself, doesn't this limit the quality of supervision to what the solver can already achieve? Would using a stronger solver (e.g., Kissat) as the expert yield better policies?",
+      "6. How sensitive are the results to the choice of clause-variable ratio [4.1, 4.4] in the training data? Would training on a wider range improve generalization?",
+      "7. Are the reported MRPP and W1% values averaged over multiple training seeds? If so, what is the variance? If not, how sensitive is the model to random initialization?",
+      "8. In the SATCOMP evaluation, what fraction of instances have ≤100 variables, and is this subset representative of the difficulty distribution of real industrial benchmarks?"
+    ],
+    "Limitations": [
+      "The evaluation is restricted to instances with ≤100 variables, which is far below the scale of practical SAT solving, limiting the demonstrated practical impact.",
+      "Wall-clock gains over MiniSAT are only shown on the hardest instance range; on easier instances, model overhead dominates.",
+      "The main experiments use a Python reimplementation of MiniSAT, which may not reflect production solver performance.",
+      "The learned policy captures only a fraction of the expert KeyTrace's potential improvement, indicating room for improvement in imitation quality.",
+      "Training is only on random 3-SAT with planted assignments, limiting the diversity of training data and potentially the generalizability to more varied industrial formulas.",
+      "No statistical significance testing or multi-seed variance analysis is reported.",
+      "The paper acknowledges computational resource constraints (4 V100 GPUs) that limited model size and training duration.",
+      "Potential negative societal impact is minimal, as the work is on a foundational algorithmic problem with no direct harmful applications; the paper appropriately notes this."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 3,
+    "Presentation": 3,
+    "Contribution": 2,
+    "Overall": 5,
+    "Confidence": 4,
+    "Decision": "Reject"
+  },
+  "final_review_source": "Area Chair text/decision with rounded mean numerical scores",
+  "usage": {
+    "prompt_tokens": 116462,
+    "prompt_cache_hit_tokens": 8960,
+    "prompt_cache_miss_tokens": 107502,
+    "completion_tokens": 13244,
+    "reasoning_tokens": 0,
+    "total_tokens": 129706,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.509e-05,
+    "cache_miss_input_usd": 0.01505028,
+    "output_usd": 0.00370832,
+    "total_usd": 0.01878369
+  },
+  "elapsed_seconds": 40.163,
+  "protocol": {
+    "protocol_id": "nature-si-a3-base-v1",
+    "claim_scope": "Nature-aligned DeepSeek adapter; not an exact reproduction of unreported Nature sampling parameters",
+    "evidence_classification": {
+      "paper_declared": [
+        "base-condition reviewer system prompt",
+        "reviewer user-prompt structure with NeurIPS guidelines and no few-shot examples",
+        "five independent reviews plus one Area Chair meta-review",
+        "raw Area Chair Decision is the final binary decision",
+        "base condition uses no few-shot, Reflexion, or VLM"
+      ],
+      "public_code_adapter": [
+        "expanded NeurIPS form text and visible THOUGHT/REVIEW JSON contract",
+        "temperature=0.75",
+        "rounded reviewer mean overwrites final numerical score fields"
+      ],
+      "deepseek_adapter_choice_not_reported_by_paper": [
+        "thinking disabled",
+        "reasoning_effort, response_format, and tools omitted",
+        "five independent HTTP requests instead of an undocumented provider batch sampler",
+        "max_output_tokens=16384",
+        "max_attempts_per_call=3",
+        "reviewer_parallelism=5"
+      ],
+      "not_set": [
+        "random seed"
+      ]
+    },
+    "sources": {
+      "supplementary_information": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-026-10265-5/MediaObjects/41586_2026_10265_MOESM1_ESM.pdf",
+      "frozen_form_implementation": "https://github.com/SakanaAI/AI-Scientist-v2/blob/6e8260925d17e1a0f6509751c19a9e1a481035b2/ai_scientist/perform_llm_review.py",
+      "frozen_form_commit": "6e8260925d17e1a0f6509751c19a9e1a481035b2",
+      "frozen_form_path": "ai_scientist/perform_llm_review.py",
+      "frozen_source_file_sha256": "1dbca6776334270867703fd4f3369ceae9adb085ec8a45f07f7b191ffa20fab5",
+      "normalization": "exact Python string value, UTF-8, no newline normalization"
+    },
+    "prompt_sha256": {
+      "reviewer_system": "5416a0b6bcc31e2c488a6abe75e28fd63f44c296cfa70e07c6862c2a08288793",
+      "area_chair_system_template": "371a2ad25af24f729c71a14a4650b6c58bc74255d28876df51cb806c62cc7fce",
+      "template_instructions": "6b87f348d08954f46f2c4c0b22766f7a4b8c794c7a376d82a099cb357e551961",
+      "neurips_form_with_output_instructions": "41493738fed244dca9ec241875f3ea41d0fb8eaac6cd5f8cdf58b35a0dc3ffd2",
+      "review_user_suffix_template": "52ce72e6ac430741a8fd22bc76509ef6eecd1f03578c08aa6f000b09095535b7",
+      "area_chair_review_block_template": "85162eaac0aa3f34f33d8fec64faf8557ae3c6191134cd57fa783ee54add75f8"
+    },
+    "prompt_policy": {
+      "base_prompt": true,
+      "few_shot_examples": 0,
+      "reflexion_revision_passes": 0,
+      "area_chair_user_order": "five reviews then full NeurIPS form",
+      "visible_thought_then_review_json": true
+    },
+    "pipeline": {
+      "independent_reviewers": 5,
+      "area_chair_meta_reviews": 1,
+      "numeric_aggregation": "rounded arithmetic mean of five reviewers",
+      "text_and_decision_source": "Area Chair meta-review"
+    },
+    "effective_request": {
+      "model": "deepseek-v4-flash",
+      "max_tokens": 16384,
+      "temperature": 0.75,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "omitted_fields": [
+        "reasoning_effort",
+        "response_format",
+        "tools"
+      ]
+    },
+    "execution": {
+      "max_attempts_per_call": 3,
+      "parallelism": 5,
+      "complete_ensemble_required": true
+    },
+    "fingerprint_sha256": "593791d8c5435a95c06952f703409af0b64eaf3ad22bf1e47426d682ac4cd717"
+  },
+  "nature_result_views": {
+    "authoritative_binary_decision_path": "meta_review_model.review.Decision",
+    "authoritative_binary_decision": "Reject",
+    "raw_area_chair_review_path": "meta_review_model.review",
+    "public_code_rounded_mean_numeric_view_path": "final_review",
+    "numeric_fields_overwritten_in_final_review": [
+      "Originality",
+      "Quality",
+      "Clarity",
+      "Significance",
+      "Soundness",
+      "Presentation",
+      "Contribution",
+      "Overall",
+      "Confidence"
+    ],
+    "area_chair_text_fields_overwritten": false,
+    "area_chair_decision_overwritten": false
+  },
+  "input": {
+    "blind_id": "B058",
+    "filename": "B058.txt",
+    "blind_text_sha256": "198eecf96c30a7c4b102df7604ba00ee02287be0d5750e405bc35d97ba555270",
+    "characters": 72559,
+    "full_text_saved": false
+  }
+}

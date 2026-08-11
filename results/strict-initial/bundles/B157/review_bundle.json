@@ -1,0 +1,582 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T09:42:24.703615+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "max",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "meta",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper proposes SEFT (Sparsity Evolution Fine-Tuning), a method for fine-tuning already-pruned sparse LLMs while preserving target sparsity. SEFT extends dynamic sparse training (DST) to the fine-tuning setting: it maintains a sparse delta vector over the pruned weights, periodically drops the smallest-magnitude updates and grows new ones based on gradient magnitudes (including reactivating previously pruned weights), then restores the desired sparsity using a sensitivity-based criterion (|gradient * weight|). Experiments cover LLaMA-1/2/3, DeepSeek, and Mistral models pruned with Wanda and SparseGPT, evaluated on commonsense reasoning, MMLU, GSM8K, and C4/Wikitext perplexity. The authors report better or comparable accuracy than sparsity-preserving baselines (SPP, SQFT, LoRA*) while using less memory and training time, and claim CPU inference speedups from retained sparsity.",
+        "Strengths": [
+          "The problem is well-motivated: existing PEFT methods either destroy sparsity when merging adapters or rely on a fixed sparse topology that may be suboptimal for downstream tasks.",
+          "The proposed drop-and-grow plus sensitivity-based sparsity adaptation is a natural and sensible extension of DST to sparse LLM fine-tuning, and the method explicitly allows reactivating previously pruned weights.",
+          "The experimental evaluation is broad: multiple LLM families (LLaMA, DeepSeek, Mistral), two pruning methods (Wanda, SparseGPT), several sparsity levels, and multiple benchmarks (commonsense reasoning, MMLU, GSM8K, perplexity).",
+          "Ablation studies are included for mask constraints, sparsity adaptation, sensitivity vs. magnitude criteria, drop rate, update frequency, learning rate, and number of trainable parameters.",
+          "The paper reports memory and training-time comparisons, and provides an appendix with CPU inference speedups, showing practical motivation for sparsity preservation."
+        ],
+        "Weaknesses": [
+          "The main baseline LoRA* is implemented as LoRA fine-tuning followed by post-hoc Wanda pruning, which likely disadvantages LoRA. Appendix D shows that original dense LoRA (without restoring sparsity) often outperforms SEFT on the same tasks, undermining the claim that SEFT achieves stronger performance than LoRA-based approaches.",
+          "The efficiency comparison (Figure 3) is potentially misleading: the authors acknowledge in Appendix F that computing the full dense gradient is required during topology evolution, so the reported memory/time savings versus SPP/SQFT may be implementation-dependent rather than intrinsic to the method. No end-to-end cost including the pruning step for LoRA* is reported.",
+          "Performance improvements over the strongest sparsity-preserving baselines (SPP and SQFT) are often small (e.g., 0.2–1.0 point gains in Table 2) and no standard deviations, multiple seeds, or statistical significance tests are provided, making it hard to assess robustness.",
+          "The most directly related prior method, SpIEL (Ansell et al., 2024), which scales sparse fine-tuning to dense LLMs, is not included as a baseline. Since SEFT builds on SpIEL and extends it to sparse LLMs, this omission weakens the empirical contribution.",
+          "The N:M structured sparsity experiments restrict growth to currently active weights, so the topology does not truly evolve across the zero positions; this appears to be a minor modification and the gains over baselines are tiny.",
+          "The paper claims high efficiency and practical deployment benefits, but the inference speedups are measured only on CPU with the DeepSparse engine; GPU support for unstructured sparsity is still limited, and the paper does not evaluate actual sparse GPU kernels. This limits the significance of the deployment claims."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How is the number of trainable parameters in SEFT matched exactly to the LoRA rank configuration? Is the delta sparsity (number of non-zero entries) fixed to equal the LoRA parameter count, and how does this affect the final model sparsity?",
+          "When the sparsity adaptation phase prunes weights based on sensitivity, does it prune entries of the delta vector, the underlying base weights, or both? How is the final model represented after fine-tuning—indices+delta, or a merged sparse weight matrix?",
+          "How are optimizer states (e.g., Adam moments) handled for indices that are dropped and later regrown? Are moments reinitialized, carried over, or reset, and does this affect training stability?",
+          "Why is SpIEL (Ansell et al., 2024) not included as a baseline? Since SEFT is built on SpIEL and extends it to sparse LLMs, a direct comparison would be needed to isolate the benefit of the proposed changes.",
+          "In the efficiency comparison, how much of SEFT's lower memory consumption comes from using sparse delta storage versus the actual gradient computation? Can the authors report the peak memory overhead of the dense gradient explicitly, given that the current implementation computes full dense gradients?",
+          "For the MMLU and GSM8K experiments, why are only Wanda-pruned DeepSeek and Mistral models evaluated? Would SEFT behave similarly when the base model is pruned with SparseGPT or when using LLaMA models on these benchmarks?"
+        ],
+        "Limitations": [
+          "The current implementation requires computing the full dense gradient, which limits the practical memory and speed benefits; sparse CUDA kernels are left as future work.",
+          "The evaluation does not include very large models (e.g., 30B/70B) or GPU inference speedups for sparse models, so the deployment advantages remain partially unvalidated.",
+          "The performance gains over strong baselines are modest in many settings and lack statistical significance testing.",
+          "The main baseline (LoRA*) is weakened by post-hoc pruning, so the reported improvements over LoRA are not conclusive; dense LoRA frequently outperforms SEFT, which the authors only partially address by saying SEFT is comparable.",
+          "The method requires tuning hyperparameters such as update frequency and drop rate per dataset (e.g., frequency 10 vs. 60), which may reduce practical applicability.",
+          "No analysis of potential negative interactions with the base model's pretrained knowledge or forgetting on multiple tasks is provided."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes SEFT (Sparsity Evolution Fine-Tuning), a method for fine-tuning already-pruned sparse LLMs while preserving target sparsity. SEFT extends dynamic sparse training (DST) to the fine-tuning setting: it maintains a sparse delta vector over the pruned weights, periodically drops the smallest-magnitude updates and grows new ones based on gradient magnitudes (including reactivating previously pruned weights), then restores the desired sparsity using a sensitivity-based criterion (|gradient * weight|). Experiments cover LLaMA-1/2/3, DeepSeek, and Mistral models pruned with Wanda and SparseGPT, evaluated on commonsense reasoning, MMLU, GSM8K, and C4/Wikitext perplexity. The authors report better or comparable accuracy than sparsity-preserving baselines (SPP, SQFT, LoRA*) while using less memory and training time, and claim CPU inference speedups from retained sparsity.\",\n  \"Strengths\": [\n    \"The problem is well-motivated: existing PEFT methods either destroy sparsity when merging adapters or rely on a fixed sparse topology that may be suboptimal for downstream tasks.\",\n    \"The proposed drop-and-grow plus sensitivity-based sparsity adaptation is a natural and sensible extension of DST to sparse LLM fine-tuning, and the method explicitly allows reactivating previously pruned weights.\",\n    \"The experimental evaluation is broad: multiple LLM families (LLaMA, DeepSeek, Mistral), two pruning methods (Wanda, SparseGPT), several sparsity levels, and multiple benchmarks (commonsense reasoning, MMLU, GSM8K, perplexity).\",\n    \"Ablation studies are included for mask constraints, sparsity adaptation, sensitivity vs. magnitude criteria, drop rate, update frequency, learning rate, and number of trainable parameters.\",\n    \"The paper reports memory and training-time comparisons, and provides an appendix with CPU inference speedups, showing practical motivation for sparsity preservation.\"\n  ],\n  \"Weaknesses\": [\n    \"The main baseline LoRA* is implemented as LoRA fine-tuning followed by post-hoc Wanda pruning, which likely disadvantages LoRA. Appendix D shows that original dense LoRA (without restoring sparsity) often outperforms SEFT on the same tasks, undermining the claim that SEFT achieves stronger performance than LoRA-based approaches.\",\n    \"The efficiency comparison (Figure 3) is potentially misleading: the authors acknowledge in Appendix F that computing the full dense gradient is required during topology evolution, so the reported memory/time savings versus SPP/SQFT may be implementation-dependent rather than intrinsic to the method. No end-to-end cost including the pruning step for LoRA* is reported.\",\n    \"Performance improvements over the strongest sparsity-preserving baselines (SPP and SQFT) are often small (e.g., 0.2–1.0 point gains in Table 2) and no standard deviations, multiple seeds, or statistical significance tests are provided, making it hard to assess robustness.\",\n    \"The most directly related prior method, SpIEL (Ansell et al., 2024), which scales sparse fine-tuning to dense LLMs, is not included as a baseline. Since SEFT builds on SpIEL and extends it to sparse LLMs, this omission weakens the empirical contribution.\",\n    \"The N:M structured sparsity experiments restrict growth to currently active weights, so the topology does not truly evolve across the zero positions; this appears to be a minor modification and the gains over baselines are tiny.\",\n    \"The paper claims high efficiency and practical deployment benefits, but the inference speedups are measured only on CPU with the DeepSparse engine; GPU support for unstructured sparsity is still limited, and the paper does not evaluate actual sparse GPU kernels. This limits the significance of the deployment claims.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How is the number of trainable parameters in SEFT matched exactly to the LoRA rank configuration? Is the delta sparsity (number of non-zero entries) fixed to equal the LoRA parameter count, and how does this affect the final model sparsity?\",\n    \"When the sparsity adaptation phase prunes weights based on sensitivity, does it prune entries of the delta vector, the underlying base weights, or both? How is the final model represented after fine-tuning—indices+delta, or a merged sparse weight matrix?\",\n    \"How are optimizer states (e.g., Adam moments) handled for indices that are dropped and later regrown? Are moments reinitialized, carried over, or reset, and does this affect training stability?\",\n    \"Why is SpIEL (Ansell et al., 2024) not included as a baseline? Since SEFT is built on SpIEL and extends it to sparse LLMs, a direct comparison would be needed to isolate the benefit of the proposed changes.\",\n    \"In the efficiency comparison, how much of SEFT's lower memory consumption comes from using sparse delta storage versus the actual gradient computation? Can the authors report the peak memory overhead of the dense gradient explicitly, given that the current implementation computes full dense gradients?\",\n    \"For the MMLU and GSM8K experiments, why are only Wanda-pruned DeepSeek and Mistral models evaluated? Would SEFT behave similarly when the base model is pruned with SparseGPT or when using LLaMA models on these benchmarks?\"\n  ],\n  \"Limitations\": [\n    \"The current implementation requires computing the full dense gradient, which limits the practical memory and speed benefits; sparse CUDA kernels are left as future work.\",\n    \"The evaluation does not include very large models (e.g., 30B/70B) or GPU inference speedups for sparse models, so the deployment advantages remain partially unvalidated.\",\n    \"The performance gains over strong baselines are modest in many settings and lack statistical significance testing.\",\n    \"The main baseline (LoRA*) is weakened by post-hoc pruning, so the reported improvements over LoRA are not conclusive; dense LoRA frequently outperforms SEFT, which the authors only partially address by saying SEFT is comparable.\",\n    \"The method requires tuning hyperparameters such as update frequency and drop rate per dataset (e.g., frequency 10 vs. 60), which may reduce practical applicability.\",\n    \"No analysis of potential negative interactions with the base model's pretrained knowledge or forgetting on multiple tasks is provided.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 21079,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 20311,
+        "completion_tokens": 2935,
+        "reasoning_tokens": 1521,
+        "total_tokens": 24014
+      },
+      "attempts": 1,
+      "response_id": "cc07859d-eaf7-44ac-a8a9-4e121c2d59e7"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper proposes Sparsity Evolution Fine-Tuning (SEFT), a method for fine-tuning already-pruned sparse large language models while preserving a target sparsity level. SEFT builds on sparse fine-tuning and dynamic sparse training: it maintains a sparse delta vector, periodically drops low-magnitude updates and grows new updates based on gradient magnitudes (including previously pruned weights), then restores the target sparsity via a sensitivity-based pruning criterion. Experiments on LLaMA, DeepSeek, and Mistral models pruned with SparseGPT or Wanda at various sparsity levels show consistent gains over sparsity-preserving baselines (SPP, SQFT, LoRA*) on commonsense reasoning, MMLU, GSM8K, and perplexity recovery, along with memory and time savings.",
+        "Strengths": [
+          "The idea of dynamically evolving the sparse topology during fine-tuning of already-pruned LLMs is well-motivated and addresses a clear limitation of fixed-topology sparsity-preserving methods like SPP and SQFT.",
+          "The paper provides broad empirical validation across multiple model families (LLaMA-1/2/3, DeepSeek, Mistral), pruning methods (Wanda, SparseGPT), sparsity levels (0.6, 0.7), and tasks (commonsense, MMLU, GSM8K, C4 recovery), consistently outperforming sparsity-preserving baselines.",
+          "Ablation studies isolate the contribution of allowing updates to previously pruned weights and show that sensitivity-based sparsity adaptation outperforms magnitude-based pruning, supporting the design choices.",
+          "The paper reports memory, training-time, and CPU inference speedup results, giving practical evidence for the efficiency benefits of maintaining sparsity during fine-tuning."
+        ],
+        "Weaknesses": [
+          "The main text highlights outperformance over baselines, but Appendix D shows that original (dense) LoRA often achieves higher accuracy than SEFT (e.g., Wanda+LoRA 56.66 vs. Wanda+SEFT 56.54 on LLaMA2-7B). This nuance is not clearly communicated, and the performance claim is only versus sparsity-preserving methods.",
+          "The sparse topology evolution phase requires computing full gradients over all parameters to select new indices, which limits the computational and memory benefits. The paper acknowledges this but provides no sparse-gradient implementation or analysis of the resulting overhead.",
+          "The method is a relatively straightforward combination of existing sparse fine-tuning (SpIEL) and dynamic sparse training (DST) techniques, with the main novelty being the application to already-pruned LLMs and the addition of a sparsity restoration step. No direct comparison to SpIEL is provided.",
+          "Many reported improvements are less than 1 point on average accuracy, and no confidence intervals or multiple-seed runs are reported, making it difficult to assess statistical significance.",
+          "For N:M structured sparsity, the topology evolution is restricted to already active weights, which essentially negates the dynamic recovery of pruned weights and reduces the method to a static adaptation within the pattern."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How does SEFT compare empirically to SpIEL (Ansell et al., 2024) when both are applied to the same sparse LLMs?",
+          "What is the actual memory overhead of computing the full gradient for the grow step, and how does this change for models larger than 13B?",
+          "Are results averaged over multiple seeds, and what is the variance?",
+          "In the sparsity adaptation step, is the sensitivity computed from the full gradient or only from the delta updates?",
+          "Does the restriction of topology evolution to active weights in N:M experiments negate the core benefit of dynamic sparsity, and would allowing growth into inactive weights with pattern constraints improve performance?"
+        ],
+        "Limitations": [
+          "Full dense gradient computation during topology evolution prevents full exploitation of sparsity for speed/memory on GPUs; an optimized sparse kernel is needed.",
+          "Experiments are limited to models up to 13B; scalability to 70B+ is not demonstrated.",
+          "Unstructured sparsity support on common hardware is limited, so the practical inference benefits are mostly shown on CPU engines like DeepSparse.",
+          "No statistical significance testing or error bars are provided.",
+          "The paper's ethical impact statement is generic and does not discuss potential misuse of more efficient fine-tuning for harmful applications."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes Sparsity Evolution Fine-Tuning (SEFT), a method for fine-tuning already-pruned sparse large language models while preserving a target sparsity level. SEFT builds on sparse fine-tuning and dynamic sparse training: it maintains a sparse delta vector, periodically drops low-magnitude updates and grows new updates based on gradient magnitudes (including previously pruned weights), then restores the target sparsity via a sensitivity-based pruning criterion. Experiments on LLaMA, DeepSeek, and Mistral models pruned with SparseGPT or Wanda at various sparsity levels show consistent gains over sparsity-preserving baselines (SPP, SQFT, LoRA*) on commonsense reasoning, MMLU, GSM8K, and perplexity recovery, along with memory and time savings.\",\n  \"Strengths\": [\n    \"The idea of dynamically evolving the sparse topology during fine-tuning of already-pruned LLMs is well-motivated and addresses a clear limitation of fixed-topology sparsity-preserving methods like SPP and SQFT.\",\n    \"The paper provides broad empirical validation across multiple model families (LLaMA-1/2/3, DeepSeek, Mistral), pruning methods (Wanda, SparseGPT), sparsity levels (0.6, 0.7), and tasks (commonsense, MMLU, GSM8K, C4 recovery), consistently outperforming sparsity-preserving baselines.\",\n    \"Ablation studies isolate the contribution of allowing updates to previously pruned weights and show that sensitivity-based sparsity adaptation outperforms magnitude-based pruning, supporting the design choices.\",\n    \"The paper reports memory, training-time, and CPU inference speedup results, giving practical evidence for the efficiency benefits of maintaining sparsity during fine-tuning.\"\n  ],\n  \"Weaknesses\": [\n    \"The main text highlights outperformance over baselines, but Appendix D shows that original (dense) LoRA often achieves higher accuracy than SEFT (e.g., Wanda+LoRA 56.66 vs. Wanda+SEFT 56.54 on LLaMA2-7B). This nuance is not clearly communicated, and the performance claim is only versus sparsity-preserving methods.\",\n    \"The sparse topology evolution phase requires computing full gradients over all parameters to select new indices, which limits the computational and memory benefits. The paper acknowledges this but provides no sparse-gradient implementation or analysis of the resulting overhead.\",\n    \"The method is a relatively straightforward combination of existing sparse fine-tuning (SpIEL) and dynamic sparse training (DST) techniques, with the main novelty being the application to already-pruned LLMs and the addition of a sparsity restoration step. No direct comparison to SpIEL is provided.\",\n    \"Many reported improvements are less than 1 point on average accuracy, and no confidence intervals or multiple-seed runs are reported, making it difficult to assess statistical significance.\",\n    \"For N:M structured sparsity, the topology evolution is restricted to already active weights, which essentially negates the dynamic recovery of pruned weights and reduces the method to a static adaptation within the pattern.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does SEFT compare empirically to SpIEL (Ansell et al., 2024) when both are applied to the same sparse LLMs?\",\n    \"What is the actual memory overhead of computing the full gradient for the grow step, and how does this change for models larger than 13B?\",\n    \"Are results averaged over multiple seeds, and what is the variance?\",\n    \"In the sparsity adaptation step, is the sensitivity computed from the full gradient or only from the delta updates?\",\n    \"Does the restriction of topology evolution to active weights in N:M experiments negate the core benefit of dynamic sparsity, and would allowing growth into inactive weights with pattern constraints improve performance?\"\n  ],\n  \"Limitations\": [\n    \"Full dense gradient computation during topology evolution prevents full exploitation of sparsity for speed/memory on GPUs; an optimized sparse kernel is needed.\",\n    \"Experiments are limited to models up to 13B; scalability to 70B+ is not demonstrated.\",\n    \"Unstructured sparsity support on common hardware is limited, so the practical inference benefits are mostly shown on CPU engines like DeepSparse.\",\n    \"No statistical significance testing or error bars are provided.\",\n    \"The paper's ethical impact statement is generic and does not discuss potential misuse of more efficient fine-tuning for harmful applications.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 21079,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 20311,
+        "completion_tokens": 3912,
+        "reasoning_tokens": 2905,
+        "total_tokens": 24991
+      },
+      "attempts": 1,
+      "response_id": "cbf2154d-6a91-4b91-a210-f12223c47ba4"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "SEFT is a fine-tuning method for sparse LLMs that dynamically evolves the sparse topology during task adaptation. It combines a drop-and-grow strategy (inspired by Dynamic Sparse Training) to reactivate useful pruned weights and a sensitivity-based pruning criterion to restore the target sparsity level. The paper evaluates SEFT on LLaMA, DeepSeek, and Mistral models pruned with Wanda and SparseGPT, across performance recovery, commonsense reasoning, MMLU, GSM8K, and N:M sparsity settings, reporting improved accuracy and efficiency compared to sparsity-preserving baselines like LoRA*, SPP, and SQFT.",
+        "Strengths": [
+          "The paper addresses an important problem: efficient fine-tuning of sparse LLMs while preserving sparsity and adapting the sparse structure to downstream tasks.",
+          "SEFT extends dynamic sparse training to already-pruned LLMs, allowing previously pruned weights to be reactivated, which is a sensible way to recover task-relevant connections lost during post-training pruning.",
+          "The experiments cover a broad range of models (LLaMA variants, DeepSeek, Mistral), pruning methods (Wanda, SparseGPT), sparsity levels, and tasks (C4 perplexity, commonsense reasoning, MMLU, GSM8K, N:M sparsity), showing consistent improvements over the chosen baselines.",
+          "The paper reports clear memory and training-time reductions compared to SPP and SQFT, which is valuable for practical deployment of sparse models."
+        ],
+        "Weaknesses": [
+          "The technical formulation of the final sparse model is ambiguous: Eq. (8) defines the new mask M_t and states the resulting model is θ' = θ ⊙ M_t, which appears to discard the delta updates. It is unclear how the fine-tuned sparse model actually incorporates the learned deltas.",
+          "The method requires computing full dense gradients to select grow indices and sensitivity scores (Equations 6 and 7). This undermines the efficiency advantages and is acknowledged in the limitations, but the reported memory/time improvements do not seem to account for this significant overhead.",
+          "The performance gains over strong baselines like SQFT are often marginal (e.g., 0.2–1% average accuracy on commonsense reasoning), and no statistical significance or variance is reported, making it difficult to judge robustness.",
+          "The LoRA* baseline is constructed by post-hoc pruning a dense LoRA-fine-tuned model, which may unfairly weaken it. The comparison to standard dense LoRA is only shown in the appendix, and SEFT there is often worse (e.g., on LLaMA2-7B Wanda, LoRA has 56.66 vs SEFT 56.54).",
+          "The novelty over existing sparse fine-tuning (e.g., SpIEL) is incremental: SEFT mostly combines dynamic sparse training with a sparsity-restoring step, both of which are well-known components.",
+          "Reproducibility is limited because Algorithm 1 and several figures/tables are not fully visible in the paper (only referenced), and the code link is redacted."
+        ],
+        "Originality": 2,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 2,
+        "Questions": [
+          "How is the final fine-tuned sparse model computed exactly—Is it (θ' + δ) ⊙ M_t or θ ⊙ M_t? If the latter, how are the delta updates preserved after masking?",
+          "Given that full dense gradients are needed for the drop/grow and sensitivity calculations, how are the memory and training time measurements in Figure 3 obtained? Are they excluding the gradient computation overhead?",
+          "Why is LoRA* not compared to standard (dense) LoRA in the main experiments? Could the reported improvement over LoRA* be largely due to the post-hoc Wanda pruning removing useful LoRA adaptations?",
+          "What is the performance variance across random seeds? Are the differences between SEFT and SQFT statistically significant?",
+          "How is the update frequency k and drop rate chosen per task? The optimal frequency differs greatly (60 steps for C4 vs 10 for commonsense), suggesting the method is sensitive to these hyperparameters.",
+          "Does the sensitivity-based pruning criterion require an additional backward pass per sparsity-adaptation step, and what is the added computational cost?"
+        ],
+        "Limitations": [
+          "The method still needs dense gradient computation for topology evolution and sensitivity pruning, limiting its practical speedup and memory savings on current hardware.",
+          "The approach relies on heuristic criteria (delta magnitude for dropping, gradient magnitude for growing, sensitivity for pruning) without theoretical justification or convergence guarantees.",
+          "The reported accuracy gains are often small and without statistical significance testing, so the practical advantage over existing methods is not firmly established.",
+          "The paper does not compare against full fine-tuning or dense LoRA under the same parameter budget in the main results, making it hard to assess the trade-off in performance versus efficiency.",
+          "The experiments are mostly limited to 60–70% unstructured sparsity; although N:M sparsity is explored, only 2:4 and 4:8 patterns are tested on a few models."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"SEFT is a fine-tuning method for sparse LLMs that dynamically evolves the sparse topology during task adaptation. It combines a drop-and-grow strategy (inspired by Dynamic Sparse Training) to reactivate useful pruned weights and a sensitivity-based pruning criterion to restore the target sparsity level. The paper evaluates SEFT on LLaMA, DeepSeek, and Mistral models pruned with Wanda and SparseGPT, across performance recovery, commonsense reasoning, MMLU, GSM8K, and N:M sparsity settings, reporting improved accuracy and efficiency compared to sparsity-preserving baselines like LoRA*, SPP, and SQFT.\",\n  \"Strengths\": [\n    \"The paper addresses an important problem: efficient fine-tuning of sparse LLMs while preserving sparsity and adapting the sparse structure to downstream tasks.\",\n    \"SEFT extends dynamic sparse training to already-pruned LLMs, allowing previously pruned weights to be reactivated, which is a sensible way to recover task-relevant connections lost during post-training pruning.\",\n    \"The experiments cover a broad range of models (LLaMA variants, DeepSeek, Mistral), pruning methods (Wanda, SparseGPT), sparsity levels, and tasks (C4 perplexity, commonsense reasoning, MMLU, GSM8K, N:M sparsity), showing consistent improvements over the chosen baselines.\",\n    \"The paper reports clear memory and training-time reductions compared to SPP and SQFT, which is valuable for practical deployment of sparse models.\"\n  ],\n  \"Weaknesses\": [\n    \"The technical formulation of the final sparse model is ambiguous: Eq. (8) defines the new mask M_t and states the resulting model is θ' = θ ⊙ M_t, which appears to discard the delta updates. It is unclear how the fine-tuned sparse model actually incorporates the learned deltas.\",\n    \"The method requires computing full dense gradients to select grow indices and sensitivity scores (Equations 6 and 7). This undermines the efficiency advantages and is acknowledged in the limitations, but the reported memory/time improvements do not seem to account for this significant overhead.\",\n    \"The performance gains over strong baselines like SQFT are often marginal (e.g., 0.2–1% average accuracy on commonsense reasoning), and no statistical significance or variance is reported, making it difficult to judge robustness.\",\n    \"The LoRA* baseline is constructed by post-hoc pruning a dense LoRA-fine-tuned model, which may unfairly weaken it. The comparison to standard dense LoRA is only shown in the appendix, and SEFT there is often worse (e.g., on LLaMA2-7B Wanda, LoRA has 56.66 vs SEFT 56.54).\",\n    \"The novelty over existing sparse fine-tuning (e.g., SpIEL) is incremental: SEFT mostly combines dynamic sparse training with a sparsity-restoring step, both of which are well-known components.\",\n    \"Reproducibility is limited because Algorithm 1 and several figures/tables are not fully visible in the paper (only referenced), and the code link is redacted.\"\n  ],\n  \"Originality\": 2,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"How is the final fine-tuned sparse model computed exactly—Is it (θ' + δ) ⊙ M_t or θ ⊙ M_t? If the latter, how are the delta updates preserved after masking?\",\n    \"Given that full dense gradients are needed for the drop/grow and sensitivity calculations, how are the memory and training time measurements in Figure 3 obtained? Are they excluding the gradient computation overhead?\",\n    \"Why is LoRA* not compared to standard (dense) LoRA in the main experiments? Could the reported improvement over LoRA* be largely due to the post-hoc Wanda pruning removing useful LoRA adaptations?\",\n    \"What is the performance variance across random seeds? Are the differences between SEFT and SQFT statistically significant?\",\n    \"How is the update frequency k and drop rate chosen per task? The optimal frequency differs greatly (60 steps for C4 vs 10 for commonsense), suggesting the method is sensitive to these hyperparameters.\",\n    \"Does the sensitivity-based pruning criterion require an additional backward pass per sparsity-adaptation step, and what is the added computational cost?\"\n  ],\n  \"Limitations\": [\n    \"The method still needs dense gradient computation for topology evolution and sensitivity pruning, limiting its practical speedup and memory savings on current hardware.\",\n    \"The approach relies on heuristic criteria (delta magnitude for dropping, gradient magnitude for growing, sensitivity for pruning) without theoretical justification or convergence guarantees.\",\n    \"The reported accuracy gains are often small and without statistical significance testing, so the practical advantage over existing methods is not firmly established.\",\n    \"The paper does not compare against full fine-tuning or dense LoRA under the same parameter budget in the main results, making it hard to assess the trade-off in performance versus efficiency.\",\n    \"The experiments are mostly limited to 60–70% unstructured sparsity; although N:M sparsity is explored, only 2:4 and 4:8 patterns are tested on a few models.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 21079,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 20311,
+        "completion_tokens": 3891,
+        "reasoning_tokens": 2738,
+        "total_tokens": 24970
+      },
+      "attempts": 1,
+      "response_id": "6f74a785-0120-4ab0-9231-51bc249f0a2e"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper proposes Sparsity Evolution Fine-Tuning (SEFT), a method for fine-tuning post-training pruned sparse LLMs while maintaining a fixed sparsity budget. SEFT uses a dynamic drop-and-grow strategy for task-specific sparse deltas, allowing previously pruned weights to be reactivated, and a sensitivity-based sparsity adaptation step to restore the target sparsity. Experiments on LLaMA, DeepSeek, and Mistral models pruned with Wanda and SparseGPT across commonsense reasoning, MMLU, GSM8K, and C4 recovery show modest accuracy gains over sparsity-preserving baselines, along with reported memory and training-time reductions. The paper also includes ablations and sensitivity analyses.",
+        "Strengths": [
+          "Addresses an important and timely problem: adapting highly sparse LLMs while preserving sparsity, which existing PEFT methods fail to do.",
+          "The drop-and-grow mechanism is simple and well-motivated, and it enables reactivation of pruned connections, addressing a real limitation of fixed-topology sparsity-preserving methods like SPP and SQFT.",
+          "Broad empirical evaluation across multiple LLM families (LLaMA, DeepSeek, Mistral), pruning methods (Wanda, SparseGPT), sparsity levels, and benchmarks (commonsense reasoning, MMLU, GSM8K, C4 recovery), including N:M structured sparsity.",
+          "The paper includes useful ablations (mask constraints, sparsity adaptation, drop rate, update frequency, learning rate, pruning criterion) that give insight into the method's behavior.",
+          "Efficiency results in Figure 3 suggest SEFT uses substantially less memory and training time than SPP and SQFT, which is practically relevant."
+        ],
+        "Weaknesses": [
+          "The LoRA* baseline is post-hoc Wanda-pruned after dense LoRA fine-tuning, which is not a realistic sparsity-preserving baseline and may disadvantage LoRA*. Appendix D shows that original dense LoRA often outperforms SEFT, weakening the claim of stronger performance.",
+          "Sparse topology evolution requires computing gradients for all weights to select grow indices, yet the paper claims significant memory and time savings without a fully controlled comparison or custom sparse kernels; the limitations section admits full dense gradients are computed.",
+          "The mathematical formulation is ambiguous: it is unclear whether sensitivity scores in Eq. (7)-(8) are computed on the original weights θ, the updated weights θ′+δ, or the delta vector, and how the mask M_t interacts with δ. Algorithm 1 is not fully visible, making reproduction difficult.",
+          "Results are reported without error bars or statistical significance tests; many improvements are small (≈1 point or less), and there are per-task regressions (e.g., Wanda+SEFT BoolQ on LLaMA2-7B in Table 2).",
+          "For N:M sparsity, the method restricts growth to already-active weights, so no true topology evolution occurs; this reduces SEFT to a fixed-topology sparse fine-tuner, yet the paper still claims general applicability.",
+          "The efficiency comparison in Figure 3 excludes LoRA* and does not account for the full end-to-end cost of post-hoc pruning, so the claimed efficiency advantage is not fully established."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 3,
+        "Questions": [
+          "In the sparsity adaptation step, are sensitivity scores computed on the original sparse weights θ, the fine-tuned weights θ′+δ, or the delta values δ? When a weight is pruned, is its corresponding delta entry also removed? Please provide precise update equations.",
+          "Since the grow step selects indices using full-gradient magnitudes, what is the actual peak memory footprint during backpropagation compared to LoRA/SQFT? The reported memory savings in Figure 3 seem surprising given that full gradients are computed.",
+          "How does SEFT compare to SpIEL (Ansell et al., 2024) with a fixed mask but the same parameter budget? This would isolate the benefit of dynamic topology evolution.",
+          "Are the accuracy improvements statistically significant? Please provide standard deviations or confidence intervals across multiple seeds.",
+          "For N:M sparsity, if growth is restricted to active weights, what remains of the sparse topology evolution? Is SEFT then equivalent to a fixed-mask sparse fine-tuner?",
+          "If dense LoRA fine-tuning followed by post-hoc pruning (LoRA*) is considered an upper bound, why not compare against full fine-tuning followed by pruning? Would SEFT still be preferred when full fine-tuning is feasible?"
+        ],
+        "Limitations": [
+          "The method computes full dense gradients during topology evolution, which limits potential training speedups on GPUs and may negate some efficiency benefits; no custom sparse kernels are provided.",
+          "The paper only evaluates models up to 13B; scalability to larger models (e.g., 70B) and multi-GPU training settings is not addressed.",
+          "Sparse inference speedups are measured only on CPU via DeepSparse; GPU speedups for unstructured sparsity are not demonstrated, and N:M experiments do not measure actual hardware acceleration.",
+          "The paper does not analyze catastrophic forgetting or generalization beyond the fine-tuned tasks.",
+          "The code and dataset links are redacted, and several equations/tables are malformed in the manuscript, making reproducibility difficult.",
+          "Potential negative societal impacts are dismissed without detailed discussion."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes Sparsity Evolution Fine-Tuning (SEFT), a method for fine-tuning post-training pruned sparse LLMs while maintaining a fixed sparsity budget. SEFT uses a dynamic drop-and-grow strategy for task-specific sparse deltas, allowing previously pruned weights to be reactivated, and a sensitivity-based sparsity adaptation step to restore the target sparsity. Experiments on LLaMA, DeepSeek, and Mistral models pruned with Wanda and SparseGPT across commonsense reasoning, MMLU, GSM8K, and C4 recovery show modest accuracy gains over sparsity-preserving baselines, along with reported memory and training-time reductions. The paper also includes ablations and sensitivity analyses.\",\n  \"Strengths\": [\n    \"Addresses an important and timely problem: adapting highly sparse LLMs while preserving sparsity, which existing PEFT methods fail to do.\",\n    \"The drop-and-grow mechanism is simple and well-motivated, and it enables reactivation of pruned connections, addressing a real limitation of fixed-topology sparsity-preserving methods like SPP and SQFT.\",\n    \"Broad empirical evaluation across multiple LLM families (LLaMA, DeepSeek, Mistral), pruning methods (Wanda, SparseGPT), sparsity levels, and benchmarks (commonsense reasoning, MMLU, GSM8K, C4 recovery), including N:M structured sparsity.\",\n    \"The paper includes useful ablations (mask constraints, sparsity adaptation, drop rate, update frequency, learning rate, pruning criterion) that give insight into the method's behavior.\",\n    \"Efficiency results in Figure 3 suggest SEFT uses substantially less memory and training time than SPP and SQFT, which is practically relevant.\"\n  ],\n  \"Weaknesses\": [\n    \"The LoRA* baseline is post-hoc Wanda-pruned after dense LoRA fine-tuning, which is not a realistic sparsity-preserving baseline and may disadvantage LoRA*. Appendix D shows that original dense LoRA often outperforms SEFT, weakening the claim of stronger performance.\",\n    \"Sparse topology evolution requires computing gradients for all weights to select grow indices, yet the paper claims significant memory and time savings without a fully controlled comparison or custom sparse kernels; the limitations section admits full dense gradients are computed.\",\n    \"The mathematical formulation is ambiguous: it is unclear whether sensitivity scores in Eq. (7)-(8) are computed on the original weights θ, the updated weights θ′+δ, or the delta vector, and how the mask M_t interacts with δ. Algorithm 1 is not fully visible, making reproduction difficult.\",\n    \"Results are reported without error bars or statistical significance tests; many improvements are small (≈1 point or less), and there are per-task regressions (e.g., Wanda+SEFT BoolQ on LLaMA2-7B in Table 2).\",\n    \"For N:M sparsity, the method restricts growth to already-active weights, so no true topology evolution occurs; this reduces SEFT to a fixed-topology sparse fine-tuner, yet the paper still claims general applicability.\",\n    \"The efficiency comparison in Figure 3 excludes LoRA* and does not account for the full end-to-end cost of post-hoc pruning, so the claimed efficiency advantage is not fully established.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"In the sparsity adaptation step, are sensitivity scores computed on the original sparse weights θ, the fine-tuned weights θ′+δ, or the delta values δ? When a weight is pruned, is its corresponding delta entry also removed? Please provide precise update equations.\",\n    \"Since the grow step selects indices using full-gradient magnitudes, what is the actual peak memory footprint during backpropagation compared to LoRA/SQFT? The reported memory savings in Figure 3 seem surprising given that full gradients are computed.\",\n    \"How does SEFT compare to SpIEL (Ansell et al., 2024) with a fixed mask but the same parameter budget? This would isolate the benefit of dynamic topology evolution.\",\n    \"Are the accuracy improvements statistically significant? Please provide standard deviations or confidence intervals across multiple seeds.\",\n    \"For N:M sparsity, if growth is restricted to active weights, what remains of the sparse topology evolution? Is SEFT then equivalent to a fixed-mask sparse fine-tuner?\",\n    \"If dense LoRA fine-tuning followed by post-hoc pruning (LoRA*) is considered an upper bound, why not compare against full fine-tuning followed by pruning? Would SEFT still be preferred when full fine-tuning is feasible?\"\n  ],\n  \"Limitations\": [\n    \"The method computes full dense gradients during topology evolution, which limits potential training speedups on GPUs and may negate some efficiency benefits; no custom sparse kernels are provided.\",\n    \"The paper only evaluates models up to 13B; scalability to larger models (e.g., 70B) and multi-GPU training settings is not addressed.\",\n    \"Sparse inference speedups are measured only on CPU via DeepSparse; GPU speedups for unstructured sparsity are not demonstrated, and N:M experiments do not measure actual hardware acceleration.\",\n    \"The paper does not analyze catastrophic forgetting or generalization beyond the fine-tuned tasks.\",\n    \"The code and dataset links are redacted, and several equations/tables are malformed in the manuscript, making reproducibility difficult.\",\n    \"Potential negative societal impacts are dismissed without detailed discussion.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 21079,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 20311,
+        "completion_tokens": 4084,
+        "reasoning_tokens": 2878,
+        "total_tokens": 25163
+      },
+      "attempts": 1,
+      "response_id": "7cad9aae-22c3-4f2e-93bc-31f09842c1c3"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper proposes SEFT (Sparsity Evolution Fine-Tuning), a method for fine-tuning already-pruned sparse LLMs while preserving sparsity. SEFT maintains a sparse delta applied to the pruned base model, and periodically evolves the sparse topology via a drop-and-grow strategy (dropping deltas with smallest magnitude, growing at positions with largest gradient magnitude), including reactivating previously pruned weights. A sensitivity-based sparsity adaptation step prunes the least sensitive parameters to restore the target sparsity level. Experiments on LLaMA, DeepSeek, and Mistral models pruned with Wanda/SparseGPT show SEFT improves performance over sparsity-preserving baselines (LoRA*, SPP, SQFT) across commonsense reasoning, MMLU, GSM8K, and also handles N:M sparsity, with claimed memory and time savings.",
+        "Strengths": [
+          "Addresses an important and practical problem: fine-tuning sparse LLMs while strictly preserving sparsity, which is crucial for deployment efficiency.",
+          "The dynamic topology evolution idea is sensible and allows recovery of task-relevant pruned weights, which static-mask baselines cannot do.",
+          "Comprehensive empirical evaluation across multiple model families (LLaMA, DeepSeek, Mistral), pruning methods (Wanda, SparseGPT), sparsity levels, and benchmarks (commonsense, MMLU, GSM8K, N:M).",
+          "The paper includes ablation studies on mask constraints, sparsity adaptation, and sensitivity vs magnitude pruning, providing useful insights."
+        ],
+        "Weaknesses": [
+          "Technical clarity issues: the mathematical formulation is inconsistent, e.g., Eq. (8) defines the sparsity-adapted model as θ_t' = θ ⊙ M_t, which appears to reset to the original base parameters rather than using the current fine-tuned parameters (θ' + δ). The relationship between the delta updates and the final model is ambiguous.",
+          "Efficiency claims are suspect and conflict with the acknowledged limitation in Appendix F: SEFT requires computing the full dense gradient to obtain gradient magnitudes for topology growth. This should incur memory/computation close to dense fine-tuning, yet Figure 3 reports SEFT uses about half the memory of SQFT and trains faster. No detailed memory breakdown or implementation description is given to resolve this contradiction.",
+          "Lacks a comparison with SpIEL (Ansell et al., 2024), which is the closest prior work on scaling sparse fine-tuning to LLMs. The claimed novelty over SpIEL is not empirically validated by a direct baseline.",
+          "The performance gains over strong baselines are often modest (1–2% on average), and the paper does not report standard deviations or statistical significance tests, making it hard to assess whether differences are meaningful.",
+          "The algorithm pseudocode is not included in the main text (only referenced to Algorithm 1 which is not visible), and the appendix details are limited; reproduction would be difficult without the code.",
+          "Some experimental details are vague, such as the exact training hyperparameters for each benchmark, the gradient accumulation strategy, and how the number of trainable parameters is matched exactly across methods (e.g., whether the delta vector size equals 2×rank×d).",
+          "The method's benefit for N:M sparsity is limited because the topology evolution is restricted to currently active weights, negating the core idea of reactivating pruned weights; this is a constrained case that is not clearly motivated in the main text."
+        ],
+        "Originality": 2,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 2,
+        "Questions": [
+          "What exactly is the final sparse model after SEFT fine-tuning? Is it the pruned base weights plus the learned delta, or does Eq. (8) mean that the delta is merged and then the resulting dense weights are pruned according to sensitivity?",
+          "The paper states that computing the full gradient is a limitation, yet Figure 3 shows SEFT uses much less memory than SQFT. Could you provide a detailed memory/FLOPs breakdown for SEFT, including optimizer states, gradient computation, and activation memory, to explain this discrepancy?",
+          "Why is SpIEL (the most relevant prior work on sparse fine-tuning for LLMs) not included as a baseline? Would SpIEL applied to the already-pruned sparse model outperform SEFT, and what additional benefit does SEFT's reactivation of pruned weights provide?",
+          "Are the reported performance differences statistically significant? Are the results averaged over multiple seeds, and what is the variance?",
+          "How is the gradient magnitude computed in Eq. (6) for all parameters at once? If this requires a full backward pass with dense gradients, what makes the method more efficient than LoRA* or full fine-tuning?",
+          "In the ablation studies (Table 7), the labels 'w/o. constraint' and 'w. constraint' appear reversed in the text: the text says SEFT is 'w/o. constraint' while Table 7 lists 'w/o. constraint' first with higher scores; please clarify."
+        ],
+        "Limitations": [
+          "The method currently requires computing the full dense gradient, which limits its theoretical and practical efficiency gains on GPUs; an efficient sparse kernel is left for future work.",
+          "The method is only evaluated on models up to 13B and sparsity levels up to 70%; its behavior at larger scales and higher sparsity regimes remains unexplored.",
+          "The paper does not demonstrate GPU inference speedups for unstructured sparsity (only CPU DeepSparse), and N:M hardware support is only tested in a restricted setting where topology evolution is disabled.",
+          "There is no analysis of the impact of fine-tuning data distribution or task-specific issues such as catastrophic forgetting, which could be relevant for sparse model adaptation."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes SEFT (Sparsity Evolution Fine-Tuning), a method for fine-tuning already-pruned sparse LLMs while preserving sparsity. SEFT maintains a sparse delta applied to the pruned base model, and periodically evolves the sparse topology via a drop-and-grow strategy (dropping deltas with smallest magnitude, growing at positions with largest gradient magnitude), including reactivating previously pruned weights. A sensitivity-based sparsity adaptation step prunes the least sensitive parameters to restore the target sparsity level. Experiments on LLaMA, DeepSeek, and Mistral models pruned with Wanda/SparseGPT show SEFT improves performance over sparsity-preserving baselines (LoRA*, SPP, SQFT) across commonsense reasoning, MMLU, GSM8K, and also handles N:M sparsity, with claimed memory and time savings.\",\n  \"Strengths\": [\n    \"Addresses an important and practical problem: fine-tuning sparse LLMs while strictly preserving sparsity, which is crucial for deployment efficiency.\",\n    \"The dynamic topology evolution idea is sensible and allows recovery of task-relevant pruned weights, which static-mask baselines cannot do.\",\n    \"Comprehensive empirical evaluation across multiple model families (LLaMA, DeepSeek, Mistral), pruning methods (Wanda, SparseGPT), sparsity levels, and benchmarks (commonsense, MMLU, GSM8K, N:M).\",\n    \"The paper includes ablation studies on mask constraints, sparsity adaptation, and sensitivity vs magnitude pruning, providing useful insights.\"\n  ],\n  \"Weaknesses\": [\n    \"Technical clarity issues: the mathematical formulation is inconsistent, e.g., Eq. (8) defines the sparsity-adapted model as θ_t' = θ ⊙ M_t, which appears to reset to the original base parameters rather than using the current fine-tuned parameters (θ' + δ). The relationship between the delta updates and the final model is ambiguous.\",\n    \"Efficiency claims are suspect and conflict with the acknowledged limitation in Appendix F: SEFT requires computing the full dense gradient to obtain gradient magnitudes for topology growth. This should incur memory/computation close to dense fine-tuning, yet Figure 3 reports SEFT uses about half the memory of SQFT and trains faster. No detailed memory breakdown or implementation description is given to resolve this contradiction.\",\n    \"Lacks a comparison with SpIEL (Ansell et al., 2024), which is the closest prior work on scaling sparse fine-tuning to LLMs. The claimed novelty over SpIEL is not empirically validated by a direct baseline.\",\n    \"The performance gains over strong baselines are often modest (1–2% on average), and the paper does not report standard deviations or statistical significance tests, making it hard to assess whether differences are meaningful.\",\n    \"The algorithm pseudocode is not included in the main text (only referenced to Algorithm 1 which is not visible), and the appendix details are limited; reproduction would be difficult without the code.\",\n    \"Some experimental details are vague, such as the exact training hyperparameters for each benchmark, the gradient accumulation strategy, and how the number of trainable parameters is matched exactly across methods (e.g., whether the delta vector size equals 2×rank×d).\",\n    \"The method's benefit for N:M sparsity is limited because the topology evolution is restricted to currently active weights, negating the core idea of reactivating pruned weights; this is a constrained case that is not clearly motivated in the main text.\"\n  ],\n  \"Originality\": 2,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"What exactly is the final sparse model after SEFT fine-tuning? Is it the pruned base weights plus the learned delta, or does Eq. (8) mean that the delta is merged and then the resulting dense weights are pruned according to sensitivity?\",\n    \"The paper states that computing the full gradient is a limitation, yet Figure 3 shows SEFT uses much less memory than SQFT. Could you provide a detailed memory/FLOPs breakdown for SEFT, including optimizer states, gradient computation, and activation memory, to explain this discrepancy?\",\n    \"Why is SpIEL (the most relevant prior work on sparse fine-tuning for LLMs) not included as a baseline? Would SpIEL applied to the already-pruned sparse model outperform SEFT, and what additional benefit does SEFT's reactivation of pruned weights provide?\",\n    \"Are the reported performance differences statistically significant? Are the results averaged over multiple seeds, and what is the variance?\",\n    \"How is the gradient magnitude computed in Eq. (6) for all parameters at once? If this requires a full backward pass with dense gradients, what makes the method more efficient than LoRA* or full fine-tuning?\",\n    \"In the ablation studies (Table 7), the labels 'w/o. constraint' and 'w. constraint' appear reversed in the text: the text says SEFT is 'w/o. constraint' while Table 7 lists 'w/o. constraint' first with higher scores; please clarify.\"\n  ],\n  \"Limitations\": [\n    \"The method currently requires computing the full dense gradient, which limits its theoretical and practical efficiency gains on GPUs; an efficient sparse kernel is left for future work.\",\n    \"The method is only evaluated on models up to 13B and sparsity levels up to 70%; its behavior at larger scales and higher sparsity regimes remains unexplored.\",\n    \"The paper does not demonstrate GPU inference speedups for unstructured sparsity (only CPU DeepSparse), and N:M hardware support is only tested in a restricted setting where topology evolution is disabled.\",\n    \"There is no analysis of the impact of fine-tuning data distribution or task-specific issues such as catastrophic forgetting, which could be relevant for sparse model adaptation.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 21079,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 20311,
+        "completion_tokens": 3346,
+        "reasoning_tokens": 2068,
+        "total_tokens": 24425
+      },
+      "attempts": 1,
+      "response_id": "9f92b822-b853-404d-8c47-85c2a8a1939e"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 1,
+      "Reject": 4
+    },
+    "unanimous_decision": false,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          3,
+          3,
+          2,
+          3,
+          2
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Quality": {
+        "values": [
+          2,
+          3,
+          2,
+          2,
+          2
+        ],
+        "mean": 2.2,
+        "rounded_mean": 2,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          3,
+          2,
+          2,
+          2
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          3,
+          3,
+          2,
+          3,
+          2
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Soundness": {
+        "values": [
+          2,
+          3,
+          2,
+          2,
+          2
+        ],
+        "mean": 2.2,
+        "rounded_mean": 2,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          3,
+          2,
+          2,
+          2
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          3,
+          3,
+          2,
+          2,
+          2
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          4,
+          6,
+          4,
+          4,
+          4
+        ],
+        "mean": 4.4,
+        "rounded_mean": 4,
+        "population_sd": 0.8,
+        "min": 4,
+        "max": 6
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "mean": 4,
+        "rounded_mean": 4,
+        "population_sd": 0.0,
+        "min": 4,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper proposes Sparsity Evolution Fine-Tuning (SEFT), a method for fine-tuning already-pruned sparse large language models while preserving a target sparsity level. SEFT maintains a sparse delta vector over the pruned weights, applies a periodic drop-and-grow step (dropping smallest-magnitude updates and growing new ones based on gradient magnitudes, including reactivating previously pruned weights), and uses a sensitivity-based criterion (|gradient*weight|) to restore the desired sparsity. Experiments cover LLaMA-1/2/3, DeepSeek, and Mistral models pruned with Wanda and SparseGPT, evaluated on commonsense reasoning, MMLU, GSM8K, and perplexity recovery, and include N:M structured sparsity, ablations, and memory/time comparisons with sparsity-preserving baselines.",
+      "Strengths": [
+        "The problem is important and well-motivated: existing PEFT methods either destroy sparsity when merged or keep a fixed sparse topology that may be suboptimal for downstream tasks.",
+        "The proposed drop-and-grow strategy is a natural extension of dynamic sparse training, and it explicitly allows reactivating previously pruned weights, addressing a real limitation of fixed-topology sparse fine-tuning.",
+        "The empirical evaluation is broad across model families (LLaMA, DeepSeek, Mistral), pruning methods (Wanda, SparseGPT), sparsity levels, and multiple benchmarks (commonsense, MMLU, GSM8K, perplexity, N:M).",
+        "Ablation studies isolate key design choices such as mask constraints, sparsity adaptation, sensitivity vs. magnitude pruning, drop rate, update frequency, and learning rate.",
+        "The paper reports memory and training-time reductions compared to SPP and SQFT, supporting practical motivation for sparsity preservation."
+      ],
+      "Weaknesses": [
+        "The main LoRA* baseline is constructed by post-hoc Wanda pruning after dense LoRA fine-tuning, which likely disadvantages LoRA; Appendix D shows that dense LoRA (without sparsity restoration) often outperforms SEFT on the same tasks, weakening the claimed performance advantage over LoRA-based adaptation.",
+        "The efficiency claims are contradicted by the acknowledged need to compute full dense gradients for the grow and sensitivity steps; the reported memory/time savings over SQFT/SPP are not backed by a detailed memory/FLOPs breakdown and may be implementation-dependent.",
+        "The mathematical formulation is ambiguous: Eq. (8) appears to define the final model as θ ⊙ M_t, which would discard the learned delta updates; it is unclear how the delta and mask interact in the final sparse model.",
+        "The most closely related prior work, SpIEL (Ansell et al., 2024), is not included as a baseline; since SEFT builds on SpIEL and extends it to sparse LLMs, the empirical contribution is not isolated.",
+        "Improvements over strong sparsity-preserving baselines are often small (0.2–1.0 point on commonsense reasoning) and no standard deviations, multiple seeds, or statistical significance tests are reported, so robustness is uncertain.",
+        "For N:M structured sparsity, growth is restricted to currently active weights, so the topology does not truly evolve across pruned positions; this negates the core benefit of reactivation and makes the method equivalent to a fixed-topology fine-tuner in that setting.",
+        "Several technical details are missing or unclear, including the exact training hyperparameters per benchmark, the number of trainable parameters matched to LoRA rank, and how optimizer states are handled for regrown indices; Algorithm 1 and some tables are not fully visible in the text."
+      ],
+      "Originality": 2,
+      "Quality": 2,
+      "Clarity": 2,
+      "Significance": 2,
+      "Questions": [
+        "What exactly is the final sparse model after SEFT: is it the pruned base weights plus the learned delta, or does Eq. (8) mean that the delta is merged and then the resulting dense weights are pruned according to sensitivity? How is the mask M_t applied to δ?",
+        "Since computing the full dense gradient is needed for topology evolution, how can SEFT use less memory and training time than SQFT? Please provide a detailed peak-memory and FLOPs breakdown including gradient computation, optimizer states, and activations.",
+        "Why is SpIEL not compared as a baseline? Would SpIEL applied to the already-pruned sparse model achieve similar or better results, and what isolated benefit does the dynamic reactivation of pruned weights provide?",
+        "Are the reported accuracy differences statistically significant? Please report standard deviations or confidence intervals over multiple seeds.",
+        "For N:M sparsity, growth is restricted to active weights; is SEFT then equivalent to a fixed-mask sparse fine-tuner, and what is the remaining advantage over SPP/SQFT?",
+        "How are optimizer moments handled for indices that are dropped and later regrown? Are they reset, and does this affect training stability?"
+      ],
+      "Limitations": [
+        "The method requires full dense gradient computation during topology evolution, limiting practical speed/memory benefits on GPUs; sparse CUDA kernels are not provided.",
+        "Experiments only cover models up to 13B and sparsity up to 70%; scalability to 30B/70B and higher sparsity regimes is not demonstrated.",
+        "Inference speedups are measured only on CPU with DeepSparse; GPU speedups for unstructured sparsity are not evaluated.",
+        "The method has additional hyperparameters (drop rate, update frequency) whose optimal values vary across tasks, reducing practical applicability.",
+        "No analysis of catastrophic forgetting or task interference is provided, and the ethical impact discussion is generic."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 2,
+      "Presentation": 2,
+      "Contribution": 2,
+      "Overall": 4,
+      "Confidence": 4,
+      "Decision": "Reject"
+    },
+    "raw_response": "{\n  \"Summary\": \"The paper proposes Sparsity Evolution Fine-Tuning (SEFT), a method for fine-tuning already-pruned sparse large language models while preserving a target sparsity level. SEFT maintains a sparse delta vector over the pruned weights, applies a periodic drop-and-grow step (dropping smallest-magnitude updates and growing new ones based on gradient magnitudes, including reactivating previously pruned weights), and uses a sensitivity-based criterion (|gradient*weight|) to restore the desired sparsity. Experiments cover LLaMA-1/2/3, DeepSeek, and Mistral models pruned with Wanda and SparseGPT, evaluated on commonsense reasoning, MMLU, GSM8K, and perplexity recovery, and include N:M structured sparsity, ablations, and memory/time comparisons with sparsity-preserving baselines.\",\n  \"Strengths\": [\n    \"The problem is important and well-motivated: existing PEFT methods either destroy sparsity when merged or keep a fixed sparse topology that may be suboptimal for downstream tasks.\",\n    \"The proposed drop-and-grow strategy is a natural extension of dynamic sparse training, and it explicitly allows reactivating previously pruned weights, addressing a real limitation of fixed-topology sparse fine-tuning.\",\n    \"The empirical evaluation is broad across model families (LLaMA, DeepSeek, Mistral), pruning methods (Wanda, SparseGPT), sparsity levels, and multiple benchmarks (commonsense, MMLU, GSM8K, perplexity, N:M).\",\n    \"Ablation studies isolate key design choices such as mask constraints, sparsity adaptation, sensitivity vs. magnitude pruning, drop rate, update frequency, and learning rate.\",\n    \"The paper reports memory and training-time reductions compared to SPP and SQFT, supporting practical motivation for sparsity preservation.\"\n  ],\n  \"Weaknesses\": [\n    \"The main LoRA* baseline is constructed by post-hoc Wanda pruning after dense LoRA fine-tuning, which likely disadvantages LoRA; Appendix D shows that dense LoRA (without sparsity restoration) often outperforms SEFT on the same tasks, weakening the claimed performance advantage over LoRA-based adaptation.\",\n    \"The efficiency claims are contradicted by the acknowledged need to compute full dense gradients for the grow and sensitivity steps; the reported memory/time savings over SQFT/SPP are not backed by a detailed memory/FLOPs breakdown and may be implementation-dependent.\",\n    \"The mathematical formulation is ambiguous: Eq. (8) appears to define the final model as θ ⊙ M_t, which would discard the learned delta updates; it is unclear how the delta and mask interact in the final sparse model.\",\n    \"The most closely related prior work, SpIEL (Ansell et al., 2024), is not included as a baseline; since SEFT builds on SpIEL and extends it to sparse LLMs, the empirical contribution is not isolated.\",\n    \"Improvements over strong sparsity-preserving baselines are often small (0.2–1.0 point on commonsense reasoning) and no standard deviations, multiple seeds, or statistical significance tests are reported, so robustness is uncertain.\",\n    \"For N:M structured sparsity, growth is restricted to currently active weights, so the topology does not truly evolve across pruned positions; this negates the core benefit of reactivation and makes the method equivalent to a fixed-topology fine-tuner in that setting.\",\n    \"Several technical details are missing or unclear, including the exact training hyperparameters per benchmark, the number of trainable parameters matched to LoRA rank, and how optimizer states are handled for regrown indices; Algorithm 1 and some tables are not fully visible in the text.\"\n  ],\n  \"Originality\": 2,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"What exactly is the final sparse model after SEFT: is it the pruned base weights plus the learned delta, or does Eq. (8) mean that the delta is merged and then the resulting dense weights are pruned according to sensitivity? How is the mask M_t applied to δ?\",\n    \"Since computing the full dense gradient is needed for topology evolution, how can SEFT use less memory and training time than SQFT? Please provide a detailed peak-memory and FLOPs breakdown including gradient computation, optimizer states, and activations.\",\n    \"Why is SpIEL not compared as a baseline? Would SpIEL applied to the already-pruned sparse model achieve similar or better results, and what isolated benefit does the dynamic reactivation of pruned weights provide?\",\n    \"Are the reported accuracy differences statistically significant? Please report standard deviations or confidence intervals over multiple seeds.\",\n    \"For N:M sparsity, growth is restricted to active weights; is SEFT then equivalent to a fixed-mask sparse fine-tuner, and what is the remaining advantage over SPP/SQFT?\",\n    \"How are optimizer moments handled for indices that are dropped and later regrown? Are they reset, and does this affect training stability?\"\n  ],\n  \"Limitations\": [\n    \"The method requires full dense gradient computation during topology evolution, limiting practical speed/memory benefits on GPUs; sparse CUDA kernels are not provided.\",\n    \"Experiments only cover models up to 13B and sparsity up to 70%; scalability to 30B/70B and higher sparsity regimes is not demonstrated.\",\n    \"Inference speedups are measured only on CPU with DeepSparse; GPU speedups for unstructured sparsity are not evaluated.\",\n    \"The method has additional hyperparameters (drop rate, update frequency) whose optimal values vary across tasks, reducing practical applicability.\",\n    \"No analysis of catastrophic forgetting or task interference is provided, and the ethical impact discussion is generic.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+    "usage": {
+      "prompt_tokens": 6873,
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 6617,
+      "completion_tokens": 1754,
+      "reasoning_tokens": 492,
+      "total_tokens": 8627
+    },
+    "attempts": 1,
+    "response_id": "e504fcf6-f103-4779-bcab-81b3f1f52050"
+  },
+  "final_review": {
+    "Summary": "The paper proposes Sparsity Evolution Fine-Tuning (SEFT), a method for fine-tuning already-pruned sparse large language models while preserving a target sparsity level. SEFT maintains a sparse delta vector over the pruned weights, applies a periodic drop-and-grow step (dropping smallest-magnitude updates and growing new ones based on gradient magnitudes, including reactivating previously pruned weights), and uses a sensitivity-based criterion (|gradient*weight|) to restore the desired sparsity. Experiments cover LLaMA-1/2/3, DeepSeek, and Mistral models pruned with Wanda and SparseGPT, evaluated on commonsense reasoning, MMLU, GSM8K, and perplexity recovery, and include N:M structured sparsity, ablations, and memory/time comparisons with sparsity-preserving baselines.",
+    "Strengths": [
+      "The problem is important and well-motivated: existing PEFT methods either destroy sparsity when merged or keep a fixed sparse topology that may be suboptimal for downstream tasks.",
+      "The proposed drop-and-grow strategy is a natural extension of dynamic sparse training, and it explicitly allows reactivating previously pruned weights, addressing a real limitation of fixed-topology sparse fine-tuning.",
+      "The empirical evaluation is broad across model families (LLaMA, DeepSeek, Mistral), pruning methods (Wanda, SparseGPT), sparsity levels, and multiple benchmarks (commonsense, MMLU, GSM8K, perplexity, N:M).",
+      "Ablation studies isolate key design choices such as mask constraints, sparsity adaptation, sensitivity vs. magnitude pruning, drop rate, update frequency, and learning rate.",
+      "The paper reports memory and training-time reductions compared to SPP and SQFT, supporting practical motivation for sparsity preservation."
+    ],
+    "Weaknesses": [
+      "The main LoRA* baseline is constructed by post-hoc Wanda pruning after dense LoRA fine-tuning, which likely disadvantages LoRA; Appendix D shows that dense LoRA (without sparsity restoration) often outperforms SEFT on the same tasks, weakening the claimed performance advantage over LoRA-based adaptation.",
+      "The efficiency claims are contradicted by the acknowledged need to compute full dense gradients for the grow and sensitivity steps; the reported memory/time savings over SQFT/SPP are not backed by a detailed memory/FLOPs breakdown and may be implementation-dependent.",
+      "The mathematical formulation is ambiguous: Eq. (8) appears to define the final model as θ ⊙ M_t, which would discard the learned delta updates; it is unclear how the delta and mask interact in the final sparse model.",
+      "The most closely related prior work, SpIEL (Ansell et al., 2024), is not included as a baseline; since SEFT builds on SpIEL and extends it to sparse LLMs, the empirical contribution is not isolated.",
+      "Improvements over strong sparsity-preserving baselines are often small (0.2–1.0 point on commonsense reasoning) and no standard deviations, multiple seeds, or statistical significance tests are reported, so robustness is uncertain.",
+      "For N:M structured sparsity, growth is restricted to currently active weights, so the topology does not truly evolve across pruned positions; this negates the core benefit of reactivation and makes the method equivalent to a fixed-topology fine-tuner in that setting.",
+      "Several technical details are missing or unclear, including the exact training hyperparameters per benchmark, the number of trainable parameters matched to LoRA rank, and how optimizer states are handled for regrown indices; Algorithm 1 and some tables are not fully visible in the text."
+    ],
+    "Originality": 2,
+    "Quality": 2,
+    "Clarity": 2,
+    "Significance": 2,
+    "Questions": [
+      "What exactly is the final sparse model after SEFT: is it the pruned base weights plus the learned delta, or does Eq. (8) mean that the delta is merged and then the resulting dense weights are pruned according to sensitivity? How is the mask M_t applied to δ?",
+      "Since computing the full dense gradient is needed for topology evolution, how can SEFT use less memory and training time than SQFT? Please provide a detailed peak-memory and FLOPs breakdown including gradient computation, optimizer states, and activations.",
+      "Why is SpIEL not compared as a baseline? Would SpIEL applied to the already-pruned sparse model achieve similar or better results, and what isolated benefit does the dynamic reactivation of pruned weights provide?",
+      "Are the reported accuracy differences statistically significant? Please report standard deviations or confidence intervals over multiple seeds.",
+      "For N:M sparsity, growth is restricted to active weights; is SEFT then equivalent to a fixed-mask sparse fine-tuner, and what is the remaining advantage over SPP/SQFT?",
+      "How are optimizer moments handled for indices that are dropped and later regrown? Are they reset, and does this affect training stability?"
+    ],
+    "Limitations": [
+      "The method requires full dense gradient computation during topology evolution, limiting practical speed/memory benefits on GPUs; sparse CUDA kernels are not provided.",
+      "Experiments only cover models up to 13B and sparsity up to 70%; scalability to 30B/70B and higher sparsity regimes is not demonstrated.",
+      "Inference speedups are measured only on CPU with DeepSparse; GPU speedups for unstructured sparsity are not evaluated.",
+      "The method has additional hyperparameters (drop rate, update frequency) whose optimal values vary across tasks, reducing practical applicability.",
+      "No analysis of catastrophic forgetting or task interference is provided, and the ethical impact discussion is generic."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 2,
+    "Presentation": 2,
+    "Contribution": 2,
+    "Overall": 4,
+    "Confidence": 4,
+    "Decision": "Reject"
+  },
+  "final_review_source": "Area Chair model output",
+  "usage": {
+    "prompt_tokens": 112268,
+    "prompt_cache_hit_tokens": 4096,
+    "prompt_cache_miss_tokens": 108172,
+    "completion_tokens": 19922,
+    "reasoning_tokens": 12602,
+    "total_tokens": 132190,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 1.147e-05,
+    "cache_miss_input_usd": 0.01514408,
+    "output_usd": 0.00557816,
+    "total_usd": 0.02073371
+  },
+  "elapsed_seconds": 51.811,
+  "input": {
+    "blind_id": "B157",
+    "filename": "B157.txt",
+    "blind_text_sha256": "e6fd4e5c779efd29d3de0ec3c2683ba7890f6f29de862a8d3b5093234acea9b5",
+    "characters": 78486,
+    "full_text_saved": false
+  }
+}

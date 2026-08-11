@@ -1,0 +1,598 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-10T22:36:23.876775+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "max",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "meta",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "The paper proposes Contrastive Conditional-Unconditional Alignment (CCUA), a training framework for class-conditional diffusion models on long-tailed data. It introduces two losses: an Unsupervised Contrastive Loss (UCL) that uses negative samples only to push apart latent representations of different noisy images, increasing diversity especially for tail classes; and an Alignment Loss (AL) that minimizes the difference between conditional and unconditional noise predictions, weighted toward large timesteps so early denoising steps are class-agnostic, encouraging knowledge sharing from head to tail classes. The method is applied to both DDPM (U-Net) and SiT (Diffusion Transformer) pipelines, with optional batch resampling. Experiments on ImageNet-LT, TinyImageNet-LT, Places-LT, and CIFAR-LT show FID, KID, and Recall improvements over baselines such as DDPM, CBDM, OCLT, and Dispersive Loss, along with qualitative evidence of reduced mode collapse.",
+        "Strengths": [
+          "The proposed CCUA is simple and plug-and-play, requiring only two additional loss terms that can be integrated into standard diffusion training pipelines (DDPM and SiT) without architectural changes.",
+          "The two losses directly target the core issues of long-tailed generation: UCL increases intra-class diversity to mitigate mode collapse, while AL facilitates knowledge sharing from head to tail classes by aligning conditional and unconditional denoising at early steps.",
+          "Extensive experiments on multiple long-tailed benchmarks (ImageNet-LT, TinyImageNet-LT, Places-LT, CIFAR10/100-LT) demonstrate consistent improvements in FID, KID, and Recall over several strong baselines, with ablations confirming the contribution of each loss component.",
+          "The paper provides qualitative visualizations and distribution analyses (t-SNE and KDE) showing reduced mode collapse for tail classes, and demonstrates that batch resampling, which usually hurts baseline methods, becomes beneficial when combined with UCL."
+        ],
+        "Weaknesses": [
+          "The unsupervised contrastive loss with negative samples only is essentially a repulsive/dispersion loss without positive pairs; its formulation closely resembles the concurrent dispersive loss (Wang & He, 2025), and the claimed novelty is mainly the application to the unconditional latent space combined with alignment, which is not deeply justified theoretically.",
+          "The alignment loss is derived from KL divergence but simplified to an MSE on noise predictions; the choice of linear timestep weighting t/T is heuristic, and the paper does not analyze how this alignment affects class-conditional controllability or whether it might reduce head-class diversity.",
+          "The evaluation methodology may favor the proposed method: CFG strength is grid-searched independently per method, but the search ranges and criteria are not fully specified; moreover, DiffROP (discussed in related work) is not included in the empirical comparison.",
+          "Training time is increased substantially (1.6x for DDPM, 1.48x for SiT), yet the paper does not discuss the computational cost-benefit trade-off or whether the gains are worth the overhead.",
+          "The claim that head-class quality is maintained is only partially supported: in Table 3 on TinyImageNet-LT, the head-class FID of CCUA (21.32) is slightly worse than DDPM (21.27), and the paper does not report per-head-class metrics on ImageNet-LT."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How does CCUA compare empirically to DiffROP (Yan et al., 2024), which also uses contrastive learning for long-tailed diffusion models? The related work discusses it, but no experiments are shown.",
+          "Is the improvement of CCUA over Dispersive Loss (Wang & He, 2025) consistent on other datasets beyond ImageNet-LT, or is it specific to that setup?",
+          "How sensitive are the results to the hyperparameters alpha, gamma, and tau? Are the same values used across all datasets and architectures, and were they tuned via validation?",
+          "Does the alignment loss reduce the distinguishability of different classes in the early denoising steps? For a fixed noise, are the generated images for different classes still clearly separated after the initial steps?",
+          "What is the criterion for applying batch resampling only on certain datasets (ImageNet-LT and TinyImageNet-LT) and not on Places-LT or CIFAR-LT? How does it interact with the alignment loss in those cases?"
+        ],
+        "Limitations": [
+          "The method requires two forward passes (conditional and unconditional) during training, leading to about 1.5x training time overhead; inference latency is unchanged, but the cost is non-trivial.",
+          "The evaluation is limited to low-to-moderate resolutions (up to 256x256); the scalability to higher resolutions commonly used in modern diffusion models (e.g., 512x512) is not demonstrated.",
+          "The paper does not analyze potential over-dispersion caused by the contrastive loss, which could harm intra-class structure or fidelity for some classes, especially if the loss weight alpha is too high.",
+          "The alignment loss is designed for class-conditioned generation and may not generalize to text-conditioned generation, which is a more common setting; no experiments with text prompts are provided.",
+          "No theoretical analysis is given for how the two losses interact or why the combination should not degrade head-class generation; the paper relies solely on empirical evidence."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes Contrastive Conditional-Unconditional Alignment (CCUA), a training framework for class-conditional diffusion models on long-tailed data. It introduces two losses: an Unsupervised Contrastive Loss (UCL) that uses negative samples only to push apart latent representations of different noisy images, increasing diversity especially for tail classes; and an Alignment Loss (AL) that minimizes the difference between conditional and unconditional noise predictions, weighted toward large timesteps so early denoising steps are class-agnostic, encouraging knowledge sharing from head to tail classes. The method is applied to both DDPM (U-Net) and SiT (Diffusion Transformer) pipelines, with optional batch resampling. Experiments on ImageNet-LT, TinyImageNet-LT, Places-LT, and CIFAR-LT show FID, KID, and Recall improvements over baselines such as DDPM, CBDM, OCLT, and Dispersive Loss, along with qualitative evidence of reduced mode collapse.\",\n  \"Strengths\": [\n    \"The proposed CCUA is simple and plug-and-play, requiring only two additional loss terms that can be integrated into standard diffusion training pipelines (DDPM and SiT) without architectural changes.\",\n    \"The two losses directly target the core issues of long-tailed generation: UCL increases intra-class diversity to mitigate mode collapse, while AL facilitates knowledge sharing from head to tail classes by aligning conditional and unconditional denoising at early steps.\",\n    \"Extensive experiments on multiple long-tailed benchmarks (ImageNet-LT, TinyImageNet-LT, Places-LT, CIFAR10/100-LT) demonstrate consistent improvements in FID, KID, and Recall over several strong baselines, with ablations confirming the contribution of each loss component.\",\n    \"The paper provides qualitative visualizations and distribution analyses (t-SNE and KDE) showing reduced mode collapse for tail classes, and demonstrates that batch resampling, which usually hurts baseline methods, becomes beneficial when combined with UCL.\"\n  ],\n  \"Weaknesses\": [\n    \"The unsupervised contrastive loss with negative samples only is essentially a repulsive/dispersion loss without positive pairs; its formulation closely resembles the concurrent dispersive loss (Wang & He, 2025), and the claimed novelty is mainly the application to the unconditional latent space combined with alignment, which is not deeply justified theoretically.\",\n    \"The alignment loss is derived from KL divergence but simplified to an MSE on noise predictions; the choice of linear timestep weighting t/T is heuristic, and the paper does not analyze how this alignment affects class-conditional controllability or whether it might reduce head-class diversity.\",\n    \"The evaluation methodology may favor the proposed method: CFG strength is grid-searched independently per method, but the search ranges and criteria are not fully specified; moreover, DiffROP (discussed in related work) is not included in the empirical comparison.\",\n    \"Training time is increased substantially (1.6x for DDPM, 1.48x for SiT), yet the paper does not discuss the computational cost-benefit trade-off or whether the gains are worth the overhead.\",\n    \"The claim that head-class quality is maintained is only partially supported: in Table 3 on TinyImageNet-LT, the head-class FID of CCUA (21.32) is slightly worse than DDPM (21.27), and the paper does not report per-head-class metrics on ImageNet-LT.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does CCUA compare empirically to DiffROP (Yan et al., 2024), which also uses contrastive learning for long-tailed diffusion models? The related work discusses it, but no experiments are shown.\",\n    \"Is the improvement of CCUA over Dispersive Loss (Wang & He, 2025) consistent on other datasets beyond ImageNet-LT, or is it specific to that setup?\",\n    \"How sensitive are the results to the hyperparameters alpha, gamma, and tau? Are the same values used across all datasets and architectures, and were they tuned via validation?\",\n    \"Does the alignment loss reduce the distinguishability of different classes in the early denoising steps? For a fixed noise, are the generated images for different classes still clearly separated after the initial steps?\",\n    \"What is the criterion for applying batch resampling only on certain datasets (ImageNet-LT and TinyImageNet-LT) and not on Places-LT or CIFAR-LT? How does it interact with the alignment loss in those cases?\"\n  ],\n  \"Limitations\": [\n    \"The method requires two forward passes (conditional and unconditional) during training, leading to about 1.5x training time overhead; inference latency is unchanged, but the cost is non-trivial.\",\n    \"The evaluation is limited to low-to-moderate resolutions (up to 256x256); the scalability to higher resolutions commonly used in modern diffusion models (e.g., 512x512) is not demonstrated.\",\n    \"The paper does not analyze potential over-dispersion caused by the contrastive loss, which could harm intra-class structure or fidelity for some classes, especially if the loss weight alpha is too high.\",\n    \"The alignment loss is designed for class-conditioned generation and may not generalize to text-conditioned generation, which is a more common setting; no experiments with text prompts are provided.\",\n    \"No theoretical analysis is given for how the two losses interact or why the combination should not degrade head-class generation; the paper relies solely on empirical evidence.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 17745,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 16977,
+        "completion_tokens": 3941,
+        "reasoning_tokens": 2716,
+        "total_tokens": 21686
+      },
+      "attempts": 1,
+      "response_id": "8e3b27c1-18fa-4680-b8ce-e52159d09966"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper proposes Contrastive Conditional-Unconditional Alignment (CCUA) to improve class-conditional diffusion models trained on long-tailed data. It introduces two losses: an Unsupervised Contrastive Loss (UCL) that uses negative samples to push apart latent representations of different images, promoting diversity, and an Alignment Loss (AL) that matches conditional and unconditional noise predictions at large timesteps, facilitating knowledge sharing from head to tail classes. The framework is applied to DDPM and SiT architectures and evaluated on several long-tailed datasets (ImageNet-LT, TinyImageNet-LT, Places-LT, CIFAR-LT), showing improved FID, Recall, and tail-class FID compared to baselines. The contributions include simple, plug-and-play losses and comprehensive experiments.",
+        "Strengths": [
+          "Addresses an important problem (class-imbalanced diffusion models) with a simple, easy-to-implement solution applicable to both UNet and Transformer backbones.",
+          "The proposed losses are intuitive and well-motivated, with clear illustrations of the mode collapse issue and similarity of initial denoising steps.",
+          "Consistent improvements over strong baselines across multiple datasets (ImageNet-LT, TinyImageNet-LT, Places-LT, CIFAR-LT) in terms of FID, Recall, and tail-class FID, without sacrificing Precision.",
+          "Thorough ablations (loss components, batch resampling) and visualizations (t-SNE, mode collapse examples) support the claims.",
+          "Evaluation includes unconditional generation and few-step sampling, showing robustness."
+        ],
+        "Weaknesses": [
+          "Novelty is limited: the Unsupervised Contrastive Loss is essentially the same as the dispersive loss (Wang & He, 2025) but applied to unconditional latents; the Alignment Loss is a direct adaptation of UTLO/TGAN from GANs to diffusion. The combination is new but individual components are known.",
+          "The theoretical justification for UCL is superficial; the claim that the loss pushes embeddings to a uniform distribution on a hypersphere is not rigorously analyzed, and the effect on diversity is not formally proven.",
+          "The derivation of the Alignment Loss equates KL divergence with MSE between noise predictions but does not discuss potential differences in variance between conditional and unconditional distributions, nor the effect of class-dropping in CFG.",
+          "Experimental comparisons may be unfair: baselines are trained from scratch with optimal CFG strength, but recent methods like DiffROP (mentioned in related work) are not compared, and no comparisons on ImageNet-LT with DDPM-based methods. The ablation study for the two losses is only on TinyImageNet-LT.",
+          "Hyperparameter sensitivity (α, γ, τ, weighting factor) is not analyzed; only default settings are mentioned.",
+          "Several typos and unclear phrasings (e.g., 'Conditinal-unconditinal', 'performane', 'x_{x-t}') suggest incomplete proofreading."
+        ],
+        "Originality": 2,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "How sensitive is the performance to the hyperparameters α, γ, and τ? Is there a systematic study?",
+          "The paper claims that UCL with negative samples only is better than including positives; what is the effect of using a standard contrastive loss with positives?",
+          "The alignment loss is weighted linearly by t/T; how does the performance change with different weight schedules (e.g., step function)?",
+          "In the derivation of AL, why is the KL divergence computed between conditional and unconditional distributions with the same variance? Is this assumption valid for diffusion models?",
+          "The authors apply batch resampling on ImageNet-LT and TinyImageNet-LT but not on Places-LT and CIFAR-LT; what is the rationale, and would the method improve further with batch resampling on all datasets?",
+          "How does CCUA perform on balanced datasets? Does it degrade the quality of head classes excessively?",
+          "What is the computational overhead in terms of GPU memory? The paper mentions training time increase but not memory."
+        ],
+        "Limitations": [
+          "Training time increases (1.6x for DDPM, 1.48x for SiT) due to two passes for conditional and unconditional noise predictions.",
+          "The method requires choosing hyperparameters (α, γ, τ) which may need tuning per dataset.",
+          "Experiments are limited to class-conditional image generation; extension to text-to-image or other modalities is not explored.",
+          "The paper does not discuss potential negative societal impacts, such as the potential for generating misleading or harmful content, though the focus on underrepresented groups is positive."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes Contrastive Conditional-Unconditional Alignment (CCUA) to improve class-conditional diffusion models trained on long-tailed data. It introduces two losses: an Unsupervised Contrastive Loss (UCL) that uses negative samples to push apart latent representations of different images, promoting diversity, and an Alignment Loss (AL) that matches conditional and unconditional noise predictions at large timesteps, facilitating knowledge sharing from head to tail classes. The framework is applied to DDPM and SiT architectures and evaluated on several long-tailed datasets (ImageNet-LT, TinyImageNet-LT, Places-LT, CIFAR-LT), showing improved FID, Recall, and tail-class FID compared to baselines. The contributions include simple, plug-and-play losses and comprehensive experiments.\",\n  \"Strengths\": [\n    \"Addresses an important problem (class-imbalanced diffusion models) with a simple, easy-to-implement solution applicable to both UNet and Transformer backbones.\",\n    \"The proposed losses are intuitive and well-motivated, with clear illustrations of the mode collapse issue and similarity of initial denoising steps.\",\n    \"Consistent improvements over strong baselines across multiple datasets (ImageNet-LT, TinyImageNet-LT, Places-LT, CIFAR-LT) in terms of FID, Recall, and tail-class FID, without sacrificing Precision.\",\n    \"Thorough ablations (loss components, batch resampling) and visualizations (t-SNE, mode collapse examples) support the claims.\",\n    \"Evaluation includes unconditional generation and few-step sampling, showing robustness.\"\n  ],\n  \"Weaknesses\": [\n    \"Novelty is limited: the Unsupervised Contrastive Loss is essentially the same as the dispersive loss (Wang & He, 2025) but applied to unconditional latents; the Alignment Loss is a direct adaptation of UTLO/TGAN from GANs to diffusion. The combination is new but individual components are known.\",\n    \"The theoretical justification for UCL is superficial; the claim that the loss pushes embeddings to a uniform distribution on a hypersphere is not rigorously analyzed, and the effect on diversity is not formally proven.\",\n    \"The derivation of the Alignment Loss equates KL divergence with MSE between noise predictions but does not discuss potential differences in variance between conditional and unconditional distributions, nor the effect of class-dropping in CFG.\",\n    \"Experimental comparisons may be unfair: baselines are trained from scratch with optimal CFG strength, but recent methods like DiffROP (mentioned in related work) are not compared, and no comparisons on ImageNet-LT with DDPM-based methods. The ablation study for the two losses is only on TinyImageNet-LT.\",\n    \"Hyperparameter sensitivity (α, γ, τ, weighting factor) is not analyzed; only default settings are mentioned.\",\n    \"Several typos and unclear phrasings (e.g., 'Conditinal-unconditinal', 'performane', 'x_{x-t}') suggest incomplete proofreading.\"\n  ],\n  \"Originality\": 2,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How sensitive is the performance to the hyperparameters α, γ, and τ? Is there a systematic study?\",\n    \"The paper claims that UCL with negative samples only is better than including positives; what is the effect of using a standard contrastive loss with positives?\",\n    \"The alignment loss is weighted linearly by t/T; how does the performance change with different weight schedules (e.g., step function)?\",\n    \"In the derivation of AL, why is the KL divergence computed between conditional and unconditional distributions with the same variance? Is this assumption valid for diffusion models?\",\n    \"The authors apply batch resampling on ImageNet-LT and TinyImageNet-LT but not on Places-LT and CIFAR-LT; what is the rationale, and would the method improve further with batch resampling on all datasets?\",\n    \"How does CCUA perform on balanced datasets? Does it degrade the quality of head classes excessively?\",\n    \"What is the computational overhead in terms of GPU memory? The paper mentions training time increase but not memory.\"\n  ],\n  \"Limitations\": [\n    \"Training time increases (1.6x for DDPM, 1.48x for SiT) due to two passes for conditional and unconditional noise predictions.\",\n    \"The method requires choosing hyperparameters (α, γ, τ) which may need tuning per dataset.\",\n    \"Experiments are limited to class-conditional image generation; extension to text-to-image or other modalities is not explored.\",\n    \"The paper does not discuss potential negative societal impacts, such as the potential for generating misleading or harmful content, though the focus on underrepresented groups is positive.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 17745,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 16977,
+        "completion_tokens": 4810,
+        "reasoning_tokens": 3756,
+        "total_tokens": 22555
+      },
+      "attempts": 1,
+      "response_id": "82e5e8cd-d4fa-41c6-8002-ae243c51ddc8"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper proposes CCUA, a method for improving class-conditional diffusion models trained on long-tailed data. It introduces two loss functions: an Unsupervised Contrastive Loss (UCL) that pushes apart latent representations of different samples (with only negative samples) to increase diversity, and an Alignment Loss (AL) that aligns conditional and unconditional noise predictions with a weight proportional to timestep, encouraging class-agnostic generation in the initial denoising steps to share knowledge from head to tail classes. The method is applied to U-Net based DDPM and Diffusion Transformer (SiT) and evaluated on several long-tailed datasets, showing FID and diversity improvements over baselines.",
+        "Strengths": [
+          "Addresses an important and timely problem: class-imbalanced diffusion models, with a practical solution that is easy to integrate into existing architectures.",
+          "The proposed alignment loss, which matches conditional and unconditional generation at large timesteps, is an intuitive and novel adaptation of a GAN-based idea to diffusion models.",
+          "Extensive experiments on multiple datasets (ImageNet-LT, TinyImageNet-LT, Places-LT, CIFAR-LT) demonstrate consistent improvements over strong baselines.",
+          "The paper includes an analysis of the interaction with batch resampling and provides qualitative evidence of reduced mode collapse for tail classes."
+        ],
+        "Weaknesses": [
+          "The alignment loss derivation ignores the timestep-dependent variance sigma_t^2; the KL divergence should include a 1/sigma_t^2 factor, so the linear t/T weighting is ad hoc and not theoretically justified.",
+          "The unsupervised contrastive loss is essentially a uniformity loss applied to unconditional latents, very similar to the concurrent dispersive loss (Wang & He, 2025); the paper does not clearly demonstrate a significant conceptual difference.",
+          "On ImageNet-LT, the main improvement seems to come from batch resampling rather than the proposed losses alone: in Table 5, CCUA without batch resample (FID 32.25) is worse than SiT with batch resample (FID 28.05), and only the combination yields the best result. This undermines the claimed contribution of the losses.",
+          "No comparison with recent class-imbalanced diffusion methods such as DiffROP (Yan et al., 2024), nor experiments with score-based diffusion models as claimed in the abstract.",
+          "The paper's clarity is poor: many typos (e.g., 'Conditinal-unconditinal'), inconsistent equation numbering, redacted references and figure links, and missing details about hyperparameter sensitivity (alpha, gamma).",
+          "Training time increases by 1.6x for DDPM and 1.48x for SiT, which is a notable overhead not fully justified by the modest gains.",
+          "Statistical significance analysis is limited to three seeds on CIFAR100-LT only, and no confidence intervals are reported for ImageNet-LT."
+        ],
+        "Originality": 2,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 2,
+        "Questions": [
+          "How does the alignment loss weighting change if the variance schedule sigma_t^2 is properly accounted for? Is the linear t/T weighting justified empirically or only by intuition?",
+          "On ImageNet-LT, why does CCUA without batch resampling underperform SiT with batch resampling? Does this indicate that the proposed losses are less effective than a simple class-balanced sampling strategy?",
+          "Why is DiffROP not included in the comparisons? What are the practical differences and how does the method compare on the same datasets?",
+          "What is the sensitivity of the hyperparameters alpha and gamma? How were they chosen, and do improvements persist across a range of values?",
+          "Does the alignment loss degrade head class generation? Table 3 shows head FID improves, but the precision in Table 1 slightly drops; can you comment on this trade-off?"
+        ],
+        "Limitations": [
+          "The method increases training time by about 1.5x due to the extra unconditional pass required by the alignment loss.",
+          "The benefits of the contrastive loss appear to be strongly coupled with batch resampling; the paper does not provide a standalone analysis of the losses on large-scale datasets without resampling.",
+          "No theoretical guarantee is provided for the claim that contrastive loss improves diversity; the explanation is heuristic.",
+          "FID_tail is not reported for ImageNet-LT, making it unclear how much tail-class quality improves at 256x256 resolution."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes CCUA, a method for improving class-conditional diffusion models trained on long-tailed data. It introduces two loss functions: an Unsupervised Contrastive Loss (UCL) that pushes apart latent representations of different samples (with only negative samples) to increase diversity, and an Alignment Loss (AL) that aligns conditional and unconditional noise predictions with a weight proportional to timestep, encouraging class-agnostic generation in the initial denoising steps to share knowledge from head to tail classes. The method is applied to U-Net based DDPM and Diffusion Transformer (SiT) and evaluated on several long-tailed datasets, showing FID and diversity improvements over baselines.\",\n  \"Strengths\": [\n    \"Addresses an important and timely problem: class-imbalanced diffusion models, with a practical solution that is easy to integrate into existing architectures.\",\n    \"The proposed alignment loss, which matches conditional and unconditional generation at large timesteps, is an intuitive and novel adaptation of a GAN-based idea to diffusion models.\",\n    \"Extensive experiments on multiple datasets (ImageNet-LT, TinyImageNet-LT, Places-LT, CIFAR-LT) demonstrate consistent improvements over strong baselines.\",\n    \"The paper includes an analysis of the interaction with batch resampling and provides qualitative evidence of reduced mode collapse for tail classes.\"\n  ],\n  \"Weaknesses\": [\n    \"The alignment loss derivation ignores the timestep-dependent variance sigma_t^2; the KL divergence should include a 1/sigma_t^2 factor, so the linear t/T weighting is ad hoc and not theoretically justified.\",\n    \"The unsupervised contrastive loss is essentially a uniformity loss applied to unconditional latents, very similar to the concurrent dispersive loss (Wang & He, 2025); the paper does not clearly demonstrate a significant conceptual difference.\",\n    \"On ImageNet-LT, the main improvement seems to come from batch resampling rather than the proposed losses alone: in Table 5, CCUA without batch resample (FID 32.25) is worse than SiT with batch resample (FID 28.05), and only the combination yields the best result. This undermines the claimed contribution of the losses.\",\n    \"No comparison with recent class-imbalanced diffusion methods such as DiffROP (Yan et al., 2024), nor experiments with score-based diffusion models as claimed in the abstract.\",\n    \"The paper's clarity is poor: many typos (e.g., 'Conditinal-unconditinal'), inconsistent equation numbering, redacted references and figure links, and missing details about hyperparameter sensitivity (alpha, gamma).\",\n    \"Training time increases by 1.6x for DDPM and 1.48x for SiT, which is a notable overhead not fully justified by the modest gains.\",\n    \"Statistical significance analysis is limited to three seeds on CIFAR100-LT only, and no confidence intervals are reported for ImageNet-LT.\"\n  ],\n  \"Originality\": 2,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"How does the alignment loss weighting change if the variance schedule sigma_t^2 is properly accounted for? Is the linear t/T weighting justified empirically or only by intuition?\",\n    \"On ImageNet-LT, why does CCUA without batch resampling underperform SiT with batch resampling? Does this indicate that the proposed losses are less effective than a simple class-balanced sampling strategy?\",\n    \"Why is DiffROP not included in the comparisons? What are the practical differences and how does the method compare on the same datasets?\",\n    \"What is the sensitivity of the hyperparameters alpha and gamma? How were they chosen, and do improvements persist across a range of values?\",\n    \"Does the alignment loss degrade head class generation? Table 3 shows head FID improves, but the precision in Table 1 slightly drops; can you comment on this trade-off?\"\n  ],\n  \"Limitations\": [\n    \"The method increases training time by about 1.5x due to the extra unconditional pass required by the alignment loss.\",\n    \"The benefits of the contrastive loss appear to be strongly coupled with batch resampling; the paper does not provide a standalone analysis of the losses on large-scale datasets without resampling.\",\n    \"No theoretical guarantee is provided for the claim that contrastive loss improves diversity; the explanation is heuristic.\",\n    \"FID_tail is not reported for ImageNet-LT, making it unclear how much tail-class quality improves at 256x256 resolution.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 17745,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 16977,
+        "completion_tokens": 4587,
+        "reasoning_tokens": 3575,
+        "total_tokens": 22332
+      },
+      "attempts": 1,
+      "response_id": "8d42096a-e5bd-40c7-b1d3-5bfa28801fa4"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper proposes a framework, CCUA, to improve class-conditional diffusion models trained on long-tailed data. It introduces two losses: an Unsupervised Contrastive Loss (UCL) that increases dissimilarity among latent embeddings of different samples, and an Alignment Loss (AL) that aligns conditional and unconditional noise predictions, weighted more heavily at large timesteps to encourage knowledge sharing from head to tail classes. The method is applied to U-Net and Diffusion Transformer architectures and evaluated on ImageNet-LT, TinyImageNet-LT, Places-LT, and CIFAR-LT, showing improvements in FID, Recall, and tail-class FID.",
+        "Strengths": [
+          "The proposed losses are simple, easy to implement, and integrate seamlessly into existing DDPM and SiT training pipelines.",
+          "Extensive experiments across multiple long-tailed datasets and architectures demonstrate consistent improvements in overall FID, diversity (Recall), and tail-class FID.",
+          "Ablation studies verify the individual contributions of the UCL and AL losses, as well as the benefit of combining them with batch resampling.",
+          "The approach directly addresses mode collapse in tail classes, a practical and important problem in generative modeling."
+        ],
+        "Weaknesses": [
+          "The novelty is limited given the concurrent work on dispersive loss (Wang & He, 2025) is very similar to the UCL, and the paper does not provide a deep analysis of the differences beyond empirical comparison on one dataset.",
+          "The paper lacks a sensitivity analysis for key hyperparameters (alpha, gamma, tau) and does not explore how their values affect performance.",
+          "The writing contains typos and incomplete implementation details (e.g., exact values of alpha/gamma, augmentation choices, architecture specifics), which hinders reproducibility.",
+          "The alignment loss is motivated by an empirical observation, but the paper does not provide theoretical justification or a deeper analysis of how it affects class conditioning and potential trade-offs.",
+          "The comparison with DiffROP is mentioned but not experimentally included, despite being a closely related method.",
+          "Training requires two forward passes (conditional and unconditional), increasing training time by ~1.5x, with no substantial discussion on how to mitigate this cost."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 2,
+        "Significance": 3,
+        "Questions": [
+          "How does the UCL loss interact with batch resampling? In Table 5, CCUA without batch resampling improves Recall but not much FID, while with batch resampling there is a large improvement—what is the mechanism?",
+          "What is the effect of the alignment loss on head classes? Does it reduce class-specific fidelity or harm controllability? The paper shows improved FID for head/body/tail, but no analysis of CFG guidance or class separation.",
+          "Why is the UCL loss applied to unconditional latents only? Would applying it to conditional latents yield different results, and what is the impact of dividing the network into encoder/decoder?",
+          "How sensitive are the results to the temperature parameter tau and the loss coefficients alpha and gamma? Is there a systematic tuning strategy?",
+          "How does the proposed method compare to DiffROP (Yan et al., 2024)? The related work mentions it, but no experimental comparison is provided.",
+          "Does the alignment loss inadvertently weaken class conditioning? Since it forces conditional and unconditional predictions to be similar at large timesteps, could this reduce the model's ability to generate class-specific images, especially for head classes?"
+        ],
+        "Limitations": [
+          "The training cost is increased by roughly 1.5x due to the additional unconditional forward pass, which may be a practical limitation for large-scale applications.",
+          "The method introduces additional hyperparameters (alpha, gamma, tau, batch resample re-balanced factor) that require tuning; no automated selection or sensitivity analysis is provided.",
+          "The alignment loss may reduce class controllability if over-weighted, but this trade-off is not systematically studied.",
+          "Evaluation of tail-class FID is based on a small subset of classes, which may be noisy; no confidence intervals are provided for these metrics.",
+          "The experiments are limited to 256x256 resolution at maximum; applicability to higher resolutions (e.g., 512x512) is not explored."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 2,
+        "Contribution": 3,
+        "Overall": 6,
+        "Confidence": 4,
+        "Decision": "Accept"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes a framework, CCUA, to improve class-conditional diffusion models trained on long-tailed data. It introduces two losses: an Unsupervised Contrastive Loss (UCL) that increases dissimilarity among latent embeddings of different samples, and an Alignment Loss (AL) that aligns conditional and unconditional noise predictions, weighted more heavily at large timesteps to encourage knowledge sharing from head to tail classes. The method is applied to U-Net and Diffusion Transformer architectures and evaluated on ImageNet-LT, TinyImageNet-LT, Places-LT, and CIFAR-LT, showing improvements in FID, Recall, and tail-class FID.\",\n  \"Strengths\": [\n    \"The proposed losses are simple, easy to implement, and integrate seamlessly into existing DDPM and SiT training pipelines.\",\n    \"Extensive experiments across multiple long-tailed datasets and architectures demonstrate consistent improvements in overall FID, diversity (Recall), and tail-class FID.\",\n    \"Ablation studies verify the individual contributions of the UCL and AL losses, as well as the benefit of combining them with batch resampling.\",\n    \"The approach directly addresses mode collapse in tail classes, a practical and important problem in generative modeling.\"\n  ],\n  \"Weaknesses\": [\n    \"The novelty is limited given the concurrent work on dispersive loss (Wang & He, 2025) is very similar to the UCL, and the paper does not provide a deep analysis of the differences beyond empirical comparison on one dataset.\",\n    \"The paper lacks a sensitivity analysis for key hyperparameters (alpha, gamma, tau) and does not explore how their values affect performance.\",\n    \"The writing contains typos and incomplete implementation details (e.g., exact values of alpha/gamma, augmentation choices, architecture specifics), which hinders reproducibility.\",\n    \"The alignment loss is motivated by an empirical observation, but the paper does not provide theoretical justification or a deeper analysis of how it affects class conditioning and potential trade-offs.\",\n    \"The comparison with DiffROP is mentioned but not experimentally included, despite being a closely related method.\",\n    \"Training requires two forward passes (conditional and unconditional), increasing training time by ~1.5x, with no substantial discussion on how to mitigate this cost.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does the UCL loss interact with batch resampling? In Table 5, CCUA without batch resampling improves Recall but not much FID, while with batch resampling there is a large improvement—what is the mechanism?\",\n    \"What is the effect of the alignment loss on head classes? Does it reduce class-specific fidelity or harm controllability? The paper shows improved FID for head/body/tail, but no analysis of CFG guidance or class separation.\",\n    \"Why is the UCL loss applied to unconditional latents only? Would applying it to conditional latents yield different results, and what is the impact of dividing the network into encoder/decoder?\",\n    \"How sensitive are the results to the temperature parameter tau and the loss coefficients alpha and gamma? Is there a systematic tuning strategy?\",\n    \"How does the proposed method compare to DiffROP (Yan et al., 2024)? The related work mentions it, but no experimental comparison is provided.\",\n    \"Does the alignment loss inadvertently weaken class conditioning? Since it forces conditional and unconditional predictions to be similar at large timesteps, could this reduce the model's ability to generate class-specific images, especially for head classes?\"\n  ],\n  \"Limitations\": [\n    \"The training cost is increased by roughly 1.5x due to the additional unconditional forward pass, which may be a practical limitation for large-scale applications.\",\n    \"The method introduces additional hyperparameters (alpha, gamma, tau, batch resample re-balanced factor) that require tuning; no automated selection or sensitivity analysis is provided.\",\n    \"The alignment loss may reduce class controllability if over-weighted, but this trade-off is not systematically studied.\",\n    \"Evaluation of tail-class FID is based on a small subset of classes, which may be noisy; no confidence intervals are provided for these metrics.\",\n    \"The experiments are limited to 256x256 resolution at maximum; applicability to higher resolutions (e.g., 512x512) is not explored.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 2,\n  \"Contribution\": 3,\n  \"Overall\": 6,\n  \"Confidence\": 4,\n  \"Decision\": \"Accept\"\n}",
+      "usage": {
+        "prompt_tokens": 17745,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 16977,
+        "completion_tokens": 3041,
+        "reasoning_tokens": 2074,
+        "total_tokens": 20786
+      },
+      "attempts": 1,
+      "response_id": "a567e8c5-eecb-48d7-92ed-c776da4fff39"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper proposes CCUA (Contrastive Conditional-Unconditional Alignment) for class-conditional diffusion models trained on long-tailed data. It introduces two losses: an unsupervised contrastive loss using only negative samples to increase inter-sample distances in the latent space, and an alignment loss that encourages the conditional and unconditional denoising processes to match at large timesteps, enabling knowledge sharing from head to tail classes. The method is evaluated on long-tailed versions of ImageNet, TinyImageNet, Places, and CIFAR, with both UNet and Diffusion Transformer backbones, and shows improved FID and diversity over several baselines.",
+        "Strengths": [
+          "The proposed losses are simple and combine two well-motivated ideas: contrastive regularization for diversity and conditional-unconditional alignment for knowledge transfer in diffusion models.",
+          "The paper demonstrates consistent improvements across multiple datasets (ImageNet-LT, TinyImageNet-LT, Places-LT, CIFAR-LT) and architectures (UNet and Transformer), with metrics including FID, sFID, KID, Precision, and Recall.",
+          "The alignment loss is carefully weighted by timestep, focusing on the initial denoising steps where class-conditional and unconditional generation are observed to be similar, which is a reasonable extension of prior GAN-based approaches.",
+          "The authors provide a thorough ablation study of both losses and the batch resampling strategy, showing each component contributes to the final gain."
+        ],
+        "Weaknesses": [
+          "The unsupervised contrastive loss is applied to latents of noisy images at different timesteps within a batch, but the paper does not explain how representations are made comparable across varying noise levels. Without this, the loss may be ill-defined or could be exploiting non-informative shortcuts.",
+          "The contrastive loss with only negative samples and no augmentation is very similar to the concurrent Dispersive Loss (Wang & He, 2025); the claimed novelty of applying it in the unconditional latent space and extending via alignment is somewhat incremental.",
+          "Implementation details are incomplete: Algorithm 1 is referenced but not included, there is no mention of latent normalization (e.g., L2 normalization), and it is unclear whether all samples in a batch share the same timestep t for the contrastive term.",
+          "The paper does not compare against DiffROP (Yan et al., 2024), a closely related contrastive method for class-imbalanced diffusion models, despite citing it in related work.",
+          "Training time is increased by 1.6x for DDPM and 1.48x for SiT, but the paper does not analyze whether the performance gain justifies the additional computational cost compared to simpler baselines."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 3,
+        "Questions": [
+          "How is the unsupervised contrastive loss computed when samples within a batch have different timesteps t? Do you standardize the noise level across the batch or use a time-aware normalization?",
+          "Are the latent embeddings h normalized before computing the contrastive loss? If not, how does the scale of h affect the temperature parameter tau and the loss dynamics?",
+          "What are the exact hyperparameter choices for alpha and gamma? Is there a sensitivity analysis?",
+          "Algorithm 1 is mentioned in the text and figure files but not included in the provided submission. Can the full training procedure be described in the appendix?",
+          "Why is DiffROP not included in the experimental comparisons, given that it is a related contrastive method for long-tailed diffusion?",
+          "Does the alignment loss at large timesteps reduce the effectiveness of classifier-free guidance for head classes, potentially hurting fidelity? How does the optimal CFG strength change with your method?"
+        ],
+        "Limitations": [
+          "The method requires an additional forward pass through the network (or at least the encoder) for the unconditional branch at every training step, leading to 1.6x/1.48x longer training times for DDPM/SiT.",
+          "The performance gap between the proposed method and the balanced upper bound remains substantial, especially on TinyImageNet-LT, indicating that long-tailed generation is still far from solved.",
+          "The paper does not evaluate the impact of the method on the diversity or fidelity of head classes individually, only on overall metrics and coarse head/body/tail categories.",
+          "The statistical significance analysis is only performed on CIFAR100-LT with three seeds; results on larger datasets like ImageNet-LT are reported from a single run."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 3,
+        "Overall": 4,
+        "Confidence": 3,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes CCUA (Contrastive Conditional-Unconditional Alignment) for class-conditional diffusion models trained on long-tailed data. It introduces two losses: an unsupervised contrastive loss using only negative samples to increase inter-sample distances in the latent space, and an alignment loss that encourages the conditional and unconditional denoising processes to match at large timesteps, enabling knowledge sharing from head to tail classes. The method is evaluated on long-tailed versions of ImageNet, TinyImageNet, Places, and CIFAR, with both UNet and Diffusion Transformer backbones, and shows improved FID and diversity over several baselines.\",\n  \"Strengths\": [\n    \"The proposed losses are simple and combine two well-motivated ideas: contrastive regularization for diversity and conditional-unconditional alignment for knowledge transfer in diffusion models.\",\n    \"The paper demonstrates consistent improvements across multiple datasets (ImageNet-LT, TinyImageNet-LT, Places-LT, CIFAR-LT) and architectures (UNet and Transformer), with metrics including FID, sFID, KID, Precision, and Recall.\",\n    \"The alignment loss is carefully weighted by timestep, focusing on the initial denoising steps where class-conditional and unconditional generation are observed to be similar, which is a reasonable extension of prior GAN-based approaches.\",\n    \"The authors provide a thorough ablation study of both losses and the batch resampling strategy, showing each component contributes to the final gain.\"\n  ],\n  \"Weaknesses\": [\n    \"The unsupervised contrastive loss is applied to latents of noisy images at different timesteps within a batch, but the paper does not explain how representations are made comparable across varying noise levels. Without this, the loss may be ill-defined or could be exploiting non-informative shortcuts.\",\n    \"The contrastive loss with only negative samples and no augmentation is very similar to the concurrent Dispersive Loss (Wang & He, 2025); the claimed novelty of applying it in the unconditional latent space and extending via alignment is somewhat incremental.\",\n    \"Implementation details are incomplete: Algorithm 1 is referenced but not included, there is no mention of latent normalization (e.g., L2 normalization), and it is unclear whether all samples in a batch share the same timestep t for the contrastive term.\",\n    \"The paper does not compare against DiffROP (Yan et al., 2024), a closely related contrastive method for class-imbalanced diffusion models, despite citing it in related work.\",\n    \"Training time is increased by 1.6x for DDPM and 1.48x for SiT, but the paper does not analyze whether the performance gain justifies the additional computational cost compared to simpler baselines.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How is the unsupervised contrastive loss computed when samples within a batch have different timesteps t? Do you standardize the noise level across the batch or use a time-aware normalization?\",\n    \"Are the latent embeddings h normalized before computing the contrastive loss? If not, how does the scale of h affect the temperature parameter tau and the loss dynamics?\",\n    \"What are the exact hyperparameter choices for alpha and gamma? Is there a sensitivity analysis?\",\n    \"Algorithm 1 is mentioned in the text and figure files but not included in the provided submission. Can the full training procedure be described in the appendix?\",\n    \"Why is DiffROP not included in the experimental comparisons, given that it is a related contrastive method for long-tailed diffusion?\",\n    \"Does the alignment loss at large timesteps reduce the effectiveness of classifier-free guidance for head classes, potentially hurting fidelity? How does the optimal CFG strength change with your method?\"\n  ],\n  \"Limitations\": [\n    \"The method requires an additional forward pass through the network (or at least the encoder) for the unconditional branch at every training step, leading to 1.6x/1.48x longer training times for DDPM/SiT.\",\n    \"The performance gap between the proposed method and the balanced upper bound remains substantial, especially on TinyImageNet-LT, indicating that long-tailed generation is still far from solved.\",\n    \"The paper does not evaluate the impact of the method on the diversity or fidelity of head classes individually, only on overall metrics and coarse head/body/tail categories.\",\n    \"The statistical significance analysis is only performed on CIFAR100-LT with three seeds; results on larger datasets like ImageNet-LT are reported from a single run.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 3,\n  \"Overall\": 4,\n  \"Confidence\": 3,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 17745,
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 16977,
+        "completion_tokens": 4584,
+        "reasoning_tokens": 3567,
+        "total_tokens": 22329
+      },
+      "attempts": 1,
+      "response_id": "16c6e0b1-90d4-4b68-90a5-d1442c521363"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 2,
+      "Reject": 3
+    },
+    "unanimous_decision": false,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          3,
+          2,
+          2,
+          3,
+          3
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Quality": {
+        "values": [
+          3,
+          3,
+          2,
+          3,
+          2
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          3,
+          2,
+          2,
+          2
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          3,
+          3,
+          2,
+          3,
+          3
+        ],
+        "mean": 2.8,
+        "rounded_mean": 3,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Soundness": {
+        "values": [
+          3,
+          3,
+          2,
+          3,
+          2
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          3,
+          2,
+          2,
+          2
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          3,
+          2,
+          2,
+          3,
+          3
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          6,
+          4,
+          4,
+          6,
+          4
+        ],
+        "mean": 4.8,
+        "rounded_mean": 5,
+        "population_sd": 0.98,
+        "min": 4,
+        "max": 6
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          4,
+          4,
+          3
+        ],
+        "mean": 3.8,
+        "rounded_mean": 4,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper proposes Contrastive Conditional-Unconditional Alignment (CCUA), a training framework for class-conditional diffusion models on long-tailed data. It introduces two losses: an Unsupervised Contrastive Loss (UCL) that uses negative samples to push apart latent representations of different noisy images, increasing diversity especially for tail classes; and an Alignment Loss (AL) that minimizes the difference between conditional and unconditional noise predictions, weighted toward large timesteps so early denoising steps are class-agnostic, encouraging knowledge sharing from head to tail classes. The method is applied to both DDPM (U-Net) and SiT (Diffusion Transformer) pipelines, with optional batch resampling. Experiments on ImageNet-LT, TinyImageNet-LT, Places-LT, and CIFAR-LT show FID, KID, and Recall improvements over baselines such as DDPM, CBDM, OCLT, and Dispersive Loss, along with qualitative evidence of reduced mode collapse.",
+      "Strengths": [
+        "The proposed CCUA is simple and plug-and-play, requiring only two additional loss terms that can be integrated into standard diffusion training pipelines (DDPM and SiT) without architectural changes.",
+        "The two losses directly target the core issues of long-tailed generation: UCL increases intra-class diversity to mitigate mode collapse, while AL facilitates knowledge sharing from head to tail classes by aligning conditional and unconditional denoising at early steps.",
+        "Extensive experiments on multiple long-tailed benchmarks (ImageNet-LT, TinyImageNet-LT, Places-LT, CIFAR10/100-LT) demonstrate consistent improvements in FID, KID, and Recall over several strong baselines, with ablations confirming the contribution of each loss component.",
+        "The paper provides qualitative visualizations and distribution analyses (t-SNE and KDE) showing reduced mode collapse for tail classes, and demonstrates that batch resampling, which usually hurts baseline methods, becomes beneficial when combined with UCL.",
+        "The alignment loss is carefully weighted by timestep, focusing on the initial denoising steps where class-conditional and unconditional generation are observed to be similar, which is a reasonable extension of prior GAN-based approaches."
+      ],
+      "Weaknesses": [
+        "The unsupervised contrastive loss with negative samples only is essentially a repulsive/dispersion loss without positive pairs; its formulation closely resembles the concurrent dispersive loss (Wang & He, 2025), and the claimed novelty is mainly the application to the unconditional latent space combined with alignment, which is not deeply justified theoretically.",
+        "The alignment loss is derived from KL divergence but simplified to an MSE on noise predictions; the choice of linear timestep weighting t/T is heuristic, and the paper does not analyze how this alignment affects class-conditional controllability or whether it might reduce head-class diversity.",
+        "The evaluation methodology may favor the proposed method: CFG strength is grid-searched independently per method, but the search ranges and criteria are not fully specified; moreover, DiffROP (discussed in related work) is not included in the empirical comparison.",
+        "Training time is increased substantially (1.6x for DDPM, 1.48x for SiT), yet the paper does not discuss the computational cost-benefit trade-off or whether the gains are worth the overhead.",
+        "The claim that head-class quality is maintained is only partially supported: in Table 3 on TinyImageNet-LT, the head-class FID of CCUA (21.32) is slightly worse than DDPM (21.27), and the paper does not report per-head-class metrics on ImageNet-LT.",
+        "The paper lacks a sensitivity analysis for key hyperparameters (alpha, gamma, tau) and does not explore how their values affect performance.",
+        "The writing contains typos and incomplete implementation details (e.g., exact values of alpha/gamma, augmentation choices, architecture specifics), which hinders reproducibility.",
+        "On ImageNet-LT, the main improvement seems to come from batch resampling rather than the proposed losses alone: in Table 5, CCUA without batch resample (FID 32.25) is worse than SiT with batch resample (FID 28.05), and only the combination yields the best result. This undermines the claimed contribution of the losses.",
+        "No comparison with recent class-imbalanced diffusion methods such as DiffROP (Yan et al., 2024), nor experiments with score-based diffusion models as claimed in the abstract.",
+        "The theoretical justification for UCL is superficial; the claim that the loss pushes embeddings to a uniform distribution on a hypersphere is not rigorously analyzed, and the effect on diversity is not formally proven."
+      ],
+      "Originality": 2,
+      "Quality": 3,
+      "Clarity": 2,
+      "Significance": 3,
+      "Questions": [
+        "How does CCUA compare empirically to DiffROP (Yan et al., 2024), which also uses contrastive learning for long-tailed diffusion models? The related work discusses it, but no experiments are shown.",
+        "Is the improvement of CCUA over Dispersive Loss (Wang & He, 2025) consistent on other datasets beyond ImageNet-LT, or is it specific to that setup?",
+        "How sensitive are the results to the hyperparameters alpha, gamma, and tau? Are the same values used across all datasets and architectures, and were they tuned via validation?",
+        "Does the alignment loss reduce the distinguishability of different classes in the early denoising steps? For a fixed noise, are the generated images for different classes still clearly separated after the initial steps?",
+        "What is the criterion for applying batch resampling only on certain datasets (ImageNet-LT and TinyImageNet-LT) and not on Places-LT or CIFAR-LT? How does it interact with the alignment loss in those cases?",
+        "How is the unsupervised contrastive loss computed when samples within a batch have different timesteps t? Do you standardize the noise level across the batch or use a time-aware normalization?",
+        "Are the latent embeddings h normalized before computing the contrastive loss? If not, how does the scale of h affect the temperature parameter tau and the loss dynamics?",
+        "Algorithm 1 is mentioned in the text but not included in the provided submission. Can the full training procedure be described in the appendix?",
+        "What is the effect of the alignment loss on head classes? Does it reduce class-specific fidelity or harm controllability? The paper shows improved FID for head/body/tail, but no analysis of CFG guidance or class separation.",
+        "How does the proposed method compare to DiffROP (Yan et al., 2024)? The related work mentions it, but no experimental comparison is provided."
+      ],
+      "Limitations": [
+        "The method requires two forward passes (conditional and unconditional) during training, leading to about 1.5x training time overhead; inference latency is unchanged, but the cost is non-trivial.",
+        "The evaluation is limited to low-to-moderate resolutions (up to 256x256); the scalability to higher resolutions commonly used in modern diffusion models (e.g., 512x512) is not demonstrated.",
+        "The paper does not analyze potential over-dispersion caused by the contrastive loss, which could harm intra-class structure or fidelity for some classes, especially if the loss weight alpha is too high.",
+        "The alignment loss is designed for class-conditioned generation and may not generalize to text-conditioned generation, which is a more common setting; no experiments with text prompts are provided.",
+        "No theoretical analysis is given for how the two losses interact or why the combination should not degrade head-class generation; the paper relies solely on empirical evidence.",
+        "The method introduces additional hyperparameters (alpha, gamma, tau, batch resample re-balanced factor) that require tuning; no automated selection or sensitivity analysis is provided.",
+        "The paper does not evaluate the impact of the method on the diversity or fidelity of head classes individually, only on overall metrics and coarse head/body/tail categories.",
+        "Statistical significance analysis is limited to three seeds on CIFAR100-LT only, and no confidence intervals are reported for ImageNet-LT.",
+        "The performance gap between the proposed method and the balanced upper bound remains substantial, especially on TinyImageNet-LT, indicating that long-tailed generation is still far from solved."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 2,
+      "Presentation": 2,
+      "Contribution": 3,
+      "Overall": 4,
+      "Confidence": 4,
+      "Decision": "Reject"
+    },
+    "raw_response": "{\n  \"Summary\": \"The paper proposes Contrastive Conditional-Unconditional Alignment (CCUA), a training framework for class-conditional diffusion models on long-tailed data. It introduces two losses: an Unsupervised Contrastive Loss (UCL) that uses negative samples to push apart latent representations of different noisy images, increasing diversity especially for tail classes; and an Alignment Loss (AL) that minimizes the difference between conditional and unconditional noise predictions, weighted toward large timesteps so early denoising steps are class-agnostic, encouraging knowledge sharing from head to tail classes. The method is applied to both DDPM (U-Net) and SiT (Diffusion Transformer) pipelines, with optional batch resampling. Experiments on ImageNet-LT, TinyImageNet-LT, Places-LT, and CIFAR-LT show FID, KID, and Recall improvements over baselines such as DDPM, CBDM, OCLT, and Dispersive Loss, along with qualitative evidence of reduced mode collapse.\",\n  \"Strengths\": [\n    \"The proposed CCUA is simple and plug-and-play, requiring only two additional loss terms that can be integrated into standard diffusion training pipelines (DDPM and SiT) without architectural changes.\",\n    \"The two losses directly target the core issues of long-tailed generation: UCL increases intra-class diversity to mitigate mode collapse, while AL facilitates knowledge sharing from head to tail classes by aligning conditional and unconditional denoising at early steps.\",\n    \"Extensive experiments on multiple long-tailed benchmarks (ImageNet-LT, TinyImageNet-LT, Places-LT, CIFAR10/100-LT) demonstrate consistent improvements in FID, KID, and Recall over several strong baselines, with ablations confirming the contribution of each loss component.\",\n    \"The paper provides qualitative visualizations and distribution analyses (t-SNE and KDE) showing reduced mode collapse for tail classes, and demonstrates that batch resampling, which usually hurts baseline methods, becomes beneficial when combined with UCL.\",\n    \"The alignment loss is carefully weighted by timestep, focusing on the initial denoising steps where class-conditional and unconditional generation are observed to be similar, which is a reasonable extension of prior GAN-based approaches.\"\n  ],\n  \"Weaknesses\": [\n    \"The unsupervised contrastive loss with negative samples only is essentially a repulsive/dispersion loss without positive pairs; its formulation closely resembles the concurrent dispersive loss (Wang & He, 2025), and the claimed novelty is mainly the application to the unconditional latent space combined with alignment, which is not deeply justified theoretically.\",\n    \"The alignment loss is derived from KL divergence but simplified to an MSE on noise predictions; the choice of linear timestep weighting t/T is heuristic, and the paper does not analyze how this alignment affects class-conditional controllability or whether it might reduce head-class diversity.\",\n    \"The evaluation methodology may favor the proposed method: CFG strength is grid-searched independently per method, but the search ranges and criteria are not fully specified; moreover, DiffROP (discussed in related work) is not included in the empirical comparison.\",\n    \"Training time is increased substantially (1.6x for DDPM, 1.48x for SiT), yet the paper does not discuss the computational cost-benefit trade-off or whether the gains are worth the overhead.\",\n    \"The claim that head-class quality is maintained is only partially supported: in Table 3 on TinyImageNet-LT, the head-class FID of CCUA (21.32) is slightly worse than DDPM (21.27), and the paper does not report per-head-class metrics on ImageNet-LT.\",\n    \"The paper lacks a sensitivity analysis for key hyperparameters (alpha, gamma, tau) and does not explore how their values affect performance.\",\n    \"The writing contains typos and incomplete implementation details (e.g., exact values of alpha/gamma, augmentation choices, architecture specifics), which hinders reproducibility.\",\n    \"On ImageNet-LT, the main improvement seems to come from batch resampling rather than the proposed losses alone: in Table 5, CCUA without batch resample (FID 32.25) is worse than SiT with batch resample (FID 28.05), and only the combination yields the best result. This undermines the claimed contribution of the losses.\",\n    \"No comparison with recent class-imbalanced diffusion methods such as DiffROP (Yan et al., 2024), nor experiments with score-based diffusion models as claimed in the abstract.\",\n    \"The theoretical justification for UCL is superficial; the claim that the loss pushes embeddings to a uniform distribution on a hypersphere is not rigorously analyzed, and the effect on diversity is not formally proven.\"\n  ],\n  \"Originality\": 2,\n  \"Quality\": 3,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"How does CCUA compare empirically to DiffROP (Yan et al., 2024), which also uses contrastive learning for long-tailed diffusion models? The related work discusses it, but no experiments are shown.\",\n    \"Is the improvement of CCUA over Dispersive Loss (Wang & He, 2025) consistent on other datasets beyond ImageNet-LT, or is it specific to that setup?\",\n    \"How sensitive are the results to the hyperparameters alpha, gamma, and tau? Are the same values used across all datasets and architectures, and were they tuned via validation?\",\n    \"Does the alignment loss reduce the distinguishability of different classes in the early denoising steps? For a fixed noise, are the generated images for different classes still clearly separated after the initial steps?\",\n    \"What is the criterion for applying batch resampling only on certain datasets (ImageNet-LT and TinyImageNet-LT) and not on Places-LT or CIFAR-LT? How does it interact with the alignment loss in those cases?\",\n    \"How is the unsupervised contrastive loss computed when samples within a batch have different timesteps t? Do you standardize the noise level across the batch or use a time-aware normalization?\",\n    \"Are the latent embeddings h normalized before computing the contrastive loss? If not, how does the scale of h affect the temperature parameter tau and the loss dynamics?\",\n    \"Algorithm 1 is mentioned in the text but not included in the provided submission. Can the full training procedure be described in the appendix?\",\n    \"What is the effect of the alignment loss on head classes? Does it reduce class-specific fidelity or harm controllability? The paper shows improved FID for head/body/tail, but no analysis of CFG guidance or class separation.\",\n    \"How does the proposed method compare to DiffROP (Yan et al., 2024)? The related work mentions it, but no experimental comparison is provided.\"\n  ],\n  \"Limitations\": [\n    \"The method requires two forward passes (conditional and unconditional) during training, leading to about 1.5x training time overhead; inference latency is unchanged, but the cost is non-trivial.\",\n    \"The evaluation is limited to low-to-moderate resolutions (up to 256x256); the scalability to higher resolutions commonly used in modern diffusion models (e.g., 512x512) is not demonstrated.\",\n    \"The paper does not analyze potential over-dispersion caused by the contrastive loss, which could harm intra-class structure or fidelity for some classes, especially if the loss weight alpha is too high.\",\n    \"The alignment loss is designed for class-conditioned generation and may not generalize to text-conditioned generation, which is a more common setting; no experiments with text prompts are provided.\",\n    \"No theoretical analysis is given for how the two losses interact or why the combination should not degrade head-class generation; the paper relies solely on empirical evidence.\",\n    \"The method introduces additional hyperparameters (alpha, gamma, tau, batch resample re-balanced factor) that require tuning; no automated selection or sensitivity analysis is provided.\",\n    \"The paper does not evaluate the impact of the method on the diversity or fidelity of head classes individually, only on overall metrics and coarse head/body/tail categories.\",\n    \"Statistical significance analysis is limited to three seeds on CIFAR100-LT only, and no confidence intervals are reported for ImageNet-LT.\",\n    \"The performance gap between the proposed method and the balanced upper bound remains substantial, especially on TinyImageNet-LT, indicating that long-tailed generation is still far from solved.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 3,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+    "usage": {
+      "prompt_tokens": 6090,
+      "prompt_cache_hit_tokens": 6016,
+      "prompt_cache_miss_tokens": 74,
+      "completion_tokens": 2373,
+      "reasoning_tokens": 554,
+      "total_tokens": 8463
+    },
+    "attempts": 2,
+    "response_id": "2612a86b-3903-43bc-868f-6d5cc51c16b0"
+  },
+  "final_review": {
+    "Summary": "The paper proposes Contrastive Conditional-Unconditional Alignment (CCUA), a training framework for class-conditional diffusion models on long-tailed data. It introduces two losses: an Unsupervised Contrastive Loss (UCL) that uses negative samples to push apart latent representations of different noisy images, increasing diversity especially for tail classes; and an Alignment Loss (AL) that minimizes the difference between conditional and unconditional noise predictions, weighted toward large timesteps so early denoising steps are class-agnostic, encouraging knowledge sharing from head to tail classes. The method is applied to both DDPM (U-Net) and SiT (Diffusion Transformer) pipelines, with optional batch resampling. Experiments on ImageNet-LT, TinyImageNet-LT, Places-LT, and CIFAR-LT show FID, KID, and Recall improvements over baselines such as DDPM, CBDM, OCLT, and Dispersive Loss, along with qualitative evidence of reduced mode collapse.",
+    "Strengths": [
+      "The proposed CCUA is simple and plug-and-play, requiring only two additional loss terms that can be integrated into standard diffusion training pipelines (DDPM and SiT) without architectural changes.",
+      "The two losses directly target the core issues of long-tailed generation: UCL increases intra-class diversity to mitigate mode collapse, while AL facilitates knowledge sharing from head to tail classes by aligning conditional and unconditional denoising at early steps.",
+      "Extensive experiments on multiple long-tailed benchmarks (ImageNet-LT, TinyImageNet-LT, Places-LT, CIFAR10/100-LT) demonstrate consistent improvements in FID, KID, and Recall over several strong baselines, with ablations confirming the contribution of each loss component.",
+      "The paper provides qualitative visualizations and distribution analyses (t-SNE and KDE) showing reduced mode collapse for tail classes, and demonstrates that batch resampling, which usually hurts baseline methods, becomes beneficial when combined with UCL.",
+      "The alignment loss is carefully weighted by timestep, focusing on the initial denoising steps where class-conditional and unconditional generation are observed to be similar, which is a reasonable extension of prior GAN-based approaches."
+    ],
+    "Weaknesses": [
+      "The unsupervised contrastive loss with negative samples only is essentially a repulsive/dispersion loss without positive pairs; its formulation closely resembles the concurrent dispersive loss (Wang & He, 2025), and the claimed novelty is mainly the application to the unconditional latent space combined with alignment, which is not deeply justified theoretically.",
+      "The alignment loss is derived from KL divergence but simplified to an MSE on noise predictions; the choice of linear timestep weighting t/T is heuristic, and the paper does not analyze how this alignment affects class-conditional controllability or whether it might reduce head-class diversity.",
+      "The evaluation methodology may favor the proposed method: CFG strength is grid-searched independently per method, but the search ranges and criteria are not fully specified; moreover, DiffROP (discussed in related work) is not included in the empirical comparison.",
+      "Training time is increased substantially (1.6x for DDPM, 1.48x for SiT), yet the paper does not discuss the computational cost-benefit trade-off or whether the gains are worth the overhead.",
+      "The claim that head-class quality is maintained is only partially supported: in Table 3 on TinyImageNet-LT, the head-class FID of CCUA (21.32) is slightly worse than DDPM (21.27), and the paper does not report per-head-class metrics on ImageNet-LT.",
+      "The paper lacks a sensitivity analysis for key hyperparameters (alpha, gamma, tau) and does not explore how their values affect performance.",
+      "The writing contains typos and incomplete implementation details (e.g., exact values of alpha/gamma, augmentation choices, architecture specifics), which hinders reproducibility.",
+      "On ImageNet-LT, the main improvement seems to come from batch resampling rather than the proposed losses alone: in Table 5, CCUA without batch resample (FID 32.25) is worse than SiT with batch resample (FID 28.05), and only the combination yields the best result. This undermines the claimed contribution of the losses.",
+      "No comparison with recent class-imbalanced diffusion methods such as DiffROP (Yan et al., 2024), nor experiments with score-based diffusion models as claimed in the abstract.",
+      "The theoretical justification for UCL is superficial; the claim that the loss pushes embeddings to a uniform distribution on a hypersphere is not rigorously analyzed, and the effect on diversity is not formally proven."
+    ],
+    "Originality": 2,
+    "Quality": 3,
+    "Clarity": 2,
+    "Significance": 3,
+    "Questions": [
+      "How does CCUA compare empirically to DiffROP (Yan et al., 2024), which also uses contrastive learning for long-tailed diffusion models? The related work discusses it, but no experiments are shown.",
+      "Is the improvement of CCUA over Dispersive Loss (Wang & He, 2025) consistent on other datasets beyond ImageNet-LT, or is it specific to that setup?",
+      "How sensitive are the results to the hyperparameters alpha, gamma, and tau? Are the same values used across all datasets and architectures, and were they tuned via validation?",
+      "Does the alignment loss reduce the distinguishability of different classes in the early denoising steps? For a fixed noise, are the generated images for different classes still clearly separated after the initial steps?",
+      "What is the criterion for applying batch resampling only on certain datasets (ImageNet-LT and TinyImageNet-LT) and not on Places-LT or CIFAR-LT? How does it interact with the alignment loss in those cases?",
+      "How is the unsupervised contrastive loss computed when samples within a batch have different timesteps t? Do you standardize the noise level across the batch or use a time-aware normalization?",
+      "Are the latent embeddings h normalized before computing the contrastive loss? If not, how does the scale of h affect the temperature parameter tau and the loss dynamics?",
+      "Algorithm 1 is mentioned in the text but not included in the provided submission. Can the full training procedure be described in the appendix?",
+      "What is the effect of the alignment loss on head classes? Does it reduce class-specific fidelity or harm controllability? The paper shows improved FID for head/body/tail, but no analysis of CFG guidance or class separation.",
+      "How does the proposed method compare to DiffROP (Yan et al., 2024)? The related work mentions it, but no experimental comparison is provided."
+    ],
+    "Limitations": [
+      "The method requires two forward passes (conditional and unconditional) during training, leading to about 1.5x training time overhead; inference latency is unchanged, but the cost is non-trivial.",
+      "The evaluation is limited to low-to-moderate resolutions (up to 256x256); the scalability to higher resolutions commonly used in modern diffusion models (e.g., 512x512) is not demonstrated.",
+      "The paper does not analyze potential over-dispersion caused by the contrastive loss, which could harm intra-class structure or fidelity for some classes, especially if the loss weight alpha is too high.",
+      "The alignment loss is designed for class-conditioned generation and may not generalize to text-conditioned generation, which is a more common setting; no experiments with text prompts are provided.",
+      "No theoretical analysis is given for how the two losses interact or why the combination should not degrade head-class generation; the paper relies solely on empirical evidence.",
+      "The method introduces additional hyperparameters (alpha, gamma, tau, batch resample re-balanced factor) that require tuning; no automated selection or sensitivity analysis is provided.",
+      "The paper does not evaluate the impact of the method on the diversity or fidelity of head classes individually, only on overall metrics and coarse head/body/tail categories.",
+      "Statistical significance analysis is limited to three seeds on CIFAR100-LT only, and no confidence intervals are reported for ImageNet-LT.",
+      "The performance gap between the proposed method and the balanced upper bound remains substantial, especially on TinyImageNet-LT, indicating that long-tailed generation is still far from solved."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 2,
+    "Presentation": 2,
+    "Contribution": 3,
+    "Overall": 4,
+    "Confidence": 4,
+    "Decision": "Reject"
+  },
+  "final_review_source": "Area Chair model output",
+  "usage": {
+    "prompt_tokens": 94815,
+    "prompt_cache_hit_tokens": 9856,
+    "prompt_cache_miss_tokens": 84959,
+    "completion_tokens": 23336,
+    "reasoning_tokens": 16242,
+    "total_tokens": 118151,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 2.76e-05,
+    "cache_miss_input_usd": 0.01189426,
+    "output_usd": 0.00653408,
+    "total_usd": 0.01845594
+  },
+  "elapsed_seconds": 73.141,
+  "input": {
+    "blind_id": "B021",
+    "filename": "B021.txt",
+    "blind_text_sha256": "706532a2841118d9284cc9f40051fce38725033b910916ff8703e29b40172937",
+    "characters": 62316,
+    "full_text_saved": false
+  }
+}

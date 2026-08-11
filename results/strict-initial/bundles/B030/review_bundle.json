@@ -1,0 +1,603 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-08-11T09:02:19.274287+00:00",
+  "implementation": {
+    "name": "deepseek-autoreviewer",
+    "version": "0.1.0",
+    "pipeline": "five independent reviews plus one Area Chair meta-review",
+    "calibration_status": "Uncalibrated model substitution: Nature validated o4-mini, not DeepSeek V4 Flash.",
+    "hidden_reasoning_saved": false
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://api.deepseek.com",
+    "ensemble_size": 5,
+    "parallelism": 5,
+    "reasoning_effort": "max",
+    "max_output_tokens": 16384,
+    "max_attempts": 3,
+    "retry_base_seconds": 1.0,
+    "aggregate_scores": "meta",
+    "cache_hit_usd_per_million": 0.0028,
+    "cache_miss_usd_per_million": 0.14,
+    "output_usd_per_million": 0.28
+  },
+  "individual_reviews": [
+    {
+      "label": "reviewer_1",
+      "review": {
+        "Summary": "This paper proposes a framework for recycling pretrained Mixture-of-Experts (MoE) checkpoints by growing them into larger models, rather than training from scratch. It introduces two orthogonal growth strategies: depth growth via 'interposition' (duplicating each layer in place) and width growth via expert duplication with small Gaussian noise. Through experiments on 3B→6B and 17B→70B models over up to 1T tokens, the authors claim that growing from converged checkpoints leverages sunk compute effectively, that interposition outperforms stacking for converged models, that noise injection improves expert specialization, and that final performance correlates positively with the amount of prior sunk cost. They report a 10.66% accuracy gain over a scratch-trained baseline under the same additional FLOPs budget.",
+        "Strengths": [
+          "Large-scale validation: The 17B→70B experiment with over 1T tokens demonstrates practical scalability and provides evidence that growth methods can be applied to production-scale MoE models.",
+          "Systematic comparison of depth growth strategies on converged models: The paper directly compares interposition and stacking, showing interposition is better for converged checkpoints, which differs from prior work focusing on early-stage training.",
+          "The width-growth analysis identifies that injecting small Gaussian noise into duplicated experts improves downstream accuracy, with ablations over noise scales.",
+          "Extensive empirical documentation: The appendices contain detailed training settings, evaluation tables, and layer-wise norm analyses across multiple open-source models, supporting reproducibility.",
+          "The timing study across 12 checkpoints with fixed additional budget provides a practical guideline for when to apply growth."
+        ],
+        "Weaknesses": [
+          "The positive correlation with sunk cost is confounded by base model quality: later checkpoints are already better, so the correlation may simply reflect better initialization rather than a fundamental 'sunk cost' effect. The paper does not isolate the value of sunk cost from initial performance.",
+          "The 70B experiment compares against a scratch baseline with the same *additional* FLOPs, not the same *total* FLOPs. The fixed-total-budget comparison is only performed at the 3B scale, so the headline 10.66% gain is not a like-for-like total-compute comparison.",
+          "The width-growth method is not function-preserving as claimed: duplicating experts and router logits while also doubling top-k doubles the MoE output magnitude unless rescaling is applied. The paper does not address this scaling issue.",
+          "The learning rate for continued training after growth is fixed regardless of which checkpoint (early or late, constant-LR or annealing phase) is used. This confounds the timing analysis, as late-annealing checkpoints may simply need a lower LR.",
+          "Limited baselines: The paper does not compare width growth to other MoE expansion strategies, such as randomly initializing new experts or using different noise injection schemes (e.g., noise only on router logits).",
+          "Reproducibility is limited by the use of proprietary datasets, despite the claim of releasing code."
+        ],
+        "Originality": 3,
+        "Quality": 3,
+        "Clarity": 3,
+        "Significance": 3,
+        "Questions": [
+          "In width growth, how is the MoE output scaled when the number of activated experts is doubled? Does the model output double in magnitude, and if so, how does this affect the claimed function-preserving property and downstream performance immediately after expansion?",
+          "What would be the final accuracy of a 70B model trained from scratch under the same *total* FLOPs (sunk + additional) as the growth pipeline? Is the 10.66% gain an artifact of comparing to a scratch model that uses only the additional compute?",
+          "Did you tune the learning rate for continued training after growth for each checkpoint? Could the diminishing returns observed for checkpoints in the annealing phase be due to an inappropriate learning rate rather than the checkpoint being a worse base?",
+          "Did you ablate width growth with randomly initialized new experts, or with noise applied only to expert weights vs only to router logits? What is the contribution of each component?",
+          "Can the norm-based motivation for interposition be causally linked to final performance, or is it merely a correlational pattern? Have you tested interposition on models with different normalization schemes or initialization scales?"
+        ],
+        "Limitations": [
+          "The positive correlation with sunk cost is not disentangled from the base model's initial performance; a better base model naturally leads to a better final model even without recycling.",
+          "The 70B-scale comparison is only against a scratch baseline with the same additional FLOPs, not the same total FLOPs; the fixed-total-budget analysis is limited to the 3B scale.",
+          "The method is only evaluated on MoE architectures and does not address dense model growth.",
+          "The use of proprietary datasets (e.g., filtered code, synthetic data) limits full reproducibility.",
+          "The width-growth approach does not preserve the exact function when duplicating experts and top-k, so its practical robustness relies on the model's normalization absorbing scale changes.",
+          "The evaluation is limited to English-language benchmarks; generalization to multilingual or code-specific tasks is not tested."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 3,
+        "Presentation": 3,
+        "Contribution": 3,
+        "Overall": 5,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"This paper proposes a framework for recycling pretrained Mixture-of-Experts (MoE) checkpoints by growing them into larger models, rather than training from scratch. It introduces two orthogonal growth strategies: depth growth via 'interposition' (duplicating each layer in place) and width growth via expert duplication with small Gaussian noise. Through experiments on 3B→6B and 17B→70B models over up to 1T tokens, the authors claim that growing from converged checkpoints leverages sunk compute effectively, that interposition outperforms stacking for converged models, that noise injection improves expert specialization, and that final performance correlates positively with the amount of prior sunk cost. They report a 10.66% accuracy gain over a scratch-trained baseline under the same additional FLOPs budget.\",\n  \"Strengths\": [\n    \"Large-scale validation: The 17B→70B experiment with over 1T tokens demonstrates practical scalability and provides evidence that growth methods can be applied to production-scale MoE models.\",\n    \"Systematic comparison of depth growth strategies on converged models: The paper directly compares interposition and stacking, showing interposition is better for converged checkpoints, which differs from prior work focusing on early-stage training.\",\n    \"The width-growth analysis identifies that injecting small Gaussian noise into duplicated experts improves downstream accuracy, with ablations over noise scales.\",\n    \"Extensive empirical documentation: The appendices contain detailed training settings, evaluation tables, and layer-wise norm analyses across multiple open-source models, supporting reproducibility.\",\n    \"The timing study across 12 checkpoints with fixed additional budget provides a practical guideline for when to apply growth.\"\n  ],\n  \"Weaknesses\": [\n    \"The positive correlation with sunk cost is confounded by base model quality: later checkpoints are already better, so the correlation may simply reflect better initialization rather than a fundamental 'sunk cost' effect. The paper does not isolate the value of sunk cost from initial performance.\",\n    \"The 70B experiment compares against a scratch baseline with the same *additional* FLOPs, not the same *total* FLOPs. The fixed-total-budget comparison is only performed at the 3B scale, so the headline 10.66% gain is not a like-for-like total-compute comparison.\",\n    \"The width-growth method is not function-preserving as claimed: duplicating experts and router logits while also doubling top-k doubles the MoE output magnitude unless rescaling is applied. The paper does not address this scaling issue.\",\n    \"The learning rate for continued training after growth is fixed regardless of which checkpoint (early or late, constant-LR or annealing phase) is used. This confounds the timing analysis, as late-annealing checkpoints may simply need a lower LR.\",\n    \"Limited baselines: The paper does not compare width growth to other MoE expansion strategies, such as randomly initializing new experts or using different noise injection schemes (e.g., noise only on router logits).\",\n    \"Reproducibility is limited by the use of proprietary datasets, despite the claim of releasing code.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 3,\n  \"Clarity\": 3,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"In width growth, how is the MoE output scaled when the number of activated experts is doubled? Does the model output double in magnitude, and if so, how does this affect the claimed function-preserving property and downstream performance immediately after expansion?\",\n    \"What would be the final accuracy of a 70B model trained from scratch under the same *total* FLOPs (sunk + additional) as the growth pipeline? Is the 10.66% gain an artifact of comparing to a scratch model that uses only the additional compute?\",\n    \"Did you tune the learning rate for continued training after growth for each checkpoint? Could the diminishing returns observed for checkpoints in the annealing phase be due to an inappropriate learning rate rather than the checkpoint being a worse base?\",\n    \"Did you ablate width growth with randomly initialized new experts, or with noise applied only to expert weights vs only to router logits? What is the contribution of each component?\",\n    \"Can the norm-based motivation for interposition be causally linked to final performance, or is it merely a correlational pattern? Have you tested interposition on models with different normalization schemes or initialization scales?\"\n  ],\n  \"Limitations\": [\n    \"The positive correlation with sunk cost is not disentangled from the base model's initial performance; a better base model naturally leads to a better final model even without recycling.\",\n    \"The 70B-scale comparison is only against a scratch baseline with the same additional FLOPs, not the same total FLOPs; the fixed-total-budget analysis is limited to the 3B scale.\",\n    \"The method is only evaluated on MoE architectures and does not address dense model growth.\",\n    \"The use of proprietary datasets (e.g., filtered code, synthetic data) limits full reproducibility.\",\n    \"The width-growth approach does not preserve the exact function when duplicating experts and top-k, so its practical robustness relies on the model's normalization absorbing scale changes.\",\n    \"The evaluation is limited to English-language benchmarks; generalization to multilingual or code-specific tasks is not tested.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 3,\n  \"Presentation\": 3,\n  \"Contribution\": 3,\n  \"Overall\": 5,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 36341,
+        "prompt_cache_hit_tokens": 5504,
+        "prompt_cache_miss_tokens": 30837,
+        "completion_tokens": 4516,
+        "reasoning_tokens": 3353,
+        "total_tokens": 40857
+      },
+      "attempts": 1,
+      "response_id": "b2dd321a-47a7-4527-9d13-208de19acee7"
+    },
+    {
+      "label": "reviewer_2",
+      "review": {
+        "Summary": "The paper proposes to recycle the 'sunk cost' of pretrained MoE checkpoints by growing them into larger models. It introduces two orthogonal growth strategies: interpositional layer copying for depth growth (duplicating each layer in place rather than stacking blocks) and expert duplication with injected Gaussian noise for width growth (doubling experts and top-k). Through scaling experiments on a 3B MoE model, the authors report that interposition outperforms stacking for converged models, that small noise aids expert specialization, and that final accuracy correlates positively with prior sunk compute. They scale the approach from a 17B to a 70B MoE model over 1T tokens, claiming a 10.66% accuracy gain over a scratch-trained baseline under the same additional compute budget.",
+        "Strengths": [
+          "Addresses a timely and practical problem: reusing compute invested in converged MoE checkpoints instead of training from scratch.",
+          "The empirical comparison between interposition and stacking on converged models is useful and goes beyond prior work that mainly considered early-stage growth.",
+          "The finding that injecting small Gaussian noise into duplicated experts improves downstream accuracy over exact copying is a simple, actionable insight.",
+          "The timing study provides practical guidance on when to grow, showing that later checkpoints generally lead to better final performance.",
+          "The 17B-to-70B demonstration shows the approach can be applied at a scale relevant to real LLM training."
+        ],
+        "Weaknesses": [
+          "The function-preserving claim for width growth is mathematically suspect: copying router logits and doubling top-k does not keep the output identical unless the gating outputs are renormalized or scaled; the paper does not address this and may overstate the 'function-preserving' property.",
+          "The main claimed gain over 'training from scratch' is not convincingly tied to a fair same-architecture baseline; the 57.99 scratch number appears to be a 17B model, not a 70B model, so the 10.66% improvement may conflate model-size advantage with growth efficiency.",
+          "Evaluation is narrow: only MMLU and six English multiple-choice QA tasks are used; there are no open-ended generation, coding, math, or multilingual benchmarks, making the reported 'average accuracy' a weak proxy for general capability.",
+          "The growth-timing analysis is performed on a single 3B model and the claimed positive correlation is confounded by base-checkpoint quality; the 96k checkpoint underperforms 88k, so the relationship is not strictly monotonic and the explanation (learning-rate mismatch) is not tested by adjusting the post-growth LR schedule.",
+          "The paper lacks ablations on key design choices: noise added to router vs expert only, learning-rate warmup after growth, optimizer-state handling, and load-balancing behavior after expert duplication.",
+          "Reproducibility is limited by the use of proprietary data, redacted references, and incomplete algorithmic details; the appendix says source code is provided but no concrete implementation is described."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 2,
+        "Questions": [
+          "What exactly is the 'scratch-trained baseline' in the 17B-to-70B experiment? Is it a 70B MoE trained from scratch with the same total or additional FLOPs, or is it a 17B model? Please provide its architecture, training curve, and final loss/accuracy.",
+          "For width growth, when top-k is doubled and router logits are copied, the sum over the top-2k selected experts includes both copies of each original selected expert. Does this not double the MoE output (or otherwise change output scale)? Have you tried renormalizing gating scores or scaling expert outputs to make the transformation truly function-preserving?",
+          "How are optimizer states initialized after growth? Are AdamW moments carried over from the base checkpoint or reset? This can materially affect continued training and was not discussed.",
+          "In the timing study, the 96k checkpoint performs worse than 88k under a fixed additional budget. Would tuning the post-growth learning rate for late-annealing checkpoints change the conclusion?",
+          "Did you monitor expert load balance and routing diversity before and after width growth? If so, how do noise and top-k doubling affect them?",
+          "What is the total FLOPs and GPU-hours cost of the 17B-to-70B run, including the base pretraining? This is important for judging the claimed efficiency benefit.",
+          "Did you compare against a 70B model trained from scratch under a fair compute budget, or only against a 17B scratch model? If not, what is the evidence that growth beats a same-size scratch model?"
+        ],
+        "Limitations": [
+          "The methods are evaluated only on MoE models; dense Transformer growth is not covered.",
+          "The layer-wise norm trend used to justify interposition is empirical and heuristic, with no formal proof or controlled causal analysis.",
+          "The function-preserving argument in Appendix C is incomplete/incorrect for width growth with doubled top-k, as noted above.",
+          "The evaluation suite is limited to English knowledge and reasoning QA tasks; broader capabilities are not assessed.",
+          "The large-scale experiment uses a proprietary, mixed data corpus, so results are not fully reproducible from public data alone.",
+          "The paper does not disclose total computational cost or potential environmental footprint, despite claiming efficiency benefits."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes to recycle the 'sunk cost' of pretrained MoE checkpoints by growing them into larger models. It introduces two orthogonal growth strategies: interpositional layer copying for depth growth (duplicating each layer in place rather than stacking blocks) and expert duplication with injected Gaussian noise for width growth (doubling experts and top-k). Through scaling experiments on a 3B MoE model, the authors report that interposition outperforms stacking for converged models, that small noise aids expert specialization, and that final accuracy correlates positively with prior sunk compute. They scale the approach from a 17B to a 70B MoE model over 1T tokens, claiming a 10.66% accuracy gain over a scratch-trained baseline under the same additional compute budget.\",\n  \"Strengths\": [\n    \"Addresses a timely and practical problem: reusing compute invested in converged MoE checkpoints instead of training from scratch.\",\n    \"The empirical comparison between interposition and stacking on converged models is useful and goes beyond prior work that mainly considered early-stage growth.\",\n    \"The finding that injecting small Gaussian noise into duplicated experts improves downstream accuracy over exact copying is a simple, actionable insight.\",\n    \"The timing study provides practical guidance on when to grow, showing that later checkpoints generally lead to better final performance.\",\n    \"The 17B-to-70B demonstration shows the approach can be applied at a scale relevant to real LLM training.\"\n  ],\n  \"Weaknesses\": [\n    \"The function-preserving claim for width growth is mathematically suspect: copying router logits and doubling top-k does not keep the output identical unless the gating outputs are renormalized or scaled; the paper does not address this and may overstate the 'function-preserving' property.\",\n    \"The main claimed gain over 'training from scratch' is not convincingly tied to a fair same-architecture baseline; the 57.99 scratch number appears to be a 17B model, not a 70B model, so the 10.66% improvement may conflate model-size advantage with growth efficiency.\",\n    \"Evaluation is narrow: only MMLU and six English multiple-choice QA tasks are used; there are no open-ended generation, coding, math, or multilingual benchmarks, making the reported 'average accuracy' a weak proxy for general capability.\",\n    \"The growth-timing analysis is performed on a single 3B model and the claimed positive correlation is confounded by base-checkpoint quality; the 96k checkpoint underperforms 88k, so the relationship is not strictly monotonic and the explanation (learning-rate mismatch) is not tested by adjusting the post-growth LR schedule.\",\n    \"The paper lacks ablations on key design choices: noise added to router vs expert only, learning-rate warmup after growth, optimizer-state handling, and load-balancing behavior after expert duplication.\",\n    \"Reproducibility is limited by the use of proprietary data, redacted references, and incomplete algorithmic details; the appendix says source code is provided but no concrete implementation is described.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"What exactly is the 'scratch-trained baseline' in the 17B-to-70B experiment? Is it a 70B MoE trained from scratch with the same total or additional FLOPs, or is it a 17B model? Please provide its architecture, training curve, and final loss/accuracy.\",\n    \"For width growth, when top-k is doubled and router logits are copied, the sum over the top-2k selected experts includes both copies of each original selected expert. Does this not double the MoE output (or otherwise change output scale)? Have you tried renormalizing gating scores or scaling expert outputs to make the transformation truly function-preserving?\",\n    \"How are optimizer states initialized after growth? Are AdamW moments carried over from the base checkpoint or reset? This can materially affect continued training and was not discussed.\",\n    \"In the timing study, the 96k checkpoint performs worse than 88k under a fixed additional budget. Would tuning the post-growth learning rate for late-annealing checkpoints change the conclusion?\",\n    \"Did you monitor expert load balance and routing diversity before and after width growth? If so, how do noise and top-k doubling affect them?\",\n    \"What is the total FLOPs and GPU-hours cost of the 17B-to-70B run, including the base pretraining? This is important for judging the claimed efficiency benefit.\",\n    \"Did you compare against a 70B model trained from scratch under a fair compute budget, or only against a 17B scratch model? If not, what is the evidence that growth beats a same-size scratch model?\"\n  ],\n  \"Limitations\": [\n    \"The methods are evaluated only on MoE models; dense Transformer growth is not covered.\",\n    \"The layer-wise norm trend used to justify interposition is empirical and heuristic, with no formal proof or controlled causal analysis.\",\n    \"The function-preserving argument in Appendix C is incomplete/incorrect for width growth with doubled top-k, as noted above.\",\n    \"The evaluation suite is limited to English knowledge and reasoning QA tasks; broader capabilities are not assessed.\",\n    \"The large-scale experiment uses a proprietary, mixed data corpus, so results are not fully reproducible from public data alone.\",\n    \"The paper does not disclose total computational cost or potential environmental footprint, despite claiming efficiency benefits.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 36341,
+        "prompt_cache_hit_tokens": 5504,
+        "prompt_cache_miss_tokens": 30837,
+        "completion_tokens": 4858,
+        "reasoning_tokens": 3648,
+        "total_tokens": 41199
+      },
+      "attempts": 1,
+      "response_id": "74a15aa4-121c-4ad0-8dd0-80ff0fee32ad"
+    },
+    {
+      "label": "reviewer_3",
+      "review": {
+        "Summary": "The paper proposes a framework for 'recycling' pretrained Mixture-of-Experts (MoE) checkpoints by growing them into larger models, using two orthogonal strategies: depth growth via interpositional layer copying and width growth via expert duplication with Gaussian noise injection. The authors conduct experiments on 3B and 17B MoE models, study the effect of growth timing and sunk cost, and scale to a 70B model over 1T tokens, claiming a 10.66% accuracy improvement over training from scratch under the same additional compute budget. The paper includes extensive appendices with training and evaluation details.",
+        "Strengths": [
+          "Addresses an important and timely problem of reusing pretrained checkpoints to reduce LLM pretraining cost.",
+          "Identifies interposition as better than stacking for depth growth on converged models, with empirical evidence across 3B and 17B MoE models and open-source models' weight norm analysis.",
+          "Proposes a simple yet effective width growth method for MoE models by duplicating experts with small Gaussian noise, demonstrating improved downstream performance.",
+          "Conducts a systematic study on growth timing, showing positive correlation between sunk cost and final performance, which is a useful practical guideline.",
+          "Demonstrates scalability to 70B parameters and 1T tokens, with significant gains over base models."
+        ],
+        "Weaknesses": [
+          "The claim of 10.66% improvement over training from scratch under the same additional compute budget is not clearly substantiated; the comparison appears to be against the 17B base model rather than a 70B scratch-trained model, which undermines the headline result.",
+          "The theoretical justification for interposition is based on layer-wise weight norm trends, which is heuristic and lacks rigorous analysis; no formal proof or ablation isolating the cause.",
+          "The growth timing experiments use a single training run and one seed, with no error bars or statistical significance testing; conclusions may be sensitive to hyperparameter choices (e.g., fixed LR after growth).",
+          "The width growth noise injection is tuned empirically without a principled explanation or sensitivity analysis beyond a few values; the mechanism for improved specialization is not explored.",
+          "The paper does not compare against other strong growth methods (e.g., LiGO, MSG, upcycling) at scale, limiting the assessment of relative merits.",
+          "The 'orthogonality' of depth and width growth is only demonstrated in one sequence (depth then width); the order and interaction effects are not investigated.",
+          "Reproducibility is limited: only an anonymized source code fragment is provided, and the full training framework is promised but not available, making independent verification difficult."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 3,
+        "Significance": 2,
+        "Questions": [
+          "Can the authors clarify the exact baseline for the 'scratch-trained' model in Figure 1 and Section 5? Is it a 70B model trained from scratch with the same additional FLOPs, or is it the 17B model at a certain step? How are the FLOPs computed for both?",
+          "How sensitive are the growth timing results to the choice of learning rate and schedule after growth? Would a tuned LR for each checkpoint change the correlation?",
+          "What is the computational cost of the growth process itself (e.g., the additional training for the 70B model) relative to the baselines, and how is 'additional FLOPs' exactly defined?",
+          "Does the interposition method outperform stacking on dense (non-MoE) converged models, or is it specific to MoE?",
+          "Could the authors provide error bars or multiple seeds for the key experiments, especially the timing study?",
+          "How does width growth with noise compare to other methods for expert diversification, such as adding a different noise scale per expert or using a different initialization?",
+          "What is the effect of growing depth after width (opposite order) on final performance?",
+          "The paper mentions that the 17B model has no annealing; how would annealing affect the growth timing conclusions?"
+        ],
+        "Limitations": [
+          "The study is limited to MoE models; dense models are not tested.",
+          "The growth timing correlation is based on a single model size (3B) and may not generalize to larger scales.",
+          "The evaluation uses a limited set of tasks; broader benchmarks (e.g., code, math, multilingual) are not included.",
+          "The paper does not explore the environmental or cost trade-offs of the growth approach in detail.",
+          "The full training framework is not released, hindering reproducibility.",
+          "The scratch baseline at 70B is ambiguous, which limits the validity of the headline claim.",
+          "No analysis of failure cases or when growth might not be beneficial."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 3,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 3,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes a framework for 'recycling' pretrained Mixture-of-Experts (MoE) checkpoints by growing them into larger models, using two orthogonal strategies: depth growth via interpositional layer copying and width growth via expert duplication with Gaussian noise injection. The authors conduct experiments on 3B and 17B MoE models, study the effect of growth timing and sunk cost, and scale to a 70B model over 1T tokens, claiming a 10.66% accuracy improvement over training from scratch under the same additional compute budget. The paper includes extensive appendices with training and evaluation details.\",\n  \"Strengths\": [\n    \"Addresses an important and timely problem of reusing pretrained checkpoints to reduce LLM pretraining cost.\",\n    \"Identifies interposition as better than stacking for depth growth on converged models, with empirical evidence across 3B and 17B MoE models and open-source models' weight norm analysis.\",\n    \"Proposes a simple yet effective width growth method for MoE models by duplicating experts with small Gaussian noise, demonstrating improved downstream performance.\",\n    \"Conducts a systematic study on growth timing, showing positive correlation between sunk cost and final performance, which is a useful practical guideline.\",\n    \"Demonstrates scalability to 70B parameters and 1T tokens, with significant gains over base models.\"\n  ],\n  \"Weaknesses\": [\n    \"The claim of 10.66% improvement over training from scratch under the same additional compute budget is not clearly substantiated; the comparison appears to be against the 17B base model rather than a 70B scratch-trained model, which undermines the headline result.\",\n    \"The theoretical justification for interposition is based on layer-wise weight norm trends, which is heuristic and lacks rigorous analysis; no formal proof or ablation isolating the cause.\",\n    \"The growth timing experiments use a single training run and one seed, with no error bars or statistical significance testing; conclusions may be sensitive to hyperparameter choices (e.g., fixed LR after growth).\",\n    \"The width growth noise injection is tuned empirically without a principled explanation or sensitivity analysis beyond a few values; the mechanism for improved specialization is not explored.\",\n    \"The paper does not compare against other strong growth methods (e.g., LiGO, MSG, upcycling) at scale, limiting the assessment of relative merits.\",\n    \"The 'orthogonality' of depth and width growth is only demonstrated in one sequence (depth then width); the order and interaction effects are not investigated.\",\n    \"Reproducibility is limited: only an anonymized source code fragment is provided, and the full training framework is promised but not available, making independent verification difficult.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 3,\n  \"Significance\": 2,\n  \"Questions\": [\n    \"Can the authors clarify the exact baseline for the 'scratch-trained' model in Figure 1 and Section 5? Is it a 70B model trained from scratch with the same additional FLOPs, or is it the 17B model at a certain step? How are the FLOPs computed for both?\",\n    \"How sensitive are the growth timing results to the choice of learning rate and schedule after growth? Would a tuned LR for each checkpoint change the correlation?\",\n    \"What is the computational cost of the growth process itself (e.g., the additional training for the 70B model) relative to the baselines, and how is 'additional FLOPs' exactly defined?\",\n    \"Does the interposition method outperform stacking on dense (non-MoE) converged models, or is it specific to MoE?\",\n    \"Could the authors provide error bars or multiple seeds for the key experiments, especially the timing study?\",\n    \"How does width growth with noise compare to other methods for expert diversification, such as adding a different noise scale per expert or using a different initialization?\",\n    \"What is the effect of growing depth after width (opposite order) on final performance?\",\n    \"The paper mentions that the 17B model has no annealing; how would annealing affect the growth timing conclusions?\"\n  ],\n  \"Limitations\": [\n    \"The study is limited to MoE models; dense models are not tested.\",\n    \"The growth timing correlation is based on a single model size (3B) and may not generalize to larger scales.\",\n    \"The evaluation uses a limited set of tasks; broader benchmarks (e.g., code, math, multilingual) are not included.\",\n    \"The paper does not explore the environmental or cost trade-offs of the growth approach in detail.\",\n    \"The full training framework is not released, hindering reproducibility.\",\n    \"The scratch baseline at 70B is ambiguous, which limits the validity of the headline claim.\",\n    \"No analysis of failure cases or when growth might not be beneficial.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 3,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 3,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 36341,
+        "prompt_cache_hit_tokens": 5504,
+        "prompt_cache_miss_tokens": 30837,
+        "completion_tokens": 3917,
+        "reasoning_tokens": 2838,
+        "total_tokens": 40258
+      },
+      "attempts": 1,
+      "response_id": "125cca72-e16a-427a-adae-8188c3d753fb"
+    },
+    {
+      "label": "reviewer_4",
+      "review": {
+        "Summary": "The paper proposes a framework for recycling pretrained MoE checkpoints by expanding them into larger models. Two growth strategies are introduced: interpositional depth growth (duplicating layers in place) and width growth (duplicating experts with small injected noise). Experiments on 3B-to-6B models show interposition outperforms stacking for converged checkpoints, and noise injection improves expert specialization. A timing study across checkpoints with varying sunk cost shows that, under a fixed additional FLOPs budget, later checkpoints lead to better final performance. The approach is scaled from a 17B to a 70B MoE model over ~1T training tokens, reporting a 10.66% relative accuracy gain over a scratch-trained baseline.",
+        "Strengths": [
+          "The interpositional depth growth method is a simple but apparently effective alternative to stacking for converged MoE models, supported by experiments at 3B and 17B scales.",
+          "Width growth with noise injection is a practical, well-motivated technique that improves downstream accuracy while keeping loss similar to direct copying.",
+          "The timing analysis systematically varies the checkpoint used for growth and provides evidence that larger sunk cost helps under a fixed additional compute budget.",
+          "The large-scale 17B-to-70B demonstration shows the method can be applied in a realistic pretraining setting and gives a concrete efficiency gain.",
+          "The paper is the first to systematically study growth methods for well-converged MoE models, addressing an important gap in the model-growth literature."
+        ],
+        "Weaknesses": [
+          "The headline claim of '10.66% accuracy gain over training from scratch' is ambiguous: the text compares the final 70B model to a 17B checkpoint (57.99), not clearly to a 70B scratch-trained model, and Figure 1 is redacted so the baseline cannot be verified.",
+          "The timing analysis lacks statistical rigor: no correlation coefficient, confidence intervals, or multiple seeds are reported, and the fixed-total-budget experiment shows earlier growth is better, which complicates the simple 'more sunk cost is better' narrative.",
+          "Only 7 downstream tasks are used for evaluation, with no diversity in task type and no significance testing; the reported accuracy differences may not be robust.",
+          "Post-growth training hyperparameters (learning rate, warmup, schedule, batch size after growth) are not provided; the paper only mentions a 'same new constant learning rate', making reproduction difficult.",
+          "No comparison with other advanced model growth methods (e.g., LiGO, LEMON, progressive stacking) is provided at scale; only stack vs. interposition is tested.",
+          "The large-scale experiment is a single run with no ablations on the order of depth vs. width growth or on the interaction between the two strategies.",
+          "There are numeric inconsistencies (e.g., 64.17 - 61.71 = 2.46, not 2.96 as stated) and a table labeled 'interleaved growth' where 'interposition' is intended, suggesting reporting errors."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 3,
+        "Questions": [
+          "What exactly is the scratch baseline used to compute the 10.66% relative gain? Is it a 70B model trained from scratch with the same additional FLOPs, or a 17B model? Please clarify.",
+          "How are FLOPs computed for MoE models? Are they based on active parameters or total parameters? Please provide exact FLOP counts for each training stage.",
+          "What are the exact post-growth training hyperparameters, and were they re-tuned separately for each growth timing?",
+          "Did you compute a correlation coefficient between sunk FLOPs and final accuracy? If so, what is the value and its confidence interval?",
+          "Why is the improvement over the 17B model at the same FLOPs reported as 2.96 when the tables show 64.17 - 61.71 = 2.46?",
+          "Does the interposition method exactly duplicate each layer immediately after itself, and how does this preserve the layer-wise weight-norm trend better than stacking?",
+          "Would width growth followed by depth growth produce different results? Have you tested the order of the two orthogonal operations?"
+        ],
+        "Limitations": [
+          "The method is only evaluated on MoE architectures; applicability to dense LLMs is not demonstrated.",
+          "The experimental dataset is a proprietary mixture, and the models are not released, limiting reproducibility and external verification.",
+          "Only one large-scale run is reported, so the stability of the observed gains is unknown.",
+          "The evaluation is limited to multiple-choice and knowledge tasks; no open-ended generation or instruction-following benchmarks are included.",
+          "The reported 10.66% gain may be overstated if the baseline is not a same-size scratch model, as the text suggests."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 3,
+        "Overall": 5,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes a framework for recycling pretrained MoE checkpoints by expanding them into larger models. Two growth strategies are introduced: interpositional depth growth (duplicating layers in place) and width growth (duplicating experts with small injected noise). Experiments on 3B-to-6B models show interposition outperforms stacking for converged checkpoints, and noise injection improves expert specialization. A timing study across checkpoints with varying sunk cost shows that, under a fixed additional FLOPs budget, later checkpoints lead to better final performance. The approach is scaled from a 17B to a 70B MoE model over ~1T training tokens, reporting a 10.66% relative accuracy gain over a scratch-trained baseline.\",\n  \"Strengths\": [\n    \"The interpositional depth growth method is a simple but apparently effective alternative to stacking for converged MoE models, supported by experiments at 3B and 17B scales.\",\n    \"Width growth with noise injection is a practical, well-motivated technique that improves downstream accuracy while keeping loss similar to direct copying.\",\n    \"The timing analysis systematically varies the checkpoint used for growth and provides evidence that larger sunk cost helps under a fixed additional compute budget.\",\n    \"The large-scale 17B-to-70B demonstration shows the method can be applied in a realistic pretraining setting and gives a concrete efficiency gain.\",\n    \"The paper is the first to systematically study growth methods for well-converged MoE models, addressing an important gap in the model-growth literature.\"\n  ],\n  \"Weaknesses\": [\n    \"The headline claim of '10.66% accuracy gain over training from scratch' is ambiguous: the text compares the final 70B model to a 17B checkpoint (57.99), not clearly to a 70B scratch-trained model, and Figure 1 is redacted so the baseline cannot be verified.\",\n    \"The timing analysis lacks statistical rigor: no correlation coefficient, confidence intervals, or multiple seeds are reported, and the fixed-total-budget experiment shows earlier growth is better, which complicates the simple 'more sunk cost is better' narrative.\",\n    \"Only 7 downstream tasks are used for evaluation, with no diversity in task type and no significance testing; the reported accuracy differences may not be robust.\",\n    \"Post-growth training hyperparameters (learning rate, warmup, schedule, batch size after growth) are not provided; the paper only mentions a 'same new constant learning rate', making reproduction difficult.\",\n    \"No comparison with other advanced model growth methods (e.g., LiGO, LEMON, progressive stacking) is provided at scale; only stack vs. interposition is tested.\",\n    \"The large-scale experiment is a single run with no ablations on the order of depth vs. width growth or on the interaction between the two strategies.\",\n    \"There are numeric inconsistencies (e.g., 64.17 - 61.71 = 2.46, not 2.96 as stated) and a table labeled 'interleaved growth' where 'interposition' is intended, suggesting reporting errors.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"What exactly is the scratch baseline used to compute the 10.66% relative gain? Is it a 70B model trained from scratch with the same additional FLOPs, or a 17B model? Please clarify.\",\n    \"How are FLOPs computed for MoE models? Are they based on active parameters or total parameters? Please provide exact FLOP counts for each training stage.\",\n    \"What are the exact post-growth training hyperparameters, and were they re-tuned separately for each growth timing?\",\n    \"Did you compute a correlation coefficient between sunk FLOPs and final accuracy? If so, what is the value and its confidence interval?\",\n    \"Why is the improvement over the 17B model at the same FLOPs reported as 2.96 when the tables show 64.17 - 61.71 = 2.46?\",\n    \"Does the interposition method exactly duplicate each layer immediately after itself, and how does this preserve the layer-wise weight-norm trend better than stacking?\",\n    \"Would width growth followed by depth growth produce different results? Have you tested the order of the two orthogonal operations?\"\n  ],\n  \"Limitations\": [\n    \"The method is only evaluated on MoE architectures; applicability to dense LLMs is not demonstrated.\",\n    \"The experimental dataset is a proprietary mixture, and the models are not released, limiting reproducibility and external verification.\",\n    \"Only one large-scale run is reported, so the stability of the observed gains is unknown.\",\n    \"The evaluation is limited to multiple-choice and knowledge tasks; no open-ended generation or instruction-following benchmarks are included.\",\n    \"The reported 10.66% gain may be overstated if the baseline is not a same-size scratch model, as the text suggests.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 3,\n  \"Overall\": 5,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 36341,
+        "prompt_cache_hit_tokens": 5504,
+        "prompt_cache_miss_tokens": 30837,
+        "completion_tokens": 4505,
+        "reasoning_tokens": 3403,
+        "total_tokens": 40846
+      },
+      "attempts": 1,
+      "response_id": "a1b3289c-3862-4b62-ad3f-339a73cffa6f"
+    },
+    {
+      "label": "reviewer_5",
+      "review": {
+        "Summary": "The paper proposes a framework for recycling pretrained Mixture-of-Experts (MoE) checkpoints by expanding them into larger models, rather than training from scratch. Two orthogonal growth strategies are introduced: depth growth via interpositional layer copying (duplicating each layer in place) and width growth via expert duplication with injected Gaussian noise. The authors study growth timing, showing that final performance correlates positively with the sunk compute invested in the base checkpoint, and that growth can be competitive with scratch training under a fixed total budget. They scale the approach from a 17B MoE model to a 70B model over 1T training tokens, reporting a 10.66% relative accuracy gain over a scratch-trained baseline under the same additional FLOPs budget.",
+        "Strengths": [
+          "Addresses an important and timely problem: efficiently reusing sunk compute from existing checkpoints.",
+          "First systematic study of model growth specifically for converged MoE models, with clear recipes for depth and width expansion.",
+          "Extensive experiments across multiple scales (3B, 6B, 17B, 35B, 70B), with detailed per-task evaluation tables in the appendix.",
+          "Includes a fixed-total-budget comparison at the 3B/6B scale, which is more practically relevant than only comparing under an additional-budget setting.",
+          "The paper provides substantial reproducibility details, including architecture, data mix, hyperparameters, and infrastructure."
+        ],
+        "Weaknesses": [
+          "The function-preserving claim for width growth is mathematically questionable under the sigmoid router used by the authors: duplicating expert weights and router logits and then selecting top-2k without any normalization or scaling doubles the routed sum, so the output cannot be identical to the original model.",
+          "The 70B scratch baseline is not described in sufficient detail: no evaluation table or exact training budget is provided, and the comparison is only under the same 'extra' FLOPs, not the same total FLOPs, which weakens the headline claim.",
+          "The growth-timing analysis uses the same fixed learning rate for all continued-training runs; late checkpoints from the annealing phase may be unfairly disadvantaged, so the reported diminishing returns could be an artifact of LR mismatch rather than a property of sunk cost.",
+          "No repeated runs, seeds, or confidence intervals are reported; some conclusions (e.g., the ~1% benefit of noise injection) may be within evaluation noise.",
+          "The justification for interpositional depth growth relies on a heuristic observation about layer-wise weight norms, without a causal or theoretical explanation of why preserving this norm trend is necessary or sufficient.",
+          "Only one growth order is evaluated (depth then width); no ablations are performed for width-then-depth or simultaneous growth, so the claimed orthogonality is not fully validated.",
+          "The paper contains numerous typos and unclear passages (e.g., 'leaning rate', 'donot', 'primary questions', 'number such as'), and some claims in the abstract ('10.66% accuracy gain') do not clearly distinguish absolute vs. relative improvement."
+        ],
+        "Originality": 3,
+        "Quality": 2,
+        "Clarity": 2,
+        "Significance": 3,
+        "Questions": [
+          "With the sigmoid router described in Appendix D.1, how is the output preserved after duplicating both expert weights and router logits and selecting top-2k? If no renormalization or scaling is applied, the output magnitude would double; did the authors divide the final MoE output by 2 or use a different normalization in practice?",
+          "What exactly is the 70B scratch baseline in Figure 1? How many tokens/FLOPs were used, what was the learning-rate schedule, and is the comparison only against the additional compute after growth or the total compute including the 17B sunk cost?",
+          "Did the authors tune the continued-training learning rate for each checkpoint separately? Could the observed degradation for very late checkpoints be caused by using a constant LR for models that had already entered the annealing phase?",
+          "Why is it necessary to double the top-k value during width growth? Doubling both E and k doubles the activated expert FLOPs; how is this accounted for in the FLOPs comparisons against scratch training?",
+          "Would the width-growth results and the function-preserving argument change if softmax routing were used instead of sigmoid routing?",
+          "Have the authors compared against other established model-growth methods such as LiGO, LEMON, or MSG on the same 3B-to-6B setting, rather than only comparing stack vs. interposition?"
+        ],
+        "Limitations": [
+          "The proposed growth methods are only evaluated on MoE architectures; applicability to dense models is not demonstrated.",
+          "The pretraining data mix includes proprietary sources, which may impede exact reproduction by the community.",
+          "The large-scale experiment does not include a fixed-total-budget comparison at 70B scale, making it unclear whether growth is still advantageous when accounting for all compute.",
+          "No analysis is provided on expert load balancing or specialization after width growth, despite these being central to MoE training.",
+          "The theoretical understanding is limited to empirical weight-norm patterns; no formal guarantees or deeper mechanistic explanations are offered."
+        ],
+        "Ethical Concerns": false,
+        "Soundness": 2,
+        "Presentation": 2,
+        "Contribution": 2,
+        "Overall": 4,
+        "Confidence": 4,
+        "Decision": "Reject"
+      },
+      "raw_response": "{\n  \"Summary\": \"The paper proposes a framework for recycling pretrained Mixture-of-Experts (MoE) checkpoints by expanding them into larger models, rather than training from scratch. Two orthogonal growth strategies are introduced: depth growth via interpositional layer copying (duplicating each layer in place) and width growth via expert duplication with injected Gaussian noise. The authors study growth timing, showing that final performance correlates positively with the sunk compute invested in the base checkpoint, and that growth can be competitive with scratch training under a fixed total budget. They scale the approach from a 17B MoE model to a 70B model over 1T training tokens, reporting a 10.66% relative accuracy gain over a scratch-trained baseline under the same additional FLOPs budget.\",\n  \"Strengths\": [\n    \"Addresses an important and timely problem: efficiently reusing sunk compute from existing checkpoints.\",\n    \"First systematic study of model growth specifically for converged MoE models, with clear recipes for depth and width expansion.\",\n    \"Extensive experiments across multiple scales (3B, 6B, 17B, 35B, 70B), with detailed per-task evaluation tables in the appendix.\",\n    \"Includes a fixed-total-budget comparison at the 3B/6B scale, which is more practically relevant than only comparing under an additional-budget setting.\",\n    \"The paper provides substantial reproducibility details, including architecture, data mix, hyperparameters, and infrastructure.\"\n  ],\n  \"Weaknesses\": [\n    \"The function-preserving claim for width growth is mathematically questionable under the sigmoid router used by the authors: duplicating expert weights and router logits and then selecting top-2k without any normalization or scaling doubles the routed sum, so the output cannot be identical to the original model.\",\n    \"The 70B scratch baseline is not described in sufficient detail: no evaluation table or exact training budget is provided, and the comparison is only under the same 'extra' FLOPs, not the same total FLOPs, which weakens the headline claim.\",\n    \"The growth-timing analysis uses the same fixed learning rate for all continued-training runs; late checkpoints from the annealing phase may be unfairly disadvantaged, so the reported diminishing returns could be an artifact of LR mismatch rather than a property of sunk cost.\",\n    \"No repeated runs, seeds, or confidence intervals are reported; some conclusions (e.g., the ~1% benefit of noise injection) may be within evaluation noise.\",\n    \"The justification for interpositional depth growth relies on a heuristic observation about layer-wise weight norms, without a causal or theoretical explanation of why preserving this norm trend is necessary or sufficient.\",\n    \"Only one growth order is evaluated (depth then width); no ablations are performed for width-then-depth or simultaneous growth, so the claimed orthogonality is not fully validated.\",\n    \"The paper contains numerous typos and unclear passages (e.g., 'leaning rate', 'donot', 'primary questions', 'number such as'), and some claims in the abstract ('10.66% accuracy gain') do not clearly distinguish absolute vs. relative improvement.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"With the sigmoid router described in Appendix D.1, how is the output preserved after duplicating both expert weights and router logits and selecting top-2k? If no renormalization or scaling is applied, the output magnitude would double; did the authors divide the final MoE output by 2 or use a different normalization in practice?\",\n    \"What exactly is the 70B scratch baseline in Figure 1? How many tokens/FLOPs were used, what was the learning-rate schedule, and is the comparison only against the additional compute after growth or the total compute including the 17B sunk cost?\",\n    \"Did the authors tune the continued-training learning rate for each checkpoint separately? Could the observed degradation for very late checkpoints be caused by using a constant LR for models that had already entered the annealing phase?\",\n    \"Why is it necessary to double the top-k value during width growth? Doubling both E and k doubles the activated expert FLOPs; how is this accounted for in the FLOPs comparisons against scratch training?\",\n    \"Would the width-growth results and the function-preserving argument change if softmax routing were used instead of sigmoid routing?\",\n    \"Have the authors compared against other established model-growth methods such as LiGO, LEMON, or MSG on the same 3B-to-6B setting, rather than only comparing stack vs. interposition?\"\n  ],\n  \"Limitations\": [\n    \"The proposed growth methods are only evaluated on MoE architectures; applicability to dense models is not demonstrated.\",\n    \"The pretraining data mix includes proprietary sources, which may impede exact reproduction by the community.\",\n    \"The large-scale experiment does not include a fixed-total-budget comparison at 70B scale, making it unclear whether growth is still advantageous when accounting for all compute.\",\n    \"No analysis is provided on expert load balancing or specialization after width growth, despite these being central to MoE training.\",\n    \"The theoretical understanding is limited to empirical weight-norm patterns; no formal guarantees or deeper mechanistic explanations are offered.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+      "usage": {
+        "prompt_tokens": 36341,
+        "prompt_cache_hit_tokens": 5504,
+        "prompt_cache_miss_tokens": 30837,
+        "completion_tokens": 5877,
+        "reasoning_tokens": 4705,
+        "total_tokens": 42218
+      },
+      "attempts": 1,
+      "response_id": "cd7c6370-3eeb-4730-b85a-1065657af17a"
+    }
+  ],
+  "ensemble_summary": {
+    "decision_counts": {
+      "Accept": 0,
+      "Reject": 5
+    },
+    "unanimous_decision": true,
+    "score_statistics": {
+      "Originality": {
+        "values": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "mean": 3,
+        "rounded_mean": 3,
+        "population_sd": 0.0,
+        "min": 3,
+        "max": 3
+      },
+      "Quality": {
+        "values": [
+          3,
+          2,
+          2,
+          2,
+          2
+        ],
+        "mean": 2.2,
+        "rounded_mean": 2,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Clarity": {
+        "values": [
+          3,
+          2,
+          3,
+          2,
+          2
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Significance": {
+        "values": [
+          3,
+          2,
+          2,
+          3,
+          3
+        ],
+        "mean": 2.6,
+        "rounded_mean": 3,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Soundness": {
+        "values": [
+          3,
+          2,
+          2,
+          2,
+          2
+        ],
+        "mean": 2.2,
+        "rounded_mean": 2,
+        "population_sd": 0.4,
+        "min": 2,
+        "max": 3
+      },
+      "Presentation": {
+        "values": [
+          3,
+          2,
+          3,
+          2,
+          2
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Contribution": {
+        "values": [
+          3,
+          2,
+          2,
+          3,
+          2
+        ],
+        "mean": 2.4,
+        "rounded_mean": 2,
+        "population_sd": 0.49,
+        "min": 2,
+        "max": 3
+      },
+      "Overall": {
+        "values": [
+          5,
+          4,
+          4,
+          5,
+          4
+        ],
+        "mean": 4.4,
+        "rounded_mean": 4,
+        "population_sd": 0.49,
+        "min": 4,
+        "max": 5
+      },
+      "Confidence": {
+        "values": [
+          4,
+          4,
+          3,
+          4,
+          4
+        ],
+        "mean": 3.8,
+        "rounded_mean": 4,
+        "population_sd": 0.4,
+        "min": 3,
+        "max": 4
+      }
+    }
+  },
+  "meta_review_model": {
+    "label": "area_chair_meta_review",
+    "review": {
+      "Summary": "The paper proposes a framework for recycling pretrained Mixture-of-Experts (MoE) checkpoints by growing them into larger models. It introduces two orthogonal growth strategies: depth growth via interpositional layer copying (duplicating each layer in place) and width growth via expert duplication with injected Gaussian noise. Experiments on 3B-to-6B and 17B-to-70B models show that interposition outperforms stacking for converged checkpoints, that small noise aids expert specialization, and that final accuracy correlates positively with the sunk compute invested. The authors claim a 10.66% relative accuracy gain over a scratch-trained baseline under the same additional compute budget.",
+      "Strengths": [
+        "Addresses an important and timely problem: reusing the sunk compute in pretrained MoE checkpoints instead of training from scratch.",
+        "First systematic study of model growth specifically for well-converged MoE models, offering clear recipes for both depth and width expansion.",
+        "Interpositional depth growth is a simple, effective alternative to stacking, validated at 3B and 17B scales and supported by layer-wise norm analysis.",
+        "Width growth via expert duplication with small Gaussian noise is a practical and well-motivated strategy that improves downstream accuracy over exact copying.",
+        "Large-scale demonstration from a 17B to a 70B MoE over ~1T tokens shows the approach can be applied to production-scale models.",
+        "The timing study across checkpoints with a fixed additional budget provides actionable guidance on when to grow and suggests that more sunk cost tends to help."
+      ],
+      "Weaknesses": [
+        "The headline 10.66% improvement over 'training from scratch' is ambiguous and likely not a like-for-like comparison: the baseline appears to be a 17B model, not a 70B model trained from scratch, and the comparison uses additional FLOPs rather than total FLOPs.",
+        "The claimed function-preserving property of width growth is mathematically suspect: duplicating experts and router logits and doubling top-k without renormalization or scaling doubles the MoE output magnitude, and the paper does not address this.",
+        "The growth-timing analysis is confounded: later checkpoints are already better, and the fixed learning rate after growth may unfairly disadvantage checkpoints taken from the annealing phase; no LR tuning per checkpoint was performed.",
+        "Evaluation is narrow, covering only MMLU and six English multiple-choice QA tasks, with no open-ended generation, code, math, or multilingual benchmarks, and no significance testing.",
+        "No comparison with existing strong model-growth methods (e.g., LiGO, LEMON, progressive stacking) is provided beyond stack vs. interposition.",
+        "Reproducibility is limited by proprietary datasets, missing details on post-growth hyperparameters, and only a partial code fragment; no full implementation is released.",
+        "Only one growth order (depth then width) is tested, so the claimed orthogonality and interaction effects are not fully validated."
+      ],
+      "Originality": 3,
+      "Quality": 2,
+      "Clarity": 2,
+      "Significance": 3,
+      "Questions": [
+        "What exactly is the scratch baseline used to compute the 10.66% gain? Is it a 70B model trained from scratch with the same additional FLOPs or the 17B base model? What are the exact total FLOPs for both pipelines?",
+        "For width growth with sigmoid routing, how is the output magnitude preserved when both experts and router logits are duplicated and top-k is doubled? Is any normalization or scaling applied to keep the transformation function-preserving?",
+        "Were post-growth learning rates tuned separately for each checkpoint? Could the observed performance of late-annealing checkpoints improve if the LR were adjusted to match their schedule phase?",
+        "Why is it necessary to double top-k when duplicating experts? How is the increased activated-expert FLOPs accounted for in the FLOPs budget compared to scratch training?",
+        "How does the proposed width-growth method compare to other expert-diversification schemes, such as random reinitialization of new experts or adding noise only to router logits?",
+        "Would the conclusions change if the order of depth and width growth was swapped? Have the authors tested the interaction between the two growth strategies?",
+        "Can the authors provide confidence intervals or multiple seeds for the key timing and noise-injection results to rule out evaluation noise?"
+      ],
+      "Limitations": [
+        "The methods are evaluated only on MoE architectures; applicability to dense Transformer models is not demonstrated.",
+        "The pretraining data mixture is proprietary, hindering independent reproduction and external verification.",
+        "The large-scale experiment is a single run with no repeated seeds, so the stability of the observed gains is unknown.",
+        "The evaluation suite is restricted to English knowledge/reasoning tasks; broader model capabilities are not assessed.",
+        "No analysis is provided on expert load balancing or routing diversity after width growth, despite these being central to MoE training.",
+        "The theoretical understanding is heuristic (layer-wise norm trends), with no formal guarantees or causal analysis.",
+        "The claimed efficiency benefit is not quantified in terms of total GPU-hours or environmental cost, including the base pretraining."
+      ],
+      "Ethical Concerns": false,
+      "Soundness": 2,
+      "Presentation": 2,
+      "Contribution": 2,
+      "Overall": 4,
+      "Confidence": 4,
+      "Decision": "Reject"
+    },
+    "raw_response": "{\n  \"Summary\": \"The paper proposes a framework for recycling pretrained Mixture-of-Experts (MoE) checkpoints by growing them into larger models. It introduces two orthogonal growth strategies: depth growth via interpositional layer copying (duplicating each layer in place) and width growth via expert duplication with injected Gaussian noise. Experiments on 3B-to-6B and 17B-to-70B models show that interposition outperforms stacking for converged checkpoints, that small noise aids expert specialization, and that final accuracy correlates positively with the sunk compute invested. The authors claim a 10.66% relative accuracy gain over a scratch-trained baseline under the same additional compute budget.\",\n  \"Strengths\": [\n    \"Addresses an important and timely problem: reusing the sunk compute in pretrained MoE checkpoints instead of training from scratch.\",\n    \"First systematic study of model growth specifically for well-converged MoE models, offering clear recipes for both depth and width expansion.\",\n    \"Interpositional depth growth is a simple, effective alternative to stacking, validated at 3B and 17B scales and supported by layer-wise norm analysis.\",\n    \"Width growth via expert duplication with small Gaussian noise is a practical and well-motivated strategy that improves downstream accuracy over exact copying.\",\n    \"Large-scale demonstration from a 17B to a 70B MoE over ~1T tokens shows the approach can be applied to production-scale models.\",\n    \"The timing study across checkpoints with a fixed additional budget provides actionable guidance on when to grow and suggests that more sunk cost tends to help.\"\n  ],\n  \"Weaknesses\": [\n    \"The headline 10.66% improvement over 'training from scratch' is ambiguous and likely not a like-for-like comparison: the baseline appears to be a 17B model, not a 70B model trained from scratch, and the comparison uses additional FLOPs rather than total FLOPs.\",\n    \"The claimed function-preserving property of width growth is mathematically suspect: duplicating experts and router logits and doubling top-k without renormalization or scaling doubles the MoE output magnitude, and the paper does not address this.\",\n    \"The growth-timing analysis is confounded: later checkpoints are already better, and the fixed learning rate after growth may unfairly disadvantage checkpoints taken from the annealing phase; no LR tuning per checkpoint was performed.\",\n    \"Evaluation is narrow, covering only MMLU and six English multiple-choice QA tasks, with no open-ended generation, code, math, or multilingual benchmarks, and no significance testing.\",\n    \"No comparison with existing strong model-growth methods (e.g., LiGO, LEMON, progressive stacking) is provided beyond stack vs. interposition.\",\n    \"Reproducibility is limited by proprietary datasets, missing details on post-growth hyperparameters, and only a partial code fragment; no full implementation is released.\",\n    \"Only one growth order (depth then width) is tested, so the claimed orthogonality and interaction effects are not fully validated.\"\n  ],\n  \"Originality\": 3,\n  \"Quality\": 2,\n  \"Clarity\": 2,\n  \"Significance\": 3,\n  \"Questions\": [\n    \"What exactly is the scratch baseline used to compute the 10.66% gain? Is it a 70B model trained from scratch with the same additional FLOPs or the 17B base model? What are the exact total FLOPs for both pipelines?\",\n    \"For width growth with sigmoid routing, how is the output magnitude preserved when both experts and router logits are duplicated and top-k is doubled? Is any normalization or scaling applied to keep the transformation function-preserving?\",\n    \"Were post-growth learning rates tuned separately for each checkpoint? Could the observed performance of late-annealing checkpoints improve if the LR were adjusted to match their schedule phase?\",\n    \"Why is it necessary to double top-k when duplicating experts? How is the increased activated-expert FLOPs accounted for in the FLOPs budget compared to scratch training?\",\n    \"How does the proposed width-growth method compare to other expert-diversification schemes, such as random reinitialization of new experts or adding noise only to router logits?\",\n    \"Would the conclusions change if the order of depth and width growth was swapped? Have the authors tested the interaction between the two growth strategies?\",\n    \"Can the authors provide confidence intervals or multiple seeds for the key timing and noise-injection results to rule out evaluation noise?\"\n  ],\n  \"Limitations\": [\n    \"The methods are evaluated only on MoE architectures; applicability to dense Transformer models is not demonstrated.\",\n    \"The pretraining data mixture is proprietary, hindering independent reproduction and external verification.\",\n    \"The large-scale experiment is a single run with no repeated seeds, so the stability of the observed gains is unknown.\",\n    \"The evaluation suite is restricted to English knowledge/reasoning tasks; broader model capabilities are not assessed.\",\n    \"No analysis is provided on expert load balancing or routing diversity after width growth, despite these being central to MoE training.\",\n    \"The theoretical understanding is heuristic (layer-wise norm trends), with no formal guarantees or causal analysis.\",\n    \"The claimed efficiency benefit is not quantified in terms of total GPU-hours or environmental cost, including the base pretraining.\"\n  ],\n  \"Ethical Concerns\": false,\n  \"Soundness\": 2,\n  \"Presentation\": 2,\n  \"Contribution\": 2,\n  \"Overall\": 4,\n  \"Confidence\": 4,\n  \"Decision\": \"Reject\"\n}",
+    "usage": {
+      "prompt_tokens": 6541,
+      "prompt_cache_hit_tokens": 256,
+      "prompt_cache_miss_tokens": 6285,
+      "completion_tokens": 3927,
+      "reasoning_tokens": 2768,
+      "total_tokens": 10468
+    },
+    "attempts": 1,
+    "response_id": "09eadd62-4e85-4f1c-bef8-ca2606fb9ce0"
+  },
+  "final_review": {
+    "Summary": "The paper proposes a framework for recycling pretrained Mixture-of-Experts (MoE) checkpoints by growing them into larger models. It introduces two orthogonal growth strategies: depth growth via interpositional layer copying (duplicating each layer in place) and width growth via expert duplication with injected Gaussian noise. Experiments on 3B-to-6B and 17B-to-70B models show that interposition outperforms stacking for converged checkpoints, that small noise aids expert specialization, and that final accuracy correlates positively with the sunk compute invested. The authors claim a 10.66% relative accuracy gain over a scratch-trained baseline under the same additional compute budget.",
+    "Strengths": [
+      "Addresses an important and timely problem: reusing the sunk compute in pretrained MoE checkpoints instead of training from scratch.",
+      "First systematic study of model growth specifically for well-converged MoE models, offering clear recipes for both depth and width expansion.",
+      "Interpositional depth growth is a simple, effective alternative to stacking, validated at 3B and 17B scales and supported by layer-wise norm analysis.",
+      "Width growth via expert duplication with small Gaussian noise is a practical and well-motivated strategy that improves downstream accuracy over exact copying.",
+      "Large-scale demonstration from a 17B to a 70B MoE over ~1T tokens shows the approach can be applied to production-scale models.",
+      "The timing study across checkpoints with a fixed additional budget provides actionable guidance on when to grow and suggests that more sunk cost tends to help."
+    ],
+    "Weaknesses": [
+      "The headline 10.66% improvement over 'training from scratch' is ambiguous and likely not a like-for-like comparison: the baseline appears to be a 17B model, not a 70B model trained from scratch, and the comparison uses additional FLOPs rather than total FLOPs.",
+      "The claimed function-preserving property of width growth is mathematically suspect: duplicating experts and router logits and doubling top-k without renormalization or scaling doubles the MoE output magnitude, and the paper does not address this.",
+      "The growth-timing analysis is confounded: later checkpoints are already better, and the fixed learning rate after growth may unfairly disadvantage checkpoints taken from the annealing phase; no LR tuning per checkpoint was performed.",
+      "Evaluation is narrow, covering only MMLU and six English multiple-choice QA tasks, with no open-ended generation, code, math, or multilingual benchmarks, and no significance testing.",
+      "No comparison with existing strong model-growth methods (e.g., LiGO, LEMON, progressive stacking) is provided beyond stack vs. interposition.",
+      "Reproducibility is limited by proprietary datasets, missing details on post-growth hyperparameters, and only a partial code fragment; no full implementation is released.",
+      "Only one growth order (depth then width) is tested, so the claimed orthogonality and interaction effects are not fully validated."
+    ],
+    "Originality": 3,
+    "Quality": 2,
+    "Clarity": 2,
+    "Significance": 3,
+    "Questions": [
+      "What exactly is the scratch baseline used to compute the 10.66% gain? Is it a 70B model trained from scratch with the same additional FLOPs or the 17B base model? What are the exact total FLOPs for both pipelines?",
+      "For width growth with sigmoid routing, how is the output magnitude preserved when both experts and router logits are duplicated and top-k is doubled? Is any normalization or scaling applied to keep the transformation function-preserving?",
+      "Were post-growth learning rates tuned separately for each checkpoint? Could the observed performance of late-annealing checkpoints improve if the LR were adjusted to match their schedule phase?",
+      "Why is it necessary to double top-k when duplicating experts? How is the increased activated-expert FLOPs accounted for in the FLOPs budget compared to scratch training?",
+      "How does the proposed width-growth method compare to other expert-diversification schemes, such as random reinitialization of new experts or adding noise only to router logits?",
+      "Would the conclusions change if the order of depth and width growth was swapped? Have the authors tested the interaction between the two growth strategies?",
+      "Can the authors provide confidence intervals or multiple seeds for the key timing and noise-injection results to rule out evaluation noise?"
+    ],
+    "Limitations": [
+      "The methods are evaluated only on MoE architectures; applicability to dense Transformer models is not demonstrated.",
+      "The pretraining data mixture is proprietary, hindering independent reproduction and external verification.",
+      "The large-scale experiment is a single run with no repeated seeds, so the stability of the observed gains is unknown.",
+      "The evaluation suite is restricted to English knowledge/reasoning tasks; broader model capabilities are not assessed.",
+      "No analysis is provided on expert load balancing or routing diversity after width growth, despite these being central to MoE training.",
+      "The theoretical understanding is heuristic (layer-wise norm trends), with no formal guarantees or causal analysis.",
+      "The claimed efficiency benefit is not quantified in terms of total GPU-hours or environmental cost, including the base pretraining."
+    ],
+    "Ethical Concerns": false,
+    "Soundness": 2,
+    "Presentation": 2,
+    "Contribution": 2,
+    "Overall": 4,
+    "Confidence": 4,
+    "Decision": "Reject"
+  },
+  "final_review_source": "Area Chair model output",
+  "usage": {
+    "prompt_tokens": 188246,
+    "prompt_cache_hit_tokens": 27776,
+    "prompt_cache_miss_tokens": 160470,
+    "completion_tokens": 27600,
+    "reasoning_tokens": 20715,
+    "total_tokens": 215846,
+    "request_count": 6
+  },
+  "price_assumptions_usd_per_million_tokens": {
+    "cache_hit_input": 0.0028,
+    "cache_miss_input": 0.14,
+    "output": 0.28
+  },
+  "estimated_cost_usd": {
+    "cache_hit_input_usd": 7.777e-05,
+    "cache_miss_input_usd": 0.0224658,
+    "output_usd": 0.007728,
+    "total_usd": 0.03027157
+  },
+  "elapsed_seconds": 79.831,
+  "input": {
+    "blind_id": "B030",
+    "filename": "B030.txt",
+    "blind_text_sha256": "7429c7800a279c5cc4fa9125d87af0fab55f9e39b3f6665cec86bb7cc0586aa4",
+    "characters": 92866,
+    "full_text_saved": false
+  }
+}

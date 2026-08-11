@@ -72,6 +72,10 @@ the final temperature, seed, continuous AUROC score, or all failure handling.
 Public-code details are therefore implementation clues, not a complete
 parameter-level specification of the paper.
 
+For a parameter-level separation of paper facts, pinned-code evidence, and
+DeepSeek adaptation—and the resulting interpretation limits—see the
+[Nature AutoReviewer protocol and results audit](./NATURE_AUTOREVIEWER_AUDIT.en.md).
+
 The AutoReviewer itself was not reported to use a browser, search, RAG, or a
 literature-retrieval tool. Web and literature tools used elsewhere in the full AI
 Scientist system belong to the idea and citation components. The Nature study

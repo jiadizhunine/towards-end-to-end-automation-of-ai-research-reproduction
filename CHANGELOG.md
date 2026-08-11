@@ -1,5 +1,25 @@
 # 更新日志 / Changelog
 
+## Unreleased
+
+### 简体中文
+
+- 新增 Nature AutoReviewer 参数对照与结果解读，明确区分论文声明、冻结公开代码线索
+  与 DeepSeek 适配。
+- 补充原论文人类参考、稿件版本、可见线索、统计细节和 workshop 证据的解释边界。
+- 在中英文首页、完整报告与简明说明中加入对应入口。
+- 实验数据、冻结预测、统计结果和审计链均未改变。
+
+### English
+
+- Added a detailed Nature AutoReviewer protocol and results audit that separates
+  paper-declared methods, pinned-public-code clues, and DeepSeek adaptations.
+- Added interpretation boundaries for the paper's human reference, manuscript
+  versions, visible clues, statistical details, and workshop evidence.
+- Linked the audit from the Chinese and English homepages, full reports, and
+  plain-language guides.
+- Experimental data, frozen predictions, statistics, and audit chains are unchanged.
+
 ## v0.1.1 — 2026-08-11
 
 ### 简体中文

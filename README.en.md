@@ -67,6 +67,10 @@ peer review.
 bounds remain in the evaluation JSON. Read the [plain-language guide to the two
 tables](docs/RESULTS_GUIDE.en.md) before treating the Nature human reference as a
 same-cohort comparison.
+For a parameter-level distinction between the paper, pinned public code, and
+DeepSeek adapter—and an evidence-based account of why the original results need
+careful interpretation—read the [Nature AutoReviewer protocol and results
+audit](docs/NATURE_AUTOREVIEWER_AUDIT.en.md).
 
 ### Table 1a — strict all-initial condition
 

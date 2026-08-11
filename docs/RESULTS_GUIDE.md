@@ -59,6 +59,9 @@ Nature Table 1 将 `Human (NeurIPS 2021)` 与 `AutoReviewer (ICLR 2025)` 并列�
 论文没有完整公开最终 temperature、seed、AUROC 连续分数和所有失败处理。公开代码
 中的细节因此只能视为实现线索，不等于论文逐参数规范。
 
+若要逐项查看哪些参数确实来自论文、哪些来自冻结公开代码、哪些是本项目为 DeepSeek
+所作的适配，以及由此带来的解释边界，见[Nature AutoReviewer 参数对照与结果解读](./NATURE_AUTOREVIEWER_AUDIT.md)。
+
 AutoReviewer 本身没有报告使用浏览器、搜索、RAG 或文献检索工具；完整 AI Scientist
 在想法与引用阶段使用的网页/文献工具属于另一个组件。原论文还将 Reject 设为初投稿、
 Accept 设为 camera-ready，并直接处理 PDF 原始文本，没有报告脱敏步骤。这意味着版本、

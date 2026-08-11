@@ -63,6 +63,8 @@ Area Chair，汇总五份评审并输出一份 meta-review 和二元 Accept/Reje
 表中“±”是 95% bootstrap 区间的半宽；完整的非对称上下界保留在评估 JSON 中。
 先看两张表分别代表什么、如何理解 Always reject、以及 Nature 的人类参考为何
 不能作为同队列横向比较，请读[两张表的简明说明](docs/RESULTS_GUIDE.md)。
+逐项区分 Nature 论文、冻结公开代码和 DeepSeek 适配的参数，并了解原论文结果为何
+需要谨慎解释，请读[Nature AutoReviewer 参数对照与结果解读](docs/NATURE_AUTOREVIEWER_AUDIT.md)。
 
 ### Table 1a — 严格全初投稿条件
 

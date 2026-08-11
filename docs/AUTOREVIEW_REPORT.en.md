@@ -132,6 +132,10 @@ itself was not reported to use a browser, search, RAG, or literature-retrieval
 tool. The wider AI Scientist system used web and literature tools during idea and
 citation work, which is a separate component.
 
+For a parameter-level separation of what the paper declares, what the pinned
+public code suggests, and what this project adapts for DeepSeek, see the
+[Nature AutoReviewer protocol and results audit](./NATURE_AUTOREVIEWER_AUDIT.en.md).
+
 The paper used original submissions for rejected papers and camera-ready copies
 for accepted papers. It reports raw PDF-text processing and no redaction of
 titles, authors, affiliations, or publication headers. Version and visible-text
@@ -154,6 +158,10 @@ by itself establish reliable main-conference-quality output, fully autonomous
 research, or a general ability to judge scientific quality. The paper's broader
 scaling claims rely mainly on the Automated Reviewer; any calibration or
 input-clue limitations in that reviewer carry into those trends.
+
+The [detailed protocol and evidence audit](./NATURE_AUTOREVIEWER_AUDIT.en.md)
+separates what the one-of-three workshop observation and the external human
+reference can each support.
 
 ## API usage and cost
 
